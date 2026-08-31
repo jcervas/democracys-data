@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -18,6 +19,7 @@ chk  <- read.csv("data/derived/consistency.csv", stringsAsFactors = FALSE)
 pops <- read.csv("data/derived/populations.csv", stringsAsFactors = FALSE)
 acs  <- read.csv("data/derived/acs.csv",         stringsAsFactors = FALSE)
 inst <- read.csv("data/derived/instruments.csv", stringsAsFactors = FALSE)
+bs   <- read.csv("data/derived/blocksize.csv",   stringsAsFactors = FALSE)
 
 nn <- function(x) format(round(x), big.mark = ",")
 p1 <- function(x) formatC(x, format = "f", digits = 1)
@@ -70,6 +72,35 @@ data.frame(Quantity = acs$quantity,
 ## ---- poptab
 data.frame(Population = pops$population, Value = nn(pops$value),
            What_it_is_for = pops$what_it_is_for)
+
+## ---- blocks-static
+# The base-R twin of blocks-d3: same table, same order (smallest band at the
+# top), same counts labelled on the bars.
+bsr <- bs[rev(seq_len(nrow(bs))), ]
+par(mar = c(3.6, 7.6, 0.4, 3.4))
+bp <- barplot(bsr$blocks, horiz = TRUE, names.arg = bsr$bin, las = 1,
+              col = ACC, border = NA, cex.names = 0.7, xaxt = "n", xlab = "")
+at <- pretty(c(0, max(bs$blocks)))
+axis(1, at = at, labels = format(at, big.mark = ",", trim = TRUE),
+     cex.axis = 0.7, mgp = c(2.2, 0.7, 0))
+title(xlab = "census blocks", line = 2.2, cex.lab = 0.8)
+text(bsr$blocks, bp, format(bsr$blocks, big.mark = ",", trim = TRUE),
+     pos = 4, offset = 0.3, cex = 0.62, col = "#333", xpd = NA)
+
+## ---- blocks-d3
+# Drawn with the shared library. One series, one count per size band; the
+# tooltip carries the people and share columns the bars do not show.
+dd_fig("blocksize", "bar",
+       bs[, c("bin", "blocks", "people", "share_of_people")],
+  x = list(field = "blocks", fmt = "comma", zero = TRUE),
+  y = list(field = "bin", band = TRUE),
+  series = list(class = "series-1"),
+  valueLabels = TRUE, rowHeight = 26,
+  tip = dd_tip(c(blocks = "blocks", people = "people living in them",
+                 share_of_people = "share of Georgia"),
+               fmt = c(blocks = "comma", people = "comma",
+                       share_of_people = "pct1"),
+               title = "bin"))
 
 ## ---- chktab
 data.frame(Consistency_check = chk$check,

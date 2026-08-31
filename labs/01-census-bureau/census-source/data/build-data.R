@@ -132,8 +132,10 @@ write.csv(gran, "derived/granularity.csv", row.names = FALSE)
 # Your-turn questions lean on.
 
 edges <- c(-Inf, 0, 1, 9, 49, 199, 999, Inf)
-bands <- c("Nobody", "1 person", "2–9 people", "10–49 people",
-           "50–199 people", "200–999 people", "1,000+ people")
+# Plain hyphens on purpose: these labels are drawn by the base-R twin too,
+# and the default pdf() device cannot set an en dash.
+bands <- c("Nobody", "1 person", "2-9 people", "10-49 people",
+           "50-199 people", "200-999 people", "1,000+ people")
 band  <- cut(pop, edges, labels = bands)
 bs <- data.frame(
   bin    = bands,

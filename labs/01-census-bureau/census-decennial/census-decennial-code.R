@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -54,6 +55,23 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 
 ACC <- "#1C4C5C"; WARN <- "#8A3B2C"
 
+# Rows for the coverage figure. Short display labels, because the Bureau's
+# full group names run to fifty characters; the tooltip carries the full name.
+# Ordered with the deepest undercount at the top, and shared by both twins so
+# the two formats cannot disagree about which row went where.
+cov_rows <- function() {
+  short <- c("Black or African American" = "Black",
+             "American Indian or Alaska Native, on reservation" =
+               "American Indian, on reservation",
+             "Hispanic or Latino" = "Hispanic or Latino",
+             "Native Hawaiian or Other Pacific Islander" = "Pacific Islander",
+             "Asian" = "Asian",
+             "White, not Hispanic" = "White, not Hispanic")
+  cv <- cov[order(cov$pes_2020), ]
+  cv$label <- unname(short[cv$group])
+  cv
+}
+
 ## ---- form
 cat(paste(readLines("data/raw/form.txt"), collapse = "\n"))
 
@@ -65,10 +83,46 @@ data.frame(Table = tab$table, Variables = nn(tab$cells),
 data.frame(Group = race$group, People = nn(race$people),
            Share_of_state = paste0(p1(race$share_of_state), "%"))
 
-## ---- deadtab
-data.frame(Delivery = dead$delivery, Statute = dead$statute,
-           Due = dead$due, Delivered = dead$delivered,
-           Days_late = nn(dead$days_late))
+## ---- cov-static
+cv <- cov_rows()
+n_cv <- nrow(cv)
+par(mar = c(3.8, 11.5, 0.6, 1.0))
+plot(NA, xlim = c(-6.5, 3.5), ylim = c(0.6, n_cv + 0.4), axes = FALSE,
+     xlab = "", ylab = "")
+abline(v = seq(-6, 3, 1), col = "#00000018", lty = 3)
+abline(v = 0, col = "#666")
+ypos <- n_cv:1                               # first row (deepest undercount) on top
+segments(cv$ccm_2010, ypos, cv$pes_2020, ypos, col = "#bbb", lwd = 2)
+points(cv$ccm_2010, ypos, pch = 19, cex = 1.0, col = "#2c7fb8")
+points(cv$pes_2020, ypos, pch = 19, cex = 1.0, col = "#C41230")
+axis(1, at = seq(-6, 3, 1), labels = sprintf("%+d", seq(-6, 3, 1)),
+     cex.axis = 0.7, mgp = c(2.2, 0.7, 0))
+axis(2, at = ypos, labels = cv$label, las = 1, tick = FALSE, cex.axis = 0.7,
+     line = -0.5)
+title(xlab = "net coverage error, per cent of the group (negative = undercount)",
+      line = 2.3, cex.lab = 0.8)
+legend("bottomright", c("2010", "2020"), pch = 19,
+       col = c("#2c7fb8", "#C41230"), bty = "n", cex = 0.75)
+
+## ---- cov-d3
+# Drawn with the shared library: a dumbbell, one row per group, the 2010 and
+# 2020 measurements as the two ends. The solid rule is a perfect count.
+cv <- cov_rows()
+dd_fig("coverage", "dumbbell",
+       cv[, c("group", "label", "ccm_2010", "pes_2020", "change")],
+  y = list(field = "label"),
+  a = list(field = "ccm_2010", label = "2010"),
+  b = list(field = "pes_2020", label = "2020"),
+  x = list(domain = c(-6.5, 3.5), fmt = "signed0",
+           label = "net coverage error, per cent of the group (negative = undercount)"),
+  aClass = "series-1", bClass = "series-2",
+  size = list(m = list(l = 210)),
+  annotations = list(dd_annot_vline(0, class = "zero", dash = FALSE)),
+  tip = dd_tip(c(ccm_2010 = "2010 net error", pes_2020 = "2020 net error",
+                 change = "movement"),
+               fmt = c(ccm_2010 = "signed2", pes_2020 = "signed2",
+                       change = "signed2"),
+               title = "group"))
 
 ## ---- covtab
 data.frame(Group = cov$group,
@@ -77,11 +131,6 @@ data.frame(Group = cov$group,
            Change = paste0(ifelse(cov$change > 0, "+", ""), p2(cov$change)),
            Differs_from_zero = cov$differs_from_zero,
            Differs_from_2010 = cov$differs_from_2010)
-
-## ---- usetab
-data.frame(What_the_state_law_says = use$requirement,
-           Legislative_districts   = use$legislative,
-           Congressional_districts = use$congressional)
 
 ## ---- scaletab
 data.frame(Group = sc$group,
