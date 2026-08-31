@@ -1,0 +1,528 @@
+---
+title: "Seventy-Five Seats"
+subtitle: "84-355 Democracy's Data | Population and House seats by region, 1910–2020"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.0,
+                      dpi = 120, fig.retina = 1)
+options(scipen = 999)
+
+# Render every data.frame in this document as a table rather than as console
+# output. The `envir` argument is required: without it the method registers in
+# the wrong namespace and knitr silently ignores it.
+knit_print.data.frame <- function(x, ...) {
+  n <- names(x); n <- gsub("_", " ", n)
+  n <- sub("^(.)", "\\U\\1", n, perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = n, row.names = FALSE), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means. Base R only, no packages.
+
+> **Read `regional-shift-brief.Rmd` first.** This lab runs the same numbered
+> steps with the code exposed. The brief tells you what the question is; this
+> shows you where each number came from.
+
+> **And read `apportionment` first if you have not.** That lab takes a
+> *single* reapportionment apart — Huntington–Hill, and New York missing the
+> 435th seat by 89 people. **This lab is about sixty years of them.** The
+> arithmetic is assumed here, not repeated.
+
+***
+
+# Where did that number come from?
+
+> *"Texas gained two seats and New York lost one."*
+
+That is a real headline from April 2021, and it is accurate. It is also the
+smallest true thing you can say about what happened.
+
+The United States redistributes political power every ten years without anybody
+voting on it. People move for jobs and weather; the census counts them; 435 seats
+and 538 electoral votes follow. **The question in this lab is what that adds up
+to when you stop looking one decade at a time.**
+
+# Steps 1–3 — One record, the file, and why we start at 1960
+
+```{r load}
+st  <- read.csv("data/states.csv",     stringsAsFactors = FALSE)
+reg <- read.csv("data/regions.csv",    stringsAsFactors = FALSE)
+nat <- read.csv("data/nation.csv",     stringsAsFactors = FALSE)
+sc  <- read.csv("data/seatchange.csv", stringsAsFactors = FALSE)
+sd  <- read.csv("data/southdefs.csv",  stringsAsFactors = FALSE)
+
+c(state_years = nrow(st), states = length(unique(st$name)),
+  first = min(st$year), last = max(st$year), censuses = length(unique(st$year)))
+```
+
+One row per state per census. Here is one state, twice:
+
+```{r one-record}
+st[st$name == "Florida" & st$year %in% c(1960, 2020),
+   c("name", "year", "pop", "reps", "repchg", "region")]
+```
+
+**Three things the build script had to survive**, all documented in
+`data/build-data.R`:
+
+1. Every number in the source file is a **quoted string with commas** —
+   `"4,951,560"`. `as.numeric()` returns `NA` for all of them, silently.
+2. **Puerto Rico is a `State` row and is not in the national total.** The
+   **District of Columbia** is in the national total and has no representative.
+3. Alaska and Hawaii are in the file from 1910 with **no representatives**:
+
+```{r ak-hi}
+st[st$name %in% c("Alaska", "Hawaii") & st$year %in% c(1950, 1960),
+   c("name", "year", "pop", "reps")]
+```
+
+They were territories. **The fifty-state House begins in 1960**, which is why
+every seat figure below runs 1960–2020. Population runs back to 1910 and is
+labelled as such.
+
+One more thing, and it is unusual enough to be worth a line. The Census Bureau
+publishes its **own** region totals in the same file, so the state-to-region
+mapping used here is checkable rather than assumed:
+
+```{r check}
+mine <- aggregate(pop ~ region + year, st, sum)
+c(region_years_checked = nrow(mine),
+  national_totals_match = all(tapply(st$pop, st$year, sum) ==
+                              nat$pop[order(nat$year)]))
+```
+
+`build-data.R` reruns that comparison and **stops** if any region-year
+disagrees. That is the only real way to know a lookup table is right.
+
+# Step 4 — One decade at a time
+
+```{r decade-2020}
+d20 <- st[st$year == 2020 & !is.na(st$repchg) & st$repchg != 0,
+          c("name", "region", "reps", "repchg")]
+d20
+
+c(seats_that_moved = sum(d20$repchg[d20$repchg > 0]),
+  states_affected  = nrow(d20),
+  largest_single_move = max(abs(d20$repchg)))
+```
+
+Seven seats, thirteen states, none moving more than two. And that is typical:
+
+```{r decades}
+dec <- st[st$year > 1960 & st$name != "District of Columbia" & !is.na(st$repchg), ]
+moved_by_decade <- tapply(dec$repchg, dec$year, function(x) sum(x[x > 0]))
+
+rbind(seats_changing_states = moved_by_decade,
+      states_affected       = tapply(dec$repchg, dec$year, function(x) sum(x != 0)),
+      pct_of_the_house      = round(100 * moved_by_decade / 435, 1))
+```
+
+Under five percent of the House even in the busiest decade. Taken alone, each
+reapportionment reads as maintenance.
+
+> **Stop here and write down two numbers before you run the next chunk.**
+>
+> New York's worst single decade in this period was **5 seats**, and most decades
+> it lost one or two. **How many seats do you think New York lost in total
+> between 1960 and 2020?**
+>
+> And, adding up the top row above: **how many seats do you think have changed
+> states altogether?**
+
+# Step 5 — The pivot: sixty years at once
+
+```{r pivot}
+c(seats_that_changed_states = sum(sc$change[sc$change > 0]),
+  pct_of_the_house = round(100 * sum(sc$change[sc$change > 0]) / 435, 1),
+  states_that_gained = sum(sc$change > 0),
+  states_that_lost   = sum(sc$change < 0),
+  states_unchanged   = sum(sc$change == 0))
+
+sc[order(-abs(sc$change)), c("name", "region", "reps_1960", "reps_2020", "change")][1:10, ]
+```
+
+**Seventy-five seats.** Seventeen percent of the House of Representatives sits in
+a different state than it did in 1960, and no single decade ever announced it.
+
+New York lost **15**. Put that next to the size of everybody else's delegation:
+
+```{r ny}
+ny <- sc[sc$name == "New York", ]
+c(new_york_1960 = ny$reps_1960, new_york_2020 = ny$reps_2020,
+  lost = abs(ny$change),
+  states_smaller_than_that_loss = sum(sc$reps_2020 <= abs(ny$change)))
+```
+
+**44 of the 50 states do not have 15 seats in total.**
+
+```{r bars, fig.height=5.2}
+m <- sc[sc$change != 0, ]; m <- m[order(m$change), ]
+cols <- c(Northeast = "#2c7fb8", Midwest = "#4d9221",
+          South = "#C41230", West = "#e08214")
+
+par(mar = c(4.2, 8.4, 1, 2))
+barplot(m$change, horiz = TRUE, las = 1, names.arg = m$name,
+        col = cols[m$region], border = NA, cex.names = 0.7, xlim = c(-19, 19),
+        xlab = "seats gained or lost, 1960 to 2020")
+abline(v = 0, col = "#666")
+legend("bottomright", names(cols), fill = cols, border = NA, bty = "n", cex = 0.8)
+```
+
+# Step 6 — Regions, and whether the movement ever reverses
+
+```{r regions}
+blk <- ifelse(sc$region %in% c("Northeast", "Midwest"), "NE+MW", "S+W")
+
+rbind(seats_1960 = tapply(sc$reps_1960, sc$region, sum),
+      seats_2020 = tapply(sc$reps_2020, sc$region, sum),
+      change     = tapply(sc$change,    sc$region, sum))
+
+rbind(seats_1960 = tapply(sc$reps_1960, blk, sum),
+      seats_2020 = tapply(sc$reps_2020, blk, sum),
+      pct_2020   = round(100 * tapply(sc$reps_2020, blk, sum) / 435, 1))
+
+# of the seats that changed states, how many left their region altogether?
+netreg <- tapply(sc$change, sc$region, sum)
+c(seats_that_changed_states = sum(sc$change[sc$change > 0]),
+  crossed_a_regional_border = sum(netreg[netreg > 0]),
+  moved_within_one_region   = sum(sc$change[sc$change > 0]) - sum(netreg[netreg > 0]))
+```
+
+**In 1960 the Northeast and Midwest together held a majority of the House** —
+233 of 435 seats. They now hold 167, or 38.4%. And 66 of the 75 seats that moved
+at all left their region entirely — this is not states trading with neighbours.
+
+Now: is this a trend or a fluctuation? Compare the sum of the per-decade columns
+in Step 4 with the cumulative total in Step 5, then check each state's path.
+
+```{r ratchet}
+z  <- st[st$year >= 1960 & st$name != "District of Columbia", ]
+sp <- split(z[order(z$year), ], z$name[order(z$year)])
+mono <- sapply(sp, function(x) { d <- diff(x$reps[order(x$year)])
+                                 all(d >= 0) || all(d <= 0) })
+
+c(seat_gains_summed_by_decade = sum(dec$repchg[dec$repchg > 0]),
+  net_gains_1960_to_2020      = sum(sc$change[sc$change > 0]),
+  states_that_only_went_one_way = sum(mono))
+names(mono)[!mono]
+```
+
+**47 of 50 states moved in one direction only.** This is not a cycle. It is a
+ratchet.
+
+# Step 7 — The long line
+
+Seats are lumpy; a state has to gain a whole one. Population is not.
+
+```{r shares}
+wide <- reshape(reg[, c("region", "year", "share")], idvar = "year",
+                timevar = "region", direction = "wide")
+round(wide[order(wide$year), ], 1)
+```
+
+```{r lines, fig.height=4.0}
+par(mar = c(4, 4.4, 1, 6.6))
+plot(NA, xlim = c(1910, 2020), ylim = c(5, 42), las = 1, xaxt = "n",
+     xlab = "", ylab = "% of U.S. resident population")
+axis(1, at = seq(1910, 2020, 10), cex.axis = 0.85)
+abline(v = 1960, col = "#999", lty = 3)
+text(1960, 41.5, " 50 states from here", col = "#666", cex = 0.75, pos = 4)
+ltys <- c(Northeast = 1, Midwest = 2, South = 1, West = 4)
+for (r in names(cols)) {
+  q <- reg[reg$region == r, ]; q <- q[order(q$year), ]
+  lines(q$year, q$share, col = cols[r], lwd = 2.4, lty = ltys[r])
+  text(2021, q$share[q$year == 2020], paste0(" ", r), col = cols[r],
+       cex = 0.8, pos = 4, xpd = NA)
+}
+```
+
+Four things in that picture.
+
+- **The Northeast falls the whole way**, 28.0% to 17.4%, with no reversal.
+- **The West passes the Northeast in 1990** and the Midwest in 2010.
+- **The South passes the Midwest in 1940** and never gives the lead back.
+- **And the South's rise starts after 1960, not before.** Between 1910 and 1960
+  the Census South's share of the country *fell*.
+
+# Step 8 — Does the finding depend on what "the South" means?
+
+`house-competition` and `historical-campaigns` define the South as the
+eleven former Confederate states. The Census Bureau's South is sixteen states
+plus DC, adding Maryland, Delaware, Oklahoma, West Virginia and Kentucky.
+
+```{r southdefs}
+o <- sd[sd$year %in% c(1960, 2020), ]
+w <- reshape(o[, c("definition", "year", "share")], idvar = "definition",
+             timevar = "year", direction = "wide")
+w$change <- round(w$share.2020 - w$share.1960, 1)
+w$share.1960 <- round(w$share.1960, 1); w$share.2020 <- round(w$share.2020, 1)
+w
+```
+
+**The narrower definition gives the larger rise**, which is only possible if the
+extra states are a drag — and they are. The border states went from 6.4% of the
+country to 5.5%. **So the finding is not an artefact of the definition, and the
+broad version understates it.**
+
+# Step 9 — What a seat is worth now
+
+The House has been fixed at 435 by statute since 1929. The country was not.
+
+```{r perseat}
+nat[, c("year", "pop", "reps", "pop_per_rep")]
+
+c(per_rep_1910 = nat$pop_per_rep[nat$year == 1910],
+  per_rep_2020 = nat$pop_per_rep[nat$year == 2020],
+  multiple     = round(nat$pop_per_rep[nat$year == 2020] /
+                       nat$pop_per_rep[nat$year == 1910], 2),
+  population_multiple = round(nat$pop[nat$year == 2020] /
+                              nat$pop[nat$year == 1910], 2))
+```
+
+```{r step-chart, fig.height=3.4}
+par(mar = c(4, 5, 1, 2))
+plot(nat$year, nat$pop_per_rep / 1000, type = "s", lwd = 2.6, col = "#8856a7",
+     xlim = c(1910, 2024), ylim = c(0, 830), las = 1, xaxt = "n", xlab = "",
+     ylab = "thousands of people per representative")
+axis(1, at = seq(1910, 2020, 10), cex.axis = 0.85)
+points(nat$year, nat$pop_per_rep / 1000, pch = 19, cex = 0.8, col = "#8856a7")
+abline(h = nat$pop_per_rep[nat$year == 1910] / 1000, col = "#999", lty = 2)
+text(1965, nat$pop_per_rep[nat$year == 1910] / 1000 + 30, "the 1910 district",
+     col = "#666", cex = 0.8)
+```
+
+**A member of the House now speaks for 3.62 times as many people as in 1910**,
+and the country grew 3.59 times. Those two multiples being nearly identical *is*
+the mechanism: the denominator was frozen in 1929.
+
+But bigger districts and *less equal* districts are different complaints:
+
+```{r spread}
+ppr <- st[st$year >= 1960 & st$name != "District of Columbia" & !is.na(st$reps), ]
+ppr$per <- ppr$pop / ppr$reps
+do.call(rbind, lapply(split(ppr, ppr$year), function(x)
+  data.frame(year = x$year[1],
+             smallest = x$name[which.min(x$per)],
+             largest  = x$name[which.max(x$per)],
+             ratio    = round(max(x$per) / min(x$per), 2))))
+```
+
+**Interstate inequality got slightly better while district size nearly doubled.**
+
+# Step 10 — Electoral votes moved, and nobody voted
+
+A state's electors equal its House seats plus two.
+
+```{r ec}
+ev60 <- tapply(sc$reps_1960, blk, sum) + 2 * table(blk)
+ev20 <- tapply(sc$reps_2020, blk, sum) + 2 * table(blk)
+rbind(electoral_votes_1960 = ev60, electoral_votes_2020 = ev20,
+      pct_1960 = round(100 * ev60 / sum(ev60), 1),
+      pct_2020 = round(100 * ev20 / sum(ev20), 1))
+```
+
+**In 1960 the Northeast and Midwest controlled a majority of the electoral
+votes** — 275 of the 535 cast by the fifty states. By 2020 they controlled 39.1%.
+
+DC is excluded from both columns: it had none in 1960 and got three by
+constitutional amendment in 1961, which is a rule change rather than a
+population change. Including them lowers both shares slightly and changes
+nothing.
+
+# Step 11 — What you can now say
+
+**You can say** that 75 House seats changed states between 1960 and 2020, that
+66 of them crossed a regional boundary, and that the Northeast and Midwest went
+from a majority of the House to 38.4% of it — with nothing enacted, proposed or
+voted on.
+
+**You can say it more sharply**: no single decade did this. The largest
+reapportionment moved 19 seats and looked like housekeeping at the time.
+
+**You cannot say why people moved.** This file has population and seats and
+nothing else. **The `labs/migration` lab measures the moving; this one shows what
+the moving does.**
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+***
+
+### Option A — Move the window
+
+```{r opt-a}
+START <- 1960          # <- change this. Try 1970, 1980, 1990, 2000.
+END   <- 2020
+
+a <- st[st$year == START & st$name != "District of Columbia", c("name", "region", "reps")]
+b <- st[st$year == END   & st$name != "District of Columbia", c("name", "reps")]
+w <- merge(a, b, by = "name", suffixes = c("_start", "_end"))
+w$change <- w$reps_end - w$reps_start
+
+c(window = paste(START, "to", END), decades = (END - START) / 10,
+  seats_that_changed_states = sum(w$change[w$change > 0]))
+tapply(w$change, w$region, sum)
+head(w[order(-abs(w$change)), ], 6)
+```
+
+**Write about:** does the total scale with the length of the window, or faster or
+slower? Compare 1960–2020 with 1990–2020 — a window half as long. If the number
+is more than half, the shift is accelerating; if less, it is slowing. Say which,
+and then say honestly how confident three or six observations let you be. Does
+the *ranking* of gainers and losers change, or only the size?
+
+***
+
+### Option B — Redefine the South
+
+```{r opt-b, fig.height=3.4}
+MY_SOUTH <- c("Alabama", "Arkansas", "Florida", "Georgia", "Louisiana",
+              "Mississippi", "North Carolina", "South Carolina", "Tennessee",
+              "Texas", "Virginia")     # <- add or remove states here
+
+sel <- st[st$name %in% MY_SOUTH, ]
+tot <- tapply(st$pop, st$year, sum)
+share <- 100 * tapply(sel$pop, sel$year, sum) / tot
+
+round(share, 1)
+c(n_states = length(MY_SOUTH),
+  change_1960_to_2020 = round(share["2020"] - share["1960"], 2),
+  change_1910_to_1960 = round(share["1960"] - share["1910"], 2))
+
+plot(as.numeric(names(share)), share, type = "b", pch = 19, col = "#C41230",
+     ylim = c(0, 45), xlab = "", ylab = "% of U.S. population")
+abline(v = 1960, lty = 3, col = "#999")
+```
+
+**Write about:** try adding Maryland, then Oklahoma, then Kentucky and West
+Virginia, then DC. Which additions make the rise *smaller*? Those states are
+being called Southern by the Census Bureau and are not behaving that way. Then
+the harder question: **the variable encodes an argument.** What claim about what
+the South *is* does the eleven-state list make, and what different claim does the
+Census list make? Which one would you defend, and does the finding survive
+either way?
+
+***
+
+### Option C — Growth is not seats
+
+```{r opt-c, fig.height=4.0}
+nat_growth <- 100 * (nat$pop[nat$year == 2020] / nat$pop[nat$year == 1960] - 1)
+
+plot(sc$pop_growth, sc$change, pch = 19, col = cols[sc$region], cex = 0.9,
+     xlab = "% population growth, 1960-2020", ylab = "seats gained or lost",
+     xlim = c(-50, 1050), ylim = c(-17, 18))
+abline(h = 0, col = "#999"); abline(v = nat_growth, lty = 2, col = "#999")
+text(nat_growth, 17, " national growth", pos = 4, cex = 0.8, col = "#666")
+big <- sc[abs(sc$change) >= 4 | sc$pop_growth > 400, ]
+text(big$pop_growth, big$change, big$name, pos = 4, cex = 0.7)
+
+c(correlation = round(cor(sc$pop_growth, sc$change), 2),
+  national_growth_pct = round(nat_growth, 1))
+
+g <- sc[, c("name", "region", "pop_growth", "reps_1960", "reps_2020", "change")]
+g$pop_growth <- round(g$pop_growth)
+
+# the two states the paragraph below is about
+g[g$name %in% c("Nevada", "Florida"), ]
+
+# states that beat the national growth rate and gained nothing
+g[sc$pop_growth > nat_growth & sc$change <= 0, ]
+```
+
+**Write about:** Nevada's population grew **988%** and it gained 3 seats. Florida
+grew 335% and gained 16. The correlation between growth and seats is only 0.45.
+Explain why — two reasons, and both are in the plot. Then look at the seven
+states that grew faster than the country and gained nothing at all, and say what
+they have in common. What does this tell you about the difference between
+*growing* and *growing faster than everybody else*?
+
+***
+
+### Option D — Ask your own question
+
+612 state-years, 12 censuses, 110 years. The 1920s are worth a look: Congress
+refused to reapportion at all after the 1920 census, the only time that has
+happened, and this file shows you the country that produced the refusal.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code.
+
+# What this lab cannot tell you
+
+- **Why anyone moved.** No jobs, wages, climate, housing costs, births, deaths
+  or immigration. This file cannot distinguish someone arriving from Michigan
+  from someone arriving from abroad, or either from families being larger.
+- **Anything between censuses.** Twelve observations, ten years apart. A
+  hurricane, a plant closure or a pandemic is invisible unless it survives to the
+  next April.
+- **Anything partisan.** No election results, no party of any member. The
+  electoral-vote figures in Step 10 are arithmetic about states, not about who
+  won.
+- **How accurate the count is.** Resident population is printed as an exact
+  integer. The Bureau publishes coverage error separately and it is not in this
+  file. The margins here are far larger than plausible error — 15 seats is not an
+  error bar — but `apportionment` shows a case where it decides the
+  answer.
+- **What a different rule would do.** Counting citizens only, or counting
+  incarcerated people at their home address, would change these numbers. Neither
+  can be computed here.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- Seventy-five seats moved between states and nobody voted on any of it. Is that
+  a feature of the constitutional design or a problem with it?
+- A representative today speaks for 3.6 times as many people as in 1910. What, if
+  anything, does that do to representation — and why has no Congress fixed it?
+- The Census Bureau's "South" includes Maryland and Oklahoma. Whose definition of
+  a region should a federal statistical agency use, and what happens to a finding
+  when the category is contested?
+
+***
+
+### Where the data came from
+
+**U.S. Census Bureau**, apportionment time series 1910–2020 — a single 40 KB CSV,
+no key required
+(<https://www2.census.gov/programs-surveys/decennial/2020/data/apportionment/apportionment.csv>),
+listed at
+<https://www.census.gov/data/tables/time-series/dec/apportionment-data-text.html>.
+
+Three things `data/build-data.R` had to handle and documents. **Numbers arrive as
+quoted strings with thousands separators** and become `NA` if you convert them
+without stripping the commas. **Puerto Rico is a `State` row that is not in the
+national total, and DC is in the national total with no representative.** And
+**Alaska and Hawaii have no representatives before 1960**, which is why the seat
+window starts there.
+
+The build script does one thing worth copying: the Bureau publishes its own
+four-region totals in the same file, so the script **rebuilds those rows from the
+state rows and stops if a single region-year disagrees.** A lookup table you
+wrote by hand should always be checked against something you did not.
+
+Regions and divisions follow the Census Bureau's *Statistical Groupings of States
+and Counties* (Geographic Areas Reference Manual, ch. 6).

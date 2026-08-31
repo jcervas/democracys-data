@@ -1,0 +1,551 @@
+---
+title: "Lab: The District That Was Not Drawn"
+subtitle: "84-355 Democracy's Data | Vote dilution, Houston County, Georgia"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Before we start
+
+**Vote dilution** is the claim that your vote is worth less than somebody
+else's. American law recognises two versions and they are not alike.
+
+**Malapportionment** is districts of unequal population. *Reynolds v. Sims*, 377
+U.S. 533 (1964) held the Equal Protection Clause forbids it. You settle it by
+counting people.
+
+**Racial vote dilution** under Section 2 of the Voting Rights Act, 52 U.S.C.
+§ 10301, is districts drawn so that a cohesive minority group, voted against by
+a cohesive majority, cannot elect anyone. *Thornburg v. Gingles*, 478 U.S. 30,
+50–51 (1986) made a plaintiff show three things first: the group is
+**sufficiently large and geographically compact** to be a majority in a
+single-member district; it is **politically cohesive**; and the majority **votes
+as a bloc** usually to defeat its preferred candidate.
+
+**Last week did preconditions two and three.** The RPV lab estimated whether
+Black and white voters preferred different candidates, and graded the estimate
+against records that happen to exist.
+
+**Today does precondition one, and it is a different kind of claim.** The other
+two are about an election that happened. This one is about **a district that
+does not exist** — that a map *could* have been drawn in which the group would
+have been a majority. Nobody drew it. So we have to.
+
+> **The law changed four months ago.** *Louisiana v. Callais*, 608 U.S. \_\_\_
+> (2026), decided 29 April 2026, left the three preconditions standing and
+> changed what satisfies them. Precondition one now carries **two** conditions.
+> A plaintiff "cannot use race as a districting criterion" in drawing an
+> illustrative map; and the map "must meet all the State's legitimate districting
+> objectives, including traditional districting criteria and the State's
+> specified political goals," achieving them **"just as well"** as the State's own
+> map (slip op., at 29). Part 5 builds a district with a dial that optimises race
+> and nothing else, because that was standard practice until this spring. Part 6
+> says which end of the dial survives the first condition — and why nothing in
+> this lab survives the second.
+
+For Parts 5 and 6, **pretend the enacted map does not exist.** That is the
+position of an expert asked whether a district *could* be drawn.
+
+# Part 1 — What you observe
+
+```{r load}
+b <- read.csv("data/blocks.csv", colClasses = c(GEOID20 = "character"))
+a <- read.csv("data/adjacency.csv")
+
+cat("census blocks:      ", nrow(b), "\n")
+cat("population:         ", sum(b$pop), "\n")
+cat("voting-age pop:     ", sum(b$vap), "\n")
+cat("registered voters:  ", sum(b$reg), "\n\n")
+cat(sprintf("Black share of population:      %.2f%%\n",
+            100 * sum(b$pop_black) / sum(b$pop)))
+cat(sprintf("Black share of voting-age pop:  %.2f%%\n",
+            100 * sum(b$vap_black) / sum(b$vap)))
+cat(sprintf("Black share of registered:      %.2f%%\n",
+            100 * sum(b$reg_black) / sum(b$reg)))
+```
+
+One row per **2020 census block**, the atom every districting plan is built
+from. Houston County's Board of Education is elected from five single-member
+districts under a plan enacted by the Georgia General Assembly; column `boe5`
+says which district each block is in.
+
+**Read those last three numbers again.** The Black share of this county is one
+of three different things depending on which population you mean. Part 7 is
+about what that does.
+
+# Part 2 — The dilution you settle by subtraction
+
+```{r deviation}
+ag <- aggregate(cbind(pop, vap, vap_black) ~ boe5, b, sum)
+ideal <- mean(ag$pop)
+ag$deviation <- 100 * (ag$pop - ideal) / ideal
+
+print(ag[, c("boe5", "pop", "deviation")], row.names = FALSE, digits = 3)
+
+cat(sprintf("\nideal district: %.0f people\n", ideal))
+cat(sprintf("total spread:   %.2f points\n", max(ag$deviation) - min(ag$deviation)))
+cat(sprintf("a vote in the smallest district is worth %.2f%% more than in the largest\n",
+            100 * (max(ag$pop) / min(ag$pop) - 1)))
+```
+
+```{r dev-plot, fig.height=3.4}
+par(mar = c(4.4, 5.6, 2.0, 1.4))
+y <- 5:1
+plot(NA, xlim = c(-5.6, 5.6), ylim = c(0.5, 5.5), yaxt = "n", bty = "n", las = 1,
+     xlab = "deviation from equal population (%)", ylab = "")
+rect(-5, 0.3, 5, 5.7, col = "#f0f5ea", border = NA)
+abline(v = 0, col = "grey45"); abline(v = c(-5, 5), lty = 2, col = "#4d9221")
+axis(2, at = y, labels = paste("District", ag$boe5), las = 1, tick = FALSE)
+segments(0, y, ag$deviation, y, col = "#2c7fb8", lwd = 3)
+points(ag$deviation, y, pch = 19, cex = 1.5, col = "#2c7fb8")
+mtext("green band is the 10% a legislative plan is allowed", 3, line = 0.3,
+      cex = 0.82, col = "#555")
+```
+
+*Brown v. Thomson*, 462 U.S. 835, 842 (1983) collected the rule that a state or
+local plan under a **10%** maximum deviation is a minor deviation that does not
+by itself make out a case. **This plan uses a sixth of that allowance.** The
+malapportionment inquiry is over.
+
+If it is this easy, what was it for?
+
+# Part 3 — What that rule replaced
+
+Until 1963 Georgia nominated statewide officers under the **county unit
+system**: counties cast unit votes, not people — six each for the eight largest,
+four for the next thirty, two for the remaining hundred and twenty-one — and a
+candidate needed a majority of units. *Gray v. Sanders*, 372 U.S. 368 (1963)
+struck it down, and it is where Justice Douglas wrote, at 381, that political
+equality "can mean only one thing — one person, one vote."
+
+That rule, unchanged, on Georgia's 2020 population:
+
+```{r county-units}
+cu <- read.csv("data/ga_county_units.csv", colClasses = c(fips = "character"))
+
+cat(sprintf("people per unit vote, largest county:  %8.0f\n",
+            max(cu$people_per_unit)))
+cat(sprintf("people per unit vote, smallest county: %8.0f\n",
+            min(cu$people_per_unit)))
+cat(sprintf("ratio:                                 %8.0f to 1\n",
+            max(cu$people_per_unit) / min(cu$people_per_unit)))
+
+o <- cu[order(cu$people_per_unit), ]
+k <- which(cumsum(o$units) >= floor(sum(cu$units) / 2) + 1)[1]
+cat(sprintf("\n%d of 159 counties could cast a unit-vote majority,\n", k))
+cat(sprintf("and they hold %.1f%% of Georgians.\n",
+            100 * sum(o$pop[seq_len(k)]) / sum(cu$pop)))
+```
+
+Those are the numbers *Reynolds* and *Gray* were written against. **The
+equal-population rule worked so completely that it stopped being where the
+argument is.**
+
+# Part 4 — The dilution you cannot settle by subtraction
+
+The first *Gingles* precondition has two halves. Only the first is arithmetic.
+
+```{r sufficiently-large}
+d_vap   <- sum(b$vap) / 5          # voting-age people per district
+need_bl <- d_vap / 2               # Black adults a bare majority would take
+have_bl <- sum(b$vap_black)
+
+cat(sprintf("voting-age people per district: %8.0f\n", d_vap))
+cat(sprintf("Black adults a majority needs:  %8.0f\n", need_bl))
+cat(sprintf("Black adults the county has:    %8.0f\n", have_bl))
+cat(sprintf("\n'sufficiently large' is satisfied %.2f times over\n",
+            have_bl / need_bl))
+```
+
+*Bartlett v. Strickland*, 556 U.S. 1 (2009), a plurality, read the precondition
+to require a real numerical majority — greater than 50 percent of voting-age
+population, at 19–20. A district the group could win only with crossover help
+"§ 2 does not require," at 25.
+
+That leaves **"geographically compact."** The Court's current phrase is a
+**"reasonably configured"** district, from *Wisconsin Legislature v. Wisconsin
+Elections Commission*, 595 U.S. 398, 402 (2022); *Allen v. Milligan*, 599 U.S. 1,
+18 (2023) glossed it as one that "comports with traditional districting
+criteria." It is a fact about where people live.
+
+```{r map, fig.height=6.2, fig.width=6.4}
+bs <- read.csv("data/block_shapes.csv", colClasses = c(id = "character"))
+ps <- read.csv("data/plan_shapes.csv")
+
+share <- ifelse(b$vap > 0, b$vap_black / b$vap, NA)
+brk   <- c(0, .10, .25, .40, .50, .65, 1)
+col   <- c("#f7f7f7", "#d9e6f2", "#a9c9e2", "#6fa8d0", "#2c7fb8", "#17527a")
+fill  <- ifelse(is.na(share), "#f4f4f4", col[cut(share, brk, include.lowest = TRUE)])
+
+par(mar = c(0.4, 0.4, 2.0, 0.4))
+plot(NA, xlim = range(bs$x), ylim = range(bs$y), asp = 1, axes = FALSE,
+     xlab = "", ylab = "")
+for (r in split(bs, interaction(bs$id, bs$part, drop = TRUE)))
+  polygon(r$x, r$y, col = fill[match(r$id[1], b$GEOID20)], border = NA)
+for (dd in 1:5) {
+  z <- ps[ps$id == paste("Enacted BOE district", dd), ]
+  for (r in split(z, z$part)) lines(r$x, r$y, col = "#C41230", lwd = 1.4)
+}
+legend("topleft", c("over 65%", "50-65%", "40-50%", "25-40%", "10-25%",
+                    "under 10%", "no adults"),
+       fill = c(rev(col), "#f4f4f4"), border = "grey70", bty = "n", cex = 0.7,
+       title = "Black share of a block's adults", title.adj = 0)
+mtext("red lines are the five enacted districts", 3, line = 0.4, cex = 0.82,
+      col = "#555")
+```
+
+```{r segregation}
+sg <- read.csv("data/segregation.csv")
+print(sg, row.names = FALSE)
+
+hi <- b$vap >= 20 & b$vap_black / pmax(b$vap, 1) > 0.5
+cat(sprintf("\nblocks where Black adults are already a majority: %d of %d\n",
+            sum(hi), nrow(b)))
+cat(sprintf("share of the county's Black adults living in them: %.1f%%\n",
+            100 * sum(b$vap_black[hi]) / have_bl))
+```
+
+The **index of dissimilarity** is the share of Black adults who would have to
+move blocks for the two groups to be spread identically. This is moderate
+segregation, not severe — and **a group can be plenty large and still be spread
+too evenly to be gathered into a majority anywhere.**
+
+# Part 5 — One algorithm with one dial
+
+To find out whether the district exists, build it. Start at one block and annex
+neighbours until the district holds the ideal population. At each step the
+mapmaker looks at the **`reach`** nearest available blocks on the frontier and
+takes whichever leaves the Black share of adults highest.
+
+```{r grow}
+# adjacency list: which blocks touch which. Row numbers of `b`.
+nb <- split(c(a$a, a$b), c(a$b, a$a))
+NB <- vector("list", nrow(b))
+NB[as.integer(names(nb))] <- nb
+
+grow <- function(seed, target, reach = Inf) {
+  inn <- logical(nrow(b)); inn[seed] <- TRUE
+  P <- b$pop[seed]; N <- b$vap_black[seed]; D <- b$vap[seed]
+  cx <- b$x_km[seed]; cy <- b$y_km[seed]
+  fr <- NB[[seed]]
+  while (P < target && length(fr)) {
+    if (is.finite(reach) && reach < length(fr)) {
+      dd <- (b$x_km[fr] - cx)^2 + (b$y_km[fr] - cy)^2
+      cand <- fr[order(dd)[seq_len(reach)]]
+    } else cand <- fr
+    pick <- cand[which.max((N + b$vap_black[cand]) / pmax(D + b$vap[cand], 1))]
+    inn[pick] <- TRUE
+    P <- P + b$pop[pick]; N <- N + b$vap_black[pick]; D <- D + b$vap[pick]
+    w  <- b$pop[inn] + 1
+    cx <- sum(b$x_km[inn] * w) / sum(w); cy <- sum(b$y_km[inn] * w) / sum(w)
+    fr <- setdiff(unique(c(fr, NB[[pick]])), which(inn))
+  }
+  which(inn)
+}
+
+# how Black is a set of blocks, three ways?
+score <- function(i) c(
+  population = 100 * sum(b$pop_black[i]) / sum(b$pop[i]),
+  adults     = 100 * sum(b$vap_black[i]) / sum(b$vap[i]),
+  registered = 100 * sum(b$reg_black[i]) / sum(b$reg[i]))
+
+seed <- which.max(b$vap_black)          # the block with most Black adults
+cat("seed block:", b$GEOID20[seed], "with", b$vap_black[seed], "Black adults\n")
+```
+
+- **`reach = 1`.** One candidate is ever considered, so race never enters the
+  *annexation rule*. The roundest district the geography allows — and after
+  *Callais*, the only end of this dial that could be offered to a court.
+- **`reach = Inf`.** Every frontier block is a candidate, however far out. One
+  objective, no other constraint.
+
+**Look at the line above the bullets before you accept that.** `seed` is
+`which.max(b$vap_black)` — the block picked *because* it holds the most Black
+adults. Race chose the starting point at every setting of the dial, `reach = 1`
+included. Turning the dial down takes race out of how the district grows and
+leaves it in where the district begins. Option B is where you can test what that
+is worth.
+
+```{r two-ends}
+round(rbind(`reach = 1`   = score(grow(seed, ideal, 1)),
+            `reach = Inf` = score(grow(seed, ideal, Inf))), 2)
+```
+
+A third construction abandons contiguity: take the most heavily Black blocks in
+order, wherever they are. Nobody could enact it. It is a ceiling.
+
+```{r ceiling}
+o    <- order(b$vap_black / pmax(b$vap, 1), b$vap_black, decreasing = TRUE)
+ceil <- o[seq_len(sum(cumsum(b$pop[o]) < ideal) + 1)]
+round(score(ceil), 2)
+```
+
+# Part 6 — Turning the dial
+
+```{r tradeoff}
+tr <- read.csv("data/tradeoff.csv")
+t5 <- tr[tr$districts == 5, ]
+print(t5[, c("reach", "vap_black_pct", "reg_black_pct", "pp", "reock")],
+      row.names = FALSE, digits = 4)
+```
+
+**Polsby-Popper** is `4*pi*A / P^2`: one for a circle, near zero for anything
+with a long ragged edge. **Reock** is the district's area over the area of the
+smallest circle containing it. Both are computed on the unsimplified geometry by
+`data/build-data.R`, because base R cannot do it.
+
+```{r frontier-plot, fig.height=4.4}
+d  <- read.csv("data/districts.csv")
+e4 <- d[d$plan == "Enacted BOE district 4", ]
+cl <- d[d$plan == "Ceiling, 5 districts", ]
+
+par(mar = c(4.4, 4.6, 2.0, 1.2))
+plot(NA, xlim = c(0, 0.36), ylim = c(38, 70), las = 1,
+     xlab = "Polsby-Popper compactness (1 is a circle)",
+     ylab = "Black share of the district's adults (%)")
+rect(-1, 50, 1, 100, col = "#f0f5ea", border = NA)
+abline(h = 50, lty = 2, col = "#4d9221", lwd = 1.6)
+z <- t5[order(t5$pp), ]
+lines(z$pp, z$vap_black_pct, col = "#2c7fb8", lwd = 2)
+points(t5$pp, t5$vap_black_pct, pch = 19, col = "#2c7fb8")
+points(cl$pp, cl$vap_black_pct, pch = 17, cex = 1.3, col = "#8856a7")
+text(cl$pp, cl$vap_black_pct, " ceiling: contiguity dropped", pos = 4,
+     cex = 0.72, col = "#8856a7")
+text(0.355, 51.4, "majority-Black ", pos = 2, cex = 0.74, col = "#4d9221")
+mtext("each point is one setting of the dial", 3, line = 0.3, cex = 0.82,
+      col = "#555")
+```
+
+**The dial buys Black share and pays in compactness, at a brutal rate.** At
+`reach = 1` the district is a respectable shape and nowhere near a majority. The
+first setting that clears 50% does so with a Polsby-Popper roughly nine times
+worse.
+
+One setting is out of order — the district at `reach = 200` drops below several
+tighter settings. **A greedy algorithm is not guaranteed to be monotone in its
+own parameter.** The curve an expert report shows you is a property of the
+search, not of the county.
+
+And read it with the calendar in mind. Every point except the leftmost was
+produced by letting race decide which block to annex. **After *Callais* a
+plaintiff "cannot use race as a districting criterion,"** which leaves
+`reach = 1`.
+
+That is the generous reading. The second condition asks more than this chart can
+answer: the illustrative map must meet **all** the State's legitimate objectives
+— traditional criteria and "the State's specified political goals" — **"just as
+well"** as the enacted map. Nothing here is a complete plan, nothing here knows
+what Georgia's objectives were, and no election result is in the folder. **On the
+current standard the whole chart is inadmissible, not just its right-hand side.**
+
+The honest write-up: *in Houston County a majority-Black district can be
+constructed only by abandoning compactness.*
+
+That is wrong.
+
+# Part 7 — The map already exists
+
+```{r pivot}
+print(d[, c("plan", "pop", "vap_black_pct", "reg_black_pct", "pp", "reock")],
+      row.names = FALSE, digits = 4)
+```
+
+```{r pivot-map, fig.height=3.4, fig.width=7.2}
+par(mfrow = c(1, 3), mar = c(0.3, 0.3, 2.0, 0.3))
+draw <- function(nm, colr, ttl) {
+  plot(NA, xlim = range(bs$x), ylim = range(bs$y), asp = 1, axes = FALSE,
+       xlab = "", ylab = "")
+  z <- ps[ps$id == "COUNTY", ]
+  for (r in split(z, z$part)) polygon(r$x, r$y, col = "#f2f2f2", border = "grey65")
+  z <- ps[ps$id == nm, ]
+  for (r in split(z, z$part)) polygon(r$x, r$y, col = colr, border = colr)
+  s <- d[d$plan == nm, ]
+  mtext(ttl, 3, line = 0.85, cex = 0.74)
+  mtext(sprintf("%.1f%% Black adults, PP %.3f", s$vap_black_pct, s$pp), 3,
+        line = 0.05, cex = 0.64, col = "#666")
+}
+draw("Reach 1, 5 districts", "#2c7fb8", "Algorithm, reach 1")
+draw("Reach unlimited, 5 districts", "#e08214", "Algorithm, reach unlimited")
+draw("Enacted BOE district 4", "#C41230", "Enacted District 4")
+```
+
+```{r dominance}
+cat(sprintf("enacted District 4: %.2f%% Black adults, Polsby-Popper %.3f\n",
+            e4$vap_black_pct, e4$pp))
+cat(sprintf("algorithm districts that beat it on BOTH measures: %d of %d\n",
+            sum(t5$vap_black_pct >= e4$vap_black_pct & t5$pp >= e4$pp), nrow(t5)))
+```
+
+**The algorithm's failure was a fact about the algorithm.** A district that
+already existed, drawn by hand out of the whole county, dominated everything it
+produced.
+
+This does **not** show how the enacted plan was drawn, and it is not a
+comparison of two illustrative maps. What it shows is about evidence.
+**Exhibiting a map settles the question in the affirmative for good. Failing to
+find one settles nothing**, because the search was never exhaustive and never
+could be. The first *Gingles* precondition is provable and not disprovable, and
+that is exactly where *Callais* intervened.
+
+# Part 8 — "Majority" of what?
+
+*Bartlett* requires a majority. Of what? Take the **four-district**
+configuration, where the three denominators disagree.
+
+```{r denominator}
+t4 <- tr[tr$districts == 4, ]
+f4 <- t4[is.finite(t4$reach) & t4$reach <= 100, ]
+o  <- f4[, c("reach", "pop_black_pct", "vap_black_pct", "reg_black_pct")]
+o$majority_on_adults     <- f4$vap_black_pct > 50
+o$majority_on_registered <- f4$reg_black_pct > 50
+print(o, row.names = FALSE, digits = 4)
+```
+
+**Every one of those districts is majority-Black among registered voters. Not
+one of them is majority-Black among voting-age population.** Same blocks, same
+lines, same people, two answers to the question *Bartlett* says is dispositive.
+
+Courts generally work in voting-age or citizen-voting-age population — the more
+conservative of the two here. But the choice is a choice, and it decides the
+question.
+
+# Part 9 — Does the starting block matter?
+
+```{r sweep}
+sw <- read.csv("data/seed_sweep.csv")
+cat(sprintf("starting blocks tried: %d\n", nrow(sw)))
+cat(sprintf("results ran %.2f%% to %.2f%%, sd %.2f points\n",
+            min(sw$d5_vap_black_pct), max(sw$d5_vap_black_pct),
+            sd(sw$d5_vap_black_pct)))
+cat(sprintf("\nfor comparison, the dial moved the answer %.1f points\n",
+            max(t5$vap_black_pct) - min(t5$vap_black_pct[t5$reach == 1])))
+```
+
+**Where you start barely matters. How far you are willing to reach matters
+enormously.** Not every analyst choice moves the answer — and the one that does
+is the one encoding what you think a district is allowed to look like.
+
+# Part 10 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Move the dial yourself.** Run `grow(seed, ideal, k)` for a value of
+`k` not in the table — try 5, 30, or 150 — and `score()` the result. Where does
+your district sit against the curve in Part 6, and could you defend that value
+of `k` to a judge who asked why you chose it?
+
+**Option B — Start somewhere else.** Part 9 says the seed barely matters for the
+unlimited-reach algorithm. Test whether that holds at `reach = 1`, where race is
+out of the annexation rule: pick three different seeds
+(`order(-b$vap_black)[c(1, 10, 50)]`) and `score(grow(s, ideal, 1))` each. Does
+the answer depend on the starting block more or less than the race-aware
+version does, and why would that be? Then the harder half: those three seeds
+were themselves ranked by Black adults. **If race may not be a districting
+criterion, is `reach = 1` from a race-chosen seed a race-blind map or not?**
+
+**Option C — Change the denominator.** `grow()` maximises the Black share of
+**adults**. Rewrite it to maximise the share of **registered voters** instead
+(swap `b$vap_black`/`b$vap` for `b$reg_black`/`b$reg` inside the function).
+Compare the district you get to the one in Part 5. Which denominator should an
+expert use, and what is the argument for the other one?
+
+**Option D — Four districts instead of five.** Set `ideal4 <- sum(b$pop) / 4`
+and re-run Parts 5 and 6. A smaller board means larger districts. Does that make
+a majority-Black district easier or harder, and does your answer depend on which
+denominator you count?
+
+**Option E — Your own question.** `r format(nrow(b), big.mark = ",")` blocks, an adjacency list, three
+populations, and an enacted map to check yourself against.
+
+# What this lab cannot tell you
+
+- **Whether anyone's vote is diluted.** Nothing here touches preconditions two
+  and three, or the totality of the circumstances, which is where these cases
+  are decided. **Precondition one is a threshold, not a verdict.**
+- **Whether a *second* majority-Black district could be drawn.** The algorithm
+  builds one district and stops. A real demonstration plan must assign every
+  block and hold all five inside the population band at once — a harder problem
+  that can fail for reasons having nothing to do with the group.
+- **Whether any of this would be admissible.** *Callais*'s second condition
+  wants a complete plan that meets all of Georgia's stated objectives, political
+  ones included, "just as well" as the enacted map. That needs a full partition,
+  a statement of what those objectives were, and election data. This folder has
+  none of the three. **We measure the first condition and are silent on the
+  second**, which is the harder one.
+- **What is actually achievable.** Part 7 is the proof: our search failed and a
+  better map existed. The frontier in Part 6 is a lower bound on what a mapmaker
+  could do, and nothing more.
+- **Anything about compactness scores as facts.** A district bounded by a
+  winding river scores badly for reasons no mapmaker chose, and one can be made
+  to score better by smoothing a boundary without moving a voter.
+- **How people vote.** No election results are in this file. Whether a district
+  *performs* is a separate question.
+- And notice what the exercise required: to ask whether Black voters *could*
+  have a district, the algorithm had to sort every block by race. **There is no
+  race-blind way to ask this question.**
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** No length requirement; a sentence or two is enough, so
+long as it shows you engaged with what we did. Any *one* of the usual four.
+
+Three that would make good posts:
+
+- Part 6 concluded that no compact majority-Black district could be drawn, and
+  Part 7 showed one that already existed. What is the general lesson about
+  evidence produced by a search?
+- The same district is majority-Black on one denominator and not on another.
+  If you were the judge, which would you ask for, and what would you say to the
+  side that wanted the other one?
+- Section 2 remedies require sorting voters by race in order to stop voters
+  being sorted by race, and *Callais* has now said a plaintiff "cannot use race
+  as a districting criterion" in the map that proves the claim. Is there a
+  coherent way out of that, or is the statute asking for something impossible?
+
+***
+
+### Where the data came from
+
+**2020 Census, P.L. 94-171** redistricting file at block level for Houston
+County, Georgia: population and voting-age population, both by race. **Black is
+any-part Black** (alone or in combination), matching Voting Rights Act practice;
+the surnames lab documents what the alternative definition costs.
+
+**2020 TIGER/Line tabulation blocks** for Georgia supply geometry, the adjacency
+list, and both compactness measures. TIGER's independent `POP20` field agrees
+with the census tables at `r format(sum(b$pop), big.mark = ",")` people.
+
+**The Houston County Board of Education plan**, as enacted by the Georgia
+General Assembly and in force, as a block-equivalency file.
+
+**The Georgia voter registration file** for Houston County: **self-reported**
+race and census block. Rows whose race had been filled in by inference rather
+than reported by the voter were dropped upstream — see
+`bisg-check/data/build-data.R`.
+
+**Every district here other than the enacted five was drawn by the `grow()`
+function printed in Part 5.** The assembly, including the compactness geometry
+base R cannot compute, is in `data/build-data.R`.
+
+Houston County's method of electing its Board of Commissioners is the subject of
+pending litigation, *Driver v. Houston County*, No. 5:25-cv-00025 (M.D. Ga.), in
+which your instructor has been retained by plaintiffs. **No material from any
+expert report is used here, and this lab reaches no legal conclusion about that
+case or any other.**

@@ -1,0 +1,365 @@
+---
+title: "Data Session 14 Key: Inferring the Secret Ballot"
+subtitle: "84-355 Democracy's Data | Session 14 — Precinct returns, maps, and racial bloc voting | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+p <- read.csv("data/houston_primary.csv", stringsAsFactors = FALSE)
+p$pct_black <- p$black / p$voters
+p$pct_dem   <- p$dem   / p$voters
+fit <- lm(pct_dem ~ pct_black, data = p, weights = voters)
+truth_black <- 100 * sum(p$black_dem) / sum(p$black)
+truth_white <- 100 * sum(p$white_dem) / sum(p$white)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+cf <- coef(fit)
+g_black <- 100 * (cf[[1]] + cf[[2]]); g_white <- 100 * cf[[1]]
+r2 <- summary(fit)$r.squared
+bl <- p$pct_black; dm <- p$pct_dem
+lo <- pmax(0, (dm - (1 - bl)) / bl); hi <- pmin(1, dm / bl)
+bnd_lo <- 100 * max(lo); bnd_hi <- 100 * min(hi)
+max_blk <- 100 * max(p$pct_black)
+n80 <- sum(p$pct_black >= 0.80)
+thr <- sapply(c(.80, .70, .60, .50), function(t) {
+  h <- p[p$pct_black >= t, ]
+  if (nrow(h)) 100 * sum(h$dem) / sum(h$voters) else NA_real_
+})
+names(thr) <- c("t80", "t70", "t60", "t50")
+p2 <- p[p$precinct != "WELLSTON CENTER", ]
+f2 <- lm(pct_dem ~ pct_black, data = p2, weights = voters); c2 <- coef(f2)
+g2_black <- 100 * (c2[[1]] + c2[[2]]); r2_2 <- summary(f2)$r.squared
+max_blk2 <- 100 * max(p2$pct_black)
+p$true_blk <- 100 * p$black_dem / p$black
+tb_lo <- min(p$true_blk); tb_hi <- max(p$true_blk)
+tb_lo_nm <- p$precinct[which.min(p$true_blk)]; tb_hi_nm <- p$precinct[which.max(p$true_blk)]
+fit_err <- abs(100 * fitted(fit) - 100 * p$pct_dem)
+fu <- lm(pct_dem ~ pct_black, data = p); cu <- coef(fu)
+u_white <- 100 * cu[[1]]; u_black <- 100 * (cu[[1]] + cu[[2]])
+```
+
+All code is given to students. Grade the interpretation.
+
+**Framing, Dec 2026.** This is the last lab of the term and the payoff of the
+arc that runs from Session 2 to here. Session 2 asked what the census can
+measure; Session 3 asked who gets counted as what; Session 7 graded a guess
+about *who somebody is*; today
+grades a guess about *what they did*. Same county, same registration file, same
+move — find the rare case where the truth is recoverable and use it to audit a
+method that is normally unfalsifiable.
+
+**It is also the lab that most directly touches a live case.** Section 2
+liability turns on the numbers students are about to watch fail.
+
+**And the law under it moved on 29 April 2026.** *Louisiana v. Callais*, 608
+U.S. ___ (2026), left *Gingles* standing but rewrote preconditions two and
+three: a plaintiff must now "provide an analysis that controls for party
+affiliation" and show racial bloc voting "that cannot be explained by partisan
+affiliation," and "simply pointing to inter-party racial polarization proves
+nothing." Neither method in this lab does that, and the data cannot — the
+outcome variable is which party's ballot a voter requested. A marked note has
+been added to both the lab and the brief; the grading bullets below have been
+updated to match. **The pedagogical payoff is better than before, not worse:**
+this county is the cleanest possible illustration of why the requirement is hard
+to meet in the states where Section 2 cases are actually filed.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Ecological regression fits the data almost perfectly, reports that
+`r pc(g_black, 0)`% of Black voters took a Democratic ballot, and is wrong by
+`r pc(g_black - truth_black)` points — and the only reason anybody could tell is
+that Georgia happens to record the answer.
+
+***
+
+# The findings
+
+```{r headline}
+b <- coef(fit)
+bl <- p$pct_black; dm <- p$pct_dem
+lo <- pmax(0, (dm - (1 - bl)) / bl); hi <- pmin(1, dm / bl)
+c(goodman_black = round(100 * (b[1] + b[2]), 1),
+  goodman_white = round(100 * b[1], 1),
+  bound_lo      = round(100 * max(lo), 1),
+  bound_hi      = round(100 * min(hi), 1),
+  truth_black   = round(truth_black, 1),
+  truth_white   = round(100 * sum(p$white_dem) / sum(p$white), 1),
+  r_squared     = round(summary(fit)$r.squared, 3))
+```
+
+- **Truth: `r pc(truth_black)`% of Black voters and `r pc(truth_white)`% of white
+  voters** requested a Democratic ballot. Near-total polarization.
+- **Goodman's regression says `r pc(g_black)`%** — impossible — with an
+  **R² of `r pc(r2, 3)`**.
+- **The bounds are [`r pc(bnd_lo)`%, `r pc(bnd_hi)`%]**, correct by construction
+  and `r pc(bnd_hi - bnd_lo)` points wide.
+- **Homogeneous precinct analysis cannot run at all**:
+  `r if (n80 == 0) "zero" else n80` precincts are ≥80% Black. The most Black
+  precinct in the county is `r pc(max_blk)`%.
+- Every method reached the right conclusion about *polarization*. Every method
+  got the *numbers* wrong. And after *Callais*, none of them reaches the legal
+  conclusion at all — see the framing note above.
+
+***
+
+# The idea to teach
+
+**Not "the model was bad."** The model was excellent by every diagnostic
+available to the person running it. That is the point, and it is the hardest one
+to land.
+
+Three things to get said out loud:
+
+1. **Fitting the aggregate is not recovering the individual.** The regression
+   predicts each precinct's Democratic share to within `r pc(max(fit_err))`
+   points at worst, `r pc(mean(fit_err))` on average — look at `fit_dem` against
+   `act_dem` in Option C — and still misstates the group rate by
+   `r pc(g_black - truth_black)`. Predicting the total and decomposing the total
+   are different problems. **This is the ecological fallacy, shown rather than
+   asserted.**
+2. **The estimate came from where there is no data.** The Black estimate is the
+   line extended `r pc(100 - max_blk)` points beyond the most Black precinct in
+   the county. Regression will always hand you that number and will never flag it.
+3. **The impossibility was a gift.** `r pc(g_black, 0)`% is self-refuting, so somebody would
+   catch it. Had the truth been 60% and Goodman returned 51%, the report would
+   have been wrong, plausible, and unchallengeable. **Ask the room how they
+   would have caught that.** The honest answer is: they would not have.
+
+**The line worth writing on the board:** the method was most confident exactly
+where it had the least evidence.
+
+***
+
+# Option A — Move the homogeneity threshold
+
+## Verified output
+
+```{r a}
+for (t in c(.80, .70, .60, .50)) {
+  h <- p[p$pct_black >= t, ]
+  cat(sprintf("  >=%2.0f%%  n=%d  Dem share %s\n", 100 * t, nrow(h),
+      if (nrow(h)) sprintf("%.1f%%  (error %+.1f)",
+                           100 * sum(h$dem) / sum(h$voters),
+                           100 * sum(h$dem) / sum(h$voters) - truth_black)
+      else "-- cannot compute"))
+}
+```
+
+## What a good answer says
+
+**The intuitive fix makes it worse, and students should be made to sit with
+that.** Loosening the threshold to get an estimate produces
+**`r pc(thr[["t70"]])`% at ≥70% (`r pc(truth_black - thr[["t70"]])` points low)**
+and **`r pc(thr[["t50"]])`% at ≥50% (`r pc(truth_black - thr[["t50"]])` points
+low)**. Every relaxation admits more white voters, who broke
+`r pc(truth_white)`% Democratic, and drags the estimate down.
+
+**3/4:** Runs the thresholds, reports that the estimate gets worse as the
+threshold loosens, and identifies contamination as the cause.
+
+**4/4:** Notices that ≥70% and ≥60% give the *identical* answer, because both
+capture exactly one precinct — WELLSTON CENTER. The "method" at that point is
+one polling place, and calling it homogeneous-precinct analysis dresses up a
+sample size of one.
+
+**4/4, best:** Turns it into the cross-examination question. There is no
+principled threshold; 80% is convention. **A witness who reports the 70%
+threshold and not the 80% one has not lied about anything** — the 80% simply
+returns nothing. Students who see that the *choice of threshold is where the
+discretion lives*, and that the discretion is invisible in the final number,
+have got the lesson.
+
+***
+
+# Option B — Drop the biggest precinct
+
+## Verified output
+
+```{r b}
+p2 <- p[p$precinct != "WELLSTON CENTER", ]
+f2 <- lm(pct_dem ~ pct_black, data = p2, weights = voters); b2 <- coef(f2)
+rbind(
+  `all 17`      = c(black = 100*(b[1]+b[2]),   white = 100*b[1],
+                    R2 = summary(fit)$r.squared, max_black = 100*max(p$pct_black)),
+  `drop 1`      = c(black = 100*(b2[1]+b2[2]), white = 100*b2[1],
+                    R2 = summary(f2)$r.squared,  max_black = 100*max(p2$pct_black))
+) |> round(1)
+```
+
+## What a good answer says
+
+Removing one precinct out of `r nrow(p)` moves the Black estimate **from
+`r pc(g_black)`% to `r pc(g2_black)`%** — further into impossibility — and the
+R² stays at **`r pc(r2_2, 3)`**.
+
+**3/4:** Reports the shift and notes the fit is still excellent.
+
+**4/4:** Connects it to the extrapolation. Without WELLSTON the most Black
+precinct is **`r pc(max_blk2)`%**, so the estimate is now the line extended
+*`r pc(100 - max_blk2, 0)`* points past the data. The estimate got worse in
+exact proportion to how far it was
+extrapolated — which tells you the number was never really an estimate of Black
+voters at all, but a property of the line's slope.
+
+**4/4, best:** Asks the fragility question the prompt sets up. **A
+fifty-year-old courtroom standard, in this county, rests on one polling place.**
+A student who says they would want to know, for any RPV report, how many
+precincts anchor the minority end — and that this is never reported — is
+thinking like a reviewer.
+
+***
+
+# Option C — Predict, then check
+
+## Verified output
+
+```{r c}
+p$true_blk <- 100 * p$black_dem / p$black
+p$fit_dem  <- 100 * fitted(fit)
+p$act_dem  <- 100 * p$pct_dem
+o <- p[order(p$pct_black), c("precinct","pct_black","act_dem","fit_dem","true_blk")]
+print(o, row.names = FALSE, digits = 3)
+cat(sprintf("\nTRUE Black Democratic rate ranges %.1f%% to %.1f%% — spread of %.1f points.\n",
+            min(p$true_blk), max(p$true_blk), max(p$true_blk) - min(p$true_blk)))
+```
+
+## What a good answer says
+
+**This is the best of the five options and worth steering strong students
+toward.** It exposes the actual mechanism.
+
+**3/4:** Notices `fit_dem` tracks `act_dem` closely — the model predicts
+precinct outcomes well — while the group estimate is wrong.
+
+**4/4:** Reads the `true_blk` column and sees that **Black Democratic support is
+not constant across precincts: it runs from `r pc(tb_lo)`% in `r tb_lo_nm` to
+`r pc(tb_hi)`% in `r tb_hi_nm`, a spread of `r pc(tb_hi - tb_lo)` points.**
+Goodman's regression assumes that rate is the
+*same everywhere* — that is precisely what a single intercept and slope encode.
+The assumption is false in the data, and we can prove it only because we have
+the column.
+
+**4/4, best:** Notices the pattern in the violation. Black voters are *more*
+Democratic in precincts with more Black voters. That correlation between group
+behaviour and group share is exactly the condition under which ecological
+regression is known to break, and it is not detectable from aggregates — it
+looks like a slightly steeper line. A student who gets here has independently
+rediscovered why King wrote the book.
+
+***
+
+# Option D — Would it transfer?
+
+No output; graded on reasoning.
+
+**3/4:** Lists real differences between a May primary and a November general —
+smaller electorate, more partisan, different composition.
+
+**4/4:** Names the specific bridging assumption. To carry today's validation to
+November you must assume the *method's error* behaves the same in both, which is
+a claim about the geography–behaviour correlation, not about turnout. Nothing we
+did tests that.
+
+**4/4, best:** Observes that the validation is available only in states that
+record race *and* run partisan primaries, which is a small and unrepresentative
+set of mostly Southern states — the same places most likely to be in Section 2
+litigation. **The evidence about whether these methods work is drawn from
+exactly the counties where they are most often used, and that is either
+reassuring or circular depending on how you look at it.** Either answer, argued,
+is a 4.
+
+***
+
+# Option E — Own question
+
+Grade on whether the question could be answered with the columns present.
+Common good ones: does precinct size predict error; does the Republican side
+mirror the Democratic side (it must, with two parties — worth letting a student
+discover); what happens with an unweighted regression (white `r pc(u_white)`%,
+black `r pc(u_black)`% — the weighting is not the problem).
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing to conclude "the method is broken."
+  Every method got the polarization answer right. The correct reading is
+  narrower and harder: the methods are reliable for *direction* and unreliable
+  for *magnitude*, and until this year Section 2 mostly needed direction — which
+  was the strongest available defence of fifty years of practice, and students
+  should be able to state it before they attack it.
+- **Do not let a student stop there now.** *Callais* took away the second half
+  of that defence: direction alone is no longer sufficient, because the
+  direction has to be net of party. A student who notices that the lab's
+  outcome variable *is* party, and that this makes the county an illustration of
+  the problem rather than a solution to it, has done better than the document
+  did before the note was added. **A 4 either way** — the pre-*Callais* defence
+  stated accurately as history is still a 4.
+- **A 2** is "statistics can prove anything" or "the ecological fallacy means
+  you can't do this." Both skip the work.
+- **Reward anyone who is bothered that we validated on the easy case.**
+  Polarization here is near-total; the errors did not matter. That is the right
+  thing to be uneasy about.
+
+## Anticipated questions
+
+- *"Why not just use King's method?"* — We could, and it does better here.
+  It is still a model, it still cannot be checked in the counties where it is
+  actually used, and its assumptions are harder to state than Goodman's rather
+  than weaker. Worth being straight about: this lab is not an argument for any
+  particular method, it is an argument about what validation is available.
+- *"Isn't `r pc(g_black, 0)`% just a rounding problem?"* — No. It is
+  `r pc(g_black - truth_black)` points past the truth and
+  `r pc(g_black - 100)` points past possibility. Say plainly that a percentage over 100
+  means an assumption failed, not that a number was rounded.
+- *"If race is on the file, why infer at all?"* — Because race is on the file in
+  a handful of states, and how people **voted** is nowhere. Today's shortcut is
+  the party-ballot request, which exists only in partisan primaries. In November
+  nobody knows anything.
+- *"Did we just prove Houston County is polarized?"* — We showed its **May
+  primary electorate** was. Do not let this become a finding about the county;
+  it is a finding about a method.
+- *"Does* Callais *make this lab pointless?"* — The opposite, and say so. The
+  statistical content is untouched: ecological inference is still the only route
+  from precinct aggregates to group behaviour, and Steps 6–9 still show it
+  failing. What changed is that the estimate no longer carries the case by
+  itself. If a student asks what a party-controlled analysis would look like
+  here, the honest answer is that the Court required one and did not specify it,
+  and that in a partisan-primary file the natural fixes all reduce to comparing
+  Black and white voters *inside* one party's primary — which is what *Gingles*
+  itself rested on, 478 U.S., at 59. We do not run that today.
+- *"Is `r nrow(p)` precincts too few?"* — It is on the small side but entirely ordinary
+  for a county-level Section 2 case. Do not let students dismiss the result as a
+  small-sample artefact: the failure is structural — extrapolation past the data
+  and a false constancy assumption — and more precincts of the same shape would
+  not fix either.
+
+## Connections
+
+- **Session 7 (surnames and BISG)** — the direct predecessor and the same county. Both labs
+  grade a normally-ungradeable inference against Georgia's registration data.
+  Say so explicitly; the pairing is the argument.
+- **Session 3 (the ACS and §203)** — the statute this evidence is produced for.
+- **Session 2 (the decennial census)** — where the denominators in every RPV case come from.
+- **Session 8 (CPS turnout)** — the term's first "the measurement is not the thing"
+  lab, and the first appearance of a number that looked fine and was not.
+- **None of this material is on a test** — all three tests cover the textbook only,
+  and Test 3 (same day as the wrap) is Sides et al. Ch. 9–11. Say so early. The
+  risk is that students read "not on the test" as "not important" in the four
+  weeks the labs were actually built for, so the board post is the whole
+  assessment here and worth treating as such.

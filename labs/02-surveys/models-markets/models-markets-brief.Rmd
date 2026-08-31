@@ -1,0 +1,383 @@
+---
+title: "Grading Probabilistic Election Forecasts"
+subtitle: "746 resolved prediction markets, and what it takes to grade a forecast"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("models-markets-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+```{r d3-load, results='asis', eval=knitr::is_html_output()}
+```
+
+> *"Candidate X has a 72% chance of winning."*
+
+The candidate loses. Was the forecast wrong? **No — and that is the problem.** Things priced at 72% are supposed to fail 28% of the time, so no single outcome can refute a probability. Whatever happens, the forecaster has a reply, and the reply is correct.
+
+A poll reports a **share** — 48% of respondents said this. Nobody votes on a share. Between the poll and the sentence above sits a **model**, and next to the model sits a **market**, and both produce the same kind of object: a probability.
+
+A prediction market is a forecast with money behind it. Traders buy contracts that pay $1 if a thing happens, so the price is what the crowd is willing to bet the chance is. When the market resolves, we find out.
+
+## A 30% chance is routinely reported as "will not happen"
+
+Probabilities are now the dominant public format for talking about elections, and they are read badly in a specific direction. **A 30% chance is routinely reported as "will not happen"**, and when it happens the reader concludes the forecast failed and the forecasters are frauds.
+
+That misreading has consequences beyond media criticism. It supplies the raw material for claims that an election result was impossible and therefore illegitimate. Knowing what a probability does and does not claim is a prerequisite for arguing about whether an election was normal.
+
+## Whether markets beat experts is genuinely contested
+
+**Whether markets aggregate information better than experts is genuinely contested**, and it has been for decades. The market case is that prices force people to pay for their opinions, so wishful thinking is expensive. The skeptical case is that these are thin, unrepresentative, sometimes manipulable venues where a handful of large traders can move a price, and that political markets in particular attract partisans betting on hope.
+
+There is also a comparison this data cannot make. **Forecasting model outputs are not published as downloadable data.** No file exists to check 538 or Silver Bulletin against Polymarket the way we check Polymarket below. The claim is public; the evidence behind it is not.
+
+So what follows grades one market rather than comparing two forecasters, and it grades it the only way a probability can be graded: hundreds of claims at once, each with a known answer.
+
+## A price is not a belief, and nobody had to keep the receipts
+
+The file underneath this chapter came from a betting company. Polymarket publishes two public endpoints. One lists markets that have closed and how they settled; the other returns the price history of a single contract. Neither needs a key, though both refuse a request that does not claim to be a browser.
+
+Walking them takes about a quarter of an hour. The build takes the highest-volume resolved markets in order, and asks each one for its price seven and thirty days before it closed. About nine hundred were pulled. That figure is the build script's rather than this file's, because the ones that did not survive are not here. `r cnt(nrow(d))` did.
+
+Set that against the spectrum this book keeps returning to. These numbers were **made and published by the same body**, which usually means the most direct record available. Here it means something closer to the opposite, because the body is a private company and the thing it made is its own order book.
+
+Nobody assembled these prices from primary records and nobody reconciled them, so there are no researcher's judgment calls baked in. There is also no statute behind them, no archive, and nobody to ask. Getting them was a **scrape**: two public JSON endpoints, no key and no account, walked for about a quarter of an hour. The cost is not in the getting, and not in anyone's editorial decisions.
+
+It is that **the publisher is also the counterparty**. The record exists at the company's convenience and can be withdrawn without notice or explanation. And a chapter grading a forecaster is grading it on figures the forecaster itself keeps. Nothing in this file can be checked against an independent copy, because there is no independent copy.
+
+Nothing obliged anyone to keep this record, and that is worth dwelling on before using it. There is no regulator archiving these prices, no library holding a copy, no statutory retention period. The company publishes its own history because its traders want it, and could stop tomorrow; the CSV here would then be the only version of it anybody reading this chapter can reach. It is a peculiar situation for the best-documented set of dated public predictions in existence — and it is the reason the comparison everyone wants, market against model, cannot be run. The models publish pictures. The betting site publishes data.
+
+That gets the source right and leaves the harder question untouched, because **the thing being measured here was never recorded by anyone.** What a crowd believes is not observable. What is observable is a price. It is the amount the last trader in would pay for a contract returning one dollar if the event occurs. Those coincide only under conditions nobody checks.
+
+A buyer's money is locked up until the market settles. So a contract at 0.97 offers three percent over however many months, which is a poor return, and that pushes the price down for reasons having nothing to do with belief. Fees do the same. Some positions are hedges against something else the trader owns, and some are entertainment.
+
+Every number in this chapter is therefore a stand-in for a quantity that does not exist in any file, anywhere. That is not a flaw in Polymarket's bookkeeping. It is the ordinary condition of measuring what people think.
+
+The cleaning was mostly exclusion, and one exclusion does real work. Only markets that settled cleanly to Yes or No are kept. Contracts that voided, that settled to a number rather than an outcome, or that never settled at all cannot be scored, so they are gone. There is no reason to believe they were a random subset of the rest.
+
+The two prices are pulled from the full history rather than from any summary, so a market younger than thirty days simply has no thirty-day price and is left blank instead of being filled in. Nothing was interpolated, and nothing was reweighted. A reader rebuilding this would meet the User-Agent check first and the fifteen minutes of paging second.
+
+## A forecast has to be dug out of a trading record
+
+The first endpoint returns one object per market. This is the top of the record for the largest market in the file, with the long fields cut short and 94 of its 102 fields left out:
+
+| Field | Value |
+|:---|:---|
+| question | Will Donald Trump win the 2024 US Presidential Election? |
+| outcomes | `"[\"Yes\", \"No\"]"` — a *string*, not a list |
+| outcomePrices | `"[\"1\", \"0\"]"` — a string too |
+| clobTokenIds | `"[\"217426331434639062905690501558262415…\"]"` |
+| volumeNum | 1531479284.504353 |
+| endDate | 2024-11-05T12:00:00Z |
+| closed | true |
+| umaResolutionStatus | resolved |
+| *… 102 more fields* | *…* |
+
+**Read `outcomePrices` carefully, because the name is a trap.** It is not a price. For a settled market it holds the settlement: `"1"` if the first outcome happened, `"0"` if it did not. It is the field the build script tests to decide whether a market can be scored at all. The whole inclusion rule for this chapter turns on a field called *prices* that contains an answer.
+
+It is also not a list. It is a **string that happens to contain a list**, quoted inside the JSON and needing a second parse to become one; so do `outcomes` and `clobTokenIds`. A file format whose entire purpose is structure, carrying its structure as text.
+
+And no price appears anywhere in that record. To get one you take `clobTokenIds`, parse that string too, pull out a 77-digit identifier, and ask a second service for the contract's history, which comes back like this:
+
+| Field | Value |
+|:---|---:|
+| history[1].t | 1704412803 |
+| history[1].p | 0.5 |
+| history[2].t | 1704499202 |
+| history[2].p | 0.405 |
+| history[3].t | 1704585602 |
+| history[3].p | 0.405 |
+| *…* | *…* |
+
+`t` is a Unix timestamp in seconds and `p` is the last traded price. For this one market the series runs to a few hundred daily points. Here is what survives:
+
+```{r clean-mm}
+```
+
+A few hundred daily prices, a hundred-odd fields of market metadata and a second service's time series have become **two numbers**. That reduction is not storage-saving. It *is* the measurement, and everything this chapter concludes rests on it.
+
+### The decisions, and where each one could have gone otherwise
+
+**A forecast had to be chosen out of a series.** A market does not issue a forecast; it trades continuously and leaves a price for every day it was open. `p7` and `p30` are picked by counting back from the closing date. Two moments, selected from hundreds, by somebody, after the fact.
+
+A different pair of moments is a different chapter. That is precisely why `p30` is carried alongside `p7` rather than instead of it: the second column exists so the choice can be tested rather than trusted.
+
+**"Seven days before it closed" required deciding when it closed.** `endDate` is an instant in UTC and the history is stamped in Unix seconds; a market that settles at noon GMT on a Tuesday closed on Monday evening somewhere. Nothing here is wrong, and the date arithmetic is a judgment that no column records.
+
+**Markets that did not settle cleanly are gone, and they are not a random sample.** Only contracts resolving to exactly `"1"` or `"0"` can be scored, so anything voided, still open, or settling to a number was dropped. Roughly nine hundred markets were pulled and `r cnt(nrow(d))` remain. **The ones that vanished are mostly the ambiguous ones**, the questions whose wording turned out not to survive contact with events. A calibration score computed on what is left is a score on the questions that were answerable.
+
+**A missing price stayed missing.** A market younger than thirty days has no thirty-day price, and `p30` is blank for those rather than being filled from the earliest available quote. `r cnt(sum(is.na(d$p30)))` of `r cnt(nrow(d))` rows are blank that way, which is why the seven-against-thirty comparison later in this chapter runs on `r cnt(sum(!is.na(d$p30)))` markets and says so.
+
+**The sample is ordered by money, not drawn at random.** The build takes the highest-volume resolved markets in order. That is a defensible way to get heavily traded contracts. It also means this file is not a sample of prediction markets and cannot be read as one, a point the chapter returns to when it splits the file by volume.
+
+## A claim, a number attached before the answer, and the answer
+
+```{r one-record}
+```
+
+That is the whole design in one row. **A claim, a number attached to it before the answer was known, and the answer.** Almost no forecast in public life leaves a record shaped like this, which is why we are using a betting site rather than a newspaper.
+
+Two features to hold onto. **`p7` is one arbitrary moment.** A market that was badly wrong for a year and correct in the final week scores well here. And **`outcome` is binary**, so markets that settled ambiguously, were voided, or resolved to a number rather than yes/no had to be dropped.
+
+## Most of these questions are about things that did not happen
+
+```{r scope}
+```
+
+Three things in that table shape everything below.
+
+**Most of these questions are about things that did not happen.** `r pc(100 * mean(d$p7 < 0.10))`% of the markets were priced under 0.10, and only `r pc(100 * mean(d$outcome))`% resolved yes. A forecaster who simply said "no" to everything would be right `r pc(100 * (1 - mean(d$outcome)))`% of the time, which is a warning about how easy it is to look accurate.
+
+**These are not all political.** The highest-volume markets include sport, cryptocurrency and Federal Reserve decisions. **What is being tested is the market mechanism, not the American electorate.**
+
+**Volume varies enormously** — from `r usd(min(d$volume))` to `r usd(max(d$volume))`. That column turns out to matter more than any other.
+
+All three facts are in one picture. Every market in the file is a dot, placed at the price it carried seven days out. It sits on the upper strip if it happened and the lower strip if it did not, and it is sized by how much money went through it.
+
+```{r swarm-prep, include=FALSE}
+```
+
+```{r swarm-static, eval=!knitr::is_html_output(), fig.height=5.7}
+```
+
+```{r swarm-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Every resolved market in the file.** One dot per market, placed at the price it carried seven days before resolution. It sits on the upper strip if the thing happened and the lower strip if it did not, with dot area proportional to traded volume. `r cnt(sum(d$p7 < 0.10))` of the `r cnt(nrow(d))` markets sit in the leftmost tenth of the axis. Only `r pc(100 * mean(d$outcome))`% of all markets resolved yes. Volume ranges from `r usd(min(d$volume))` to `r usd(max(d$volume))`.
+
+## Why one forecast cannot be graded
+
+Take the sentence at the top: a 72% chance. Suppose it happens. A defender says the forecast was good. Suppose it does not. A defender says 28% events happen 28% of the time.
+
+```{r one-forecast}
+```
+
+**This is not a weakness of forecasters. It is a property of probability**, and it is why "the polls were wrong in 2016" is a much emptier sentence than it sounds. The only escape is volume: gather many forecasts, group them by what they claimed, and check the groups.
+
+## Sort them into bands and check the groups
+
+Sort every market into a band by the price it carried seven days out, then ask what share of each band actually happened. **If the prices mean anything, the two middle columns should match.**
+
+```{r calibration}
+```
+
+```{r calib-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r calib-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. What each price band claimed, against what happened to it.** One circle per price band, placed at the band's average price and the share of it that actually occurred; circle area is the number of markets in the band. The dashed diagonal is perfect calibration. The large circle at the bottom left is the `r cnt(tab$n[1])` markets priced under 0.1, which is most of the file.
+
+**Read the top of the table first.** Markets priced 0.9–1.0 happened `r pc(100 * gb("(0.9,1]", "happened"))`% of the time, priced 0.8–0.9, `r pc(100 * gb("(0.8,0.9]", "happened"))`%, priced 0.7–0.8, `r pc(100 * gb("(0.7,0.8]", "happened"))`%. Those are close enough to the line that the prices are doing real work. **A 70% chance, from this venue, has meant roughly a 70% chance.**
+
+## One number for the whole forecaster
+
+Calibration is a picture. The **Brier score** compresses it: the average squared distance between the probability and the outcome. Lower is better; zero is perfect; 0.25 is what you get by saying 50% to everything.
+
+```{r brier}
+```
+
+The market scores **`r p4(brier)`**, against `r p4(brier50)` for a coin flip and `r p4(brierbr)` for knowing the base rate and nothing else.
+
+A single number is also a *sum*, and it can be taken apart. Murphy's decomposition splits any Brier score into three pieces: how hard the questions were, how far the forecaster dared to move away from the base rate, and how wrong it was when it moved.
+
+```{r brier-decomp, include=FALSE}
+```
+
+```{r decomp-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r decomp-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Murphy's decomposition of the market's Brier score.** The bars run left to right. They start from the uncertainty in the questions themselves, `r p4(unc)`, pass through the credit the market earns for saying something other than the base rate, `r p4(res)`, and reach the penalty it pays for miscalibration, `r p4(rel)`. Then comes the arithmetic slop introduced by grouping prices into bands at all, `r p4(abs(resid))`, ending at the Brier score of `r p4(brier)`. **Miscalibration, which is everything the calibration table was about, is the smallest term.**
+
+But look at the last row. **Saying "nothing will happen" to every question scores `r p4(mean((0 - d$outcome)^2))`** — worse than the market, but not absurdly so, because most of these questions really are about things that did not happen. A single summary number can be flattered by the mix of questions asked, which is a reason to keep the calibration table next to it.
+
+## The bottom of the table
+
+Everything so far has read the calibration table from the top. Read it from the bottom and it stops behaving.
+
+```{r low-bands}
+```
+
+Markets priced 0.1–0.2 happened `r pc(100 * gb("(0.1,0.2]", "happened"))`% of the time — roughly `r pc(gb("(0.1,0.2]","happened")/gb("(0.1,0.2]","priced"), 1)` times what they claimed. The band below behaves the same way.
+
+That is a recognizable phenomenon. Racetrack bettors have overpaid for longshots for as long as anyone has measured it, and the obvious reading is that the same thing is happening here.
+
+> **Before you read on, commit to a view.** Is this a real, exploitable bias in
+> prediction-market prices — longshots systematically underpriced — or is it
+> something else? **If you think it is real, say what you would bet on**, and say
+> which rows of the table you would be betting with.
+
+## Count the chances you gave yourself
+
+Ten bands were tested. At a 5% threshold you expect roughly one apparent discovery from chance alone even if the market is perfectly calibrated.
+
+```{r sig}
+```
+
+**`r sum(bt$p < 0.05)` of `r nrow(bt)` bands clears p < 0.05**, and it is the `r bt$band[which.min(bt$p)]` band, where `r bt$observed[which.min(bt$p)]` things happened against `r pc(bt$expected[which.min(bt$p)])` expected across `r cnt(bt$n[which.min(bt$p)])` markets. That is precisely the number of significant results ten tests produce by accident.
+
+**And it is not either of the bands the anomaly was read off.** The `r bt$band[2]` band, on `r bt$n[2]` markets, gives p = `r p3(bt$p[2])`; the `r bt$band[3]` band, on `r bt$n[3]`, gives p = `r p3(bt$p[3])`, which is no evidence of anything at all. The one band that does clear is the one holding `r cnt(bt$n[1])` of the `r cnt(nrow(d))` markets in the file, and even there the effect is small in absolute terms: priced `r p3(tab$priced[1])`, happened `r p3(tab$happened[1])`.
+
+Pooling the 0.1–0.3 range gives **p = `r p3(p_pool)`** on `r sum(k_pool)` markets — significant by convention, and not by much.
+
+The same ten tests, drawn with the uncertainty attached. Each band gets an exact 95% interval around the share that actually happened; if the price is inside the interval, that band is telling you nothing.
+
+```{r cater-prep, include=FALSE}
+```
+
+```{r cater-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r cater-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Ten bands, with the uncertainty attached.** One row per price band. The filled dot is the share of that band that actually happened, with its exact 95% interval; the open diamond is what the band was priced at. Where the diamond sits inside the interval, which happens in `r sum(!ct$out)` of the `r nrow(ct)` bands, that band is telling you nothing. The `r sum(ct$out)` that misses is `r paste(ct$band[ct$out], collapse = ", ")`.
+
+**A finding that survives only one arrangement of the bands is a hypothesis, not a conclusion.**
+
+## Split it by money instead
+
+The bands are not the only way to cut this file. Try the column nobody has used yet: how much was traded. Restrict to the mid-range prices, 0.1 to 0.9, where calibration actually bites, and split at the median volume.
+
+```{r volume-split}
+```
+
+**The busy markets are nearly perfect.** Priced `r p3(mean(mhi$p7))`, happened `r p3(mean(mhi$outcome))` — `r pc(abs(100 * (mean(mhi$outcome) - mean(mhi$p7))), 1)` points apart across `r nrow(mhi)` markets.
+
+**The thin markets are off by `r pc(abs(100 * (mean(mlo$outcome) - mean(mlo$p7))), 1)` points.** Priced `r p3(mean(mlo$p7))`, happened `r p3(mean(mlo$outcome))`.
+
+```{r brier-vol}
+```
+
+Both splits in one figure. Each bar runs from what the group was priced at to what actually happened to it; a short bar is a group the price described well.
+
+```{r vbell-prep, include=FALSE}
+```
+
+```{r vbell-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+```{r vbell-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. The same markets, split by how much money moved through them.** Each bar runs from what a group of markets was priced at to what actually happened to it, so a short bar is a group the price described well. In the mid-range, where calibration bites, markets above the median volume are off by `r pc(abs(vb$gap[1]), 1)` points and markets below it by `r pc(abs(vb$gap[2]), 1)`. Across all prices the two halves look nearly identical, which is why the split is invisible until the near-zero markets are set aside.
+
+**So "markets underprice longshots" is the wrong lesson. "Thin markets are noisy" is the right one** — and it is what anyone who has thought about prices would have predicted before looking.
+
+The deeper point is about how the anomaly was produced in the first place. The market is not one forecaster. It is hundreds of separate markets of wildly varying depth, which *we* pooled into a single table. **We manufactured the anomaly by averaging over things that should not have been averaged.**
+
+One honesty note in the other direction: the excess in the near-zero band does *not* follow this pattern — there the surprises are concentrated in the high-volume markets, on a handful of events. That band contains `r cnt(tab$n[1])` markets priced at an average of `r p3(tab$priced[1])`, so a few unexpected outcomes move the share a long way. It is unresolved, and it is too small to resolve here.
+
+## As of when?
+
+Everything above used the price seven days out. That moment was chosen by whoever built the file.
+
+```{r timing}
+```
+
+The market is **`r pc(100 * (b30 - b7) / b30)`% better seven days out than thirty**, on the `r sum(k30)` markets where both prices exist.
+
+One line per market, from where it was priced a month out to where it was priced a week out, colored by what eventually happened. The lines should fan apart, and they do.
+
+```{r slope-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r slope-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 6. The same markets, a month out and a week out.** One line per market, from the price it carried thirty days before resolution to the price it carried seven days before, colored by what eventually happened; the heavy lines are the two group averages. The Brier score improves from `r p4(b30)` to `r p4(b7)` across the `r sum(k30)` markets that carry both prices — the market is `r pc(100 * (b30 - b7) / b30)`% better at the later moment.
+
+That is reassuring rather than interesting: information arrives over time, and a forecaster who was *equally* good a month out would be suspicious, not impressive. But it also means the calibration table flatters the market by construction: it was scored at the last moment before the answer arrived. **The honest description of a forecaster is a curve over time, not a single number**, and "as of when?" is the same question as "compared to what?".
+
+## Calibration is a property of the venue and the depth
+
+Across `r cnt(nrow(d))` resolved questions this market was well calibrated where most of the money was. Its Brier score is `r p4(brier)`, against `r p4(brier50)` for a coin flip, and contracts priced above 0.9 resolved true `r pc(100 * gb("(0.9,1]", "happened"))`% of the time. That is a real result about a real venue.
+
+The sharper version is that the result belongs to the venue and the depth rather than to prediction markets as a class. In the mid-range, markets above the median volume were off by `r pc(abs(100 * (mean(mhi$outcome) - mean(mhi$p7))), 1)` points and markets below it by `r pc(abs(100 * (mean(mlo$outcome) - mean(mlo$p7))), 1)`. Same mechanism, same site, same week — different amounts of money.
+
+Four things this evidence will not carry. It will not carry "markets underprice longshots," which the volume split dissolves. It will not carry "markets beat models," because model outputs are not published in a form anyone can score. It will not carry any claim specific to elections, since most of these questions are not about elections at all. And it will not carry a verdict on whichever single market a reader actually cares about: a well-calibrated forecaster can be badly wrong about any one case, which is where this chapter started.
+
+## Scoring a forecaster is an old problem
+
+**Brier (1950)** invented the scoring rule used above to grade weather forecasts, and the design constraint is worth noticing: he needed a score that a forecaster could not improve by shading probabilities toward the extremes. The Brier score is *proper* — expected score is minimized by reporting your true belief. That property is what makes forecast scoring possible at all, and it is not shared by the "was the winner called correctly?" standard that journalism uses.
+
+**Wolfers and Zitzewitz (2004)** set out the case for markets: prices aggregate dispersed private information, and the requirement to pay for an opinion disciplines wishful thinking. They also catalog the limits, including thin volume and the longshot bias that appeared in the low bands above.
+
+**Berg, Nelson and Rietz (2008)** provide the long-run evidence. Across three decades of Iowa Electronic Markets election contracts they found market prices closer to eventual outcomes than contemporaneous polls, and increasingly so further from election day. Their samples are small in the same way ours is, because elections do not supply hundreds of resolved questions. That is exactly why the file used here comes from a venue that trades sport and Fed decisions too.
+
+**Tetlock (2005)** did the corresponding work on experts. He tracked tens of thousands of forecasts by political specialists over two decades. Overall accuracy was barely better than chance, and confident specialists with a single organizing theory did worse than generalists who hedged. The finding that matters here is procedural: **he could say that only because he collected many forecasts and scored them.** No individual pundit's call was ever refutable.
+
+**Bruine de Bruin and colleagues (2000)** supply a caution about the raw material. Asked for probabilities, people pile up implausibly on "50", using it to mean "I have no idea" rather than "one chance in two" — the effect is strongest among less numerate respondents. Market prices are not survey answers, but the finding is a reason to be careful about treating any elicited probability as a real number.
+
+**And the skeptical case has specifics.** These venues are small enough that a determined trader can move a price; the 2024 presidential market's late movement was widely attributed to a single large account. Legality has changed more than once and is contested. Neither objection is settled by calibration evidence — a manipulated market can still be well calibrated on average.
+
+## What `r cnt(nrow(d))` resolved markets can testify to
+
+The strength of this evidence is its shape. `r cnt(nrow(d))` forecasts, each with a number recorded before the answer was known and an answer that arrived later; two snapshots per market, which is what makes "as of when?" an answerable question; and traded volume attached to every row, which is what made the volume split possible at all. The whole record is public and free, which is unusual for anything anyone actually forecasts.
+
+Its limits are worth stating one at a time, because each of them constrains a different sentence. This is **one venue**, so nothing here generalizes to prediction markets as a class. The **seven-day snapshot is arbitrary**. A market that was wrong for months and right at the end scores well, and the figure on timing shows how much that choice is worth.
+
+There is **selection into the sample**. These are the highest-volume resolved markets, and contracts that voided or settled ambiguously were dropped, with no reason to think they were a random subset. **The question mix drives the summary statistics.** `r pc(100 * mean(d$p7 < 0.10))`% of the markets were priced under 0.10, which makes any overall score look good. That is why the calibration table has to sit beside the Brier score rather than behind it.
+
+There is **no comparison forecaster**: one side of the interesting comparison, and nothing to put beside it. And **ten bands was a convention rather than a finding**, which is precisely what the per-band tests were there to expose.
+
+Four questions remain genuinely open. The near-zero band is the sharpest of them. Things priced at `r p3(tab$priced[1])` happened `r p3(tab$happened[1])` of the time, and unlike the mid-range that excess is *not* explained by thin trading. The surprises there sit in the high-volume markets, on a handful of events, in a band too small in absolute terms to resolve. Whether markets beat models is unanswerable from this file, because only one side of the comparison is published.
+
+Whether calibration means a forecaster cannot be beaten is a separate question with a known answer. It does not, and well-calibrated prices can still be improved on. And how much manipulation matters is documented in individual cases and unquantified in aggregate.
+
+None of which changes the sentence this chapter opened with. A single probability cannot be wrong. `r cnt(nrow(d))` of them, with the answers attached, can be graded — and what the grading found was not a bias in the prices but a fact about where the money was.
+
+## Sources
+
+**Data**
+
+- Polymarket, via the public Gamma markets API (resolved markets and outcomes)
+  and the CLOB price-history API (prices before resolution).
+  `r cnt(nrow(d))` markets survived the filters. The build is in
+  `data/build-data.py`. <https://polymarket.com/>
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`polymarket_resolved.csv`](data/derived/polymarket_resolved.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `polymarket_resolved.csv` has `p30`, `p7` and the `outcome`. Bucket the questions by their price and work out how often each bucket actually happened. Do the prices mean what they say?
+- Compare `p30` against `p7` on the same questions. Do markets get more accurate as the event approaches, or just more confident?
+- Sort by `volume`. Are the heavily traded questions better calibrated than the thin ones? Say what that implies about which forecasts are worth reading.
+- Find the questions the market got most wrong. Read them. Is there anything they have in common besides being wrong?
+
+**Academic literature**
+
+- Berg, J. E., Nelson, F. D. and Rietz, T. A. (2008). "Prediction market accuracy
+  in the long run." *International Journal of Forecasting* 24(2): 285–300.
+- Brier, G. W. (1950). "Verification of Forecasts Expressed in Terms of
+  Probability." *Monthly Weather Review* 78(1): 1–3.
+- Bruine de Bruin, W., Fischhoff, B., Millstein, S. G. and Halpern-Felsher, B. L.
+  (2000). "Verbal and Numerical Expressions of Probability: 'It's a Fifty–Fifty
+  Chance'." *Organizational Behavior and Human Decision Processes* 81(1):
+  115–131.
+- Tetlock, P. E. (2005). *Expert Political Judgment: How Good Is It? How Can We
+  Know?* Princeton University Press.
+- Wolfers, J. and Zitzewitz, E. (2004). "Prediction Markets." *Journal of
+  Economic Perspectives* 18(2): 107–126.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

@@ -1,0 +1,419 @@
+---
+title: "Key: Two Systems, One Map"
+subtitle: "84-355 Democracy's Data | Census geography | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, dpi = 96, fig.retina = 1,
+                      fig.width = 7.2)
+options(scipen = 999)
+lv <- read.csv("data/levels.csv",  stringsAsFactors = FALSE)
+n  <- read.csv("data/nesting.csv", stringsAsFactors = FALSE)
+
+# The county maps. GEOIDs are CHARACTER -- read as numbers a 15-digit block id
+# becomes 1.3153e+14 and leading zeros vanish.
+D   <- "data"
+fc  <- read.csv(file.path(D, "facts.csv"),  colClasses = c(value = "character"))
+sp  <- read.csv(file.path(D, "splits.csv"), stringsAsFactors = FALSE)
+mu  <- read.csv(file.path(D, "map_units.csv"), stringsAsFactors = FALSE)
+tsp <- read.csv(file.path(D, "tract_split.csv"), colClasses = c(geoid = "character"))
+FV <- function(k) fc$value[fc$name == k]
+SP <- function(o, cc) sp[[cc]][sp$overlay == o]
+nn <- function(x) format(as.numeric(x), big.mark = ",")
+
+onepath <- function(X, Y) {
+  dx <- X[-1] - X[-length(X)]; dy <- Y[-1] - Y[-length(Y)]
+  seg <- paste0(dx, ifelse(dy < 0, "", ","), dy)
+  sep <- c("", ifelse(substr(seg[-1], 1, 1) == "-", "", " "))
+  paste0("M", X[1], ",", Y[1], "l", paste0(sep, seg, collapse = ""), "Z")
+}
+ringpaths <- function(d, sx, sy) {
+  if (!nrow(d)) return(character(0))
+  k <- interaction(d$uid, d$part, drop = TRUE)
+  p <- vapply(split(d, k), function(z) {
+    X <- round(sx(z$x)); Y <- round(sy(z$y))
+    keep <- c(TRUE, X[-1] != X[-length(X)] | Y[-1] != Y[-length(Y)])
+    X <- X[keep]; Y <- Y[keep]
+    if (length(X) < 3) return(paste0("M", X[1], ",", Y[1], "h1v1h-1Z"))
+    onepath(X, Y)
+  }, character(1))
+  p[nzchar(p)]
+}
+drawrings <- function(d, col = NA, border = "#999", lwd = 0.4) {
+  if (!nrow(d)) return(invisible())
+  k <- interaction(d$uid, d$part, drop = TRUE)
+  for (l in levels(k)) {
+    z <- d[k == l, ]
+    polygon(z$x, z$y, col = col, border = border, lwd = lwd)
+  }
+}
+jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
+G <- function(lev, uid = NULL) {
+  d <- mu[mu$lev == lev, ]
+  if (!is.null(uid)) d <- d[d$uid %in% uid, ]
+  d
+}
+win <- function(d, pad = 0.06) {
+  rx <- range(d$x); ry <- range(d$y)
+  s <- max(diff(rx), diff(ry)) * (1 + pad) / 2
+  list(x = mean(rx) + c(-s, s), y = mean(ry) + c(-s, s), s = 2 * s)
+}
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`census-geography-brief.Rmd`) and the lab (`census-geography.Rmd`)
+run the *same numbered steps* — the brief in prose with D3 figures, the lab with
+the code exposed. **Students should read the brief first.** Step numbers below
+refer to both.
+
+
+**Teach this EARLY.** It is the foundation five later labs assume and none of
+them supplies — precincts against blocks, HOLC areas against tracts, EAVS
+jurisdictions, §203 thresholds, BISG. Run before those and each of them gets a
+sentence shorter and a great deal clearer. Run after, and it works as the
+session where everything that went wrong is explained at once.
+
+**It is also the shortest lab in the course.** Six small tables, three maps of
+one county, no modeling. Use the time it saves on the discussion.
+
+**The maps are all `r FV("county_name")`** — the same county the
+precinct-geography lab uses, so students meet the ground twice. Say that out
+loud; the second encounter is worth much more if they know it is the second.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+American geography is two systems — one where the identifier contains the
+hierarchy and every join is exact, and one where it does not and every join is
+an assumption — and almost every data problem in this course lives on the seam.
+
+***
+
+# The findings
+
+```{r headline}
+c(counties = lv$count[lv$geography == "county"],
+  tracts   = lv$count[lv$geography == "census tract"],
+  zctas    = lv$count[lv$geography == "ZCTA (ZIP approximation)"],
+  tracts_nesting_cleanly = n$n_pass[1],
+  zcta_file_has_a_state  = n$result[3])
+```
+
+- **85,396 of 85,396 tracts** match a real county by ID prefix. Zero orphans.
+- **The ZCTA file has no state column and no state in the ID.**
+- A median county is **604 sq mi**; a median tract **1.74**; a median ZCTA
+  **34.89** — twenty tracts' worth.
+
+And the same two claims drawn, on `r FV("county_name")`
+(`r nn(FV("n_blocks"))` blocks, `r nn(FV("n_bg"))` block groups,
+`r nn(FV("n_tracts"))` tracts):
+
+```{r headline-map, echo=FALSE, results='asis', eval=knitr::is_html_output()}
+PW <- 214L; GAP <- 22L; TOPN <- 40L; BOTN <- 30L
+Wn <- 3L * PW + 2L * GAP; Hn <- TOPN + PW + BOTN
+w <- win(G("c"), pad = 0.04); s <- PW / w$s
+OV <- c("g", "p", "z"); OCL <- c("#2c7fb8", "#C41230", "#e08214")
+FLG <- c("split_bg", "split_place", "split_zcta")
+ROW <- c("block group", "census place (city limits)", "ZCTA (ZIP approximation)")
+mk <- function(i) {
+  off <- (i - 1L) * (PW + GAP)
+  fx <- function(x) off + (x - w$x[1]) * s
+  fy <- function(y) TOPN + (w$y[2] - y) * s
+  paste0("[", jstr(ringpaths(G("t"), fx, fy)), ",",
+         jstr(ringpaths(G("t", tsp$uid[tsp[[FLG[i]]] == 1]), fx, fy)), ",",
+         jstr(ringpaths(G(OV[i]), fx, fy)), ",", off, "]")
+}
+PAN <- vapply(1:3, mk, character(1))
+cnt <- sprintf("%s of %s tracts cut",
+               vapply(ROW, function(r) nn(SP(r, "tracts_split")), character(1)),
+               nn(FV("n_tracts")))
+cat(paste0('
+<div id="nst" style="margin:1em 0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function(){
+const P=[', paste(PAN, collapse = ","), '],T=', jstr(c("block groups",
+  "city limits", "ZCTAs")), ',C=', jstr(cnt), ',OC=', jstr(OCL), ';
+const W=', Wn, ',H=', Hn, ',PW=', PW, ',TOP=', TOPN, ';
+const svg=d3.select("#nst").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const defs=svg.append("defs");
+P.forEach((p,i)=>{
+  defs.append("clipPath").attr("id","kc"+i).append("rect")
+    .attr("x",p[3]).attr("y",TOP).attr("width",PW).attr("height",PW);
+  const g=svg.append("g").attr("clip-path","url(#kc"+i+")");
+  g.selectAll("path.t").data(p[0]).join("path").attr("d",d=>d)
+    .attr("fill","#f7f7f7").attr("stroke","#b6b6b6").attr("stroke-width",0.6);
+  g.selectAll("path.c").data(p[1]).join("path").attr("d",d=>d)
+    .attr("fill","#f4d9dd").attr("stroke","#b6b6b6").attr("stroke-width",0.6);
+  g.selectAll("path.o").data(p[2]).join("path").attr("d",d=>d)
+    .attr("fill","none").attr("stroke",OC[i]).attr("stroke-width",1.4);
+  svg.append("text").attr("x",p[3]+PW/2).attr("y",18).attr("text-anchor","middle")
+    .attr("font-size","13px").attr("font-weight","600").attr("fill",OC[i])
+    .text(T[i]);
+  svg.append("text").attr("x",p[3]+PW/2).attr("y",TOP+PW+18)
+    .attr("text-anchor","middle").attr("font-size","13px")
+    .attr("font-weight","600").attr("fill",i?"#C41230":"#2c7fb8").text(C[i]);
+});
+})();
+</script>
+'))
+```
+
+```{r headline-map-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.6}
+OV <- c("g", "p", "z"); OCL <- c("#2c7fb8", "#C41230", "#e08214")
+FLG <- c("split_bg", "split_place", "split_zcta")
+ROW <- c("block group", "census place (city limits)", "ZCTA (ZIP approximation)")
+ttl <- c("block groups", "city limits", "ZCTAs")
+w <- win(G("c"), pad = 0.04)
+layout(matrix(1:3, 1, 3))
+op <- par(mar = c(2.4, 0.3, 2.4, 0.3), xpd = FALSE)
+for (i in 1:3) {
+  plot(NA, xlim = w$x, ylim = w$y, asp = 1, axes = FALSE, ann = FALSE)
+  drawrings(G("t"), col = "#f7f7f7", border = "#b6b6b6", lwd = 0.5)
+  drawrings(G("t", tsp$uid[tsp[[FLG[i]]] == 1]), col = "#f4d9dd",
+            border = "#b6b6b6", lwd = 0.5)
+  drawrings(G(OV[i]), col = NA, border = OCL[i], lwd = 1)
+  title(ttl[i], cex.main = 1, col.main = OCL[i], line = 0.6)
+  mtext(paste0(nn(SP(ROW[i], "tracts_split")), " of ", nn(FV("n_tracts")),
+               " tracts cut"), side = 1, line = 0.9, cex = 0.72, font = 2,
+        col = if (i == 1) "#2c7fb8" else "#C41230")
+}
+par(op); layout(1)
+```
+
+- **A block group boundary cuts `r nn(SP("block group", "tracts_split"))` of the
+  county's `r nn(FV("n_tracts"))` tracts. A city limit cuts
+  `r nn(SP("census place (city limits)", "tracts_split"))` of them, and a ZCTA
+  boundary cuts `r nn(SP("ZCTA (ZIP approximation)", "tracts_split"))`.**
+- Warner Robins is in **`r FV("wr_counties")` counties**, and
+  `r nn(FV("zctas_multi_county"))` of the county's `r nn(FV("n_zctas"))` ZCTAs
+  are in more than one county. That is the identifier's missing county
+  component, on the ground.
+
+***
+
+# The three things to get said
+
+**1. The GEOID is the join.** Students think of an ID as an arbitrary key. Write
+the block identifier from Step 1 on the board — `131530211233013` — and take it
+apart: state, county, tract, block group, block. **Once they see that the first
+five digits *are* the county, the nesting spine stops being a fact to memorise
+and becomes something they can read off any file.** The five-panel figure in
+Step 1 is the same five pieces as places; put them side by side.
+
+**2. Nesting is by construction, not by luck.** The Census Bureau draws small
+units inside large ones on purpose, so tracts nest perfectly and always will.
+Places, ZIP codes and school districts were drawn by other people, for other
+reasons, at other times. **Nothing forces them to line up, and they don't.** The
+three panels in Step 7 are the whole argument in one row of pictures: the
+geography that nests cuts zero tracts, the two that do not cut
+`r nn(SP("census place (city limits)", "tracts_split"))` and
+`r nn(SP("ZCTA (ZIP approximation)", "tracts_split"))`.
+
+**3. The ZIP code is the one they will actually use.** Every student will one
+day be handed data "by ZIP." Make sure they leave knowing it is a **mail route,
+not an area** — a set of delivery stops the Postal Service changes when routing
+changes. The Census's ZCTA is an approximation of something that is not a shape.
+**Point at the file: no state column, because some ZIPs are in two states.**
+
+**The line for the board:** if the ID contains the hierarchy, the join is free.
+Otherwise somebody has to decide.
+
+***
+
+# The move that makes this session land
+
+**Ask the room where their ZIP code is.** They took the census replication survey
+on the first day and typed one in. Then show them Step 8.
+
+It reframes the whole thing from an abstraction about identifiers into something
+they personally got wrong two months ago, and it costs ninety seconds.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | One GEOID; the five maps it names; the gazetteer; how many of each | 9 | The identifier is built by concatenation. That claim is testable, and the zoom sequence is the same claim as geography. |
+| **4** | Test it: all 85,396 tracts match a county by prefix; the county at four scales | 9 | Zero orphans. Nesting is not documentation, it is arithmetic — and no line is drawn twice. |
+| **5-7** | The two tests that could not be run; what each ID encodes; the three overlays counted | 14 | **The pivot.** An empty result column because the file has no such field, then 0 / 32 / 22 tracts cut. |
+| **8** | ZIP codes | 8 | Five digits encoding nothing — and the first-day survey asked for one. |
+| **9-10** | Why this bit four other labs; what you can say | 10 | Precincts, HOLC, EAVS jurisdictions, Cook County. One cause. |
+
+**Step 5 is the pivot.** A test that *cannot be run* is a stronger result than one that fails: the Bureau declined to record the relationship, because the relationship does not exist.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Build the hierarchy
+
+## Verified output
+
+```{r a}
+lv[, c("geography", "nests_into", "id_length")]
+```
+
+The tree: **state → county → { census tract → block group → block, county
+subdivision }**. Outside it: places, ZCTAs, both kinds of school district.
+
+**3/4:** Draws the tree correctly and puts the crosscutting units to one side.
+
+**4/4:** Says what the outsiders have in common — **they were all drawn by
+somebody other than the Census Bureau, for a purpose other than counting
+people.** Municipalities incorporate, school districts are created by states, ZIP
+codes serve mail. The Bureau records them; it does not design them.
+
+**4/4, best:** Notices that "nests into state only" is doing sneaky work. A place
+ID contains a state, so places *do* nest into states — but that is nearly
+useless, because the join anybody wants is to a county or a tract. **A hierarchy
+that only reaches the top level is not a hierarchy you can use.**
+
+***
+
+# Option B — How wrong is a ZIP?
+
+## Verified output
+
+```{r b}
+z <- lv$median_sq_mi[lv$geography == "ZCTA (ZIP approximation)"]
+t <- lv$median_sq_mi[lv$geography == "census tract"]
+c(median_zcta = z, median_tract = t, ratio = round(z / t, 1))
+```
+
+**About twenty tracts to a ZCTA by area.**
+
+**3/4:** Reports the ratio and says ZIP-level statistics average over a lot.
+
+**4/4:** Makes it concrete — a ZIP-level median income is one number for an area
+that might contain both the richest and poorest tracts in a city, and the
+averaging is not random, it is *spatial*. Neighbourhoods differ block to block;
+that is the entire finding of the redlining lab.
+
+**4/4, best:** Notices the comparison is by **area**, not population, and that
+these are very different in a city — a dense urban ZCTA might contain many more
+than twenty tracts while a rural one contains a fraction of one. **The
+twenty-times figure is itself an average that hides its own variance**, which is
+the lesson eating its own tail, appropriately.
+
+***
+
+# Option C — The school district trap
+
+No verified output beyond the counts; grade the reasoning.
+
+**1,952 elementary districts, 10,893 unified.**
+
+**3/4:** Works out that a student in an elementary district must attend a
+secondary district for high school, so the two overlap.
+
+**4/4:** Draws the consequence for data — **the same child is inside two
+districts at once**, so "students per district" double-counts unless you know
+which system you are in, and a map of "school districts" is either incomplete or
+overlapping depending on which files you loaded.
+
+**4/4, best:** Connects it back to the main lesson: this is not a quirk of
+schools, it is what happens whenever two authorities draw boundaries over the
+same ground for different purposes. **Congressional districts, precincts, water
+boards, fire districts — the voter file in Session 6 had twenty-one such columns
+for exactly this reason.**
+
+***
+
+# Option D — Read the middle panel
+
+## Verified output
+
+```{r d}
+sp[, c("overlay", "role", "units", "tracts_total", "tracts_split")]
+```
+
+The question asks what you must assume to report a tract-level statistic for a
+city whose limits cut `r nn(SP("census place (city limits)", "tracts_split"))`
+of `r nn(FV("n_tracts"))` tracts.
+
+**3/4:** Says you would have to split the cut tracts somehow, and names area or
+population weighting.
+
+**4/4:** States the assumption in its strong form — **that the people inside the
+city limits look like the people outside them, within the same tract** — and
+notices that this is exactly the assumption the tract was drawn to avoid making,
+since tracts are meant to be internally similar and a city limit is not.
+
+**4/4, best:** Names a case where it fails hard and says why. Annexation is
+selective: cities annex subdivisions and shopping centres and leave trailer
+parks and farmland outside, so the line between incorporated and unincorporated
+land inside one tract is frequently a line between different kinds of household.
+**The error is not random, it is correlated with exactly the thing you are
+measuring.** Anyone who gets there has understood the lab.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is explaining *why* the nesting units nest — by
+  construction — rather than treating it as a happy accident.
+- **A 2** is "you should use tracts instead of ZIP codes" with no account of
+  why, or of what to do when the data only comes by ZIP.
+- **Reward anyone who reconsiders an earlier lab** in light of this one. That is
+  the whole point of running it.
+
+## Anticipated questions
+
+- *"Can I convert ZIP to tract?"* — Crosswalks exist (HUD publishes one) and
+  they are **allocations, not translations** — each ZIP maps to several tracts
+  with weights. Fine if you say so; wrong if you pretend it is a lookup.
+- *"Why does anyone publish by ZIP then?"* — Because it is the only geography
+  respondents know. That is a real answer, not a dodge, and it is why the first-
+  day survey asked for one.
+- *"Do blocks nest into precincts?"* — **No, and that is Session 14's whole
+  problem.** Good moment to forward-reference it.
+- *"What about congressional districts?"* — They nest into states and nothing
+  else, and they are redrawn every decade, so they do not even nest into their
+  own past. The gazetteer's CD file was unavailable when this was built.
+- *"Is a 'place' the same as a city?"* — Roughly, plus census-designated places,
+  which are unincorporated areas the Bureau treats as places for counting. A
+  place can exist for statistics and not for government. The county mapped here
+  has three incorporated cities and one CDP, **Robins AFB**, which is the base:
+  a place for counting, not a municipality.
+- *"Why this county?"* — Because the precinct-geography lab uses it too, so the
+  ground is already familiar by the second time they see it, and because it is
+  small enough that all `r nn(FV("n_blocks"))` of its blocks fit on a page.
+  Nothing about the argument depends on the choice; the numbers do.
+- *"Is 32 of 38 typical?"* — **Unknown from this lab**, and worth saying so. It
+  is one county with a heavily annexed city in it. The direction of the result
+  is structural; the size of it is local.
+- *"Why do blocks nest into everything?"* — Because the Bureau draws them last,
+  against every boundary it knows about, which is why a block is the atom the
+  crosswalks in later labs are built on. **Blocks nest into places and ZCTAs;
+  tracts do not.** That is the sentence to leave them with.
+
+## Connections
+
+**This lab is a prerequisite for five others**, and each should point back:
+
+- **Session 6 (voter files)** — 21 of 53 columns are overlapping districts.
+- **Session 11 (EAVS)** — "jurisdiction" varies by state.
+- **Session 14 (precincts)** — precincts against blocks, the same seam.
+- **Redlining** — 1937 areas against 2020 tracts, joined by centroid.
+- **Session 7 (BISG)** — works *because* blocks nest. The easy case, and worth
+  saying so, since students otherwise never notice when a join went right.

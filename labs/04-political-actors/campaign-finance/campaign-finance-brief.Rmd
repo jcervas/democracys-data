@@ -1,0 +1,294 @@
+---
+title: "Reading an FEC Candidate Filing"
+subtitle: "A quarterly filing to the Federal Election Commission, and the single letter beside each candidate's name"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+md_extensions: -tex_math_dollars
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("campaign-finance-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The treasurer of every federal campaign committee in the United States signs a form and sends it to the Federal Election Commission, on a schedule set by statute, under penalty of perjury. The form asks three things: what came in, what went out, and where the money that came in came from. Money given by individual people goes on one line. Money given by political action committees goes on another. Money from the party goes on a third, and money the candidate handed to their own campaign goes on a fourth.
+
+It is easy to ask how much money there is in American politics. The form is built to answer a more useful question, which is **whose money goes to whom**. Beside each candidate's name in the resulting file sits a single letter, recording whether they already held the office they were running for.
+
+```{r one-row}
+```
+
+One row is one candidate's committee for the whole 2023--24 cycle: everything raised, and a breakdown by source. The `ici` column marks whether the candidate was an **I**ncumbent, a **C**hallenger, or running for an **O**pen seat. It is the narrowest field in the file.
+
+```{r counts}
+```
+
+## The boxes were drawn by statute
+
+The file underneath this chapter is the Federal Election Commission's "All Candidates" bulk download for the 2023--24 cycle: `r n(nrow(fec))` rows, one per candidate who filed, covering committee activity through 31 December 2024. It exists because the Federal Election Campaign Act requires it to exist. No researcher went looking for these numbers, no news organization assembled them, and nobody was asked to volunteer anything. A treasurer filled in a form on a statutory deadline, and the Commission published what the treasurers wrote.
+
+That origin decides what the file can be asked. It is a complete count rather than a sample, so an incumbent's receipts and a challenger's can be laid side by side with no sampling assumption in between. The categories mean the same thing in both rows, because the same form imposed them. But those four categories are not a taxonomy anyone chose for analytical convenience. Individuals, political action committees, party committees, the candidate's own pocket: these are boxes on a form, drawn by Congress in the 1970s around the kinds of giving it was then most worried about. A different statute would have produced a different file, and this chapter would have had a different argument to make.
+
+The harder problem is not a defect of the file at all. "How much money was in this race" has no single correct answer for anybody to have written down. Money moves between a member's own authorized committees. Outside groups spend on the same contest without a dollar passing through the candidate's hands. And the Commission's authority stops at the committee, so whatever falls outside the committee falls outside the ledger.
+
+The file measures a legally defined object with great precision. That object is narrower than the thing the question is about, and no amount of cleaning closes the difference.
+
+Acquiring it took one line. The Commission posts each cycle as a single ZIP at a fixed public address, with no key, no form and nobody to ask. It can be fetched unattended, and any reader can fetch it again and check the committed copy against the original.
+
+The one thing the download does not include is the means of reading it. Cleaning in the ordinary sense was light, and all of it is described below.
+
+The FEC ships a pipe-separated file with no header row, and publishes the column layout separately. So the build checks that the whole published layout arrived before it dares to name any of it. Office comes from the first letter of the candidate ID. Self-funding is the candidate's own contributions plus their loans, added together here because the form splits them apart. Of the columns the Commission publishes, this chapter keeps `r ncol(fec)` and drops the rest.
+
+What the build refuses to do is remove duplicates. It leaves the `r n(sum(fec$ici == ""))` rows with no incumbency letter exactly where it found them, alongside the `r n(sum(fec$ttl_receipts == 0))` candidates who reported raising nothing whatsoever. A reader who wanted a publishable cycle total would have to redo the first of those; a reader who wanted the ratios below would have to pick a seriousness threshold, as this chapter did.
+
+## Thirty numbers in a row, and nothing saying what they are
+
+The ZIP is kept exactly as it downloaded, so the first paragraph of that section can be checked rather than believed. Here is one line of the file inside it, wrapped to fit the page but otherwise untouched.
+
+```{r fec-raw}
+```
+
+That is a complete record: one line of `r format(nraw, big.mark = ",")`, `r length(f)` fields, and no header row anywhere in the file. Laid out one field per row it is legible, and still says nothing about itself — the values are in an order the file never states. The Commission publishes the order in a separate document on a different page of its website, and the only thing standing between a reader and a silent disaster is that document. Shift the layout by one and every dollar in this chapter lands in the wrong category, with no error, no warning, and totals that still add up.
+
+A few of the positions, once the separate document is consulted:
+
+```{r fec-fields}
+```
+
+Cleaned, the same candidate is a row you can read:
+
+```{r fec-clean}
+```
+
+Four things happened, and only the first is mechanical.
+
+**Names were attached, and then checked.** The build writes down all `r length(f)` column names and stops unless exactly `r length(f)` columns arrived. That assertion is the entire defense against the layout changing in a future cycle, and it is worth more than any amount of care taken afterwards.
+
+**Two columns were invented.** Neither `office` nor `own money` is in the file. Office is the first character of the candidate ID, so `r pick` is a candidate for `r fec$office[fec$cand_id == pick]` because it begins with `r substr(pick, 1, 1)`. Own money is what this candidate gave their own campaign, `r d(as.numeric(f[12]))`, added to what they lent it, `r d(as.numeric(f[13]))`, because the form splits those apart and the question does not. That addition is a definition, not a measurement, and a reader who thought loans were not gifts would be entitled to a different column.
+
+**Most of the file was thrown away.** Of `r length(f)` columns the build keeps `r ncol(fec)`. The discarded ones include cash on hand at the beginning of the period, transfers to authorized committees, and refunds. They also include the coverage end date, which arrives as the text `r f[28]` rather than as a date, and would have to be read apart before it could be compared to anything.
+
+**Nothing was repaired.** `r n(nrow(fec))` rows went in and `r n(nrow(fec))` came out. The build does not merge the candidates who appear more than once. It does not fill in the `r n(sum(fec$ici == ""))` rows whose incumbency letter is blank, and it does not remove the `r n(sum(fec$ttl_receipts == 0))` candidates who reported raising nothing at all. Every one of those is a defect somebody would ordinarily clean, and every one of them is evidence about how federal campaign finance is recorded. A file tidied until it looked sensible would have hidden all three.
+
+Notice also what the raw line does not contain. Fields `r paste(21:25, collapse = ", ")` are the election results, and in this record they are empty. They are empty in most records. The file that reports what every federal candidate raised has almost nothing to say about which of them won, and the section near the end of this chapter is about what that costs.
+
+## The average is not describing anybody
+
+Begin with the House, where there are enough candidates for a pattern to be visible at all.
+
+```{r typical}
+```
+
+The median House candidate raised `r d(MEDH)`. The average House candidate raised `r d(MNH)`, which is `r pc(MNH/MEDH, 0)` times more. Whenever a mean sits that far above a median, a small number of cases are carrying nearly everything, and the average has stopped describing anybody at all.
+
+```{r concentration}
+```
+
+```{r d3-lorenz, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r lorenz-static, eval=!knitr::is_html_output(), fig.width=6.4, fig.height=4.8}
+```
+
+**Figure 1. Almost all House campaign money belongs to a tenth of the people who ran for the House.** Every one of the `r n(NH)` House candidates in the 2023--24 filings, sorted worst-funded first, plotted against the cumulative share of all House money. The dashed diagonal is what perfect equality would look like, and the distance between it and the curve is the concentration. The best-funded `r n(NT)` candidates raised `r pc(TOP10)`% of the total; the worst-funded `r n(NB)` raised `r pc(BOT50)`%, which is two tenths of one percent split between more than fifteen hundred people. Of those candidates, `r n(ZERO)` reported no receipts at all.
+
+That bottom half is not a footnote about fringe candidates. It is most of the people who put their name on a ballot for the U.S. House.
+
+## Whether the problem is elections or legislation
+
+A curve that steep invites an obvious complaint about money in politics, and the obvious complaint turns out to contain two incompatible ones. **If money buys outcomes, the problem is elections. If money buys access, the problem is legislation.** Those require different remedies and produce different evidence, and the distinction is not rhetorical.
+
+The strongest skeptical account is Ansolabehere, de Figueiredo and Snyder (2003), "Why Is There So Little Money in U.S. Politics?" It observes that total campaign spending is astonishingly small against the value of the policies supposedly being bought, and that most of it comes from individuals rather than organized interests. Giving behaves like spending on something you enjoy, rather than like an investment.
+
+If contributions bought policy, there would be far more of them.
+
+The strongest account on the other side is Fouirnaies and Hall (2014). They compare candidates who barely won against candidates who barely lost, to isolate the **causal** effect of holding a seat on the money that arrives.
+
+Winning narrowly raises a party's share of donations by twenty to twenty-five points. The effect comes almost entirely from **access-oriented** interest groups: donors in heavily regulated industries with weak attachment to either party.
+
+**Nobody disputes the correlation; everybody disputes the arrow.** Incumbents raise vastly more than challengers. Does the money make them safe, or does their safety attract the money? Almost every popular treatment of campaign finance assumes the first without testing it.
+
+There is a second dispute, about whether the ledger is even the right object. Since *Citizens United v. FEC* (2010), a large and growing share of what is spent on a race never passes through the candidate's hands at all. Everything in this chapter is the money that did.
+
+## The gap everyone quotes
+
+```{r by-ici}
+```
+
+The median incumbent raised `r d(med(hs,"I"))`. The median challenger raised `r d(med(hs,"C"))`. That is a ratio of about **`r n(RATIO)` to one**, and it is the number every account of congressional campaign finance quotes.
+
+On its own it settles nothing.
+
+```{r two-stories}
+```
+
+Both stories predict exactly what the table above shows, which is why distinguishing them normally requires a research design: Fouirnaies and Hall's discontinuity, for instance, or something like it.
+
+But the file will answer a different question without any design at all. Ask not *how much* each group raises, but **what share of it comes from PACs** rather than from individuals. An open-seat race is the most competitive kind there is: no incumbent, genuinely uncertain, maximum leverage for anyone trying to influence who wins. Anyone spending money to shape the outcome of an election should be spending it there.
+
+> **Before you read on, commit to a number.** Among the `r n(nrow(ser))` serious
+> House campaigns in this file -- everyone who raised more than fifty thousand
+> dollars -- PACs supply `r pc(pacm(ser,"I"))`% of the median incumbent's
+> receipts. **What percentage do they supply the median open-seat candidate?**
+> That is the race with no incumbent to unseat and a result genuinely in doubt.
+> Write a number down, above or below `r pc(pacm(ser,"I"))`%, before you read on.
+
+## Organized money goes to the safe seat
+
+Take every serious House campaign -- everyone who raised more than $50,000 -- and compute the PAC share of the median candidate in each group.
+
+```{r pac-share}
+```
+
+Most readers write down a number near the incumbent's, and a good many write down a larger one, because that is where the money would go if money were trying to decide elections. For the typical serious House incumbent, `r pc(pacm(ser,"I"))`% of all money raised came from PACs. For an open-seat candidate, running the most competitive kind of race in American politics, the figure is `r pc(pacm(ser,"O"))`% -- essentially the same as a challenger's `r pc(pacm(ser,"C"))`%.
+
+If organized money were trying to influence *who wins*, it would concentrate exactly where the outcome is in doubt. It does the opposite. **PAC money is not sorted by competitiveness, ideology, or quality. It is sorted by who currently holds the seat.**
+
+Which is enough to break the tie between the two stories. The gap is not primarily organized money picking winners, because organized money is demonstrably not trying to pick winners. It is buying **access to whoever already has power** -- the same mechanism Fouirnaies and Hall identify causally, visible here as a difference between two columns of a mandatory filing.
+
+```{r pac-prep, include=FALSE}
+```
+
+```{r d3-pac, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r pac-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+**Figure 2. PAC money is sorted by who holds the seat, not by how close the race is.** Median PAC share of receipts among candidates who raised more than $50,000. In the House it is `r pc(pacm(ser,"I"))`% for the `r n(sum(ser$ici == "I"))` incumbents, `r pc(pacm(ser,"O"))`% for the `r n(sum(ser$ici == "O"))` open-seat candidates and `r pc(pacm(ser,"C"))`% for the `r n(sum(ser$ici == "C"))` challengers. The open seat, the one race whose outcome is genuinely in doubt, draws a challenger's share. The Senate runs the same way at a fifth the size: `r pc(pacm(sen,"I"))`% for incumbents against `r pc(pacm(sen,"C"))`% for challengers. In HTML the two chambers share one figure and one axis; in print they are drawn side by side on that same axis.
+
+## The Senate dilutes the same pattern
+
+```{r senate}
+```
+
+Same direction, much smaller magnitude: `r pc(pacm(sen,"I"))`% for Senate incumbents against `r pc(pacm(ser,"I"))`% in the House.
+
+The mechanism is a denominator, the bottom number a share is divided by. PAC contribution limits are fixed per committee per election, and Senate campaigns are enormous. The same $10,000 that is a meaningful slice of a $2 million House race is a rounding error in a $90 million one. **PAC money has not gone away in the Senate. It has been swamped by individual money at a scale House races never see.** So the House is where organized money has the most leverage, and the House is not where most public attention goes.
+
+## What fills the gap when PACs do not
+
+The medians above describe the typical candidate. Ask instead where the *money* is, in aggregate, and a different picture assembles from the same rows.
+
+```{r sources}
+```
+
+```{r mosaic-prep, include=FALSE}
+```
+
+```{r d3-mosaic, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r mosaic-static, eval=!knitr::is_html_output(), fig.height=4.5}
+```
+
+**Figure 3. Individuals pay for most of every kind of campaign; what differs is what covers the rest.** Serious House campaigns only. Height is composition and width is total dollars raised, so the area of a colored block is real money: the PAC block in the incumbent bar is `r dm(GT["I"] * MOS["PACs","I"] / 100)` against `r dm(GT["C"] * MOS["PACs","C"] / 100)` in the challenger bar. Measured this way the PAC gap narrows to `r pc(src["PACs","C"])`% against `r pc(src["PACs","I"])`%, and self-funding appears in its place. `r pc(src["Self","C"])`% of all challenger money and `r pc(src["Self","O"])`% of all open-seat money comes from the candidate's own pocket, against `r pc(src["Self","I"])`% for incumbents. "Other" is receipts that are none of the four named sources -- mostly transfers from the candidate's own other authorized committees, which is why it is largest for incumbents.
+
+The PAC gap narrows because a handful of enormous challenger campaigns *do* attract organized money even though the typical challenger gets none of it. The self-funding, on the other hand, is not an artifact of a few outliers.
+
+```{r self}
+```
+
+About one in six serious candidates paid for more than half of their own campaign. Set that beside the PAC shares and it is a barrier to entry with a dollar figure attached. If you want to challenge a sitting member of Congress and you are not wealthy, the organized money will not come, and the shortfall is made up personally or not at all.
+
+Neither summary is more honest than the other. **The median describes a candidate's experience; the aggregate describes where the money sits.** A journalist wanting a dramatic number takes the first. Both are true, and reading them as a contradiction is the most common way to get this subject wrong.
+
+## A blank column where the winners should be
+
+Two things the ledger cannot do, and both are worth more than the caution they imply.
+
+```{r biden-harris}
+```
+
+**Those are the same dollars.** Biden's presidential committee became Harris's when he withdrew in July 2024. The FEC carries two candidate records -- different IDs, different names, one pile of money -- and reports the full `r d(BH$ttl_receipts[1])` against each.
+
+```{r dup-cost}
+```
+
+Add up the column and you get $`r pc(NAIVE/1e9, 2)` billion raised in the 2024 cycle. Roughly $`r pc((NAIVE-DEDUP)/1e9, 2)` billion of that does not exist; it is the same money counted twice, mostly Biden and Harris plus four House members who moved committee funds into Senate races. The corrected figure is a crude fix rather than a right answer, since it also drops any two genuinely different candidates who happened to raise identical amounts. It is good enough to show the size of the problem and not good enough to publish.
+
+The second thing is larger.
+
+```{r no-outcome}
+```
+
+**The FEC's file layout has a general-election-result column, and it is blank for every row.** The Commission regulates finance, not elections, and there is no national election administrator to give it the answer. So the single most obvious question in the subject -- *does the candidate who raises more win?* -- cannot be asked of this file at all without going to fifty-one separate authorities for the results. **That is not a gap in this dataset. It is a fact about how the American state keeps its books.**
+
+## The argument this ledger can join
+
+**The skeptical case is stronger than most readers expect.** Ansolabehere, de Figueiredo and Snyder argue that if contributions bought policy, the sums would be vastly larger than they are, and that most money comes from individuals behaving like consumers rather than investors. The aggregate composition above supports part of that directly: individuals supply the majority of every group's money, in every column, whether the candidate is an incumbent, a challenger or running for an open seat.
+
+**The access case survives it.** The skeptics' argument is about whether money buys *policy outcomes*. It is not an argument that PAC money is randomly allocated, and it plainly is not. Fouirnaies and Hall demonstrate causally that winning a seat produces the money, and that the producers are access-oriented donors. That is a claim about legislative access rather than about election outcomes, and this ledger is consistent with it in a way that required no research design at all.
+
+**A third position holds that the ledger is the wrong object entirely.** After *Citizens United*, outside spending has grown into a category comparable in size to candidate fundraising in competitive races, and it is regulated differently, disclosed differently, and answerable to nobody the candidate controls. That money is a separate ledger, and it behaves nothing like this one.
+
+## What the ledger can testify to
+
+The evidence here is unusually authoritative in one respect and unusually incomplete in another, and both deserve stating without hedging.
+
+It is authoritative because it is a mandatory filing to a federal regulator covering every federal candidate committee: a census, not a sample. The source breakdowns are defined the same way for every candidate, so the composition of an incumbent's receipts and a challenger's can be set beside each other without a modeling assumption in between. Reporting is enforced by statute, and the raw filings behind these totals are public documents rather than a vendor's summary.
+
+It is incomplete in four separate ways, and the first is the largest. The file does not record who won. The column exists and is empty in every row, so nothing in this chapter can be turned into a statement about electoral success. The file also does not merge repeated identities. $`r pc((NAIVE-DEDUP)/1e9, 2)` billion of double-counting sits in the receipts column, invisible to anyone who does not already know which candidates are the same person.
+
+It covers candidate committees only, so independent expenditures, party spending and undisclosed money are somewhere else or nowhere. And it is one cycle, so there is no trend in it. Everything above is a photograph of 2023--24 rather than a history.
+
+To that should be added a choice this chapter made rather than found. The $50,000 threshold used for the PAC shares and the overall mix was set to exclude candidates whose ratios are dominated by tiny denominators. A different threshold would move the numbers somewhat, though not the ordering the argument rests on.
+
+So: House campaign money is extraordinarily concentrated, with `r pc(TOP10)`% of it held by the best-funded tenth of candidates and `r pc(BOT50)`% by the bottom half. Sharper than that, and this is the finding, **organized money is allocated by office held rather than by contest**. PACs supply `r pc(pacm(ser,"I"))`% of a typical serious House incumbent's receipts and `r pc(pacm(ser,"O"))`% of an open-seat candidate's, and an open seat is the most competitive race there is. Whatever PACs are buying, it is not the outcome of an election.
+
+What cannot be said is that money causes winning, because the file does not record winning. Nor can a cycle total be reported without merging identities the file leaves repeated. And nobody can claim from this to have seen all the money.
+
+Three questions are left genuinely open, and none of them will be settled by a larger version of this table. Whether money causes electoral success is the first, and it belongs to the quasi-experimental literature rather than to any ledger. What access is actually worth is the second: Fouirnaies and Hall show that donors behave as though it is worth a great deal, but what they receive for it appears in no filing anywhere. And the third is whether disclosure changes behavior or merely records it, which is a question about the form itself.
+
+The treasurer who signs that form is telling the federal government the truth, in detail, on a deadline, under penalty of perjury. The completed file shows that the organized part of American campaign money is allocated by who holds a seat and not by which race is close. It cannot show which of those people went on to win. The first of those is what the country's donors do; the second is what the country declined to write down -- and **authoritative is not the same as complete.**
+
+## Sources
+
+**Data**
+
+- Federal Election Commission, bulk download, "All Candidates" file for the
+  2023--24 cycle, covering every candidate committee's activity through 31
+  December 2024. <https://www.fec.gov/data/browse-data/?tab=bulk-data>
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`fec_candidates_2024.csv`](data/derived/fec_candidates_2024.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `fec_candidates_2024.csv` has `ttl_receipts` for every candidate. Compute the mean and the median. They are far apart. Which one would you put in a headline about the cost of a seat?
+- Sort by `self_funding`. Find the candidates who paid for their own campaigns. Then check how they did. Does buying a seat work?
+- Compare `indiv_contrib` against `pac_contrib` as shares of receipts, and split by `ici` — incumbent, challenger, open seat. Who does PAC money go to?
+- Group by `office` and `party` and compare typical receipts. Where in this file is the money least evenly spread?
+
+**Academic literature**
+
+- Ansolabehere, S., de Figueiredo, J. M. and Snyder, J. M. Jr. (2003). "Why Is
+  There So Little Money in U.S. Politics?" *Journal of Economic Perspectives*
+  17(1): 105--130.
+- Fouirnaies, A. and Hall, A. B. (2014). "The Financial Incumbency Advantage:
+  Causes and Consequences." *Journal of Politics* 76(3): 711--724.
+- La Raja, R. J. and Schaffner, B. F. (2015). *Campaign Finance and Political
+  Polarization: When Purists Prevail.* University of Michigan Press.
+- *Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010).
+
+**How the figures were made**
+
+The candidate file is assembled from that bulk download with nothing merged. The repeated Biden and Harris totals, and the four House members who moved committee funds into Senate races, are left in deliberately, because they are part of what the ledger is. Every number printed above is computed from that file at the moment this document was rendered.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

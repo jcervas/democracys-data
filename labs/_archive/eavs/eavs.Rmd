@@ -1,0 +1,304 @@
+---
+title: "Data Session 11: Did the Machinery Work?"
+subtitle: "84-355 Democracy's Data | The Election Administration and Voting Survey"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number come from?
+
+> *"Thousands of mail ballots were rejected."*
+
+Every session so far has used the **output** of an election — who won, who voted,
+who gave money. None of them asked whether the machinery worked.
+
+Somebody does ask. Every two years the **Election Assistance Commission** sends
+a survey to every election office in the country and asks: how many ballots did
+you mail out, how many came back, how many did you reject and why, how many
+provisional ballots did you issue, how many precincts did you run, how many poll
+workers did you find.
+
+It is the closest thing America has to a service record for its own elections,
+and it is free. Today we open it.
+
+# Part 1 — What one row is
+
+```{r load}
+nat <- read.csv("data/national.csv", stringsAsFactors = FALSE)
+st  <- read.csv("data/states.csv",   stringsAsFactors = FALSE)
+u   <- read.csv("data/units.csv",    stringsAsFactors = FALSE)
+
+c(jurisdictions = sum(st$jurisdictions), states_and_territories = nrow(st))
+```
+
+**6,461 rows. One per election jurisdiction.** And that word is the first
+problem.
+
+```{r units}
+rbind(head(u[, c("state","jurisdictions","voters","voters_per_jurisdiction")], 4),
+      tail(u[, c("state","jurisdictions","voters","voters_per_jurisdiction")], 4))
+```
+
+**Wisconsin reports 1,851 jurisdictions. Texas reports 254.** Wisconsin does not
+have seven times as much election administration as Texas — it runs elections
+through **townships**, and Texas runs them through **counties**. New England is
+the same: Vermont's typical jurisdiction has about 1,500 voters; California's has
+about 279,000.
+
+So a sentence like "the average jurisdiction rejected 90 ballots" is close to
+meaningless, because the average is taken over units that are not the same kind
+of thing. **Anything you compute per jurisdiction, across states, is wrong.**
+Totals are fine. Rates are fine. Averages over rows are not.
+
+# Part 2 — The national picture
+
+```{r national}
+nat[, c("item", "total", "reported_by", "pct_reporting")]
+```
+
+**158 million voters, 177,708 precincts, 66.9 million mail ballots sent out.**
+
+Now look at the last two columns, which are the ones nobody quotes. **Not every
+jurisdiction answers every question.** Total voters is reported by 99.8% of them;
+provisional ballots rejected, by **79.9%**.
+
+That means the 436,258 figure is a sum over four-fifths of the country, and the
+missing fifth is not random — small offices with less staff are likelier to skip
+items. **Every national total on this page is a floor, not a count.**
+
+```{r missing-codes}
+# Missing is coded -99 (not reported) and -88 (not applicable), not blank.
+# Summing the raw column would quietly mix real counts with these codes.
+nat[nat$variable %in% c("E1a", "E1d"), c("item", "total", "pct_reporting")]
+```
+
+# Part 3 — Rejected mail ballots
+
+```{r mail}
+sent <- nat$total[nat$variable == "C1a"]
+ret  <- nat$total[nat$variable == "C1b"]
+rej  <- nat$total[nat$variable == "C9a"]
+
+c(transmitted = sent, returned = ret, never_returned = sent - ret,
+  rejected = rej, pct_of_returned = round(100 * rej / ret, 2))
+```
+
+**584,463 mail ballots were rejected — 1.22% of those returned.** That sounds
+small, and nationally it is. Now do it by state.
+
+```{r by-state}
+st$rate <- round(100 * st$mail_rejected / st$mail_returned, 2)
+big <- st[st$mail_returned > 100000, ]
+rbind(head(big[order(-big$rate), c("state","mail_returned","mail_rejected","rate")], 5),
+      head(big[order( big$rate), c("state","mail_returned","mail_rejected","rate")], 4))
+```
+
+```{r state-plot}
+b <- big[order(-big$rate), ]
+barplot(b$rate, names.arg = b$state, las = 2, cex.names = 0.55,
+        col = ifelse(b$rate > 2, "#C41230", "#2c7fb8"),
+        ylab = "% of returned mail ballots rejected")
+abline(h = 100 * rej / ret, lty = 2)
+```
+
+**Oklahoma rejects 4.35% of returned mail ballots. Vermont rejects 0.20%.**
+Among states handling more than 100,000 mail ballots, that is a **twenty-two-fold
+difference** in the chance your ballot is thrown out.
+
+That is not voters behaving differently in Oklahoma. It is **rules** — witness
+requirements, signature matching, postmark deadlines, and whether the state lets
+you fix a problem after the fact. The same act, performed identically, is
+counted in one state and not in another.
+
+Now the part of that ranking nobody checks. Every rate in it is *rejected ÷
+returned*: two separate survey items, each with its own response rate, neither
+answered by the whole country.
+
+> **Before you run the next chunk, answer yes or no.** A missing denominator
+> sounds as though it should behave the way missing data usually does — scatter
+> the rates about a bit, some too high, some too low, no particular direction.
+> **Does it?** Write down yes or no, and if no, write down which way it pushes.
+
+```{r denominator}
+nat[nat$variable %in% c("C9a", "C1b"),
+    c("item", "total", "reported_by", "pct_reporting")]
+
+# States reporting mail ballots sent, but zero returned
+hole <- st[st$mail_sent > 0 & st$mail_returned == 0,
+           c("state", "voters", "mail_sent", "mail_returned", "mail_rejected")]
+hole
+```
+
+> **No. It pushes one way, and then it takes states out of the table
+> altogether.**
+>
+> The denominator is measured worse than the numerator. The rejection count
+> comes from `r nat$pct_reporting[nat$variable == "C9a"]`% of jurisdictions, the
+> returned count from only `r nat$pct_reporting[nat$variable == "C1b"]`%.
+> Wherever an office reports the one and not the other, the denominator is short
+> and the rate comes out **too high** — not noisily, always upward.
+>
+> At state level it stops being subtle. Some `r nrow(hole)` states and
+> territories, with `r format(sum(hole$voters), big.mark = ",")` registered
+> voters between them, report sending mail ballots while reporting that **zero**
+> came back — and `r sum(hole$mail_rejected > 0)` of them go on to report
+> rejecting some of the none that returned. Alabama sent
+> `r format(hole$mail_sent[hole$state == "AL"], big.mark = ",")` and rejected
+> `r format(hole$mail_rejected[hole$state == "AL"], big.mark = ",")`.
+>
+> You cannot compute a rate from that, so Alabama is not at the top of the
+> ranking above and not at the bottom. **It is not in the ranking.** A zero and
+> a missing value look identical once they are in a spreadsheet, and only
+> arithmetic that cannot work reveals the difference. "Oklahoma is
+> `r round(max(big$rate) / min(big$rate))` times worse than Vermont" is a
+> statement about the `r nrow(big)` states that answered both questions.
+> **Non-response is not noise around the estimate; it decides who is eligible to
+> be compared at all** — and the offices likeliest to skip an item are the small,
+> understaffed ones.
+
+# Part 4 — Why they were rejected, and who says
+
+```{r reasons}
+r <- read.csv("data/reasons.csv", stringsAsFactors = FALSE)
+head(r[, c("reason", "ballots", "pct_of_rejected", "reported_by")], 8)
+```
+
+**The single largest reason is a signature that did not match: 197,979 ballots,
+34% of every mail ballot rejected in the country.** A human being compared your
+handwriting to a specimen on file and decided it was not you.
+
+Second is arriving late — 103,441. Third, at 82,366, is **"Other."**
+
+```{r reasons-plot}
+top <- head(r, 6)
+barplot(rev(top$ballots), horiz = TRUE, names.arg = rev(substr(top$reason, 1, 26)),
+        las = 1, cex.names = 0.7, col = "#2c7fb8", xlab = "ballots rejected")
+```
+
+Now the column that matters most, and it is not the count:
+
+```{r reporting}
+r[, c("reason", "ballots", "reported_by")][c(1:3, 17:19), ]
+```
+
+**The total rejected is reported by 6,361 jurisdictions. The reasons are
+reported by as few as 845.** You can find out *how many* ballots were thrown out
+far more reliably than *why* — which is exactly backwards from what anyone
+trying to fix the problem would need.
+
+```{r reason-sum}
+c(stated_total = rej, sum_of_reasons = sum(r$ballots),
+  difference = rej - sum(r$ballots))
+```
+
+The reasons do very nearly add up — a gap of about 3,000 out of 584,463. **That
+is a good sign and it does not rescue the point above.** The categories account
+for the total; the *jurisdictions* reporting each category do not cover the
+country.
+
+# Part 5 — Provisional ballots
+
+```{r prov}
+cast <- nat$total[nat$variable == "E1a"]
+full <- nat$total[nat$variable == "E1b"]
+prej <- nat$total[nat$variable == "E1d"]
+c(cast = cast, counted_in_full = full, rejected = prej,
+  pct_rejected = round(100 * prej / cast, 1))
+```
+
+A provisional ballot is what you get when you turn up and something is wrong —
+you are not on the list, you lack the right ID, you are at the wrong place. It
+is the system's safety net.
+
+**One in four is rejected. 436,258 people.**
+
+That is a far higher failure rate than mail, and it is much less discussed,
+because provisional ballots are issued to exactly the people least likely to
+have anybody advocating for them. Note also that this figure is reported by only
+**79.9%** of jurisdictions, so the real number is larger.
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Provisional by state.** Compute `100 * prov_rejected / prov_cast`
+for states with more than 10,000 provisional ballots. The spread is wider than
+mail. Which states stand out, and what would you need to know before blaming
+either the voters or the rules?
+
+**Option B — Mail take-up.** Part 3 shows 66.9 million ballots sent and 48.0
+million returned — 19 million never came back. Compute that share by state
+(`1 - mail_returned/mail_sent`). Where is it highest, and is an unreturned mail
+ballot evidence of anything?
+
+**Option C — The reporting gap.** Rank the reasons by `reported_by` instead of
+by `ballots`. Which reasons are best reported and which worst? Is there a
+pattern in what election offices find easy to say?
+
+**Option D — Your own question.** 6,461 jurisdictions, 535 columns in the source
+file, and a codebook that tells you what every one of them means.
+
+# What this lab cannot tell you
+
+- **Whether a rejection was correct.** The file records that a ballot was
+  rejected and the reason recorded by the office. It does not record whether the
+  signature really was different, or whether the voter was told, or whether they
+  could fix it.
+- **Who the rejected voters were.** No demographics. Research linking rejection
+  to race and age exists and uses voter files — Session 6's data — matched to
+  administrative records, not this survey.
+- **A clean national total.** Response is 80–99% depending on the item, and the
+  non-response is not random. Everything here is a floor.
+- **Comparisons across states without care.** Different rules, different units,
+  different definitions of the same word. That is not a defect in the survey; it
+  is a fact about American elections that the survey is honest enough to expose.
+- **What happened in 2026.** This is 2024. The 2026 EAVS will not be published
+  until mid-2027 — long after the election we watched in Session 10.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- Your ballot is 22 times likelier to be rejected in Oklahoma than in Vermont.
+  Is that a problem, and whose?
+- One in four provisional ballots is rejected. Should the safety net work better
+  than that, or is that what a safety net looks like?
+- The count of rejections is well reported; the reasons are not. Who benefits
+  from that asymmetry, if anyone?
+
+***
+
+### Where the data came from
+
+U.S. Election Assistance Commission, **Election Administration and Voting
+Survey, 2024, Version 2** (released 12 February 2026), 6,461 jurisdictions and
+535 columns, with the official codebook.
+<https://www.eac.gov/research-and-data/datasets-codebooks-and-surveys>
+
+**Version 2, not Version 1** — V1 was corrected, and the EAC publishes an errata
+note listing what changed. A lab built on V1 would disagree with the EAC's own
+report.
+
+Three traps handled in `data/build-data.R`: missing values are coded **−99 and
+−88** rather than left blank, so anything summing a raw column gets nonsense;
+the file contains **embedded newlines** inside comment fields, so counting lines
+gives 17,013 for a file with 6,461 rows; and **"jurisdiction" means different
+things in different states.**

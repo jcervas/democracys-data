@@ -1,0 +1,636 @@
+---
+title: "Key: The District That Was Not Drawn"
+subtitle: "84-355 Democracy's Data | Vote dilution, Houston County, Georgia | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+
+b  <- read.csv("data/blocks.csv", colClasses = c(GEOID20 = "character"))
+a  <- read.csv("data/adjacency.csv")
+d  <- read.csv("data/districts.csv",  stringsAsFactors = FALSE)
+tr <- read.csv("data/tradeoff.csv",   stringsAsFactors = FALSE)
+sw <- read.csv("data/seed_sweep.csv", stringsAsFactors = FALSE)
+cu <- read.csv("data/ga_county_units.csv", colClasses = c(fips = "character"))
+sg <- read.csv("data/segregation.csv", stringsAsFactors = FALSE)
+
+# grow() and score() are the lab's own, copied verbatim, plus a num/den argument
+# so Option C can be run without editing the body.
+nb <- split(c(a$a, a$b), c(a$b, a$a))
+NB <- vector("list", nrow(b)); NB[as.integer(names(nb))] <- nb
+grow <- function(seed, target, reach = Inf, num = "vap_black", den = "vap") {
+  inn <- logical(nrow(b)); inn[seed] <- TRUE
+  P <- b$pop[seed]; N <- b[[num]][seed]; D <- b[[den]][seed]
+  cx <- b$x_km[seed]; cy <- b$y_km[seed]; fr <- NB[[seed]]
+  while (P < target && length(fr)) {
+    if (is.finite(reach) && reach < length(fr)) {
+      dd <- (b$x_km[fr] - cx)^2 + (b$y_km[fr] - cy)^2
+      cand <- fr[order(dd)[seq_len(reach)]]
+    } else cand <- fr
+    pick <- cand[which.max((N + b[[num]][cand]) / pmax(D + b[[den]][cand], 1))]
+    inn[pick] <- TRUE
+    P <- P + b$pop[pick]; N <- N + b[[num]][pick]; D <- D + b[[den]][pick]
+    w <- b$pop[inn] + 1
+    cx <- sum(b$x_km[inn] * w) / sum(w); cy <- sum(b$y_km[inn] * w) / sum(w)
+    fr <- setdiff(unique(c(fr, NB[[pick]])), which(inn))
+  }
+  which(inn)
+}
+score <- function(i) c(population = 100 * sum(b$pop_black[i]) / sum(b$pop[i]),
+                       adults     = 100 * sum(b$vap_black[i]) / sum(b$vap[i]),
+                       registered = 100 * sum(b$reg_black[i]) / sum(b$reg[i]))
+
+# Rounding, so that a live re-run and the stored tables never disagree in the
+# last digit. build-data.R writes its percentages rounded to three decimals, so
+# snap to three first; then round half-UP, because R's round() is half-to-even
+# and would print 41.26 where every other document in this folder prints 41.27.
+r2 <- function(v) floor(100 * round(v, 3) + 0.5) / 100
+pc <- function(x, k = 2)
+  formatC(floor(10^k * round(x, 3) + 0.5) / 10^k, format = "f", digits = k)
+nn <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+
+POP <- sum(b$pop); VAP <- sum(b$vap); REG <- sum(b$reg)
+SH_VAP <- 100 * sum(b$vap_black) / VAP; SH_REG <- 100 * sum(b$reg_black) / REG
+SH_POP <- 100 * sum(b$pop_black) / POP
+ag <- aggregate(pop ~ boe5, b, sum); IDEAL <- mean(ag$pop); IDEAL4 <- POP / 4
+DEV <- 100 * (ag$pop - IDEAL) / IDEAL; DEV_RANGE <- max(DEV) - min(DEV)
+TIMES <- sum(b$vap_black) / (VAP / 5 / 2)
+DISS <- sg$value[1]
+CU_RAT <- max(cu$people_per_unit) / min(cu$people_per_unit)
+o <- cu[order(cu$people_per_unit), ]
+K <- which(cumsum(o$units) >= floor(sum(cu$units) / 2) + 1)[1]
+K_SHR <- 100 * sum(o$pop[seq_len(K)]) / sum(cu$pop)
+
+t5 <- tr[tr$districts == 5, ]; t4 <- tr[tr$districts == 4, ]
+R1  <- t5[t5$reach == 1, ]; RI <- t5[!is.finite(t5$reach), ]
+CROSS <- t5[t5$vap_black_pct > 50, ][1, ]
+WOB <- t5[which.min(t5$vap_black_pct), ]
+f4 <- t4[is.finite(t4$reach) & t4$reach <= 100, ]
+E4 <- d[d$plan == "Enacted BOE district 4", ]
+BEAT   <- sum(t5$vap_black_pct >= E4$vap_black_pct & t5$pp >= E4$pp)
+BLACKER <- sum(t5$vap_black_pct >= E4$vap_black_pct)
+ROUNDER <- sum(t5$pp >= E4$pp)
+CEIL <- d[d$plan == "Ceiling, 5 districts", ]
+
+seed <- which.max(b$vap_black); ord <- order(-b$vap_black)
+
+# Option B: the same 306 seeds the build script swept, re-run at reach = 1.
+HI  <- which(b$vap >= 20 & b$vap_black / pmax(b$vap, 1) > 0.5)
+R1SW <- vapply(HI, function(s) score(grow(s, IDEAL, 1))[2], numeric(1))
+R1SW_SPREAD <- max(R1SW) - min(R1SW)
+SW_SPREAD   <- max(sw$d5_vap_black_pct) - min(sw$d5_vap_black_pct)
+
+# Option C: the two denominators, at both ends of the dial.
+CA1 <- grow(seed, IDEAL, 1);   CR1 <- grow(seed, IDEAL, 1,   "reg_black", "reg")
+CAI <- grow(seed, IDEAL, Inf); CRI <- grow(seed, IDEAL, Inf, "reg_black", "reg")
+JAC <- 100 * length(intersect(CAI, CRI)) / length(union(CAI, CRI))
+
+# Option D
+D41 <- score(grow(seed, IDEAL4, 1)); D4I <- score(grow(seed, IDEAL4, Inf))
+
+# Option A: the value most likely to be tried, computed once and cited twice.
+A150 <- score(grow(seed, IDEAL, 150))[2]
+R100 <- t5$vap_black_pct[t5$reach == 100]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`vote-dilution-brief.Rmd`) and the lab
+(`vote-dilution.Rmd`) run the same sequence — the brief in prose with D3 figures,
+the lab with the code exposed. **Students should read the brief first.** The
+brief numbers its Steps 1–10; the lab numbers the same material Parts 1–10. They
+correspond one to one.
+
+**This is the lab where a confident conclusion is produced, held for two
+sections, and then demolished by a fact that was on the table the whole time.**
+The demolition is the point. Do not let Part 7 arrive as a footnote.
+
+**The law under it moved on 29 April 2026**, and unlike the companion RPV lab,
+here the change lands on the *evidence-production* step rather than the
+estimation step. *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), left *Gingles*
+standing and "update[d]" it. Precondition one now carries two conditions: a
+plaintiff "cannot use race as a districting criterion" in an illustrative map,
+and the map "must meet all the State's legitimate districting objectives,
+including traditional districting criteria and the State's specified political
+goals," achieving them "just as well" as the State's own map (slip op., at 29).
+**The lab's dial is a machine for violating the first condition, deliberately,
+and it cannot even be evaluated against the second.** Both facts are marked in
+the lab and the brief. See *Callais and what it does to this lab*, below.
+
+Every number below was computed from the built files in `data/`.
+
+***
+
+# The session in one sentence
+
+A claim about a district that does not exist can only be settled by building
+one — so the evidence is manufactured by the party that needs it, every choice
+the builder makes moves the answer, and a search that fails proves nothing at
+all.
+
+***
+
+# The findings
+
+```{r headline}
+c(blocks            = nrow(b),
+  population        = POP,
+  black_adults_pct  = r2(SH_VAP),
+  black_reg_pct     = r2(SH_REG),
+  deviation_spread  = r2(DEV_RANGE),
+  large_enough_by   = r2(TIMES),
+  dissimilarity     = DISS,
+  reach1_adults_pct = r2(R1$vap_black_pct),
+  reachInf_adults   = r2(RI$vap_black_pct),
+  enacted_d4_adults = r2(E4$vap_black_pct),
+  enacted_d4_pp     = round(E4$pp, 3),
+  algo_beating_d4   = BEAT)
+```
+
+- **The enacted plan spans `r pc(DEV_RANGE)` points against a 10-point
+  allowance.** Malapportionment is over in one line. That is the setup.
+- **"Sufficiently large" is satisfied `r pc(TIMES)` times over** —
+  `r nn(sum(b$vap_black))` Black adults where a bare majority of one district
+  needs `r nn(VAP / 5 / 2)`.
+- **The dial runs from `r pc(R1$vap_black_pct)`% Black adults at Polsby-Popper
+  `r pc(R1$pp, 3)` to `r pc(RI$vap_black_pct)`% at `r pc(RI$pp, 3)`.** Buying
+  `r pc(RI$vap_black_pct - R1$vap_black_pct, 1)` points of Black share costs a
+  factor of `r pc(R1$pp / RI$pp, 0)` in compactness.
+- **Enacted District 4 is `r pc(E4$vap_black_pct)`% Black among adults at
+  Polsby-Popper `r pc(E4$pp, 3)`.** `r BLACKER` of `r nrow(t5)` algorithm
+  districts are more Black; `r ROUNDER` are more compact; **`r BEAT` are both.**
+- **Where you start barely matters — until race stops driving.** At unlimited
+  reach, `r nrow(sw)` starting blocks span `r pc(SW_SPREAD, 2)` points. At
+  `reach = 1` the same `r nrow(sw)` starting blocks span
+  **`r pc(R1SW_SPREAD, 2)` points.** This is new to the key and it is the best
+  thing in it — see Option B.
+
+***
+
+# The three things to get said
+
+**1. Failing to find something is not evidence that it is not there.** Part 6
+produces an honest, careful, quantified conclusion — *a majority-Black district
+here requires abandoning compactness* — and Part 7 exhibits a district that is
+both more Black and more compact than anything the search produced, and that has
+been enacted law for years. **Make somebody articulate the asymmetry**: exhibiting
+a map settles the question in the affirmative permanently; failing to find one
+settles nothing, because no search of this kind is ever exhaustive. Precondition
+one is provable and not disprovable, and that structural fact is what the fight
+over "what counts as a demonstration map" is really about.
+
+**2. The choice that moves the answer is the one that looks like a setting.**
+Part 9 is deliberately anticlimactic: at the dial's far end the seed does almost
+nothing (`r pc(SW_SPREAD, 2)` points across `r nrow(sw)` restarts) and the dial
+does everything. `reach` is not a statistical parameter with a correct value — it
+encodes *what you think a district is allowed to look like*, which is a legal
+judgment wearing the clothes of a tuning knob. **The lesson is not "analyst
+choices matter." It is that they matter unequally, and the important one was
+disguised.**
+
+Say the scope out loud, because Option B breaks it: *at unlimited reach* the seed
+is nearly irrelevant, and at `reach = 1` it is worth `r pc(R1SW_SPREAD, 2)`
+points. **Which knob matters is itself contingent on where the other knob is
+set**, so "we checked robustness to the starting block" is a claim about one
+configuration and not about the method.
+
+**3. "Majority" has three denominators and they disagree.** Part 8 puts up
+`r nrow(f4)` four-district configurations in which **every single one is
+majority-Black among registered voters and not one is majority-Black among
+voting-age population.** Same blocks, same lines, same people. *Bartlett v.
+Strickland* says a real numerical majority is required and does not say of what.
+**Ask the room to pick before revealing that both answers are defensible.**
+
+**The line for the board:** the map that does not exist is the one the case turns
+on, and somebody has to draw it before anyone can argue about it.
+
+***
+
+# Walking the steps
+
+| Part | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** What you observe | Three Black shares, three denominators | 5 | Point at the three numbers now. Part 8 cashes them. |
+| **2** Dilution by subtraction | `r pc(DEV_RANGE)` points against 10 | 5 | Students expect this to be the lab. It is the setup. |
+| **3** What that rule replaced | County unit rule on 2020 population | 5 | `r pc(CU_RAT, 0)`-to-1. The rule worked so well it stopped being the argument. |
+| **4** The half you cannot subtract | Large enough `r pc(TIMES)`× over; dissimilarity `r DISS` | 7 | **Large and spread evenly beats small and clustered.** Not intuitive. |
+| **5** One algorithm, one dial | `grow()`, and the seed | 8 | Read the seed line aloud. Race picked the starting block. |
+| **6** Turning the dial | The frontier, and the confident conclusion | **11** | **Take the prediction before the table.** Let them commit. |
+| **7** The map already exists | Enacted D4 dominates everything | **10** | **The pivot.** Do not preview it. Do not rush it. |
+| **8** "Majority" of what | `r nrow(f4)` districts, two answers | 6 | Take a vote on the denominator first. |
+| **9** Does the seed matter | `r pc(SW_SPREAD, 2)` points across `r nrow(sw)` restarts | 4 | Anticlimax on purpose. Then Option B breaks it. |
+| **10** Your turn | Five options | 4 | Steer strong students to B or C. |
+
+**Part 6 deserves the prediction, and it is the one prediction in this course
+that almost everybody gets wrong in the same direction.** Before the table, ask
+the room for two numbers: the highest Black share a *contiguous* district of
+`r nn(IDEAL)` people can reach, and how compact that district will be. The county
+is `r pc(SH_VAP)`% Black among adults and holds `r pc(TIMES)` times the Black
+adults a majority district needs, so most students guess something comfortably
+over 50% at a respectable shape. The honest answer at a respectable shape is
+`r pc(R1$vap_black_pct)`%, and the first setting that clears 50% —
+`reach = `r CROSS$reach`` — does it at Polsby-Popper `r pc(CROSS$pp, 3)`,
+about `r pc(R1$pp / CROSS$pp, 0)` times worse than where it started.
+
+**If you are short on time**, protect Parts 6, 7 and 8. The confident conclusion,
+its demolition, and the denominator. Parts 2 and 3 can be compressed to four
+minutes together with no loss.
+
+***
+
+# The pivot, and how to run it
+
+**Do not tell them the enacted map is coming.** The lab is written so Part 6
+reads as a finding and Part 7 reads as a correction, and the sequence only works
+if the room has actually accepted Part 6. Three moves:
+
+1. **Make them write the sentence.** At the end of Part 6, have someone say out
+   loud what an expert would put in a report: *in Houston County a majority-Black
+   district can be constructed only by abandoning compactness.* Nothing in the
+   analysis up to that point is wrong. The arithmetic is right, the frontier is
+   real, the compactness measures are standard.
+2. **Then run Part 7 without commentary.** Print the table. Let them find
+   District 4 in it. `r pc(E4$vap_black_pct)`% at Polsby-Popper
+   `r pc(E4$pp, 3)` — better than every setting on both axes at once.
+3. **Then ask what went wrong.** The productive answers are all about the search
+   and none about the county: it grows from a single seed, it never backtracks,
+   it is greedy, and it only ever builds one district. The unproductive answer is
+   "the algorithm was bad." It was a perfectly ordinary algorithm, and the
+   frontier it traced is a **lower bound** on what a mapmaker can do — which is
+   all any such search can ever produce.
+
+**The wobble is corroborating evidence and worth two minutes.** At
+`reach = `r WOB$reach`` the district *drops* to `r pc(WOB$vap_black_pct)`%,
+below several tighter settings. A greedy search is not guaranteed to be monotone
+in its own parameter. **A student running Option A at `k = 150` will find
+`r pc(A150)`%** — also below `reach = 100`'s
+`r pc(R100)`%. So it is not one bad point; it is
+a whole region where reaching *further* finds *less*. The curve is a property of
+the search, not of the county, and that is exactly the point Part 7 makes
+geometrically.
+
+**Say what Part 7 does not show.** It is not a claim about how the enacted plan
+was drawn or with what in front of whom — that question is not in this file. And
+it is not a comparison of two illustrative maps: an enacted plan and a
+plaintiff's demonstration exhibit are different objects judged by different
+rules. The claim is about evidence, and only about evidence.
+
+***
+
+# *Callais* and what it does to this lab
+
+**The lab got better, not worse, and it is worth saying why.** Before 29 April
+2026 the dial was a nice illustration of researcher degrees of freedom. Now
+every setting except the leftmost describes a practice the Court has
+disqualified, so the dial is also a dated artefact — and students can watch a
+methodological choice become a legal one without any of the underlying numbers
+changing.
+
+Three things to have straight before the room asks.
+
+- **The first condition bites on the dial.** Plaintiffs "cannot use race as a
+  districting criterion." Every point on the Part 6 frontier except `reach = 1`
+  was produced by letting race choose the next block.
+- **The seed is not exempt, and this is the good question.** `reach = 1` takes
+  race out of the *annexation rule* and leaves it in the *starting block*, which
+  is `which.max(b$vap_black)`. If race may not be a districting criterion, a
+  race-chosen seed is a problem too. **Option B is where a student can measure
+  what that choice is worth**, and the answer is: at `reach = 1`, nearly
+  everything.
+- **The second condition is the one nothing here can meet.** An illustrative map
+  must satisfy all the State's legitimate objectives — traditional criteria and
+  "the State's specified political goals" — "just as well" as the enacted map.
+  That needs a complete partition of the county, a statement of Georgia's stated
+  objectives, and election results. **This folder has none of the three.** If a
+  student concludes that `reach = 1` is therefore "the admissible answer," that
+  is a 3, not a 4: `reach = 1` clears the first condition and is untested against
+  the second.
+
+**And the sequel is worth thirty seconds.** Five weeks after *Callais*, the Court
+stayed the renewed injunction in the *Milligan* litigation itself, on the ground
+that the plaintiffs' map had not performed "just as well" on Alabama's stated
+criteria of keeping the Gulf Coast together and avoiding incumbent pairings.
+*Allen v. Milligan*, 608 U.S. \_\_\_ (2026) (per curiam) (June 2, 2026). **The
+plaintiffs who won in 2023 no longer have their district.** Students who read
+*Milligan* as the stable point of this area of law should hear that.
+
+***
+
+# Handling the room
+
+- **Nobody writes code here.** Say it at the top, as always. The `grow()`
+  function is fifteen lines and is printed so that students can see there is no
+  magic in it, not so they can write one.
+- **Somebody will say the exercise is racist.** Take it seriously rather than
+  deflecting, because the observation is correct and the lab is built on it: to
+  find out whether Black voters *could* have a district, the algorithm sorted
+  every block in the county by race. Section 2 remedies require sorting voters by
+  race in order to stop voters being sorted by race. That tension is the subject,
+  it is why *Shaw* and *Miller* exist, and it is what *Callais* claims to
+  resolve. **There is no race-blind way to ask this question**, and saying so
+  plainly is better than any answer that pretends otherwise.
+- **The live case needs one sentence, early.** The instructor is retained by
+  plaintiffs in *Driver v. Houston County*, No. 5:25-cv-00025 (M.D. Ga.). No
+  expert-report material is used, every non-enacted district here was drawn by
+  the printed algorithm, and the lab reaches no legal conclusion. Say it once, at
+  the start, and move on.
+- **Compactness scores are not facts about virtue.** A district bounded by a
+  winding river scores badly for reasons no mapmaker chose, and any district can
+  be made to score better by smoothing a boundary without moving a single voter.
+
+***
+
+# Option A — Move the dial yourself
+
+## Verified output
+
+```{r a}
+t(sapply(c(5, 30, 150), function(k) {
+  g <- grow(seed, IDEAL, k)
+  c(reach = k, blocks = length(g), r2(score(g)))
+}))
+```
+
+For comparison, the settings on either side, from `tradeoff.csv`:
+
+```{r a2}
+print(t5[t5$reach %in% c(4, 6, 24, 40, 100, 200),
+         c("reach", "vap_black_pct", "reg_black_pct", "pp", "reock")],
+      row.names = FALSE)
+```
+
+**3/4:** Runs a value of `k`, reports the Black share, and places it correctly
+between its neighbours on the Part 6 curve.
+
+**4/4:** Answers the second half of the question — could you defend that `k` to a
+judge who asked why you chose it? — and concludes that you could not, because
+`reach` has no meaning outside this program. There is no `k` that corresponds to
+a districting principle, which means the whole curve is a family of arbitrary
+maps and the analyst picks a point on it.
+
+**4/4, best:** Picks `k = 150` (or any value in the 100–200 range) and notices
+that it comes out at **`r pc(A150)`%, below
+`reach = 100`'s `r pc(R100)`%** — so the wobble
+the lab flags at `reach = `r WOB$reach`` is not an isolated point but a region.
+A student who works out *why* a greedy search can do worse with more options
+(early annexations foreclose later ones; the centroid drifts and changes what
+counts as "near") has understood that the frontier is an artefact of the
+procedure. That is the same lesson as Part 7, reached independently.
+
+***
+
+# Option B — Start somewhere else
+
+**This is the most valuable option in the lab and the one to steer good students
+toward.** It produces a result that contradicts the lab's own Part 9, and the
+contradiction is correct.
+
+## Verified output
+
+```{r b}
+t(sapply(c(1, 10, 50), function(i) {
+  s <- ord[i]
+  c(rank = i, seed_black_adults = b$vap_black[s],
+    reach1_adults   = unname(r2(score(grow(s, IDEAL, 1))[2])),
+    reachInf_adults = unname(r2(score(grow(s, IDEAL, Inf))[2])))
+}))
+```
+
+The full sweep — the same `r nrow(sw)` starting blocks the build script used,
+re-run at `reach = 1`:
+
+```{r b2}
+c(seeds             = length(R1SW),
+  reach1_min        = r2(min(R1SW)),
+  reach1_max        = r2(max(R1SW)),
+  reach1_sd         = r2(sd(R1SW)),
+  reach1_spread     = r2(R1SW_SPREAD),
+  reachInf_spread   = r2(SW_SPREAD),
+  reachInf_sd       = r2(sd(sw$d5_vap_black_pct)),
+  reach1_over_50    = sum(R1SW > 50))
+```
+
+**Part 9 says the seed barely matters. Part 9 is measuring the race-aware
+algorithm.** At unlimited reach the seed is nearly irrelevant —
+`r pc(SW_SPREAD, 2)` points across `r nrow(sw)` restarts — because the search
+reaches far enough to find the same Black population wherever it starts. At
+`reach = 1` the same `r nrow(sw)` restarts span **`r pc(R1SW_SPREAD, 2)`
+points**, from `r pc(min(R1SW))`% to `r pc(max(R1SW))`%, a standard deviation of
+`r pc(sd(R1SW))` against `r pc(sd(sw$d5_vap_black_pct))`.
+
+**3/4:** Runs the three seeds, reports that the answers differ more at
+`reach = 1` than the lab's Part 9 suggested.
+
+**4/4:** Explains the mechanism. Unlimited reach can go and get the Black
+population from anywhere in the county, so the starting block washes out; at
+`reach = 1` the district is whatever happens to be adjacent, so it is a
+description of one neighbourhood rather than a search. **The constraint that
+makes the map legally admissible is the same constraint that makes it depend
+almost entirely on an arbitrary choice.**
+
+**4/4, best:** Closes the loop on *Callais*. The seeds were ranked by
+`order(-b$vap_black)` — chosen by race. So the one race-based decision left in
+the `reach = 1` construction is now the decision that determines the answer, and
+it moves it `r pc(R1SW_SPREAD, 2)` points. A student who asks whether a
+`reach = 1` map grown from a race-chosen seed is really a race-blind map, and
+notices that **none of the `r length(R1SW)` race-blind-growth districts clears
+50% anyway** (the best is `r pc(max(R1SW))`%), has produced a better argument
+than the lab makes on its own. Give it a 4 and use it next year.
+
+***
+
+# Option C — Change the denominator
+
+## Verified output
+
+```{r c}
+rbind(
+  `reach 1, max adults`       = r2(score(CA1)),
+  `reach 1, max registered`   = r2(score(CR1)),
+  `reach Inf, max adults`     = r2(score(CAI)),
+  `reach Inf, max registered` = r2(score(CRI)))
+```
+
+```{r c2}
+identical(sort(CA1), sort(CR1))          # reach 1: the very same blocks
+r2(JAC)                                  # reach Inf: % of blocks shared
+```
+
+**The `reach = 1` rows are identical, and that is the finding.** With one
+candidate on the frontier there is no choice to make, so the objective function
+never runs. **The denominator only matters when the dial lets it matter** — which
+means the two analyst choices in this lab are not independent, and a student who
+sees that has spotted something the brief does not say.
+
+At unlimited reach they separate hard. Maximising adults gives
+`r pc(score(CAI)[2])`% of adults and `r pc(score(CAI)[3])`% of registrants;
+maximising registrants gives `r pc(score(CRI)[3])`% of registrants and only
+`r pc(score(CRI)[2])`% of adults. The two districts share
+`r pc(JAC, 1)`% of their blocks.
+
+**3/4:** Swaps the columns, reports that the district changes, and notes the
+Black share is higher on the registered measure.
+
+**4/4:** Answers the normative half. Courts generally use voting-age or
+citizen-voting-age population, and the case for it is that registration is
+*endogenous to the wrong being alleged* — if a group is discouraged from
+registering, using registration as the denominator lets the discouragement
+manufacture the majority. The case for registration is that it measures the
+actual electorate, and *Bartlett*'s concern was whether a group can elect its
+candidate, which registrants do and non-registered adults do not.
+
+**4/4, best:** Notices the `reach = 1` identity above and draws the general
+lesson: **a sensitivity analysis that varies one choice at a time will report
+that the denominator does not matter, because at the defensible setting of the
+other knob it genuinely does not.** That is a real methodological trap and it is
+worth naming for the whole room if a student finds it.
+
+***
+
+# Option D — Four districts instead of five
+
+## Verified output
+
+```{r d}
+rbind(`reach 1`   = r2(D41),
+      `reach Inf` = r2(D4I))
+```
+
+```{r d2}
+print(f4[, c("reach", "pop_black_pct", "vap_black_pct", "reg_black_pct")],
+      row.names = FALSE, digits = 4)
+```
+
+Larger districts, and the arithmetic gets easier: the ideal rises from
+`r nn(IDEAL)` to `r nn(IDEAL4)` people. But **the answer depends entirely on the
+denominator, which is the trap the option is built around.** Across all
+`r nrow(f4)` finite settings at or below `reach = 100`, the Black share of
+registered voters never falls below `r pc(min(f4$reg_black_pct))`% and the Black
+share of adults never rises above `r pc(max(f4$vap_black_pct))`%. Every one of
+them is majority-Black on one measure and not the other.
+
+**3/4:** Re-runs with `ideal4`, reports that the shares are higher than in the
+five-district case, and concludes a majority-Black district is easier.
+
+**4/4:** Refuses to answer "easier or harder" without naming the denominator,
+because on registered voters the four-district configuration clears 50% at every
+finite setting including `reach = 1`, and on voting-age population it clears 50%
+at none of them.
+
+**4/4, best:** Notices that fewer, larger districts is not a neutral change —
+it is a change in the *unit of representation*, and it makes proportionality
+coarser in a way that cuts both directions. A group at `r pc(SH_VAP)`% of adults
+is entitled by proportionality to `r pc(5 * SH_VAP / 100, 2)` of five seats and
+`r pc(4 * SH_VAP / 100, 2)` of four. **Shrinking the board makes each seat worth
+more and makes the group's claim to a whole one weaker**, even as it makes the
+district easier to draw. Reward anyone who gets both halves.
+
+***
+
+# Option E — Your own question
+
+Grade on whether the question could be answered with what is in the folder.
+
+Good ones that have come up:
+
+- *Does the seed's own Black share predict the district's?* It does at
+  `reach = 1` and barely at all at unlimited reach — a clean restatement of
+  Option B.
+- *How many blocks does each district use?* `reach = 1` takes `r R1$blocks`
+  blocks to reach the ideal population; unlimited reach takes `r RI$blocks` —
+  `r pc(RI$blocks / R1$blocks, 1)` times as many for the same people. That ratio
+  is what a tendril looks like numerically.
+- *What if contiguity is dropped entirely?* That is the ceiling already in the
+  lab: `r pc(CEIL$vap_black_pct)`% at Polsby-Popper `r pc(CEIL$pp, 3)`. A
+  student who asks why the ceiling is not simply the answer has understood that
+  "could a district be drawn" means a district somebody could enact.
+
+Questions the folder cannot answer, which should be redirected rather than
+penalised: anything about how anyone voted (no election results are here),
+anything about citizenship (registration is not citizenship), and anything
+requiring a complete five-district plan.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given, and it runs.
+- **The move that earns a 4** is treating the failed search in Part 6 as
+  information about the search rather than about the county. Everything else in
+  the lab is downstream of that distinction.
+- **A 2** is "the algorithm was bad" or "you can make data say anything." Both
+  skip the work. The algorithm was ordinary and the data were not manipulated;
+  that is why the result is disturbing.
+- **Also a 2:** reporting a number off the Part 6 frontier as though it were a
+  fact about Houston County. The frontier is a lower bound.
+- **A 3, not a 4:** concluding that `reach = 1` is "the answer after *Callais*."
+  It satisfies the first condition and is untested against the second, and its
+  own value swings `r pc(R1SW_SPREAD, 2)` points on the seed.
+- **Reward anyone who asks what a *complete plan* would have shown.** The
+  algorithm builds one district and stops; a real demonstration plan assigns
+  every block and holds all five inside the population band at once. Noticing
+  that the lab answers an easier question than a court would ask is the most
+  sophisticated available response, and it is not stated anywhere in the lab
+  except in the limitations.
+
+## Anticipated questions
+
+- *"Why not just look at the enacted map from the start?"* — Because in a real
+  case the map you need does not exist; that is the entire difficulty. The
+  enacted plan is available here as an answer key, and answer keys are what this
+  course uses to grade methods that are normally unfalsifiable. Same move as the
+  BISG and RPV labs.
+- *"Isn't Polsby-Popper just a bad measure?"* — It has real defects, and Duchin
+  and Tenner (2024) argue the whole contour-based family shares them. But the
+  qualitative result here does not depend on the measure: Reock moves the same
+  way, from `r pc(R1$reock, 3)` to `r pc(RI$reock, 3)`. Two contour measures are
+  one limitation, not two independent checks — say that too.
+- *"Could a second majority-Black district be drawn?"* — Unknown, and the lab
+  cannot say. The algorithm builds one district and stops. A complete plan can
+  fail for reasons having nothing to do with the group, such as running out of
+  population in the right places.
+- *"Is `reach = 1` what an expert would actually file now?"* — No. It is the only
+  end of *this* dial that survives the first *Callais* condition, which is not
+  the same as being an admissible demonstration map. Nobody yet knows what the
+  procedure is; the Court required the showing and did not specify how to make
+  it.
+- *"The registration file has race on it — why is the census used at all?"* —
+  Because registration is endogenous to the claim and the census is not, and
+  because *Bartlett* is generally read against voting-age population. Part 8 is
+  the demonstration that this is a choice and not a technicality.
+- *"Did we prove Houston County dilutes anyone's vote?"* — No, and do not let
+  this become a finding about the county. Nothing here touches preconditions two
+  and three or the totality of the circumstances. **Precondition one is a
+  threshold, not a verdict.**
+
+## Connections
+
+- **`rpv`** — preconditions two and three, same county, same registration
+  file. Run it first; this lab assumes the room already knows what a *Gingles*
+  precondition is. The two labs also split *Callais* cleanly between them: the
+  RPV lab gets the party-control requirement, this one gets the illustrative-map
+  conditions.
+- **`bisg-check` and `surnames`** — where the self-reported race
+  on the registration file comes from, and what the any-part-Black definition
+  costs.
+- **`areal-units`** — districting is the zoning effect deployed on purpose.
+  `r nn(nrow(b))` blocks re-bundled into five districts give different summary
+  numbers depending only on where the lines fall; that lab is the general case
+  and this one is the consequential instance.
+- **`precinct-geography`** — the other lab where two defensible methods on the
+  same data disagree about something basic. Pair the two if you want the
+  methodological point to land twice.
+- **`apportionment`** — the other place a technical rule with no obvious
+  politics turns out to allocate something people care about, and the other place
+  equal population is the whole argument.

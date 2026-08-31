@@ -1,0 +1,192 @@
+---
+title: "How Many People Live in Allegheny County?"
+subtitle: "One question, a shelf of published answers, and how to say which one you mean"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("census-access-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Ask the Census Bureau how many people live in Allegheny County and you will get an answer. Ask again somewhere else and you may get a different one. Both will be official, both current, and neither wrong.
+
+That is the subject here. The Bureau runs three population programs, not one. Each answers a slightly different version of the question. Each publishes on its own schedule, and each leaves its older answers in print. So the population of Allegheny County is not a number you look up. It is a shelf of numbers, and the skill is knowing which one to take down.
+
+## Three programs, three kinds of number
+
+**The decennial census counts.** Every household in the country is asked, once a decade, and the answer is an actual head count on one day. For Allegheny County on 1 April 2020 that count was **`r n(FV("dec_all"))`**. Nothing else the Bureau publishes is a count. How the counting works, and who it misses, is in the [decennial chapter](../census-decennial/census-decennial-brief.html).
+
+**The American Community Survey asks a sample.** About 3.5 million addresses a year, continuously. It publishes an estimate rather than a count, and it pools either one year or five years of answers together before publishing. The [survey chapter](../census-acs/census-acs-brief.html) covers why there are two windows.
+
+**The Population Estimates Program calculates.** Nobody is asked anything. The last census count is carried forward with births, deaths and moves, year by year, to produce a figure for 1 July. The newest one for Allegheny County is **`r n(FV("pep_newest"))`**. The arithmetic is in the [estimates chapter](../census-pep/census-pep-brief.html).
+
+A count, a survey and a calculation will not agree, and there is no reason they should. They are answering different questions about a county whose population was changing the whole time.
+
+## One file, four tables, two populations
+
+The ambiguity starts before you leave a single file. The 2020 census publishes its county numbers in a redistricting file with four tables in it, named P1 through P4. Reading the labels, you might expect four populations. There are two.
+
+Tables **P1** and **P2** both total everybody: `r n(FV("dec_all"))` people. They differ only in how they break that total apart, P1 by race and P2 by Hispanic origin. Tables **P3** and **P4** do the same job for the population aged 18 and over, which is **`r n(FV("dec_adult"))`** — `r pc(FV("dec_adult_share"))`% of the whole.
+
+**So "the 2020 census population of Allegheny County" is already two different numbers**, `r n(FV("dec_all"))` and `r n(FV("dec_adult"))`, and they are `r n(FN("dec_all") - FN("dec_adult"))` people apart. Which one you want depends on the question. Apportioning seats in Congress uses everybody. Drawing districts of equal voting strength often uses the 18-and-over figure instead. Nothing in the file's name tells you that.
+
+> **Before you read on, commit to two numbers.** The Bureau currently has
+> several separate figures in print for the population of this one county.
+> **How many do you think there are, and how far apart are the highest and the
+> lowest?** Write both down.
+
+## Every answer currently in print
+
+Here is the shelf. Every row is a figure the Census Bureau publishes today for one county, and every one of them is current in the sense that nothing has been withdrawn.
+
+```{r catalog}
+```
+
+**`r FV("catalog_rows")` published figures, `r FV("catalog_all")` of which count everybody.** Among those `r FV("catalog_all")`, the highest is `r n(FV("cat_high"))` and the lowest is `r n(FV("cat_low"))`. The gap between them is **`r n(FV("cat_spread"))` people**, or `r pc(FV("cat_spread_pct"), 2)`% of the county.
+
+```{r catfig, fig.cap="Every published figure that counts everybody, plotted against the date or period it describes. Survey estimates are drawn as rings and the other two programs as solid dots, so a ring with a dot inside it is two products publishing one number. At the top left the census count hides the estimates base, which sits three people away. The 2010 count is off the left edge and is left out to keep the recent figures readable."}
+```
+
+Read the picture rather than the numbers. The figures do not scatter at random. They fall in step with the date each one describes, because the county has been losing people. The correlation between the two is `r FV("time_corr")`, where -1 would be a perfect straight line down. **The spread is mostly not disagreement. It is time.**
+
+That is the first practical rule. When two Census figures differ, ask what date each refers to before asking which is right.
+
+## The same date, published five times
+
+The calculation has a second habit, and it catches people who have already learned the first one. **Every year the estimates program republishes its whole series, revised, back to the last census.** The label on that release is called a *vintage* — the year the Bureau did the arithmetic, not the year the number describes.
+
+So a single date has been published over and over, with a different answer each time.
+
+```{r samedate}
+```
+
+**1 July `r FV("pep_worst_year")` has been published `r FV("pep_worst_times")` times, and the published value moves `r n(FV("pep_worst_spread"))` people across those releases.** That date is fixed. The population on it is fixed. Only the Bureau's estimate of it has changed, as later information arrived.
+
+```{r revfig, fig.cap="Each line is one reference date; each point is a separate vintage's estimate of it. A date does not settle once it is published."}
+```
+
+Allegheny County is not unusual in this. Taking the reference date that moved most, and asking the same question of every county in the country: **`r FV("rev_unchanged")` of `r n(FV("rev_counties"))` counties kept the same published value across every vintage.** The middle county moved by `r pc(FV("rev_median_pct"), 2)`%, and `r n(FV("rev_over_1pct"))` counties moved by more than one per cent.
+
+The practical rule follows. **Cite the vintage, not just the year.** "The 2021 population estimate" names five different numbers.
+
+## Two of these rows are the same number
+
+Look back at the catalog and something odd is sitting in it. The one-year survey estimate for 2024 and the vintage 2024 calculation are both `r n(catalog$population[catalog$product == "one-year 2024, table B01003"])`. That is not a coincidence, and it is not rounding.
+
+```{r overlap}
+```
+
+**The one-year survey figure for a county's total population is the calculated estimate for that year.** Not close to it. The same number, in `r n(FV("one_year_exact"))` of `r n(FV("one_year_counties"))` comparisons across four years of files. The Bureau forces its survey totals to agree with the estimates before publishing them, so asking the survey for a county's population returns the calculation wearing a survey's label.
+
+One county in the whole country is an exception. The two figures for `r FV("one_year_odd")` differ in every year tested, by at most `r FV("one_year_odd_max")` people. Why that county and no other is not something the files say.
+
+The five-year figure behaves differently, and the contrast is what makes the result above worth trusting. It matches no published estimate for any year: the best any single year manages is `r FV("five_year_best")` counties out of `r n(FV("five_year_counties"))`. Five years of answers get pooled, so the total is tied to five years of estimates at once and lands on none of them.
+
+**This matters when you are tempted to average.** Two sources that agree feel like confirmation. Here, one of them is the other, and averaging them counts a single number twice.
+
+## Allegheny is not the case, it is the illustration
+
+The same shelf exists for every county. Taking the current figures from all three programs, county by county:
+
+- **`r n(FV("nat_counties"))` counties** carry at least one figure from each.
+- **`r FV("nat_agree")` of them** have every figure agreeing.
+- The middle county's figures span **`r pc(FV("nat_median_pct"), 2)`%** of its
+  largest.
+- **`r n(FV("nat_over_5"))` counties** span more than five per cent.
+
+Read those numbers with the first rule in mind. Much of that spread is real population change between the dates the figures refer to, not disagreement about a shared moment. That is the point rather than a caveat. A figure with no date attached is not a population, and the country's counties will not let you pretend otherwise.
+
+## Where each one lives
+
+Three addresses serve all of this, and they do not carry the same things.
+
+```{r routes}
+```
+
+The interface publishes an index of its own holdings, and that index is public and needs no key. It is the honest way to ask a route what it carries, and it also shows what a route is missing.
+
+```{r apiv}
+```
+
+**County population estimates stop at vintage `r FV("api_pep_latest")` there.** The `r FV("api_pep_missing")` newer vintages exist, and they are the ones in the table above, but they are published as files and not through the interface. A script that reaches for the newest estimates by that route will quietly get an old one.
+
+Two more things are worth knowing before you go looking.
+
+**There is no 2020 one-year survey.** Response rates during the pandemic were too low for the Bureau to publish the standard series, so it did not. The address for that file answers `r FV("acs1_2020_http")`, and the year is missing from the index as well. A gap in a series is not always an error in your code.
+
+**The one-year survey does not cover most counties.** It publishes `r n(FV("acs1_counties"))` county rows against the five-year file's `r n(FV("acs5_counties"))`, so **`r n(FV("acs_only_5yr"))` counties appear in one and not the other**. A sample thin enough to cover a small county reliably does not exist in a single year.
+
+## Naming a number so somebody else can find it
+
+Everything above collapses into one habit. **Name the product, the vintage and the date before you name the number.**
+
+```{r rounded, include=FALSE}
+```
+
+"Allegheny County has about `r pc(common, 2)` million people" is not checkable. `r n_common` rows of the catalog round to that figure. They refer to `r n_period` different periods and hold `r n_value` distinct values, and `r n_twice` of those values each appear twice. A reader cannot get back to what you used.
+
+These are checkable:
+
+- the 2020 census counted **`r n(FV("dec_all"))`** people there, on 1 April 2020
+- the 2020–2024 five-year survey estimates
+  **`r n(catalog$population[catalog$product == "five-year 2020-2024, table B01003"])`**
+- the vintage 2025 estimate for 1 July 2025 is **`r n(FV("pep_newest"))`**
+
+Each one names a file somebody else can open. That is the whole difference.
+
+The same discipline applies to boundaries, which have vintages too. A county whose lines moved between two releases will fail to join, silently, and the [geography chapter](../census-geography/census-geography-brief.html) works through what that does to a map.
+
+## What this chapter cannot tell you
+
+**It does not say which figure is right.** The question has no answer in that form. A count on one day, a five-year average and a calculation for last July are three different quantities. Which you want follows from what you are asking, and nothing in the data can choose for you.
+
+**It does not explain how the calculation is made.** That the published value for a fixed date moves across vintages is shown here. Why it moves is not. Which records arrived late, and which assumption was revised, is the subject of the [estimates chapter](../census-pep/census-pep-brief.html).
+
+**It follows one table.** Total population is a single table out of thousands the Bureau publishes. Income, age, language and the rest each have their own products and their own vintages, and the same discipline applies to all of them.
+
+**The shelf will have changed by the time you read this.** A new vintage arrives each spring and a new survey release each winter. The figures here were fetched in August 2026. The pattern is durable; the particular numbers are not, and a rebuild that returns different values has not gone wrong.
+
+## Sources
+
+- U.S. Census Bureau. *2020 Census P.L. 94-171 Redistricting Data Summary
+  File*, Pennsylvania, tables P1 through P4.
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
+- U.S. Census Bureau. *American Community Survey*, table B01003, one-year and
+  five-year releases for 2021 through 2024, from the table-based summary file.
+  <https://www2.census.gov/programs-surveys/acs/summary_file/>
+- U.S. Census Bureau. *County Population Totals*, vintages 2021 through 2025,
+  and the 2010–2020 series that carries the 2010 count.
+  <https://www2.census.gov/programs-surveys/popest/datasets/>
+- U.S. Census Bureau. *Census Data API discovery index*, the public catalog of
+  every dataset the interface serves. <https://api.census.gov/data.json>
+- The control relationship that makes a one-year survey total equal to a
+  population estimate is documented by the Bureau in *Understanding and Using
+  American Community Survey Data*, and taken apart from the survey's side in
+  the [ACS chapter](../census-acs/census-acs-brief.html).
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`api_vintages.csv`](data/derived/api_vintages.csv), [`catalog.csv`](data/derived/catalog.csv), [`pep_revisions.csv`](data/derived/pep_revisions.csv), [`pep_same_date.csv`](data/derived/pep_same_date.csv), [`route_overlap.csv`](data/derived/route_overlap.csv), [`routes.csv`](data/derived/routes.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `catalog.csv` lists every published answer to a single question. Sort by `population`. How far apart are the highest and the lowest, and are they even measuring the same thing?
+- `pep_same_date.csv` shows one date published several times with a different number each time. Look at `spread`. Which of them is the population of that day?
+- `pep_revisions.csv` follows one year's estimate as later vintages revise it. Do the revisions drift steadily one way, or wobble around?
+- `routes.csv` sets out three ways to reach the same number and what each one costs you. Decide the question you would actually ask, then say which route you would take.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

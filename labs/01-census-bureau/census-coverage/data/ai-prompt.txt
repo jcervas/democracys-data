@@ -1,0 +1,55 @@
+I want to rebuild a public dataset from its original sources, without
+any starting files. Please do the following and show your work.
+
+THE SOURCES. U.S. Census Bureau, three of them, all open, no key.
+1. "Census Coverage Estimates for People in the United States by
+   State and Census Operations", Post-Enumeration Survey report
+   PES20-G-02, May 2022:
+   https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/census-coverage-estimates-for-people-in-the-united-states-by-state-and-census-operations.pdf
+   Appendix Table 3 is the state table: for each state, the census
+   count, the estimated net coverage error, its standard error, and
+   an asterisk wherever the Bureau stands behind a direction.
+2. "National Census Coverage Estimates for People in the United
+   States by Demographic Characteristics", report PES20-G-01, March
+   2022:
+   https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/national-census-coverage-estimates-by-demographic-characteristics.pdf
+   National estimates by race and Hispanic origin, by age and sex,
+   and by whether the home is owned or rented.
+3. The 2020 Census self-response rates, one CSV of about 7.6 MB:
+   https://www2.census.gov/programs-surveys/decennial/2020/data/tracking-response-rates/self-response-rates-map/decennialrr2020.csv
+   One row per geography, from the nation down to tracts.
+
+HOW TO READ THEM. The two reports exist only as PDF -- no CSV, no
+API, no spreadsheet anywhere on the Bureau's site. Extract the text
+with a layout-preserving tool (poppler's pdftotext with its -layout
+flag works) and parse the tables out of the text. Two traps. In the
+PDFs, negative numbers are printed with an en dash rather than a
+hyphen-minus; convert it or every undercount refuses to be a number.
+In the rates CSV, the column you want is CRRALL, the cumulative
+self-response rate. The columns CMAX and CINTMAX read like final
+rates and are nothing of the sort: they are the maximum over the
+geographies inside each row's area. Alabama's CRRALL is 63.6; its
+CMAX is 77.8, and the second number is some tract in Alabama, not
+Alabama.
+
+WHAT TO BUILD.
+1. The state table: 50 states and DC, each with its net coverage
+   estimate, its standard error, and whether the Bureau marked it --
+   and a count of the marked ones, split undercount against
+   overcount.
+2. The national estimates by demographic group, from the second
+   report, with their standard errors.
+3. Self-response by state from CRRALL, plus the national rate.
+
+CHECK YOUR WORK. The copies this book used were fetched in August
+2026. If your rebuild matches them, you should find:
+- a national net coverage estimate of -0.24%, printed identically in
+  all four tables of the demographic report
+- the Bureau marks 14 of the 51 state estimates: six undercounts and
+  eight overcounts
+- state standard errors run from 0.65 to 4.93 percentage points
+- the rates file has 123,248 rows, and the national self-response
+  rate is 67.0%
+Everything here is final: the PES reports will not be revised, the
+rates file stopped moving in 2021, and the next survey of this kind
+follows the 2030 census.

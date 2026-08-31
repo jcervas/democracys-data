@@ -1,0 +1,252 @@
+---
+title: "Data Session 2 Key, part 2: Who Counts, and How"
+subtitle: "84-355 Democracy's Data | Session 2 — The decennial census | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+d <- read.csv("data/pl94171_counties.csv", stringsAsFactors = FALSE,
+              colClasses = c(fips = "character"))
+st <- aggregate(cbind(total, white, nh_white, hispanic, other_race,
+                      two_or_more) ~ state, data = d, FUN = sum)
+st$white_pct   <- round(100 * st$white / st$total, 1)
+st$nhwhite_pct <- round(100 * st$nh_white / st$total, 1)
+st$gap         <- round(st$white_pct - st$nhwhite_pct, 1)
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+The census is not a photograph of the country; it is an instrument with
+categories chosen by people, and both the categories and the residence rules
+change who ends up represented.
+
+***
+
+# The findings
+
+```{r headline}
+st[order(-st$gap), c("state", "total", "white_pct", "nhwhite_pct", "gap")]
+st$other_pct <- round(100 * st$other_race / st$total, 1)
+st$two_pct   <- round(100 * st$two_or_more / st$total, 1)
+st[order(-st$other_pct), c("state", "other_pct", "two_pct")]
+```
+
+1. **Two answers to one question.** New Mexico is **51.0%** white by the race
+   question and **36.5%** non-Hispanic white — a **14.5-point gap**, a ratio of
+   **1.40**. Texas 10.4. Mississippi 0.6.
+2. **Refusal.** **15.0%** of New Mexicans and **13.6%** of Texans chose "Some
+   Other Race."
+3. **Multiracial reporting varies six-fold** — Hawaii 25.3%, Mississippi 3.7%.
+4. **Forest County, Pennsylvania is 38.0% incarcerated** — 2,653 of 6,973.
+
+***
+
+# The three things to teach
+
+**The gap is a seam, not an error.** Race and Hispanic origin are separate
+questions because the United States has never settled whether "Hispanic" names an
+ethnicity, a race, a language group, or a national origin. Students should leave
+able to ask "which measure?" whenever they see a figure for white population.
+
+**"Some Other Race" is a finding, not a residual — and Part 4 now measures it.**
+Of the 7,072,769 people in these six states who rejected every race box,
+**6,684,740 are Hispanic: 94.5%.** The residual category on the race question is,
+in practice, an ethnicity box.
+
+That number is the headline of the lab and the sharpest evidence in the course
+for Scott's argument: the state must simplify, the simplification does not fit
+the people, and the form records their refusal as though it were an answer.
+Connect it explicitly to *Seeing Like a State*, and to Tuesday's debate —
+**this is what "constructed rather than discovered" looks like as a measurement
+rather than a slogan.**
+
+Two cautions when you put it on the board. It is **six states**, chosen precisely
+because race and ethnicity pull apart in them, so it is not a national figure.
+And the causation runs both ways: the box is used by Hispanic respondents
+*because* the form separates race from origin, so this is evidence about the
+instrument, not about the people.
+
+**Residence rules are redistricting rules.** Forest County is the sharpest case.
+The counting is lawful, the map-drawing is lawful, and the result is a county
+whose population is more than a third people who cannot vote there.
+
+***
+
+# Option A — The gap, county by county
+
+## Verified output
+
+```{r a}
+s <- d[d$state == "Texas", ]
+s$white_pct   <- 100 * s$white / s$total
+s$nhwhite_pct <- 100 * s$nh_white / s$total
+s$gap <- s$white_pct - s$nhwhite_pct
+head(s[order(-s$gap), c("county", "total", "white_pct", "nhwhite_pct", "gap")], 6)
+```
+
+The largest Texas gaps are all border and South Texas counties — the same
+counties students met in Session 4's swing analysis (Maverick, Webb, Starr).
+
+## What a good answer says
+
+**3/4:** Identifies that every point falls below the diagonal, names the
+high-gap counties, and connects them to large Hispanic populations.
+
+**4/4:** Answers the redistricting question with the right distinction. For a
+Voting Rights Act §2 claim about Latino vote dilution, the relevant population is
+Hispanic — so the race-only measure is actively misleading and non-Hispanic white
+is the right denominator. For a story about, say, the racial composition of a
+school district, the answer may differ. The measure follows the question, and a
+figure reported without saying which measure was used cannot be checked.
+
+**4/4, best:** notices that this is the same county set as Session 4's largest
+Republican swings, and asks whether a population that the census struggles to
+classify is also one that political analysis struggles to predict.
+
+***
+
+# Option B — Who is warehoused where
+
+## Verified output
+
+```{r b}
+for (k in c("gq_correctional", "gq_college", "gq_nursing")) {
+  d$share <- 100 * d[[k]] / d$total
+  cat("\n", k, "\n"); print(head(d[order(-d$share),
+    c("county", "state", "total", k, "share")], 4))
+}
+```
+
+Correctional: **Forest PA 38.0%**, Issaquena MS 36.8%, Hudspeth TX 31.1%.
+College: Tompkins NY 12.4%, Centre PA 9.0%.
+
+Note that every top county is small. The percentage is driven as much by the
+denominator as by the facility.
+
+## What a good answer says
+
+**3/4:** Observes that the top counties are small and rural, and states the
+representation problem.
+
+**4/4:** Separates the two objections cleanly, which is what the question asks.
+Prison gerrymandering combines (a) counting people where they are held and
+(b) denying them the vote there. Colleges have (a) without (b), and almost nobody
+objects. So the objection rests on the *combination* — and a student who works
+that out has done real analytical work.
+
+**4/4, best:** answers the counterfactual honestly. If incarcerated people could
+vote where held, the transfer of representation from urban to rural counties
+would remain, but the people transferred would at least have a say in it. That is
+better and not obviously fine, because the community they came from still loses
+the count. The problem is genuinely about *both* things.
+
+**Common stumble:** assuming these counties chose to host prisons in order to
+gain representation. Some sought the jobs; the representation effect is mostly a
+by-product. Do not let students over-claim intent.
+
+***
+
+# Option C — How much does the question shape the answer?
+
+## Verified output
+
+```{r c}
+m <- data.frame(state = st$state, race_only = st$white_pct,
+                both = st$nhwhite_pct,
+                hispanic_pct = round(100 * st$hispanic / st$total, 1))
+m$ratio <- round(m$race_only / m$both, 2)
+m[order(-m$ratio), ]
+round(cor(m$hispanic_pct, m$race_only - m$both), 3)
+```
+
+Correlation between Hispanic share and the gap: **0.982**. Nearly deterministic,
+as it must be — the gap *is* the Hispanic-and-white population.
+
+## What a good answer says
+
+**3/4:** Reports the ratio, notes New Mexico at 1.40, and recognises the
+correlation is near-mechanical.
+
+**4/4:** Does not treat 0.98 as a discovery. The interesting question is the one
+about Hawaii: the smallest gap of the six states and the lowest white share,
+because Hawaii's diversity is Asian and Pacific Islander rather than Hispanic —
+so the race/ethnicity seam simply does not run through it. A quarter of the state
+reports two or more races, which the categories handle by multiplying into 63
+combinations rather than by asking a better question.
+
+**4/4, best:** proposes what a combined race-and-ethnicity question would gain
+and lose. It would end the two-answers problem and make trend comparison to
+earlier decades impossible. That is the actual trade the Bureau faces for 2030,
+and a student who states it fairly has understood that there is no option without
+a cost.
+
+***
+
+# Option D — Their own question
+
+Home counties work well. Hawaii's five counties versus Mississippi's eighty-two
+is a productive comparison.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating a category as a decision rather than a
+  fact. Students arrive believing that race is something the census *measures*;
+  the lab works if they leave believing it is something the census *constructs*,
+  without sliding into thinking the numbers are therefore meaningless.
+- **Reward students who ask "which measure?"** That habit is the most portable
+  thing here.
+
+## Anticipated questions
+
+- *"Which number is right, 51% or 36.5%?"* — Both. They answer different
+  questions. This will come up immediately and is worth the whole first ten
+  minutes.
+- *"Why is Hispanic not a race?"* — Because OMB Directive 15 says so, and because
+  no alternative has commanded agreement. The 2030 question may merge them.
+- *"Is the noise a problem?"* — At county level, small. At block level, where
+  districts are actually drawn, larger and contested. Alabama sued over it and
+  lost. Do not overstate: state totals are exact.
+- *"Can prisoners vote anywhere?"* — Varies by state; in Pennsylvania,
+  incarcerated felons cannot vote, though people held pre-trial can. Maine and
+  Vermont allow voting from prison.
+- *"Why only six states?"* — Each state file is about 300 MB. Six was enough to
+  make the seam visible. `data/build-data.R` will add more if you want them.
+
+## Connections forward
+
+- **Session 3 (the ACS and §203)** runs directly off this file's categories — the language
+  minority groups are defined in these terms, and the thresholds are applied to
+  ACS estimates of the same populations.
+- **Session 7 (surnames and BISG)** uses exactly the six categories students met in Part 2,
+  and the same suppression logic.
+- **The Dec 3 wrap (redistricting)** is where the group-quarters material pays off. Ask
+  what Forest County does to a Pennsylvania state senate district.
+- **`apportionment`, the other lab in this same session** — students computed how seats are allocated. This is
+  the count those seats are allocated from.
+
+## Provenance note
+
+The structure of this lab — race, then ethnicity as a second dimension, then the
+question of what the categories accomplish — is adapted from Moon Duchin's
+PUBPOL 2130 (*Data and the State*, Cornell), ported from Python to base R. The
+Tuesday readings (Scott; Nobles) are hers.

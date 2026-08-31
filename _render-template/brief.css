@@ -1,0 +1,730 @@
+/* ============================================================
+   Lab-brief screen theme — a wider variant of the syllabus theme.
+
+   A syllabus is a reference document: a 46rem measure is right for
+   prose you scan. A lab brief is an argument carried by figures, and
+   its figures are drawn to a ~760px viewBox and scaled to whatever
+   container they land in. At the syllabus measure they arrive at
+   692px, well under the 910px they get from an unthemed
+   html_document, and the paired maps stop being legible.
+
+   So this file changes exactly one structural thing — the measure —
+   and layers everything else on top of syllabus.css unchanged.
+
+   USE (from F26/labs/<lab>/, i.e. four levels below _teaching/):
+
+     output:
+       html_document:
+         theme: null
+         css: ../../../../_syllabus-template/brief.css
+         toc: true
+         toc_depth: 2
+         self_contained: true
+         includes:
+           in_header: ../../../../_syllabus-template/syllabus-head.html
+
+   Nothing here is course-specific, and nothing in syllabus.css is
+   modified — the syllabus keeps rendering exactly as it did.
+   ============================================================ */
+
+@import url("syllabus.css");
+
+/* ------------------------------------------------------------
+   THE PAGE PALETTE now lives in syllabus.css, not here.
+
+   It was briefly duplicated in this file, on the assumption that the
+   shared stylesheet was off limits and only briefs should change. That
+   assumption was wrong, and one palette defined twice is a palette that
+   will eventually disagree with itself. syllabus.css carries it, and the
+   syllabus and the briefs are the same document family again.
+
+   What remains below is genuinely brief-specific: the figure colours,
+   the wider measure, the zoom and tooltip furniture, and table
+   alignment. Those have no business in a syllabus.
+   ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------
+   THE MAP PALETTE
+
+   syllabus.css already flips the page between light and dark. The D3
+   figures in a brief did not: they wrote fill="#f6f6f6" land, #333
+   titles and #C41230 arrows straight into SVG presentation attributes,
+   which no media query can reach. On a dark page that left a white slab
+   of country carrying near-black titles, and turned every seam in the
+   figure into a wedge of the new background.
+
+   So the figures name their colours here instead, and set them through
+   classes rather than attributes.
+
+   This block used to add "because var() does not work in a presentation
+   attribute". That is not true -- fill="var(--ink-2)" resolves correctly
+   in current browsers, tested. The real reason to prefer a class stands
+   anyway, and it is the failure mode: if var() ever fails to parse, the
+   attribute is invalid and fill falls back to black, which on this page
+   is invisible. A class that fails to match leaves the text at
+   currentColor, which is readable. Prefer the one that degrades safely.
+
+   The two party colours are not the page accent. They are data, they
+   are conventional, and they have to stay recognisably red and blue in
+   both themes; what changes is only how far each is lifted off the
+   paper. CMU red at #c41230 goes muddy on #15161a, the same reason
+   syllabus.css lifts --accent in dark.
+   ------------------------------------------------------------ */
+:root {
+  --map-land:  #f6f6f6;   /* the country: a shade off --card */
+  --map-edge:  #c9c9c9;   /* state borders */
+  --map-gop:   #c41230;
+  --map-dem:   #2c7fb8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --map-land:  #23262d;
+    --map-edge:  #3d414a;
+    --map-gop:   #f4677f;
+    --map-dem:   #6fa8dc;
+  }
+}
+
+/* Figure elements are classed, not coloured inline. Every D3 figure in
+   every brief uses these five class names. */
+.wind-fig .land { fill: var(--map-land); stroke: var(--map-edge); }
+.wind-fig .gop  { stroke: var(--map-gop); }
+.wind-fig .dem  { stroke: var(--map-dem); }
+.wind-fig .gop-fill { fill: var(--map-gop); }
+.wind-fig .dem-fill { fill: var(--map-dem); }
+.wind-fig .ttl  { fill: var(--ink); }
+.wind-fig .sub  { fill: var(--ink-2); }
+.wind-fig .lbl  { fill: var(--ink-2); }
+.wind-fig .foot { fill: var(--ink-3); }
+.wind-fig .key  { stroke: var(--ink-2); }
+.wind-fig .ttl-stroke { stroke: var(--ink); }
+.wind-fig .bin    { fill: var(--rule); stroke: var(--ink-3); stroke-width: .5; }
+.wind-fig .built  { stroke: var(--built); }
+.wind-fig .built-txt { fill: var(--built); }
+.wind-fig .key-txt   { fill: var(--ink-2); }
+.wind-fig .rule   { stroke: var(--rule); }
+.wind-fig .rule-2 { stroke: var(--rule-2); }
+.wind-fig .gop-txt { fill: var(--map-gop); }
+/* the tooltip is HTML, not SVG, so its party colours need fill AND color */
+.wind-fig .windtip .gop-txt { color: var(--map-gop); }
+.wind-fig .windtip .dem-txt { color: var(--map-dem); }
+.wind-fig .windtip .gop-bg  { background: var(--map-gop); }
+.wind-fig .windtip .dem-bg  { background: var(--map-dem); }
+.wind-fig .dem-txt { fill: var(--map-dem); }
+
+/* ------------------------------------------------------------
+   THE UNFILLED TEXT
+
+   The section above is the right way to colour a figure, and most of the
+   corpus does not do it. An audit of all 104 chapters found 85 places
+   across 29 of them where a d3 text was appended with no fill and no
+   class. SVG defaults such a text to black, and a presentation attribute
+   is out of reach of any media query, so on the dark page they simply
+   are not there. It is not decoration that goes missing: dw-nominate
+   loses its title and both legend keys, retirements loses the two column
+   headings that say what the halves of the chart mean.
+
+   One rule reaches all of them. :not([fill]) matches only the texts that
+   never chose a colour, so a class still wins on specificity, an explicit
+   fill="#444" is left alone, and a d3 axis -- which sets currentColor
+   itself -- is untouched. Verified against all four cases in the browser.
+
+   This is a floor, not a licence. A figure that means a colour should
+   still say so with a class, as the wind-fig block does. The 691 places
+   that hardcode a dark hex are a separate and larger repair; this rule
+   cannot see them, because they did choose a colour, and chose it wrong.
+   ------------------------------------------------------------ */
+svg text:not([fill]) { fill: currentColor; }
+
+/* ------------------------------------------------------------
+   THE DIM FILLS
+
+   691 texts across 76 chapters hardcode a dark hex chosen for a white
+   page: #444 228 times, #333 97, #4E5A63 61 (that last a literal copy of
+   the LIGHT --ink-2 -- a token pasted as a constant stops being a token).
+   On the dark page they sit at 1.5:1 to 1.9:1. Measured: 1,237 of them.
+
+   These selectors lift them onto ink tokens. An author stylesheet
+   outranks a presentation attribute, so no figure has to be edited. Both
+   the 3- and 6-digit spellings are listed and the i flag covers the
+   corpus's mixed casing (#C41230 and #c41230 both occur).
+
+   DARK ONLY. On the light page #444 against #EFF1F2 is about 9:1 and
+   there is nothing wrong with it; remapping there would shift figures
+   that are fine and put the HTML out of step with the LaTeX-drawn PDF.
+
+   THE CATCH, AND .on-mark. This rule assumes a text sits on the page.
+   Hundreds do not -- they are drawn ON a mark, a white bar or a pale
+   cell or a grey swatch, where the dark ink was correct and lifting it
+   gives near-white on near-white. Shipped blind, this rule fixed 1,237
+   labels and broke about 624 that were fine.
+
+   A stylesheet cannot know what a text is painted on; only the render
+   knows. So any text drawn on a light mark must say so with .on-mark,
+   which pins the tokens back to the values the figure was authored with
+   and takes it out of the lift. _lib/check-contrast.js finds every text
+   that needs it -- run it after adding a figure, and treat any finding
+   with a LIGHT background as a missing .on-mark.
+
+   Scoped to text. The same hexes sit on rects and paths, where they are
+   a data encoding and a scale cannot be rewritten one stop at a time.
+   ------------------------------------------------------------ */
+@media (prefers-color-scheme: dark) {
+  /* ink, primary */
+  svg text[fill="#111" i], svg text[fill="#111111" i],
+  svg text[fill="#222" i], svg text[fill="#222222" i],
+  svg text[fill="#333" i], svg text[fill="#333333" i],
+  svg text[fill="#12181D" i]                             { fill: var(--ink); }
+
+  /* ink, secondary */
+  svg text[fill="#444" i], svg text[fill="#444444" i],
+  svg text[fill="#4D4D4D" i],
+  svg text[fill="#555" i], svg text[fill="#555555" i],
+  svg text[fill="#4E5A63" i]                             { fill: var(--ink-2); }
+
+  /* ink, tertiary */
+  svg text[fill="#666" i], svg text[fill="#666666" i],
+  svg text[fill="#777" i], svg text[fill="#777777" i]    { fill: var(--ink-3); }
+
+  /* the party pair -- these two already have dark variants above */
+  svg text[fill="#C41230" i], svg text[fill="#B2182B" i] { fill: var(--map-gop); }
+  svg text[fill="#2C7FB8" i], svg text[fill="#2166AC" i] { fill: var(--map-dem); }
+
+  /* Drawn on a light mark: keep the ink it was authored with. Pinning the
+     tokens rather than re-stating each colour means one class covers every
+     case, and the rules above still resolve -- to what was drawn. */
+  svg text.on-mark {
+    --ink:     #12181D;
+    --ink-2:   #4E5A63;
+    --ink-3:   #76838C;
+    --map-gop: #C41230;
+    --map-dem: #2C7FB8;
+    /* The floor rule sends unfilled text to currentColor, which pinning the
+       tokens does not touch -- currentColor reads `color`, not --ink. An
+       unfilled text was authored black, so on a light mark it goes back to
+       black. Without this line .on-mark silently fails on exactly the texts
+       the floor rule is responsible for. */
+    color:     #12181D;
+  }
+}
+
+/* ------------------------------------------------------------
+   THE PALE INK
+
+   The mirror image of THE DIM FILLS above, and it has to be said plainly
+   because the instinct is to treat them as one problem: they are not, and
+   the two lists are near-disjoint. A dark hex is dim on the dark page and
+   about 9:1 on the light one. A PALE hex is the opposite -- #aaa on
+   #EFF1F2 is 2.05:1, #999 is 2.51:1 -- and those same colours are
+   comfortable on the dark page, which is why the dark audit never saw
+   them. Measured: 164 sites.
+
+   So this block is NOT inside a media query. A pale grey wants to become
+   tertiary ink in both themes: --ink-3 is 3.44:1 on the light page and
+   4.82:1 on the dark one, and no site in the corpus gets worse in either
+   theme under the change (checked, all 184 pale-grey texts).
+   ------------------------------------------------------------ */
+svg text[fill="#aaa" i],  svg text[fill="#aaaaaa" i],
+svg text[fill="#999" i],  svg text[fill="#999999" i],
+svg text[fill="#9a9a9a" i], svg text[fill="#9e9e9e" i],
+svg text[fill="#969696" i], svg text[fill="#8c8c8c" i],
+svg text[fill="#8a8f94" i]                        { fill: var(--ink-3); }
+
+/* ------------------------------------------------------------
+   SERIES COLOURS USED AS INK
+
+   41 labels carry a data series' own colour, so the reader can tie the
+   label to the line. That link is the point and must not be broken --
+   recolouring these grey would be worse than leaving them dim, and a halo
+   does not help, because against the page the halo IS the page.
+
+   What is wrong is only the WEIGHT. #e08214 is a good orange for a 2px
+   line and a poor one for 11px text: 2.51:1 on the light page. So each
+   gets a text-weight variant, held in a token that flips with the theme,
+   and the mark keeps the colour it always had. Light gets a darker shade
+   of the same hue; dark keeps the original, which was already legible
+   there (6.5:1).
+   ------------------------------------------------------------ */
+:root {
+  --ink-orange: #A4590F;   /* text weight for the #e08214 series */
+  --ink-tan:    #8A5B1B;   /* = --gap light */
+  --ink-blue:   #35566F;   /* = --free light */
+  --ink-clay:   #8C4A3C;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink-orange: #E08214;
+    --ink-tan:    #D9A441;
+    --ink-blue:   #7F9BB3;
+    --ink-clay:   #CC7766;
+  }
+}
+svg text[fill="#e08214" i], svg text[fill="#ff7f00" i],
+svg text[fill="#d98324" i]                        { fill: var(--ink-orange); }
+svg text[fill="#c08a2e" i], svg text[fill="#d9a441" i] { fill: var(--ink-tan); }
+svg text[fill="#7f9bb3" i], svg text[fill="#6699cc" i],
+svg text[fill="#4e9db5" i]                        { fill: var(--ink-blue); }
+svg text[fill="#cc7766" i]                        { fill: var(--ink-clay); }
+
+/* ------------------------------------------------------------
+   THE HALO
+
+   .on-mark answers "this text was drawn on a mark, keep its ink". It has a
+   sibling case it cannot answer: a label lying across a SATURATED mark,
+   where neither the authored colour nor the lifted one reaches 3:1.
+   Measured examples: #444 on the #C41230 of a state tile is 1.6:1 either
+   way, and census-geography draws a #2c7fb8 tract number across its own
+   #2c7fb8 line at 1.0:1 -- invisible in the light theme too, and has been
+   all along. Recolouring cannot fix a label the same colour as the thing
+   it labels.
+
+   A halo can. paint-order:stroke draws the stroke first and the glyph on
+   top, so a paper-coloured outline separates the letters from whatever is
+   behind them without changing the colour that carries the meaning. It
+   works in both themes because --paper follows the theme, and it is the
+   ordinary cartographic answer to a label over a busy ground.
+
+   Use it where the label must stay on the mark. Where the label is merely
+   colliding with one, moving it is better.
+   ------------------------------------------------------------ */
+svg text.halo {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------
+   ZOOM CONTROLS
+
+   A national wind map is 3,100 arrows whose median length is about six
+   pixels. That is the honest size at this scale, and it is too small to
+   read one arrow off. Zoom is how a reader gets from the field to the
+   arrow without the figure lying about either.
+
+   Screen only: the print figure has no controls and needs none.
+   ------------------------------------------------------------ */
+.wind-fig { position: relative; }
+.wind-fig svg { touch-action: none; }          /* drag pans, not scrolls */
+.wind-fig .zoombar {
+  position: absolute; top: .45rem; right: .45rem;
+  display: flex; gap: .2rem;
+}
+.wind-fig .zoombar button {
+  font: 600 12px/1 var(--body);
+  color: var(--ink-2); background: var(--card);
+  border: 1px solid var(--rule); border-radius: 0;
+  padding: .32rem .48rem; min-width: 1.85rem; cursor: pointer;
+}
+.wind-fig .zoombar button:hover:not(:disabled) {
+  color: var(--ink); border-color: var(--ink-3);
+}
+.wind-fig .zoombar button:disabled { opacity: .38; cursor: default; }
+@media print { .wind-fig .zoombar { display: none; } }
+
+/* ------------------------------------------------------------
+   HOVER
+
+   The capture rectangle carries a crosshair rather than the zoom's grab
+   hand: reading a county is the common gesture and panning is the rare
+   one, so the cursor should advertise the common one. The ring marks
+   whichever arrow the tooltip is describing -- without it, at six pixels
+   an arrow, the reader cannot tell which of a dozen neighbours is meant.
+   ------------------------------------------------------------ */
+.wind-fig .hilite { stroke: var(--ink); }
+.wind-fig .windtip {
+  position: absolute; pointer-events: none; opacity: 0;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+  padding: 11px 13px 9px; border-radius: 2px;
+  font: 12px/1.35 var(--body); white-space: nowrap;
+  transition: opacity .08s;
+}
+.wind-fig .windtip .tt-name {
+  font-weight: 700; font-size: 14.5px; letter-spacing: -.01em;
+}
+.wind-fig .windtip .tt-lede { font-weight: 600; margin: 1px 0 8px; }
+.wind-fig .windtip .tt-lede span { color: var(--ink-3); font-weight: 400; }
+.wind-fig .windtip table { border-collapse: collapse; font-size: 12px; }
+.wind-fig .windtip th {
+  font-weight: 400; color: var(--ink-3); text-align: right;
+  padding: 0 0 4px 16px; border-bottom: 1px solid var(--rule);
+}
+.wind-fig .windtip td {
+  padding: 5px 0 5px 16px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.wind-fig .windtip th:first-child,
+.wind-fig .windtip td:first-child { text-align: left; padding-left: 0; }
+.wind-fig .windtip tbody tr + tr td { border-top: 1px solid var(--rule-2); }
+.wind-fig .windtip tfoot td {
+  color: var(--ink-3); border-top: 1px solid var(--rule); padding-top: 6px;
+}
+/* the party swatch, as a rule down the left of the row */
+.wind-fig .windtip .tt-bar {
+  display: inline-block; width: 3px; height: 12px;
+  margin-right: 7px; vertical-align: -2px;
+}
+@media print { .wind-fig .windtip { display: none; } }
+
+/* ------------------------------------------------------------
+   theme: null IS LOAD-BEARING. Do not drop it.
+
+   syllabus.css establishes the measure with child selectors —
+   `body > h1, body > p, body > div, …` — and separately neutralises
+   the rmarkdown wrapper with `.main-container { max-width: none
+   !important }`. That pairing only works when the blocks really are
+   children of <body>, which is what theme: null gives you: pandoc
+   emits the title/subtitle/author/date and every section div as bare
+   children, with no #header and no bootstrap wrapper.
+
+   Turn bootstrap back on (theme: default, or any named theme) and
+   pandoc nests the whole document inside .container-fluid, so the
+   `body >` selectors stop matching. The container rule still fires,
+   so the content is left with no measure at all and runs edge to
+   edge — wider, not narrower, which is why the failure is easy to
+   mistake for a success at a glance.
+
+   Measured on a two-paragraph probe at a 1600px viewport:
+     theme: null      paragraph 916px, x 342..1258   (centred, gutters kept)
+     theme: default   paragraph 1280px, x 160..1440  (no measure at all)
+   ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------
+   THE MEASURE
+
+   --measure is the real lever: syllabus.css reads it once, in the
+   `body > …` block, and everything else (sidenote gutter, .fullwidth,
+   the 1000px/1320px breakpoints) is expressed relative to it. So
+   widening the column is a one-variable change, not a competing rule.
+
+   Arithmetic, with `box-sizing: border-box` in force and 22px of
+   padding on each side:
+
+     46rem (syllabus) -> 736px block -> 692px of content
+     56rem            -> 896px block -> 852px of content
+     60rem (here)     -> 960px block -> 916px of content
+
+   The unthemed html_document gives 910px (bootstrap's 940px
+   container less 15px of padding each side), so 60rem lands the
+   figures within 1% of where they were before the theme — which is
+   the point. 56rem would have left them 6% short of that, because
+   the padding comes out of the max-width rather than adding to it.
+
+   The full three-column layout needs 60rem + gutter + margin column
+   + TOC = about 1470px of viewport. Below that the column takes what
+   is available and the figures follow it down; nothing breaks, it
+   just narrows. Measured in headless Chrome, content width of a d3
+   container:
+
+     1600px viewport   916px      (sidebar TOC)
+     1512px            916px      (sidebar TOC)
+     1440px            884px      (sidebar TOC)
+     1320px            764px      (sidebar TOC, tightest point)
+     1280px            916px      (TOC back in the flow — no sidebar
+                                   gutter to pay for, so the column
+                                   gets its full 60rem again)
+     1024px            724px
+
+   The dip at 1320px is inherited: that is where syllabus.css turns
+   the TOC into a fixed sidebar and takes 16rem out of the width. It
+   is not worth overriding — undoing a shared breakpoint means
+   restating every declaration inside it, and the layout is legible
+   throughout the dip.
+   ------------------------------------------------------------ */
+
+:root {
+  --measure: 60rem;
+}
+
+/* ------------------------------------------------------------
+   SIDENOTES AT THE WIDER MEASURE
+
+   The apparatus needs no change: syllabus.css reserves the gutter on
+   <body> (padding-right: margin-gap + margin-w) rather than on each
+   block, and a note escapes into it with a negative margin equal to
+   its own width plus the gap. Both quantities are independent of
+   --measure, so the notes sit exactly where they did — beside the
+   text, not over it — however wide the column gets.
+
+   The one thing that does move is the *ratio*: a 14rem note beside a
+   46rem column reads as a column of its own; beside 60rem it reads as
+   a footnote. Nudge the note type up a little so it keeps its voice
+   at the wider measure, and hold the gutter open a touch wider so the
+   note does not crowd the text edge.
+   ------------------------------------------------------------ */
+
+:root {
+  --margin-gap: 2rem;
+}
+
+.sidenote,
+.marginnote {
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+/* Margin figures are drawn at ~3.2in and scaled into --margin-w, which
+   has not changed; nothing to adjust, but keep them from ever spilling
+   into the text column if a brief sets fig.width too high. */
+.marginfigure img { max-width: 100%; }
+
+/* ------------------------------------------------------------
+   FIGURES
+
+   The d3 blocks in the briefs are bare <div> containers holding an
+   <svg> with a viewBox and `max-width:100%;height:auto`, so they take
+   the content width of whatever block they sit in and never overflow
+   it. There is nothing to fix, and deliberately no `overflow-x:
+   hidden` safety net on <body> — a net like that would hide a real
+   overflow rather than let it be found.
+
+   Do NOT add `class="fullwidth"` to brief figures. That was the
+   prototype's workaround for the 46rem measure — six hand edits per
+   brief — and at 60rem it is both unnecessary and wrong: it would
+   push the figures out under the sidenote gutter.
+   ------------------------------------------------------------ */
+
+.figure, figure { max-width: 100%; }
+figure img, .figure img, svg { max-width: 100%; }
+
+/* ------------------------------------------------------------
+   TABLE ALIGNMENT
+
+   A syllabus table is a schedule: words in every cell, left in every
+   column, which is what syllabus.css sets. A brief table is a
+   measurement — one label and then some numbers — and numbers want
+   the other edge. Digits line up place over place only when the
+   column is flushed right, and a header sitting over the far end of
+   its own column is the reason a reader has to look twice.
+
+   So: first column left, every other column right, header with the
+   body of its own column. That is the default in both directions —
+   here for the screen, and in table_align() (syllabus-helpers.R) for
+   the markdown pandoc turns into the PDF's column spec. The two have
+   to be set in two places because CSS cannot reach the PDF; keep them
+   saying the same thing.
+
+   One judgement lives in table_align() and not here, because CSS
+   cannot measure text: a column of sentences stays left, since a
+   sentence flushed right has a ragged left edge on every line of it.
+   That decision arrives as an ordinary `align` attribute and is
+   honoured by the second block below, like any other.
+
+   THE TWO BLOCKS BELOW ARE ORDERED, AND THE ORDER IS THE POINT.
+
+   The first is positional and knows nothing about the table: it is
+   what catches a hand-written <table> in a brief, and any table
+   rendered before table_align() existed.
+
+   The second honours what a table actually asked for. kable() writes
+   its align= into the markdown, and pandoc 2.19 emits it as an
+   `align` attribute on every th and td. A bare attribute like that is
+   a presentational hint — it loses to *any* author rule, including
+   the positional one above — so the request has to be restated as
+   real CSS or a column that specified `l` would still come out right.
+   Both selectors weigh the same (0,1,2), so the later one wins, which
+   is why these must stay in this order. Under a newer pandoc the same
+   request arrives as an inline style instead and wins on its own.
+
+   The upshot is that `attr(d, "align") <- "llr"` in a brief is obeyed
+   on screen and on paper, and nothing else has to be touched.
+   ------------------------------------------------------------ */
+
+thead th,
+tbody td { text-align: right; }
+
+thead th:first-child,
+tbody td:first-child { text-align: left; }
+
+thead th[align="left"],   tbody td[align="left"]   { text-align: left; }
+thead th[align="right"],  tbody td[align="right"]  { text-align: right; }
+thead th[align="center"], tbody td[align="center"] { text-align: center; }
+
+/* ------------------------------------------------------------
+   TYPE: BARLOW WITHOUT THE NETWORK
+
+   READ THIS BEFORE ROLLING THE THEME OUT TO A BRIEF THAT IS ALREADY
+   LARGE.
+
+   syllabus-head.html pulls Barlow from Google Fonts. With
+   self_contained: true, pandoc fetches all six requested faces
+   (400/500/600/700 roman, 400/600 italic) and inlines them as
+   font/ttf data: URIs. Measured on electoral-map-brief: one <style>
+   block of 683,624 characters, about 512KB of TTF before encoding.
+   Two consequences.
+
+   (a) THE RENDER NEEDS NETWORK ACCESS. Render offline and pandoc
+       cannot fetch the family; the <link> is left pointing at
+       fonts.googleapis.com and the page falls back to the next family
+       in the stack, silently. Nothing in the build fails.
+
+   (b) EVERY BRIEF PAYS THE SAME 683KB, whatever it contains. It is a
+       fixed cost, not a proportional one, so it is the briefs already
+       near a size ceiling that it pushes over. On electoral-map-brief
+       the net swing was smaller than that, +156,907B (+16.1%), because
+       theme: null also drops bootstrap and its glyphicon fonts — but
+       do not count on the offset; a brief that was never carrying
+       bootstrap furniture pays the full 683KB.
+
+   That head file is shared with the syllabus and is not ours to edit,
+   so this is as far as we can go from here: declare Barlow a second
+   time under a private family name sourced only from the reader's
+   installed fonts, and put it FIRST in the stack.
+
+   - Barlow installed locally  -> used, zero bytes, zero network.
+   - not installed             -> the @font-face has no usable source,
+                                  the browser skips the family, and
+                                  'Barlow' (the inlined web font) is
+                                  next in the list, exactly as before.
+
+   Non-destructive in both directions, because the private family name
+   means these rules never compete with the Google ones. What it does
+   NOT do is make the page smaller — CSS cannot un-declare an
+   @font-face that is already in the head. Only a brief-head.html
+   without the Google <link> would do that, and that is a third file
+   and a decision about whether briefs are allowed to look different
+   from the syllabus when Barlow is not installed.
+
+   TWO STRAY LINKS, same cause, same limit. syllabus-head.html carries
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com">
+   and pandoc's --embed-resources follows every href it finds,
+   including these. Neither host serves a document at its root, so
+   pandoc gets an HTML error page back and inlines it: two
+   `data:text/html,...` links of about 2.4KB each, in the head of
+   every brief. They are inert — a preconnect to a data: URI does
+   nothing — but they are junk, and they cannot be removed from here
+   either. Same fix as above, in the same file we do not own.
+   ------------------------------------------------------------ */
+
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow Regular'), local('Barlow-Regular'), local('Barlow');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow Medium'), local('Barlow-Medium');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow SemiBold'), local('Barlow-SemiBold');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow Bold'), local('Barlow-Bold');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow Italic'), local('Barlow-Italic');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Barlow Local';
+  src: local('Barlow SemiBold Italic'), local('Barlow-SemiBoldItalic');
+  font-weight: 600; font-style: italic; font-display: swap;
+}
+
+:root {
+  --body: 'Barlow Local', 'Barlow', system-ui, -apple-system, 'Segoe UI',
+          Roboto, sans-serif;
+}
+
+/* ------------------------------------------------------------
+   SECTION NUMBERING — a per-file property, not something this file
+   can normalise.
+
+   syllabus.css numbers with
+     body > .section.level2:not(.unnumbered) > h2::before
+   which matches only when the document's top-level headings are `##`.
+   A brief that opens with a single `#` H1 makes pandoc nest every
+   section inside .section.level1, the selector stops matching, and
+   the numbers disappear — silently.
+
+   A selector could be added for the nested case. It is deliberately
+   not, for two reasons. First, it would break the syllabus contract
+   that an H1 part (an appendix, a reference sheet) stands its own
+   sections down from the global count. Second, and decisively, the
+   LaTeX side cannot be made to match: syllabus-preamble.tex hangs the
+   counter off \subsection and kills it globally the first time a
+   \section appears (\pretocmd{\section}{\global\dd@numberingfalse}),
+   so an H1-opening brief would end up numbered on screen and unnumbered
+   in print. Better one rule that holds in both formats.
+
+   The rule: briefs open at `##`. Put the document title in the YAML
+   `title:` field, never as an `#` H1. Opt a single section out with
+   `## Heading {-}`, as in the syllabus.
+   ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------
+   PRINT — nothing to add. The wider measure is a screen decision, and
+   syllabus.css already drops it on paper (`body > * { max-width: none;
+   padding-left: 0; padding-right: 0 }` inside its @media print block),
+   so Cmd-P on a brief behaves exactly as Cmd-P on the syllabus. The
+   real print artifact is the PDF, which brief-preamble.tex handles.
+   ------------------------------------------------------------ */
+
+
+/* ------------------------------------------------------------
+   AI PROMPT BOX — the verbatim prompt a reader pastes into an AI
+   assistant to rebuild the chapter's data (ai_prompt() in
+   syllabus-helpers.R). Everything routes through the theme vars, so
+   dark mode comes free. The frozen variant swaps the accent rule for
+   the amber gap tone: a source that cannot be fetched again.
+   The copy button does not appear here: it exists only when the
+   script in brief-head.html injects it, so an emailed brief (scripts
+   stripped) shows the title and the full text and nothing broken.
+   ------------------------------------------------------------ */
+
+.ai-prompt {
+  margin: 1.8em 0;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+.ai-prompt-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 10px 16px 0;
+}
+.ai-prompt-text {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  padding: 10px 16px 13px;
+  background: none;
+  border: none;
+}
+.ai-prompt.frozen { border-left-color: var(--gap); }
+.ai-prompt.frozen .ai-prompt-title { color: var(--gap); }
+.ai-prompt-copy {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.ai-prompt-copy:hover { color: var(--accent); border-color: var(--accent); }
+.ai-prompt.frozen .ai-prompt-copy:hover { color: var(--gap); border-color: var(--gap); }

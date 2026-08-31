@@ -1,0 +1,146 @@
+---
+title: "Free, Public, and Unreachable"
+subtitle: "Six survey archives, two HTTP clients, and a wall that judges the program rather than the person"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("survey-access-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+This is the fourth time this book has gone to get something, and the fourth different kind of difficulty.
+
+The [census](../../01-census-bureau/census-access/census-access-brief.html) had too many answers: a dozen published populations for one county, and the work is naming which you mean. [Election returns](../../03-elections/county-returns/county-returns-brief.html) had none — you assemble fifty-one publications yourself. The [voter file](../../03-elections/voter-file-access/voter-file-access-brief.html) is public by law and gated by law: one jurisdiction of fifty-one will let you download it.
+
+Surveys are none of those. **Every archive here is free.** Most are openly licensed. Nobody is refusing anybody anything as a matter of policy. And four of the six addresses will not answer a program.
+
+## Six addresses, two clients
+
+The addresses are the ones this book's own chapters use. They are the CPS voting supplement, the GSS cumulative file, the ANES cumulative file, the Cooperative Election Study on Harvard Dataverse, a second Dataverse dataset, and an ICPSR study page.
+
+Each was requested **twice, with byte-identical headers**, from two ordinary HTTP clients — `curl` and Python's `urllib`. Same User-Agent, same `Accept`, same `Accept-Language`. `r FV("n_probes")` requests in all, on `r FV("scan_date")`.
+
+Sending the same request twice sounds like padding. It is the whole design, and the reason will not be visible until the fourth section.
+
+```{r status}
+```
+
+## Two of the six are simply open
+
+**The CPS supplement and the GSS cumulative file answer any client, with no gate of any kind.** The GSS hands over **`r n(FV("gss_bytes"))` bytes**, forty-seven megabytes, to anybody who asks. No registration, no agreement, no wall.
+
+One is a federal statistical agency and the other is a university survey centre that decided to publish. Neither is under more obligation than the other four; they simply made a different choice about the front door.
+
+> **Before you read on, commit to a view.** The other four addresses are all
+> behind a bot wall. **What should a refusal look like?** Write down the HTTP
+> status code you would expect a program to receive when a wall turns it away —
+> and then ask what your own code would do if it received that.
+
+## Two ways to say no
+
+```{r refusal}
+```
+
+**`r FV("n_403")` of them answer 403.** That is a refusal, and it behaves like one: the request failed, the status says so, and any script that checks its return value stops.
+
+**`r FV("n_202")` answer 202.** HTTP 202 is *Accepted*. It is a success code. The body is **`r n(FV("bytes_202"))` bytes** of challenge page where the data should be.
+
+This book has met that pattern before. The [bellwether chapter](../../03-elections/bellwether/bellwether-brief.html) hit it on a Dataverse archive and had to fetch the file by hand. The [media ideology chapter](../../04-political-actors/media-ideology/media-ideology-brief.html) hit the same wall and had to narrow what it claims. Here it is again, measured directly rather than worked around.
+
+**The recurring hazard of this book is not the refusal. It is the refusal shaped like a success.** A status code in the 2xx or 3xx range is what a careless script records as "fine". The zero rows that follow look like a finding about the world rather than a fact about the network.
+
+## The turn: one address answers the client, not the request
+
+Here is why every address was tried twice.
+
+```{r disagree}
+```
+
+**`r FV("disagree_archive")` told `curl` `r FV("disagree_curl")` and told Python `r FV("disagree_urllib")`** — and handed Python **`r n(FV("disagree_bytes"))` bytes** of the page curl was not allowed to see. The headers were identical. The URL was identical. They ran seconds apart, and it reproduces.
+
+So the thing being judged is **not the request.** It is the client that made it — how the program negotiates TLS, a fingerprint below the level anything in your code can set. You cannot fix this by changing the User-Agent, because the User-Agent was never what was read.
+
+Two consequences follow, and the second is the uncomfortable one.
+
+**A wall like this does not distinguish a researcher from a scraper.** It cannot. It is not equipped to know who you are or what you intend; it is reading the shape of a handshake.
+
+**And "can this be fetched?" has no single answer.** It depends on the library you happened to import. A chapter reporting "ICPSR blocks automated access" would be treating a property of the pairing as a property of the archive. It would also have been written by whichever of these two scripts its author happened to run first.
+
+## The wall belongs to the platform, not the dataset
+
+`r FV("dv_datasets")` Harvard Dataverse datasets were probed, and `r FV("dv_walled")` are behind the wall — including the one the [bellwether chapter](../../03-elections/bellwether/bellwether-brief.html) has been treating as an awkward property of its own source.
+
+It is not that dataset's setting. **It is Dataverse**, and every archive hosted there behaves the same way. That is a more useful thing to know than what bellwether currently says, because it predicts the next dataset instead of explaining the last one.
+
+## The licence is not the gate
+
+Worth stating plainly, because the four walled archives are not withholding anything.
+
+ANES asks people to take the file from ANES, and the file is free. The CES is openly licensed on a public archive. ICPSR's holdings are free to member institutions, and CMU is a member. Nobody in this chapter is being denied permission.
+
+**The permission and the retrieval are separate systems, and they do not know about each other.** The voter file was the opposite case. North Carolina, under the strictest kind of legal regime, serves its file to any client that asks. Meanwhile the archives that would love you to have their data cannot tell your script from a nuisance.
+
+## What this costs this book
+
+Six chapters read the ANES cumulative file — the [ANES chapter](../anes/anes-brief.html) itself, [party-id](../party-id/party-id-brief.html), [ideology](../ideology/ideology-brief.html), [abortion-opinion](../abortion-opinion/abortion-opinion-brief.html), [surveys-source](../surveys-source/surveys-source-brief.html) and [voter-files-source](../../03-elections/voter-files-source/voter-files-source-brief.html).
+
+None of them can fetch it. Every one looks for the file in its own `raw/` folder and stops with an explanation if it is not there, which is the same shape the [voter-file chapters](../../03-elections/voter-file-access/voter-file-access-brief.html) use for a different reason. The file is 163 MB, it is not ours to redistribute, and it must be taken from ANES by a person with a browser.
+
+That is a working arrangement rather than a complaint. But it is worth seeing that **the reason is a Cloudflare setting**, not a licence, not a fee, and not anybody's decision about who should have the data.
+
+## What this chapter cannot tell you
+
+**It does not say what a browser gets.** Every measurement here is what a *script* meets. A person with a browser can reach all six of these archives, and in four cases that is the intended route. The scan measures the distance between "public" and "programmatically available", which is a narrower thing than access.
+
+**Two clients are two clients.** `curl` and Python's `urllib` disagreed once. A third client might disagree somewhere else, and the right reading of the ICPSR row is not "Python works" but "this is unstable in a way nothing in the request controls."
+
+**It is one day, and bot walls are tuned continuously.** The results are frozen at `r FV("scan_date")` for that reason. Re-running the scan and finding different numbers would not mean this chapter was wrong; it would mean the measurement is of something that moves, which is itself the point.
+
+**And nothing here is an argument against bot mitigation.** These archives are small operations serving large files, and the walls exist because automated traffic is a real cost. What is measured is a consequence, not a verdict.
+
+## Sources
+
+- U.S. Census Bureau. *Current Population Survey, Voting and Registration
+  Supplement*, historical time series table A-1.
+  <https://www2.census.gov/programs-surveys/cps/tables/time-series/>
+- NORC at the University of Chicago. *General Social Survey* cumulative file,
+  Stata distribution. <https://gss.norc.org/us/en/gss/get-the-data.html>
+- American National Election Studies. *Time Series Cumulative Data File
+  1948–2024.* <https://electionstudies.org/data-center/>
+- Ansolabehere, Schaffner and Pope. *Cooperative Election Study Common Content,
+  2024*, Harvard Dataverse, doi:10.7910/DVN/X11EP6.
+- Algara and Amlani replication archive, Harvard Dataverse,
+  doi:10.7910/DVN/DGUMFI — probed here only as a second dataset on the same
+  platform.
+- Inter-university Consortium for Political and Social Research, study 13.
+  <https://www.icpsr.umich.edu/web/ICPSR/studies/13>
+- The status codes, byte counts and the `cf-mitigated` and `x-amzn-waf-action`
+  headers quoted throughout were recorded on `r FV("scan_date")` and are kept
+  alongside this chapter exactly as they arrived.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`refusal.csv`](data/derived/refusal.csv), [`status.csv`](data/derived/status.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `status.csv` records what two different clients got from each archive, and whether it is `open`. Count the archives a program can reach unaided. What does that do to anyone trying to replicate published work?
+- `refusal.csv` explains what a program sees when it is refused. A person with a browser gets the file; a script gets an error. Who is that wall actually filtering out?
+- `status.csv` has `max_bytes` for the archives that answered. Compare the sizes. Does an archive being open tell you the data is usable?
+- Pick one of the closed archives and work out what you would have to do, step by step, to get its data legitimately. Count the steps.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

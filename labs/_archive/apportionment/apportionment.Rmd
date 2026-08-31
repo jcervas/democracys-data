@@ -1,0 +1,428 @@
+---
+title: "Lab 2: Eighty-Nine People"
+subtitle: "84-355 Democracy's Data | Week 2 — The census"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+**This is the second family: the census.**
+
+Last week's returns had no producer. Fifty-one jurisdictions certified
+separately, somebody scraped them together, and the file inherited every
+inconsistency underneath. The census is the opposite in every respect — **one
+agency, one number, a constitutional mandate and a legal deadline.** There is
+exactly one right answer and the Bureau publishes it.
+
+Watch what that does and does not buy you. By the end of the hour you will have
+a number produced with more authority than anything else in this course, and you
+will be able to show that it is not certain enough to have decided what it
+decided.
+
+***
+
+The Constitution says the House shall be apportioned among the states "according
+to their respective Numbers." It does not say how. Dividing 435 seats among 50
+states will almost never come out in whole numbers, and every method of handling
+the remainder is a choice that helps somebody.
+
+Congress has changed its mind about that choice five times. Since 1941 the
+method has been **Huntington–Hill**, and today you are going to run it — the
+actual arithmetic, on the actual 2020 numbers, and get the actual House of
+Representatives out the other end.
+
+Then we will look at how close it was.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: The numbers that decide
+
+```{r read}
+ap <- read.csv("data/apportionment_2020.csv", stringsAsFactors = FALSE)
+dim(ap)
+head(ap, 5)
+```
+
+Fifty states. The columns:
+
+- `app_pop` — the **apportionment population**, which is what the arithmetic uses
+- `seats` — what each state actually got
+- `overseas` — federal employees serving abroad, assigned back to a home state
+- `resident_pop` — everybody actually living in the state
+
+```{r totals}
+c(states = nrow(ap), seats = sum(ap$seats))
+```
+
+Note that apportionment population is **not** the population of the state:
+
+```{r overseas}
+head(ap[order(-ap$overseas), c("state", "resident_pop", "overseas", "app_pop")], 5)
+```
+
+> Soldiers stationed in Germany are counted in the state they left. That is a
+> policy decision, it moves tens of thousands of people between states, and we
+> will come back to it in Part 5 — because it turns out to be larger than the
+> margin that decided the last seat in the House.
+
+***
+
+# Part 2: The obvious method, and why it fails
+
+The natural approach: work out each state's fair share and round it.
+
+```{r quota}
+ap$quota <- 435 * ap$app_pop / sum(ap$app_pop)
+head(ap[order(-ap$quota), c("state", "app_pop", "quota", "seats")], 6)
+```
+
+New York's fair share is 26.56 seats. It cannot have 0.56 of a seat, and
+somebody has to decide which way that goes.
+
+So round it:
+
+```{r naive}
+ap$rounded <- round(ap$quota)
+c(seats_if_we_just_round = sum(ap$rounded), target = 435)
+```
+
+The total comes out right. That is luck, not design — nothing forces the
+fractions to cancel, and in other decades they have not. But look at *which*
+House rounding produces:
+
+```{r naive-diff}
+ap[ap$rounded != ap$seats, c("state", "quota", "rounded", "seats")]
+```
+
+> **Four seats sit in different states.** Rounding hands an extra seat to New
+> York and Ohio, and takes one each from Rhode Island and Montana.
+>
+> That is not a rounding artefact, it is a direction. Big states have big
+> fractions to round up. Small states have small ones. A rule that looks
+> perfectly neutral — "round to the nearest whole seat" — systematically moves
+> seats from small states to large ones.
+
+Hold on to those four names. You will meet them again in Part 7.
+
+There is also a floor. Three states are not entitled to a full seat at all:
+
+```{r wyoming}
+ap[ap$quota < 1, c("state", "app_pop", "quota", "seats")]
+```
+
+The Constitution guarantees every state at least one Representative, so Wyoming's
+0.76 of a seat becomes a whole one. Somebody else has to give that up.
+
+***
+
+# Part 3: Huntington–Hill, in eleven lines
+
+The method used since 1941. Give every state one seat, then hand out the
+remaining 385 one at a time, each to whichever state has the highest **priority
+value**:
+
+$$\text{priority} = \frac{\text{population}}{\sqrt{n(n+1)}}$$
+
+where $n$ is the number of seats that state already holds. A state with few
+seats and many people has a high priority; each seat it wins lowers its own
+priority for the next one.
+
+```{r hh}
+pop   <- setNames(ap$app_pop, ap$state)
+seats <- setNames(rep(1L, nrow(ap)), ap$state)   # every state starts with one
+winners <- character(0)
+
+for (i in 1:385) {
+  priority <- pop / sqrt(seats * (seats + 1))
+  w <- names(which.max(priority))
+  winners[i] <- w
+  seats[w] <- seats[w] + 1L
+}
+
+sum(seats)
+```
+
+That is the House. Did we get it right?
+
+```{r check}
+identical(as.integer(seats[ap$state]), as.integer(ap$seats))
+```
+
+> **TRUE.** Eleven lines of arithmetic reproduce the United States House of
+> Representatives, seat for seat. There is no fudge factor and no committee.
+> Once the census is counted, the House allocates itself.
+
+***
+
+# Part 4: The last seat
+
+The seats were handed out in order. Look at the end of the queue.
+
+```{r last-seats}
+tail(data.frame(seat = 51:435, went_to = winners), 6)
+```
+
+Seat **435** — the last one — went to **Minnesota**.
+
+Now: who was next in line, and how close were they?
+
+```{r near-miss}
+priority <- pop / sqrt(seats * (seats + 1))
+sort(priority, decreasing = TRUE)[1:3]
+```
+
+New York was the state that would have received seat 436, had one existed.
+
+```{r how-close}
+mn <- ap[ap$state == "Minnesota", ]
+ny <- ap[ap$state == "New York", ]
+
+winning_priority <- mn$app_pop / sqrt(mn$seats * (mn$seats - 1))
+needed <- winning_priority * sqrt(ny$seats * (ny$seats + 1))
+
+c(new_york_had    = ny$app_pop,
+  new_york_needed = ceiling(needed),
+  short_by        = ceiling(needed - ny$app_pop))
+```
+
+> **Eighty-nine people.**
+>
+> New York needed 20,215,840 residents to take that seat from Minnesota. It was
+> counted at 20,215,751. Eighty-nine more people — a large lecture hall — and
+> the House of Representatives, and the Electoral College, would have been
+> different for ten years.
+
+***
+
+# Part 5: What eighty-nine people means
+
+Three things sit behind that number, and each one is bigger than it.
+
+**The census is an estimate.** The Bureau's own post-enumeration survey concluded
+the 2020 count missed some states and double-counted others, by margins in the
+hundreds of thousands. The 89 is smaller than the error bar on the thing that
+produced it.
+
+That sentence is the whole family in one line. A single authoritative producer
+removes the problems you met last week — no stitching, no mismatched keys, no
+county that changed meaning — and it does not make the number true. **Authority
+and certainty are different things**, and a file can have all of the first and
+not enough of the second.
+
+**The overseas adjustment.**
+
+```{r overseas-vs-margin}
+c(new_york_overseas  = ny$overseas,
+  minnesota_overseas = mn$overseas,
+  the_margin         = 89)
+```
+
+> New York had **14,502** people counted from abroad; Minnesota **3,258**. The
+> rule that assigns overseas federal employees back to a home state moved a
+> hundred and sixty times more people than the margin that decided the seat.
+> Change that rule and you change the House.
+
+**And a seat is not a small thing.**
+
+```{r what-a-seat-is}
+ap$people_per_seat <- round(ap$app_pop / ap$seats)
+rbind(head(ap[order(ap$people_per_seat), c("state","seats","people_per_seat")], 3),
+      head(ap[order(-ap$people_per_seat), c("state","seats","people_per_seat")], 3))
+```
+
+Even after all this arithmetic, districts are not equal. A seat is also a vote in
+the Electoral College, which is why the same 89 people would have moved a
+presidential elector too.
+
+***
+
+# Part 6: What this does not settle
+
+**Huntington–Hill is one choice among several.** Jefferson's method favours large
+states, Adams's favours small ones, Hamilton's produced the notorious *Alabama
+paradox* — where adding seats to the House cost Alabama one. Congress adopted
+equal proportions in 1941 after a decade of argument, and the argument was
+partisan.
+
+**435 is not in the Constitution.** It has been fixed by statute since 1929. The
+House grew with the country for 140 years and then stopped.
+
+**And the count is not the population.** It is a very good estimate of it,
+produced under a deadline, by an agency that publishes its own uncertainty. That
+is Week 12's subject.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — Resize the House
+
+```{r opt-a}
+house_size <- 435            # <- change this. Try 436, 450, 535, 600.
+
+s <- setNames(rep(1L, nrow(ap)), ap$state)
+for (i in seq_len(house_size - nrow(ap))) {
+  p <- pop / sqrt(s * (s + 1)); s[names(which.max(p))] <- s[names(which.max(p))] + 1L
+}
+
+now <- data.frame(state = ap$state, actual = ap$seats,
+                  alt = as.integer(s[ap$state]))
+now$change <- now$alt - now$actual
+now[now$change != 0, ]
+
+c(house_size = house_size, largest_district = max(round(pop/s)),
+  smallest_district = min(round(pop/s)))
+```
+
+**Write about:** who gains and who loses as the House grows? Try 436 first — one
+extra seat — and say who gets it. Then try 600. The "Wyoming Rule" would set the
+House so that no district is smaller than the least populous state; find roughly
+what size that implies and say what it would cost. Then the real question: the
+House has been frozen at 435 since 1929, while the country has more than tripled.
+Who benefits from it staying there?
+
+***
+
+### Option B — How close was everybody else?
+
+```{r opt-b, fig.width = 7.5, fig.height = 5.5}
+n_show <- 12                 # <- change this
+
+final <- pop / sqrt(seats * (seats + 1))          # priority for one more seat
+gap <- sort(final, decreasing = TRUE)[1:n_show]
+
+par(mar = c(5, 10, 4, 2))
+barplot(rev(gap), names.arg = rev(names(gap)), horiz = TRUE, las = 1,
+        col = "#54278F", border = NA,
+        xlab = "Priority value for the next seat",
+        main = paste("The", n_show, "states closest to another seat"))
+abline(v = max(final), lty = 2)
+
+round(gap)
+```
+
+**Write about:** New York missed by 89 people. How much would the *next* state
+have needed? Work out roughly how many people separate second place from third,
+and from fourth. Does the near-miss look like a freak accident or like something
+that happens every decade? Then say what a state government should do about it —
+and whether "count harder" is a real answer.
+
+***
+
+### Option C — Who would a different method favour?
+
+```{r opt-c}
+# Webster's method: the same machinery, a different divisor.
+# Huntington-Hill uses sqrt(n(n+1)) — the geometric mean.
+# Webster uses n + 0.5 — the arithmetic mean.
+divisor <- function(n) n + 0.5      # <- change to sqrt(n*(n+1)) for Huntington-Hill
+
+s <- setNames(rep(1L, nrow(ap)), ap$state)
+for (i in 1:385) {
+  p <- pop / divisor(s); s[names(which.max(p))] <- s[names(which.max(p))] + 1L
+}
+
+cmp <- data.frame(state = ap$state, huntington_hill = ap$seats,
+                  this_method = as.integer(s[ap$state]))
+cmp$change <- cmp$this_method - cmp$huntington_hill
+cmp[cmp$change != 0, ]
+```
+
+**Write about:** which states move, and in which direction? You should recognise
+all four from Part 2 — and that is the point. **Rounding the quota *is* Webster's
+method**, arrived at by accident: rounding at the half is exactly what a divisor
+of $n + 0.5$ does. The obvious thing you tried at the start turns out to be one
+of the named contenders Congress rejected.
+
+Huntington–Hill's geometric mean is very slightly kinder to small states than
+Webster's arithmetic mean; check whether the states that change fit that
+description. Then the question Congress actually argued about in the 1930s: if
+two defensible methods give different answers, how should a country choose
+between them, knowing in advance who each one helps?
+
+***
+
+### Option D — Ask your own question
+
+Follow whatever nags. The 1920s are worth a look: Congress failed to reapportion
+at all after the 1920 census, the only time that has happened.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a piece of arithmetic and see the political
+decision inside it.
+
+***
+
+# What today was really about
+
+Two families down, and they fail in opposite ways.
+
+| | **Returns** (Week 1) | **The census** (this week) |
+|---|---|---|
+| Who makes it | nobody in particular | one agency, by law |
+| How it breaks | stitching fifty-one sources together | a single number carrying uncertainty it cannot show you |
+| What to check first | does it match the certified count? | what was counted, on what date, with what error? |
+| What you saw | a scraped file 7,781 votes short | a seat decided by 89 people, inside an error bar of hundreds of thousands |
+
+Neither family is more reliable than the other. They are **unreliable in
+different directions**, and the failure of one is invisible using the habits that
+catch the other. Checking a census file against a second source will not help
+you — there is no second source. Reading the Bureau's own uncertainty will.
+
+Thursday's reading is six pages from the Bureau on exactly that. It is the most
+useful methods writing in the course, and you will use it again in Week 13, when
+a legal threshold gets applied to an estimate that has a margin of error printed
+next to it.
+
+***
+
+***
+
+## Where the data came from
+
+**U.S. Census Bureau**, 2020 Census Apportionment Results
+(<https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html>),
+Table 1 for apportionment population and seats, Table 3 for the overseas
+population folded into each state's count.
+
+This is the official file. The seats in it are the seats that exist.
+
+Two things worth registering. **Apportionment population is not resident
+population** — it includes federal employees serving overseas, assigned to a home
+state under a rule that has itself been litigated. And the whole calculation runs
+on a **count**, which is an estimate with published uncertainty; the margin that
+decided the 435th seat is far smaller than that uncertainty.
+
+The script that downloaded, parsed and checked this file is `data/build-data.R`.
+It re-runs Huntington–Hill against the Bureau's own seat column and stops if the
+two disagree — which is the only real way to know a file like this arrived
+intact.

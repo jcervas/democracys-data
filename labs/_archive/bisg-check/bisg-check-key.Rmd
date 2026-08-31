@@ -1,0 +1,232 @@
+---
+title: "Data Session 7 Key, part 2: Grading the Guess"
+subtitle: "84-355 Democracy's Data | Session 7 — Surnames and BISG | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+v <- read.csv("data/houston_voters.csv", colClasses = c(GEOID20 = "character"))
+g <- read.csv("data/houston_blocks.csv",  colClasses = c(GEOID20 = "character"))
+sn <- read.csv("../surnames/data/census_surnames.csv", stringsAsFactors = FALSE)
+R  <- c("white","black","hispanic","asian","aian")
+sc <- c("pctwhite","pctblack","pcthispanic","pctapi","pctaian")
+i <- match(v$surname, sn$name); v <- v[!is.na(i), ]
+S <- as.matrix(sn[i[!is.na(i)], sc]); S[is.na(S)] <- 0
+k <- rowSums(S) > 0; v <- v[k, ]; S <- S[k, , drop = FALSE]; S <- S/rowSums(S)
+P <- as.matrix(g[, R]); rownames(P) <- g$GEOID20
+M <- sweep(P, 2, colSums(P), "/")[v$GEOID20, , drop = FALSE]
+emp <- rowSums(M) == 0; M[emp, ] <- matrix(colSums(P)/sum(P), sum(emp), 5, byrow = TRUE)
+post <- S * M; deg <- rowSums(post) == 0; post[deg, ] <- S[deg, ]; post <- post/rowSums(post)
+sur <- R[max.col(S, ties.method = "first")]; bis <- R[max.col(post, ties.method = "first")]
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(x, big.mark = ",", trim = TRUE)
+acc <- function(p) sapply(R, function(r) 100 * mean(p[v$race == r] == r))
+a_sur <- acc(sur); a_bis <- acc(bis); chg <- a_bis - a_sur
+o_sur <- 100 * mean(sur == v$race); o_bis <- 100 * mean(bis == v$race)
+base_white <- 100 * mean(v$race == "white")
+prior_white <- 100 * colSums(P)[["white"]] / sum(P)
+tp <- post[cbind(seq_len(nrow(post)), match(v$race, R))]
+cali <- sapply(R, function(r) mean(tp[v$race == r]))
+Mc <- matrix(colSums(P)/sum(P), nrow(v), 5, byrow = TRUE)
+b2 <- R[max.col(S * Mc, ties.method = "first")]
+o_c <- 100 * mean(b2 == v$race); b_c <- 100 * mean(b2[v$race == "black"] == "black")
+amb <- apply(S, 1, max) < 0.6
+a_amb <- c(surname = 100 * mean(sur[amb] == v$race[amb]),
+           bisg    = 100 * mean(bis[amb] == v$race[amb]))
+fb <- emp | deg; fb_black <- sum(v$race[fb] == "black")
+```
+
+All Part 5 code is given to students. Grade the interpretation.
+
+Every number below was run against the committed data.
+
+***
+
+# The lab in one sentence
+
+BISG is the method Voting Rights Act litigation runs on, it can almost never be
+checked, and when you check it on `r nn(nrow(v))` people whose race is on record
+it identifies Black voters correctly **`r pc(a_bis[["black"]])`% of the time**.
+
+***
+
+# The findings
+
+```{r headline}
+rbind(surname = sapply(R, function(r) round(100*mean(sur[v$race==r]==r), 1)),
+      bisg    = sapply(R, function(r) round(100*mean(bis[v$race==r]==r), 1)))
+c(overall_surname = round(100*mean(sur==v$race), 1),
+  overall_bisg    = round(100*mean(bis==v$race), 1))
+```
+
+| | white | black | hispanic | asian | aian |
+|---|---|---|---|---|---|
+| **Surname only** (`r pc(o_sur)`%) | `r pc(a_sur[["white"]])` | **`r pc(a_sur[["black"]])`** | `r pc(a_sur[["hispanic"]])` | `r pc(a_sur[["asian"]])` | `r pc(a_sur[["aian"]])` |
+| **BISG** (`r pc(o_bis)`%) | `r pc(a_bis[["white"]])` | **`r pc(a_bis[["black"]])`** | `r pc(a_bis[["hispanic"]])` | `r pc(a_bis[["asian"]])` | `r pc(a_bis[["aian"]])` |
+| change | `r sprintf("%+.1f", chg[["white"]])` | **`r sprintf("%+.1f", chg[["black"]])`** | `r sprintf("%+.1f", chg[["hispanic"]])` | `r sprintf("%+.1f", chg[["asian"]])` | `r sprintf("%+.1f", chg[["aian"]])` |
+
+***
+
+# The three things to teach
+
+**1. The overall number is a headcount, not a performance.** `r pc(o_sur)`%
+surname-only sounds workable. Guessing "white" for every voter scores
+`r pc(base_white)`%, because `r pc(base_white)`% of the voters in the file are
+white. Overall accuracy on an unbalanced problem mostly reports the balance.
+
+**2. Geography is a trade, not an improvement.** Adding the block gains Black
+voters `r pc(chg[["black"]])` points and *costs* Asian voters
+`r pc(-chg[["asian"]])` and Hispanic voters `r pc(-chg[["hispanic"]])`. Black
+residents here are geographically concentrated, so the block carries real
+information; Asian and Hispanic residents are dispersed, so the block pulls them
+toward the local majority and overrides a surname signal that was already good.
+**The `r sprintf("%+.1f", o_bis - o_sur)` overall conceals a redistribution**,
+and students should say who paid.
+
+**3. Even at its best it is wrong more often than right about Black voters.**
+`r pc(a_bis[["black"]])`%. This is the instrument behind Section 2 litigation, and it is the group
+Section 2 exists to protect. That is not an argument that BISG is illegitimate —
+it is an argument for knowing its error rate before relying on it, which is
+almost never reported.
+
+***
+
+# Option A — Calibration
+
+```{r a}
+tp <- post[cbind(1:nrow(post), match(v$race, R))]
+round(sapply(R, function(r) mean(tp[v$race == r])), 2)
+```
+
+Mean probability the model puts on the **true** answer: white
+**`r pc(cali[["white"]], 2)`**, black **`r pc(cali[["black"]], 2)`**, hispanic
+`r pc(cali[["hispanic"]], 2)`, asian `r pc(cali[["asian"]], 2)`, aian
+**`r pc(cali[["aian"]], 2)`**.
+
+**3/4:** Reports the numbers and notes they track the accuracy ranking.
+
+**4/4:** Distinguishes *calibration* from *decision*. For Black voters the model
+puts `r pc(cali[["black"]], 2)` on the truth — it is not wildly confident and wrong, it is genuinely
+uncertain, and then `max.col` forces a hard guess anyway. **The information loss
+is in the decision rule, not only the model.** A student who says the
+probabilities should be carried forward rather than collapsed to a label has
+found the thing real practitioners argue about.
+
+**4/4, best:** notices aian at `r pc(cali[["aian"]], 2)` — the model assigns
+essentially no probability to American Indian for anyone, so those
+`r nn(sum(v$race == "aian"))` voters cannot be found by any threshold.
+Recalibration would not fix that.
+
+***
+
+# Option B — Take the geography away
+
+```{r b}
+Mc <- matrix(colSums(P)/sum(P), nrow(v), 5, byrow = TRUE)
+b2 <- R[max.col(S * Mc, ties.method = "first")]
+c(overall = round(100*mean(b2 == v$race), 1),
+  black   = round(100*mean(b2[v$race=="black"] == "black"), 1))
+```
+
+County-only prior: **`r pc(o_c)`% overall, `r pc(b_c)`% for Black voters** —
+*worse than surname alone* (`r pc(o_sur)`% / `r pc(a_sur[["black"]])`%).
+
+**3/4:** Reports that accuracy falls.
+
+**4/4:** Explains why it falls *below* surname-only. A county prior is not
+neutral: it multiplies every voter by the same county composition, which is
+`r pc(prior_white)`% white, so it tilts everyone toward white and destroys
+information the surname had.
+**A bad prior is worse than no prior**, and "we controlled for geography" means
+nothing without asking at what scale.
+
+**4/4, best:** connects to the modifiable areal unit problem — the same data at a different
+geographic scale gives a different answer, and nothing about the choice is
+announced in a methods section.
+
+***
+
+# Option C — The ambiguous names
+
+```{r c}
+amb <- apply(S, 1, max) < 0.6
+c(n = sum(amb),
+  surname = round(100*mean(sur[amb] == v$race[amb]), 1),
+  bisg    = round(100*mean(bis[amb] == v$race[amb]), 1))
+```
+
+`r nn(sum(amb))` voters whose surname gives no group above 60%: surname-only
+**`r pc(a_amb[["surname"]])`%**, BISG **`r pc(a_amb[["bisg"]])`%**.
+
+**3/4:** Notes BISG does much better here.
+
+**4/4:** Draws the right conclusion — this is the population BISG is *for*, and
+on it geography adds `r pc(a_amb[["bisg"]] - a_amb[["surname"]])` points of
+overall accuracy, its largest overall gain anywhere in the lab — more than twice
+the `r pc(o_bis - o_sur)` it gains on the full file. (The single largest gain of
+any kind is still the `r pc(chg[["black"]])` points for Black voters in Part 4;
+this is the largest gain in a group's *overall* score.) The
+method is not uniformly weak; it is weak where the surname was already
+informative and strong where it was not. That is the opposite of the impression
+Part 4 leaves, and holding both is the point.
+
+***
+
+# The two fallbacks in Part 3
+
+Worth five minutes, because it is the closest thing to a live bug in the course.
+
+- **`r nn(sum(emp))` voters** live in a block the census records as empty. The
+  geographic term vanishes.
+- **`r nn(sum(deg))` voters** have a surname that is 100% one race and a block
+  with zero residents of that race, so every category multiplies to zero.
+  **BISG is undefined for them.**
+
+Without the fallbacks R throws no error: `max.col` returns column 1 on an
+all-zero row, so all `r nn(sum(fb))` would be silently labelled **white** — and
+`r nn(fb_black)` of them are Black. Ask the class what would have happened if
+nobody had checked. This is
+the same lesson as Session 1's silent join failure, with higher stakes.
+
+***
+
+# Grading
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing to summarise the method with one
+  number. Any answer whose headline is "BISG is `r pc(o_bis)`% accurate" has
+  missed the lab.
+- **Reward students who hold both halves**: it fails badly for Black voters *and*
+  it works well on ambiguous names. Both are true and they are not in tension.
+
+## Anticipated questions
+
+- *"Should courts stop using it?"* — Not the lab's claim, and resist making it.
+  The defensible statement is that an error rate this uneven should be reported
+  alongside any estimate derived from it, and usually is not.
+- *"Why is it so bad for Black voters?"* — Because the surnames are shared. This
+  is the Williams result from the morning lab, quantified on
+  `r nn(sum(v$race == "black"))` people.
+- *"Is Houston County typical?"* — Unknown, and the lab says so. One county,
+  moderately segregated. The shape generalises; the numbers should not be quoted
+  elsewhere.
+- *"Why does race appear on a registration form at all?"* — Voting Rights Act
+  compliance. The fourth family's question — *what was this collected for?* —
+  has an unusually clean answer here.
+
+## Connections
+
+- **Morning lab (`surnames`)** — run that first. This is its check.
+- **Session 3 (§203)** and **Session 14 (RPV)** — both use race estimates in legal
+  tests. Students now know what those estimates cost.
+- **Session 2 (the decennial census)** — "any-part Black" versus "Black alone, not Hispanic" is
+  4,528 people in this county alone.

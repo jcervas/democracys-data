@@ -1,0 +1,626 @@
+---
+title: "Key: Draw the Line Somewhere Else"
+subtitle: "84-355 Democracy's Data | Areal units | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+
+D  <- "data"
+fc <- read.csv(file.path(D, "facts.csv"),           stringsAsFactors = FALSE)
+ls_ga <- read.csv(file.path(D, "ladder_state.csv"), stringsAsFactors = FALSE)
+lf <- read.csv(file.path(D, "ladder_fulton.csv"),   stringsAsFactors = FALSE)
+mu <- read.csv(file.path(D, "map_units.csv"),       stringsAsFactors = FALSE)
+sm <- read.csv(file.path(D, "zoning_summary.csv"),  stringsAsFactors = FALSE)
+sw <- read.csv(file.path(D, "zoning_sweep.csv"),    stringsAsFactors = FALSE)
+pu <- read.csv(file.path(D, "zoning_plan_units.csv"), stringsAsFactors = FALSE)
+co <- read.csv(file.path(D, "county_outline.csv"),  stringsAsFactors = FALSE)
+mv <- read.csv(file.path(D, "map_vals.csv"),
+               colClasses = c(unit = "character"), stringsAsFactors = FALSE)
+# the 232,717-block file, read once, GEOID pinned to character
+bl <- read.csv(file.path(D, "ga_block_race.csv"),
+               colClasses = c(GEOID20 = "character"), stringsAsFactors = FALSE)
+bl$bg <- substr(bl$GEOID20, 1, 12)
+bl$tract <- substr(bl$GEOID20, 1, 11)
+bl$county <- substr(bl$GEOID20, 1, 5)
+
+FV <- function(k) { v <- fc$value[fc$name == k]; if (!length(v)) stop("no fact: ", k); v }
+FN <- function(k) as.numeric(FV(k))
+n  <- function(x) format(round(as.numeric(x)), big.mark = ",")
+pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
+LF <- function(l, cc) lf[[cc]][lf$level == l]
+LG <- function(l, cc) ls_ga[[cc]][ls_ga$level == l]
+LEVS <- lf$level
+RAMP <- colorRampPalette(c("#f7f7f7", "#d9e6f2", "#8fbedd", "#3f8dc0",
+                           "#1f5d8c", "#12395a"))(101)
+RX <- range(mu$x); RY <- range(mu$y)
+
+onepath <- function(X, Y) {
+  dx <- X[-1] - X[-length(X)]; dy <- Y[-1] - Y[-length(Y)]
+  seg <- paste0(dx, ifelse(dy < 0, "", ","), dy)
+  sep <- c("", ifelse(substr(seg[-1], 1, 1) == "-", "", " "))
+  paste0("M", X[1], ",", Y[1], "l", paste0(sep, seg, collapse = ""), "Z")
+}
+ringpaths <- function(d, by, sx, sy) {
+  k <- interaction(d[[by]], d$part, drop = TRUE)
+  p <- vapply(split(d, k), function(z) {
+    X <- round(sx(z$x)); Y <- round(sy(z$y))
+    keep <- c(TRUE, X[-1] != X[-length(X)] | Y[-1] != Y[-length(Y)])
+    X <- X[keep]; Y <- Y[keep]
+    if (length(X) < 3) paste0("M", X[1], ",", Y[1], "h1v1h-1Z") else onepath(X, Y)
+  }, character(1))
+  p[nzchar(p)]
+}
+jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
+jnum <- function(x) paste0("[", paste0(x, collapse = ","), "]")
+drawrings <- function(d, by, fill, border = NA, lwd = 0.4) {
+  k <- interaction(d[[by]], d$part, drop = TRUE)
+  for (lv in levels(k)) {
+    z <- d[k == lv, ]
+    polygon(z$x, z$y, col = fill[[as.character(z[[by]][1])]], border = border, lwd = lwd)
+  }
+}
+
+# ---- the ladder, recomputed from blocks, for the student options ------------
+# Identical arithmetic to data/build-areal-units.R: population-weighted, and
+# units with nobody in them dropped rather than counted as 0%.
+wm <- function(x, w) sum(x * w) / sum(w)
+wsd <- function(x, w) sqrt(sum(w * (x - wm(x, w))^2) / sum(w))
+ladder <- function(d, race = "black_any") {
+  o <- NULL
+  for (k in c("GEOID20", "bg", "tract")) {
+    p <- tapply(d$pop, d[[k]], sum); b <- tapply(d[[race]], d[[k]], sum)
+    ok <- p > 0; p <- p[ok]; b <- b[ok]; sh <- 100 * b / p
+    o <- rbind(o, data.frame(
+      level = c(GEOID20 = "block", bg = "block group", tract = "tract")[[k]],
+      units = length(p), sd_share = round(wsd(sh, p), 1),
+      units_majority = sum(sh > 50),
+      pct_black_in_majority = round(100 * sum(b[sh > 50]) / sum(d[[race]]), 1)))
+  }
+  cbind(o, mean_share = round(100 * sum(d[[race]]) / sum(d$pop), 2))
+}
+
+knit_print.data.frame <- function(x, ...) {
+  nm <- names(x); nm <- gsub("_", " ", nm)
+  nm <- sub("^(.)", "\\U\\1", nm, perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = nm, row.names = FALSE), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`areal-units-brief.Rmd`) and the lab
+(`areal-units.Rmd`) run the same numbered steps — the brief in prose with four
+figures, the lab with the code exposed. **Students should read the brief first.**
+Step numbers below refer to both.
+
+**This is the conceptual spine of the redistricting half of the course.** Every
+lab that measures a group by area — `redistricting`, `vote-dilution`,
+`rpv`, `redlining` — inherits the problem demonstrated here. Run it before
+them if the calendar allows.
+
+Every number below was recomputed against the built files while this document was
+knitted. Nothing is typed.
+
+***
+
+# The session in one sentence
+
+The same people, counted on the same day, divided into six units of the same
+size, yield anywhere from `r FV("maj_min")` to `r FV("maj_max")` majority-Black
+units depending only on the angle of the cuts — so "how many majority-Black
+districts does this county support?" is not a question about the county.
+
+***
+
+# The findings
+
+```{r headline}
+c(fulton_people          = FN("ful_pop"),
+  fulton_black_pct       = FN("ful_black_pct"),
+  plans_built            = FN("n_plans"),
+  people_per_unit        = FN("quota"),
+  worst_deviation_pct    = FN("max_dev_pct"),
+  majority_black_min     = FN("maj_min"),
+  majority_black_max     = FN("maj_max"),
+  contiguous_plans       = FN("plans_contig"),
+  contiguous_maj_min     = FN("contig_maj_min"),
+  contiguous_maj_max     = FN("contig_maj_max"))
+```
+
+- **`r n(FV("ful_pop"))` people, `r n(FV("ful_blocks"))` blocks, one census.**
+- **The scale ladder**: weighted spread `r pc(LF("Census block", "sd_share"))`
+  points across blocks, `r pc(LF("Census tract", "sd_share"))` across tracts,
+  `r pc(LF("County", "sd_share"))` across the county. The **weighted mean never
+  moves**: `r pc(LF("Census block", "mean_share"), 2)`% on every rung.
+- **Statewide**, the share of Black Georgians living in a majority-Black unit
+  falls from `r pc(FV("ga_maj_block"))`% (blocks) to `r pc(FV("ga_maj_tract"))`%
+  (tracts) to `r pc(FV("ga_maj_county"))`% (counties). Nobody moved.
+- **The correlation with under-18 share changes sign**:
+  `r pc(LG("Census block", "corr_child"), 3)` across blocks,
+  `r pc(LG("County", "corr_child"), 3)` across counties.
+- **The zoning sweep**: `r n(FV("n_plans"))` equal-population partitions,
+  worst deviation `r pc(FV("max_dev_pct"), 2)`% of the quota, giving
+  `r FV("maj_min")` to `r FV("maj_max")` majority-Black units. Restricted to the
+  `r n(FV("plans_contig"))` effectively contiguous plans, still
+  `r FV("contig_maj_min")` to `r FV("contig_maj_max")`.
+
+***
+
+# The three things to get said
+
+**1. Scale and zoning are different effects, and the second is the one that
+matters.** Students arrive knowing "bigger units smooth things out" and will try
+to file the whole lab under that. Steps 3–5 are the scale effect and they are the
+warm-up. **Step 6 holds scale exactly fixed** — same number of units, same
+population in each, to `r pc(FV("max_dev_pct"), 2)`% — and the answer still moves
+by `r FN("maj_max") - FN("maj_min")` seats. Make somebody say back to you why
+that is not the same phenomenon.
+
+**2. The mean is the control, and nobody notices it.** In Step 4 the
+population-weighted mean is `r pc(LF("Census block", "mean_share"), 2)`% at every
+rung, exactly. **Point at that column before anything else.** It is what makes
+the rest an experiment rather than an anecdote: one quantity is provably
+unchanged, so everything that did change is attributable to the unit. Students
+who miss this think the lab is showing that aggregation introduces error. It
+isn't. The arithmetic is exact throughout.
+
+**3. A race-blind rule has a racial output.** Neither the strip rule nor the
+split rule reads a single race variable. One produces `r FV("lo_maj")`
+majority-Black units, the other `r FV("hi_maj")`. **This is the sentence to get
+on the board**, because "the algorithm doesn't look at race" is the most common
+defence of automated redistricting and this lab shows it establishes nothing at
+all about the outcome.
+
+**The line for the board:** *the map is not a measurement of the people; it is
+half of the measurement.*
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** The same people | `r n(FV("ful_pop"))` people, `r n(FV("ful_blocks"))` blocks | 4 | Say "any part Black" out loud and say it is a choice. Someone will ask; it is `r pc(FV("ga_black_pct"), 2)`% vs `r pc(FV("ga_black_alone_pct"), 2)`% statewide. |
+| **2** GEOID as a string | Block group and tract are prefixes | 5 | **Do not skip.** It is what makes Steps 3-5 airtight: no spatial operation, so no geometric error to blame. |
+| **3** Scale effect, seen | Four maps, one ramp | 8 | Let them look before you talk. Ask what happened to the black neighbourhoods between panel 1 and panel 4. |
+| **4** Scale effect, measured | The ladder | 9 | **The constant mean.** Also the sign flip in the correlation column. |
+| **5** Distribution collapse | Density by rung | 7 | It **does not** collapse much for Fulton. That is the finding, not a failure. |
+| **6** The zoning effect | `r n(FV("n_plans"))` partitions | **14** | **The pivot.** Take the prediction first (below). |
+| **7** The two extremes | The maps of both | 9 | Name *cracking* only after they have seen it. Stress that no rule saw race. |
+| **8** Are they districts? | Contiguity | 8 | The honest objection, honestly answered. `r FV("plans_strict_contig")` of `r n(FV("n_plans"))` pass strictly, and the reason is rivers, not shapes. |
+| **9** Why it is a democracy problem | Section 2 | 8 | "There is no true value to recover" is the hard idea. Give it room. |
+| **10** The ecological fallacy | The tension | 5 | Name `rpv` as the answer-key case. Do not resolve it. |
+| **11** What you can say | Including what you cannot | 4 | Close on the range, not on a number. |
+
+**Step 6 deserves the prediction.** Before showing the figure, put the setup on
+the board — same `r n(FV("ful_blocks"))` blocks, `r FV("K")` units, everyone
+within `r pc(FV("max_dev_pct"), 2)`% of `r n(FV("quota"))` people, two rules
+neither of which reads race — and ask: **how many of the six will be
+majority-Black?** Almost everyone gives one number, usually two or three, because
+the county is `r pc(FV("ful_black_pct"), 2)`% Black. The answer is that
+`r n(FV("plans_zero_maj"))` plans give `r FV("maj_min")` and
+`r n(sum(sm$n_majority == FN("maj_max")))` give `r FV("maj_max")`. The room
+reliably assumes the question has an answer.
+
+**If you are short on time**, protect Steps 4, 6 and 8. The constant mean, the
+sweep, and the contiguity test that fails to rescue us are the argument.
+
+***
+
+# The figure to project
+
+```{r zone-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+ord <- order(sm$n_majority, sm$max_share)
+key <- paste(sm$family[ord], sm$angle[ord]); swk <- paste(sw$family, sw$angle)
+rows <- vapply(seq_along(key), function(i)
+  paste0("[", i - 1L, ",", paste0(formatC(sort(sw$share[swk == key[i]]),
+         format = "f", digits = 1), collapse = ","), "]"), character(1))
+i_lo <- which(key == paste(FV("lo_family"), FV("lo_angle"))) - 1L
+i_hi <- which(key == paste(FV("hi_family"), FV("hi_angle"))) - 1L
+lab_lo <- paste0(FV("lo_maj"), " majority-Black units · ", FV("lo_family"),
+                 " rule at ", FV("lo_angle"), "°")
+lab_hi <- paste0(FV("hi_maj"), " majority-Black units · ", FV("hi_family"),
+                 " rule at ", FV("hi_angle"), "°")
+brk <- cumsum(table(factor(sm$n_majority[ord], levels = sort(unique(sm$n_majority)))))
+blab <- paste0("[", paste0('{"y":', as.integer(brk), ',"t":"', names(brk),
+        ifelse(names(brk) == "1", " majority-Black unit", " majority-Black units"),
+        '","n":', as.integer(table(sm$n_majority)[names(brk)]), '}', collapse = ","), "]")
+cat(paste0('
+<div id="zon" style="margin:1em 0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function(){
+const P=[', paste(rows, collapse = ","), '],BR=', blab, ';
+const NR=P.length,LO=', i_lo, ',HI=', i_hi, ';
+const RH=1.55,L=228,R=32,T0=54,B=48;
+const W=900,H=Math.round(T0+NR*RH+B);
+const svg=d3.select("#zon").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const x=d3.scaleLinear().domain([0,100]).range([L,W-R]);
+const yr=i=>T0+i*RH;
+svg.append("rect").attr("x",x(50)).attr("y",T0-6).attr("width",W-R-x(50))
+  .attr("height",NR*RH+6).attr("fill","#C41230").attr("fill-opacity",0.045);
+BR.forEach(b=>{
+  svg.append("line").attr("x1",L-6).attr("x2",W-R).attr("y1",yr(b.y)).attr("y2",yr(b.y))
+    .attr("stroke","#ddd");
+  svg.append("text").attr("x",L-12).attr("y",yr(b.y)-b.n*RH/2+4).attr("text-anchor","end")
+    .attr("font-size","13px").attr("fill","#555").text(b.n+" plans → "+b.t);});
+const FLAT=[];P.forEach(p=>{for(let j=1;j<7;j++)FLAT.push([p[0],p[j]]);});
+svg.append("g").selectAll("circle").data(FLAT).join("circle")
+  .attr("cx",d=>x(d[1])).attr("cy",d=>yr(d[0])+RH/2).attr("r",1.7)
+  .attr("fill",d=>d[1]>50?"#C41230":"#3f8dc0").attr("fill-opacity",0.55);
+[[LO,"', lab_lo, '"],[HI,"', lab_hi, '"]].forEach(([i,t])=>{
+  svg.append("line").attr("x1",L-6).attr("x2",W-R).attr("y1",yr(i)+RH/2)
+    .attr("y2",yr(i)+RH/2).attr("stroke","#111").attr("stroke-width",1);
+  const p=P[i];
+  for(let j=1;j<7;j++)
+    svg.append("circle").attr("cx",x(p[j])).attr("cy",yr(i)+RH/2).attr("r",3.6)
+      .attr("fill",p[j]>50?"#C41230":"#1f5d8c").attr("stroke","#fff").attr("stroke-width",1);
+  svg.append("text").attr("x",W-R).attr("y",yr(i)-7).attr("text-anchor","end")
+    .attr("font-size","13px").attr("font-weight","600").attr("fill","#111").text(t);});
+svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",T0-14).attr("y2",T0+NR*RH)
+  .attr("stroke","#C41230").attr("stroke-width",1.4);
+svg.append("text").attr("x",x(50)).attr("y",T0-20).attr("text-anchor","middle")
+  .attr("font-size","14px").attr("font-weight","600").attr("fill","#C41230").text("50%");
+d3.range(0,101,10).forEach(v=>svg.append("text").attr("x",x(v)).attr("y",T0+NR*RH+20)
+  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#aaa").text(v+"%"));
+svg.append("text").attr("x",L).attr("y",T0+NR*RH+40).attr("font-size","13px").attr("fill","#888")
+  .text("Black share of a unit · every unit of every plan · "+(6*NR).toLocaleString()
+        +" units in "+NR+" plans");
+})();
+</script>
+'))
+```
+
+```{r zone-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=5.6}
+ord <- order(sm$n_majority, sm$max_share)
+key <- paste(sm$family[ord], sm$angle[ord]); swk <- paste(sw$family, sw$angle)
+par(mar = c(3.6, 9.6, 2.6, 1.0))
+plot(NA, xlim = c(0, 100), ylim = c(nrow(sm), 0), axes = FALSE, ann = FALSE)
+rect(50, 0, 100, nrow(sm), col = adjustcolor("#C41230", 0.045), border = NA)
+for (i in seq_along(key)) {
+  v <- sw$share[swk == key[i]]
+  points(v, rep(i, length(v)), pch = 19, cex = 0.24,
+         col = adjustcolor(ifelse(v > 50, "#C41230", "#3f8dc0"), 0.55))
+}
+brk <- cumsum(table(factor(sm$n_majority[ord], levels = sort(unique(sm$n_majority)))))
+cnt <- as.integer(table(sm$n_majority)[names(brk)])
+segments(0, brk, 100, brk, col = "#dddddd")
+text(-2, brk - cnt / 2, paste0(cnt, " plans -> ", names(brk),
+     ifelse(names(brk) == "1", " majority-Black unit", " majority-Black units")),
+     adj = 1, cex = 0.6, col = "#555", xpd = NA)
+abline(v = 50, col = "#C41230", lwd = 1.4)
+for (tg in c("lo", "hi")) {
+  i <- which(key == paste(FV(paste0(tg, "_family")), FV(paste0(tg, "_angle"))))
+  v <- sw$share[swk == key[i]]
+  segments(0, i, 100, i, col = "#111111", lwd = 0.7)
+  points(v, rep(i, length(v)), pch = 21, cex = 0.62, lwd = 0.5,
+         bg = ifelse(v > 50, "#C41230", "#1f5d8c"), col = "white")
+  lb <- paste0(FV(paste0(tg, "_maj")), " majority-Black units - ",
+               FV(paste0(tg, "_family")), " rule at ", FV(paste0(tg, "_angle")), " deg")
+  yy <- if (tg == "lo") i - 5 else i - 6
+  rect(100 - strwidth(lb, cex = 0.58) - 1, yy - strheight(lb, cex = 0.58) * 0.9,
+       100.5, yy + strheight(lb, cex = 0.58) * 0.9, col = "white", border = NA)
+  text(100, yy, lb, adj = 1, cex = 0.58, font = 2, col = "#111111")
+}
+axis(1, seq(0, 100, 10), paste0(seq(0, 100, 10), "%"), cex.axis = 0.6,
+     col = "#ddd", col.axis = "#999", tck = -0.012, mgp = c(2, 0.3, 0))
+mtext(sprintf("Black share of a unit - every unit of every plan - %s units in %d plans",
+              n(6 * nrow(sm)), nrow(sm)), side = 1, line = 1.9, cex = 0.6, col = "#888")
+title(sprintf("%s equal-population partitions of the same %s blocks",
+              n(nrow(sm)), n(FV("ful_blocks"))), cex.main = 0.9, adj = 0, line = 0.8)
+```
+
+If you show one image, show this one. The red band is above 50%; each row is one
+plan; the two black rows are the extremes. **The whole argument is that every row
+contains the same `r n(FV("ful_pop"))` people.**
+
+And the same county at four scales, for Step 3:
+
+```{r scale-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+PW <- 208L; GAP <- 10L; TOP <- 42L; BOTPAD <- 40L
+s  <- PW / diff(RX); PH <- round(diff(RY) * s)
+W  <- 4L * PW + 3L * GAP; H <- TOP + PH + BOTPAD
+KEYS <- c("b", "g", "t", "c")
+mkpanel <- function(i) {
+  off <- (i - 1L) * (PW + GAP)
+  fx <- function(x) off + (x - RX[1]) * s
+  fy <- function(y) TOP + (RY[2] - y) * s
+  v  <- mv[mv$lev == KEYS[i], ]
+  P  <- ringpaths(mu[mu$lev == KEYS[i], ], "uid", fx, fy)
+  uid <- as.integer(sub("\\.[0-9]+$", "", names(P)))
+  ci  <- match(v$fill[match(uid, v$uid)], RAMP) - 1L
+  ci[is.na(ci)] <- -1L
+  base <- ringpaths(mu[mu$lev == "c", ], "uid", fx, fy)
+  paste0("[", jstr(c(base, P)), ",", jnum(c(rep(-1L, length(base)), ci)), "]")
+}
+PAN <- vapply(seq_along(KEYS), mkpanel, character(1))
+sub1 <- paste0(vapply(LEVS, function(l) n(LF(l, "units")), character(1)),
+               ifelse(LEVS == "County", " unit", " units"))
+sub2 <- paste0("median ", vapply(LEVS, function(l) n(LF(l, "median_pop")),
+                                 character(1)), " people")
+sub3 <- paste0("spread ", vapply(LEVS, function(l) pc(LF(l, "sd_share")),
+                                 character(1)), " pts")
+lab <- paste0("[", paste0('{"t":"', LEVS, '","a":"', sub1, '","b":"', sub2,
+                          '","c":"', sub3, '"}', collapse = ","), "]")
+cat(paste0('
+<div id="scl" style="margin:1em 0"></div>
+<!-- d3 v7 is loaded once, by the first figure above -->
+<script>
+(function(){
+const PAN=[', paste(PAN, collapse = ","), '],L=', lab, ',R=', jstr(RAMP), ';
+const W=', W, ',H=', H, ',PW=', PW, ',GAP=', GAP, ',TOP=', TOP, ',PH=', PH, ';
+const svg=d3.select("#scl").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const col=i=>i<0?"#e6e6e6":R[i];
+PAN.forEach((P,i)=>{
+  const off=i*(PW+GAP);
+  svg.append("g").selectAll("path").data(P[0]).join("path").attr("d",d=>d)
+    .attr("fill",(d,j)=>col(P[1][j])).attr("stroke","none");
+  svg.append("text").attr("x",off+PW/2).attr("y",15).attr("text-anchor","middle")
+    .attr("font-size","13px").attr("font-weight","600").attr("fill","#222").text(L[i].t);
+  [[L[i].a,27],[L[i].b,37]].forEach(([t,y])=>
+    svg.append("text").attr("x",off+PW/2).attr("y",y).attr("text-anchor","middle")
+      .attr("font-size","9.5px").attr("fill","#777").text(t));
+  svg.append("text").attr("x",off+PW/2).attr("y",TOP+PH+12).attr("text-anchor","middle")
+    .attr("font-size","9.5px").attr("fill","#777").text(L[i].c);
+});
+const KW=210,KX=(W-KW)/2,KY=TOP+PH+21;
+R.forEach((c,i)=>svg.append("rect").attr("x",KX+i*KW/101).attr("y",KY)
+  .attr("width",KW/101+0.5).attr("height",7).attr("fill",c));
+[[0,"0%"],[50,"50%"],[100,"100%"]].forEach(([v,t])=>
+  svg.append("text").attr("x",KX+v*KW/100).attr("y",KY+8).attr("text-anchor","middle")
+    .attr("dy","0.9em").attr("font-size","8px").attr("fill","#888").text(t));
+svg.append("text").attr("x",KX-8).attr("y",KY+6).attr("text-anchor","end")
+  .attr("font-size","8.5px").attr("fill","#888").text("share of the unit that is Black");
+})();
+</script>
+'))
+```
+
+```{r scale-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.5}
+layout(matrix(c(1, 2, 3, 4, 5, 5, 5, 5), 2, 4, byrow = TRUE), heights = c(8, 1))
+op <- par(mar = c(1.6, 0.2, 3.0, 0.2), xpd = NA)
+for (i in seq_along(LEVS)) {
+  lv <- c("b", "g", "t", "c")[i]
+  v  <- mv[mv$lev == lv, ]
+  fill <- as.list(v$fill); names(fill) <- as.character(v$uid)
+  plot(NA, xlim = RX, ylim = RY, asp = 1, axes = FALSE, ann = FALSE)
+  polygon(co$x, co$y, col = "#e6e6e6", border = NA)
+  drawrings(mu[mu$lev == lv, ], "uid", fill, border = NA)
+  title(LEVS[i], cex.main = 1.0, line = 1.9)
+  mtext(paste0(n(LF(LEVS[i], "units")),
+               if (LEVS[i] == "County") " unit" else " units"),
+        side = 3, line = 0.95, cex = 0.55, col = "#777")
+  mtext(paste0("median ", n(LF(LEVS[i], "median_pop")), " people"),
+        side = 3, line = 0.25, cex = 0.55, col = "#777")
+  mtext(paste0("spread ", pc(LF(LEVS[i], "sd_share")), " pts"),
+        side = 1, line = 0.2, cex = 0.55, col = "#777")
+}
+par(mar = c(0, 0.2, 0, 0.2))
+plot(NA, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, ann = FALSE)
+bx <- seq(0.40, 0.62, length.out = 102)
+rect(bx[-102], 0.42, bx[-1], 0.72, col = RAMP, border = NA)
+text(c(0.40, 0.51, 0.62), 0.42, c("0%", "50%", "100%"), pos = 1,
+     cex = 0.52, col = "#888", offset = 0.25)
+text(0.385, 0.57, "share of the unit that is Black", pos = 2, cex = 0.52, col = "#888")
+par(op); layout(1)
+```
+
+***
+
+# Handling the room
+
+**The thing that goes wrong** is that a few students conclude the data is
+worthless — "so you can make it say anything." That is the wrong lesson and it is
+worth pushing back on directly:
+
+- **The census count is exact and the arithmetic is exact.** Nothing here is
+  measurement error. Say so.
+- **The ambiguity is bounded and measurable.** `r FV("maj_min")` to
+  `r FV("maj_max")`, and `r FV("contig_maj_min")` to `r FV("contig_maj_max")`
+  among plausible plans. That is a *result*, not a shrug.
+- **Some questions are unaffected.** "How many Black people live in Fulton
+  County?" has one answer: `r n(FV("ful_black"))`. Ask the room which of their
+  own questions are unit-dependent and which are not. That sorting exercise is
+  the most useful five minutes in the session.
+
+**The second thing** is students conflating this with the ecological fallacy,
+which they may have met in `levels-of-aggregation`. They are cousins, not twins.
+The ecological fallacy is about inferring *individuals* from areas. The
+modifiable areal unit problem is about the *area statistic itself* being
+non-unique before anyone infers anything. Step 10 names both; keep them apart.
+
+***
+
+# Option A — A different county
+
+## Verified output
+
+```{r a}
+CTY <- c("Fulton" = "13121", "Chatham" = "13051", "Dougherty" = "13095",
+         "Forsyth" = "13117", "Clayton" = "13063")
+o <- do.call(rbind, lapply(names(CTY), function(nm) {
+  d <- bl[bl$county == CTY[[nm]], ]
+  z <- ladder(d)
+  data.frame(county = nm, people = n(sum(d$pop)), black_pct = z$mean_share[1],
+             sd_blocks = z$sd_share[1], sd_tracts = z$sd_share[3],
+             collapse_pts = round(z$sd_share[1] - z$sd_share[3], 1),
+             in_maj_blocks = z$pct_black_in_majority[1],
+             in_maj_tracts = z$pct_black_in_majority[3])
+}))
+o
+```
+
+**3/4:** Runs a second county, reports its ladder, notices the spread falls
+there too.
+
+**4/4:** Compares the *size* of the collapse. Fulton loses
+`r pc(o$collapse_pts[o$county == "Fulton"])` points of spread between blocks and
+tracts; Chatham loses `r pc(o$collapse_pts[o$county == "Chatham"])`. Explains
+why: **the scale effect bites in proportion to how much of the segregation
+happens below the size of a tract.** Fulton's is a north-south divide tens of
+kilometres across and survives aggregation; Chatham's is finer-grained and does
+not.
+
+**4/4, best:** Notices Clayton, where `pct_black_in_majority` goes the *wrong*
+way — `r pc(o$in_maj_blocks[o$county == "Clayton"])`% at block level rising to
+`r pc(o$in_maj_tracts[o$county == "Clayton"])`% at tract level. In a county that
+is already `r pc(o$black_pct[o$county == "Clayton"])`% Black, coarsening *pulls
+people into* majority-Black units instead of out of them. **The scale effect has
+no fixed direction; it depends on which side of 50% the surrounding area sits.**
+A student who works that out has understood the mechanism rather than memorised
+the Fulton result. Forsyth is the mirror image: at
+`r pc(o$black_pct[o$county == "Forsyth"])`% Black, exactly
+`r n(ladder(bl[bl$county == "13117", ])$units_majority[1])` of its
+`r n(ladder(bl[bl$county == "13117", ])$units[1])` populated blocks are
+majority-Black, and none of its tracts are.
+
+***
+
+# Option B — A different definition of "Black"
+
+## Verified output
+
+```{r b}
+d <- bl[bl$county == "13121", ]
+z <- rbind(cbind(measure = "any part Black", ladder(d, "black_any")),
+           cbind(measure = "Black alone",    ladder(d, "black_alone")))
+z[, c("measure", "level", "units", "mean_share", "sd_share",
+      "units_majority", "pct_black_in_majority")]
+```
+
+**3/4:** Reports that the numbers are lower under "Black alone" and that the
+pattern is the same.
+
+**4/4:** Notices *which* statistic is sensitive. The mean falls
+`r pc(z$mean_share[1] - z$mean_share[4], 2)` points, and the **count of
+majority-Black blocks falls from `r n(z$units_majority[1])` to
+`r n(z$units_majority[4])`** — about
+`r pc(100 * (z$units_majority[1] - z$units_majority[4]) / z$units_majority[1])`%
+— while the spread barely moves
+(`r pc(z$sd_share[1])` to `r pc(z$sd_share[4])` points). **Threshold counts are
+far more sensitive to the definition than distributional statistics are**,
+because a definition change moves units across a line rather than rearranging
+them.
+
+**4/4, best:** Connects it to Step 6. If a `r pc(z$mean_share[1] - z$mean_share[4], 2)`-point
+change in *definition* can move the count of majority-Black units, then the
+`r FN("maj_max") - FN("maj_min")`-unit range from *zoning* is not the only
+non-uniqueness in the answer — and the two compound. Notes that litigants choose
+the definition too, and that the choice is not neutral.
+
+***
+
+# Option C — A different threshold
+
+## Verified output
+
+```{r c}
+k <- paste(sw$family, sw$angle)
+o <- do.call(rbind, lapply(c(40, 45, 50, 55, 60, 70), function(t)
+  do.call(rbind, lapply(c("share", "bvap"), function(v) {
+    cnt <- tapply(sw[[v]] > t, k, sum)
+    data.frame(threshold = paste0(t, "%"),
+               measure = c(share = "total population", bvap = "voting age")[[v]],
+               fewest = min(cnt), most = max(cnt), range = max(cnt) - min(cnt),
+               plans_at_fewest = sum(cnt == min(cnt)))
+  }))))
+o
+```
+
+**3/4:** Reports that the counts change with the threshold, and that voting-age
+numbers are a little lower than total-population numbers.
+
+**4/4:** Reads the `range` column, which is the point: **at no threshold does the
+choice of plan stop mattering.** Even at
+`r o$threshold[which.min(o$range)]` the gap between the best and worst plan is
+`r min(o$range)` units. There is no threshold at which the map becomes
+irrelevant.
+
+**4/4, best:** Notes that the ambiguity is *largest* right where the law puts its
+line. At 50% of total population the range is
+`r o$range[o$threshold == "50%" & o$measure == "total population"]` of
+`r FV("K")` units; the biggest gap anywhere in the table is
+`r max(o$range)`. **The legal threshold sits in the region of maximum
+sensitivity**, which is not a coincidence — 50% is near the county's own
+`r pc(FV("ful_black_pct"), 2)`%, and a threshold near the population share is
+exactly where partitioning has the most leverage. A student who says that has
+found something the lab does not state.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given, and this lab gives more of it than most.
+- **The move that earns a 4** is treating "the Black share of a district" as a
+  joint fact about people and boundaries, and reasoning about the *range* rather
+  than reporting a number.
+- **A 2** is "so the data can say anything" — nihilism dressed as sophistication.
+  The ambiguity here is measured, bounded, and smaller than the student thinks.
+- **Also a 2**: describing the scale effect (Steps 3-5) and stopping, having
+  missed that Step 6 holds scale fixed.
+- **Also a 2**: treating the zoning result as evidence that someone gerrymandered
+  Fulton. Nothing in the lab has intent in it.
+- **Reward anyone who asks what the range would be over *all* partitions**, not
+  just these two rule families. The honest answer is that we do not know and it
+  is certainly wider; noticing that `r n(FV("n_plans"))` is a convenience sample
+  of an enormous space is the most sophisticated available response.
+
+## Anticipated questions
+
+- *"Isn't this just saying bigger units are smoother?"* — No, and Step 6 is the
+  proof: the units there are all the same size. Have this answer ready; it is the
+  most common misreading.
+- *"Which of the `r n(FV("n_plans"))` plans is the right one?"* — None. That is
+  the finding. A real plan is chosen by a political process operating under legal
+  constraints, and the constraints do not narrow it to one.
+- *"Couldn't a computer just find the fairest map?"* — Only once "fairest" is
+  defined, and the definitions conflict. Point at the two rules: both are
+  perfectly principled and they disagree by
+  `r FN("hi_maj") - FN("lo_maj")` seats.
+- *"Why does contiguity fail for every plan?"* — Rivers, interstates and the
+  airport are their own blocks and touch nothing across them. The strict test is
+  measuring the block layer, not the plan. Hence the
+  `r FV("contig_thr")`%-of-population criterion, which is stated in Step 8 rather
+  than hidden.
+- *"Is `r pc(FV("max_dev_pct"), 2)`% population deviation realistic?"* — It is far
+  tighter than required. Congressional plans aim for near-zero; local plans are
+  commonly allowed 10% total deviation, which would make the range found here
+  **wider**, not narrower.
+- *"Does this mean census tracts are wrong?"* — No. Tracts are a reasonable unit
+  for many questions. They are the wrong unit for any question whose answer
+  depends on where a 50% line falls.
+
+## Connections
+
+- **`precinct-geography`** — the same machinery with **time** as the variable
+  instead of the unit: boundaries move between elections. Run the two together
+  and the pair covers both ways a unit can betray you.
+- **`levels-of-aggregation`** — meets the modifiable areal unit problem in
+  passing, with a random-regrouping null. This lab is that observation made the
+  whole subject, and adds the zoning effect, which that lab does not isolate.
+- **`redistricting`** — the applied version. Everything there assumes a
+  plan; this lab is about the space of plans it was drawn from.
+- **`vote-dilution` and `rpv`** — both measure race by area and inherit
+  this problem wholesale. `rpv` is also the one place in the course where
+  the ecological inference can be checked against individual records.
+- **`redlining`** — point-in-polygon and the same assumption that people are
+  spread evenly inside a polygon, in a setting where the error cannot be measured.
+- **`census-geography`** — the nesting spine that Step 2 exploits, and the list of
+  things that do not nest.

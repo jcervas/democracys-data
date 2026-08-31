@@ -1,0 +1,487 @@
+---
+title: "Counting Majority-Black Districts"
+subtitle: "A curve with an arbitrary parameter, a claim resting on three districts, and six answers to the question of how many majority-Black districts there are"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("sweet-spot-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The last chapter asked whether a district *could* be drawn. This one asks what happens in the districts that *were*. The two questions share a number: the share of a district that belongs to a minority group. The whole of American minority-representation research is an argument about how that number turns into a person.
+
+## The paper this chapter argues with
+
+David Lublin, Lisa Handley, Thomas Brunell and Bernard Grofman, "Minority Success in Non-Majority Minority Districts: Finding the 'Sweet Spot'," *Journal of Race, Ethnicity, and Politics* 5 (2020): 275–298. It makes a claim that was surprising when they made it and is now close to conventional wisdom.
+
+Black and Latino candidates, they argue, used to need a majority-minority district to win. They increasingly do not. They can now win in districts that are only 40 to 50 percent minority, and **the reason is the rise of the Republican Party.**
+
+As white voters in the South leave the Democratic primary, the Black share of the *primary* electorate rises. So a Black candidate can win the nomination in a district where Black voters are well short of a majority overall. That helps right up until Republicans are numerous enough to win the general election. Between those two failures sits a **"sweet spot"**: a Republican share high enough to hand a minority candidate the Democratic nomination and low enough that the nomination is still worth having.
+
+It is a good argument. This chapter takes it apart in the only way worth taking an argument apart — by rebuilding it, on data the authors could not have had, and finding out which parts survive.
+
+## Three quantities, and only two of them are in a file
+
+To ask the paper's question you need three things about each district: **how Black or Latino it is**, **how Republican it is**, and **whether the person it elected is Black or Latino.**
+
+The first is the most heavily regulated number in American statistics. It comes here from the Census Bureau's **Citizen Voting Age Population Special Tabulation**. That is produced not by the ACS program but by the Bureau's Redistricting Data Office, which exists because the Voting Rights Act needs it to. Thirteen race lines by four population bases, with a margin of error on every cell, saying how far off that cell could be, for every congressional district. The [`census-api`](../../01-census-bureau/census-api/census-api-brief.html) chapter counted how much of the Bureau's published output exists for this reason; this file is that observation in its purest form.
+
+The second is not produced by any government at all. Presidential results by congressional district have to be *computed*, by pushing precinct returns onto district lines. The number used here is The Downballot's, borrowed from the [`house-competition`](../../03-elections/house-competition/house-competition-brief.html) chapter along with the decision that makes it meaningful. The 118th Congress ran on the 2022 maps, so the presidential figure has to be 2020 recomputed on those lines.
+
+**The third is not in a file anywhere.** There is no federal dataset that records the race of a member of Congress. It is not in the Clerk's election statistics, not in Voteview, and not in the Biographical Directory's bulk data. It is not in the `congress-legislators` collection this build also uses, which carries every member's Twitter handle and does not carry this.
+
+Lublin et al. say where theirs came from, in a note under Table 1. It is the NALEO directory, the National Black Caucus of State Legislators directory, data from the Joint Center for Political and Economic Studies, and "personal knowledge and inquiries."
+
+Three advocacy directories and asking around. **The dependent variable of an entire literature is assembled by hand, by the people who need it, because nobody else assembles it.**
+
+The closest institutional substitute is the U.S. House's own Office of the Historian, which curates the reference works *Black Americans in Congress* and *Hispanic Americans in Congress*. Its machine-reachable form is a **search filter on a photo gallery**, and the only identifier it publishes is the Bioguide ID embedded in each member's photograph filename:
+
+```{r raw, results='asis'}
+```
+
+Scraping that filename for every member is what produces `historian.csv`, whose first rows are:
+
+```{r raw-historian}
+```
+
+Sixteen of the `r nrow(read.csv("data/raw/historian.csv"))` members have no listing photograph, and for those the build opens the biography page and reads the identifier out of the prose. That is the state of the art. **Every number in the second half of this chapter depends on a photograph filename.**
+
+One consequence is worth stating before any of it is used. The Census file measures race by asking people to check boxes about themselves. The Historian's list assigns race by editorial judgment, retrospectively, with no published inclusion rule. **The independent variable and the dependent variable in every table below use the same word to mean two different operations**, and no amount of care downstream repairs that.
+
+## One row is a congressional district
+
+```{r one-row}
+```
+
+`r NDIST` rows, one per district of the **118th Congress** (2023–2025), which is the most recent Congress the CVAP tabulation covers. `r nrow(mem)` people held those seats; **`r NCHG` seats changed occupant mid-Congress**, and the member recorded here is the first to hold the seat — normally the winner of the 2022 general election. That rule matters more than it sounds: a rule keyed to opening day instead drops VA-04 entirely, because Donald McEachin died three weeks after winning it and the seat was empty when the Congress convened.
+
+```{r file}
+```
+
+Note the third row from the bottom. `r NBOTH` members appear on **both** the Historian's Black list and its Hispanic list. Lublin et al.'s tables have no cell for that. Table 3 counts districts that elected an African American, and Table 4 counts districts that elected a Latino. A district represented by `r paste(d$name[d$both], collapse = ", ")` is counted twice, once in each.
+
+Nothing in the paper is wrong about this. **The categories are not exclusive and the tables are built as though they were.**
+
+## Act one: the curve, and the number it is made of
+
+The paper's Figure 1 is a simulation, and its mechanism is stated plainly enough to rebuild from the text. An electorate is `BD` Black Democrats, `R` Republicans (all white), and the remainder `WD` white Democrats. A Black Democrat must win the primary, where voting is polarized by race, and then the general, where the Democratic coalition is everyone who is not a Republican:
+
+$$P(\text{primary}) = \Phi\!\left(\frac{\frac{BD}{BD+WD} - 0.5}{\sigma}\right)
+\qquad
+P(\text{general}) = \Phi\!\left(\frac{(BD+WD) - 0.5}{\sigma}\right)$$
+
+and the probability of a seat is their product. The rebuild reproduces the published figure: at `BD` = 30% the peak sits at a Republican share of **`r pc(100 * FIG1A$peak_R)`%** with probability **`r pc(FIG1A$peak_p, 2)`**, which is where and how high Figure 1(a) puts it.
+
+$\sigma$ is the standard deviation of the noise around each of those two contests. It is the only free parameter in the model. Here is the authors' description of it, in full:
+
+> "a fixed standard deviation set arbitrarily at .03"
+
+They are not hiding it. They add that other values "yield qualitatively identical patterns of curvilinearity." That claim is testable, so test it.
+
+```{r sigma-static, eval=!knitr::is_html_output(), fig.height = 4.6}
+```
+
+```{r sigma-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The same model, seven times.** Lublin et al.'s Figure 1 mechanism, drawn for each of seven values of $\sigma$; the heavy line is their $\sigma$ = .03. Red dots mark the peak of each curve, joined to show where the "sweet spot" travels. Left panel: a 30% Black Democratic electorate. Right: 40%. Use the buttons to isolate one $\sigma$ in both panels at once. That is the comparison the figure is making, and seven overlapping curves are not a fair way to ask a reader to make it.
+
+The authors are half right, and the half they are wrong about is the half the paper is named after.
+
+```{r sigma-table}
+```
+
+The *shape* is curvilinear at every setting, which is what they said. But:
+
+- **At `BD` = 30%, $\sigma$ decides whether the sweet spot is a near-certainty
+  or worse than a coin flip.** The peak stays put at
+  `r pc(100 * FIG1A$peak_R)`% — pinned there by the general-election
+  constraint — while its height runs from
+  `r pc(max(P30$peak_p), 3)` down to `r pc(min(P30$peak_p), 3)`.
+- **At `BD` = 40%, $\sigma$ decides where the sweet spot is.** The peak travels
+  `r pc(100 * (max(P40$peak_R) - min(P40$peak_R)), 1)` points, from
+  `r pc(100 * min(P40$peak_R))`% Republican to `r pc(100 * max(P40$peak_R))`%.
+- **At small $\sigma$ there is no peak at all.** As the noise vanishes the
+  probability becomes an indicator on the window where the candidate wins both
+  contests, and the top of the curve goes flat: at `BD` = 40% and $\sigma$ =
+  `r sprintf("%.3f", min(SIGMAS))` the near-flat top is
+  `r pc(100 * P40$plateau_width[P40$sigma == min(SIGMAS)], 1)` points wide.
+  Every Republican share in that window is equally good. **A window is not a
+  sweet spot, and which one you see is set by $\sigma$.**
+
+None of this makes the model wrong. It makes the model's headline a property of a parameter, and the parameter was chosen for tractability. **The thing to carry out of this section is not that the paper is wrong. It is that a figure can be reproduced exactly and still not mean what its caption says.** The only way to find that out is to rebuild it, treating the one number that was called arbitrary as arbitrary.
+
+## Act two: the row underneath the percentages
+
+The paper's empirical core is its Table 3A: districts sorted into bins by Black share, and the percentage of each bin that elected a Black legislator. The 40–50% bins are the ones the argument is about. Here is that table's U.S. House row, exactly as printed — and the row printed underneath it, which is the number of districts each percentage was computed from.
+
+```{r lublin-3a}
+```
+
+**The two bins the paper's argument turns on contain `r n(LUB_4050)` districts between them.** The 40–45% cell reads 100.0% and is two districts. The 45–50% cell reads 100.0% and is **one district**. Both are printed to one decimal place.
+
+The paper's text does not rest the claim on the congressional row alone. It reaches for the state legislative rows, where the 45–50% cells are `r pc(LUB_SH$pct)`% on `r LUB_SH$n` districts and `r pc(LUB_SEN$pct)`% on `r LUB_SEN$n`. `r LUB_SEN$n` districts is `r round(LUB_SEN$n * LUB_SEN$pct/100)` of `r LUB_SEN$n`. These are not errors.
+
+Every number is correctly computed, and the denominators are printed on the same page. A denominator is the bottom number each share is divided by. **They are simply small, and a percentage does not look small.**
+
+So rebuild the table on a Congress the authors could not see.
+
+```{r now-table}
+```
+
+```{r bins-static, eval=!knitr::is_html_output(), fig.height = 4.2}
+```
+
+```{r bins-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same bins, ten years apart.** Percentage of districts in each band that elected a Black member, in 2015 as Lublin et al. published it and in the 118th Congress as rebuilt here. Dot area is proportional to the number of districts the percentage was computed from, which is the point of the figure. Hover a band to read that denominator instead of guessing it from the dot.
+
+**The forecast came true and the paper could not have demonstrated it.** The 40–50% band held `r n(LUB_4050)` congressional districts in 2015 and holds **`r n(NOW_4050)`** now, of which `r n(NOW_4050E)` elected a Black member. A claim that rested on three districts rests on `r n(NOW_4050)`, and it holds up.
+
+That is the honest verdict, and it is a good one for the authors. It is also the lesson: **the 2015 table was not evidence for the claim it was used to support, and the claim was right anyway.** Being right is not the same as having shown it. A reader who believed Table 3A in 2020 believed it for bad reasons and got lucky.
+
+## Act three: how many majority-Black districts are there?
+
+Everything above sorted districts by "Black share." The 50% line in particular is not a convenience. *Bartlett v. Strickland*, 556 U.S. 1, 19–20 (2009) reads the first *Gingles* condition to require a group that is **more than 50 percent of a district's voting-age population**. The [`vote-dilution`](../vote-dilution/vote-dilution-brief.html) chapter turned on exactly which population that means.
+
+> **Before you read on, write one number down.** You have just seen the 118th
+> Congress sorted by Black share of total population, and you know the 50% line
+> decides a *Gingles* claim. **How many majority-Black congressional districts
+> are there?**
+>
+> Write a single integer. The question sounds like it has one.
+
+This file supplies six defensible answers. Three population bases, meaning everyone, adults and citizen adults, crossed with two definitions of Black. The stricter is **Black alone**. The looser is **any-part Black**, alone or in combination, which is Voting Rights Act practice. The CVAP tabulation cannot express any-part Black: it breaks multiracial responses into named pairs plus a bucket called "Remainder of Two or More Race Responses" that it does not decompose. So the build carries **bounds**: Black alone at the bottom, and Black alone plus every combination plus the whole remainder bucket at the top.
+
+The truth is somewhere inside.
+
+**The federal tabulation built for the Voting Rights Act cannot express the Voting Rights Act's own definition of the group it protects.**
+
+```{r maj-count}
+```
+
+**Between `r MAJ_LO` and `r MAJ_HI`.** Nothing else about the question is in dispute: same Congress, same census, same file, six ways of reading it, and the count of majority-Black congressional districts moves by `r MAJ_HI - MAJ_LO` — `r pc(100 * (MAJ_HI - MAJ_LO) / MAJ_LO, 0)`% of the smallest answer.
+
+The disagreement is not spread thinly. It is concentrated in the districts that sit on the line, which are the only districts where it could ever matter.
+
+```{r flip-table}
+```
+
+```{r flip-static, eval=!knitr::is_html_output(), fig.height = 3.9}
+```
+
+```{r flip-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Six answers per district.** The `r nrow(FLIP)` districts that are over 50% Black on at least one of the six measures and under 50% on at least one other. Filled marks are Black alone, open marks any-part Black; shape is the population base. The dashed line is the threshold *Bartlett v. Strickland* reads into the first *Gingles* precondition.
+
+Read the top row. **PA-03 is `r pc(FLIP$pop_black_low_pct[FLIP$key == "PA-03"])`% Black by total population and `r pc(FLIP$vap_black_low_pct[FLIP$key == "PA-03"])`% by voting-age population** — over the line on the base most people quote, under it on the base the Supreme Court actually named. Nobody moved, nobody was recounted, and the answer to a question the Court calls dispositive changes with the choice of denominator.
+
+And the bounds are not uniformly narrow. Across all `r NDIST` districts the gap between Black-alone and any-part Black among adults has a median of `r pc(median(d$vap_black_high_pct - d$vap_black_low_pct), 2)` points, which is small. In Hawaii's second district it is `r pc(max(d$vap_black_high_pct - d$vap_black_low_pct), 1)` points, because the multiracial bucket there is enormous and unallocated. **A national median hides the places where the definition is doing all the work.**
+
+### The same problem, worse, for Latinos
+
+For Black districts the three population bases give nearly the same answer, because Black citizenship rates are close to universal. For Latino districts they do not, and Lublin et al. knew it — their Table 4B reports citizen Hispanic share precisely because Table 4A's total-population share is misleading. Fit the logit their Figure 2 draws, on the 118th, and read off the share at which a district reaches even odds of electing a member of the group:
+
+```{r halfway}
+```
+
+**For Black districts the base moves the threshold `r pc(abs(HALF("Black, citizen voting-age") - HALF("Black, total population")), 1)` points. For Latino districts it moves it `r pc(abs(HALF("Latino, total population") - HALF("Latino, citizen voting-age")), 1)`.** The difference between those two differences is not about race. It is about naturalization, and it means a single sentence of the form "the group needs to be X% of the district" is a different sentence depending on which group is saying it.
+
+## Act four: looking for the sweet spot in the chamber
+
+The model's prediction is specific. Hold the minority share of a district fixed and raise the Republican share: the chance of a minority candidate winning should **rise, peak, and fall**. Everything so far has been about composition. This is the part of the paper that is actually about Republicans.
+
+```{r scatter-static, eval=!knitr::is_html_output(), fig.height = 4.9}
+```
+
+```{r scatter-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Where Black members actually win.** Every district of the 118th Congress by its Black citizen voting-age share and its 2020 Trump share. The dashed lines are where the paper's model, at the authors' $\sigma$, puts the peak of the sweet spot. There is one line for each of the four Black Democratic shares in its Figure 1, because the model does not name a single sweet spot.
+
+The shaded band is the 30–50% range where the mechanism is supposed to operate. The two horizontal segments are the median Trump share inside that band, for districts that did and did not elect a Black member.
+
+```{r sweet-fit}
+```
+
+**It is not there.** Fit Black electoral success against composition and against Republican share, with a squared term so the Republican effect is allowed to curve. Composition is overwhelming (p < 0.001), and **neither Republican term can be told apart from zero**. The squared term, which is the entire curve claim, has p = `r pc(QP, 2)`. The fitted curve has no maximum anywhere inside the range of the data.
+
+The raw medians say the same thing more bluntly, and they say it backwards. Among the `r nrow(band)` districts between 30% and 50% Black, the exact population the mechanism is about, the ones that elected a Black member have a median Trump share of **`r pc(BAND_W)`%**. The ones that did not: **`r pc(BAND_L)`%**. Black candidates are winning these seats in the *least* Republican of them, not in the sweet spot. The model predicts the peak near `r pc(100 * min(S03$peak_R))`–`r pc(100 * max(S03$peak_R))`% Republican; the observed winners cluster around `r pc(BAND_W)`%.
+
+There is a good reason the mechanism does not show up, and it is that the model has no state for a large part of the chamber.
+
+```{r republicans}
+```
+
+**`r nrow(BLK_R)` of the `r NBLACK` Black members of the 118th House are Republicans.** They represent districts that are `r pc(min(BLK_R$cvap_black_low_pct))`% to `r pc(max(BLK_R$cvap_black_low_pct))`% Black among citizen adults, in seats Trump carried by up to `r pc(max(BLK_R$rep_pct))`%. `r nrow(HSP_R)` of the `r NHISP` Latino members are Republicans.
+
+The model is explicit that it does not cover them. Its authors say so plainly, assuming that "the only primary we have to be concerned about in the case of minority voters is the Democratic primary." That assumption was reasonable when it was made. **In the chamber this chapter measures, `r pc(100 * (nrow(BLK_R) + nrow(HSP_R)) / (NBLACK + NHISP))`% of Black and Latino members were elected as Republicans.** Most of them come from districts where the model assigns a probability near zero.
+
+`r n(sum(d$black & d$cvap_black_low_pct < 20))` Black members represent districts under 20% Black among citizen adults, including `r d$name[d$black][which.min(d$cvap_black_low_pct[d$black])]` at `r pc(min(d$cvap_black_low_pct[d$black]), 1)`%. In 2015, by Lublin's Table 3A, the corresponding cell was `r pc(L3$pct[L3$bin == "0-20%"])`% of `r n(L3$n[L3$bin == "0-20%"])` districts.
+
+## Act five: asking a surname file the same question
+
+Everything above rests on a list scraped from a photo gallery. There is no way to check it against the truth, because there is no file that holds the truth. There is, however, a *second* source with no more authority than the first, and it can be asked about the same `r n(nrow(sc))` people. It is the Census Bureau's 2010 surname file, which publishes a racial breakdown for every surname held by a hundred people or more. The [`surnames`](../../01-census-bureau/surnames/surnames-brief.html) chapter builds it; this chapter borrows the copy rather than fetching it again.
+
+Grading one unaccountable source against another does not produce truth. It produces **agreement**, and where two independent sources disagree, at least one of them is wrong in a way worth naming.
+
+> **One decision has to be made before the file will answer at all.** This is
+> surname *only*. The obvious improvement is BISG — the method the
+> [`bisg-check`](../bisg-check/bisg-check-brief.html) chapter grades —
+> which sharpens a surname guess with a geographic prior, and here the
+> geography available is the member's district.
+>
+> That prior is this chapter's independent variable. Inferring a member's race
+> partly from how Black their district is, and then asking whether how Black a
+> district is predicts the member's race, answers itself. **The weaker method is
+> the only admissible one**, and this is a case where the better tool is
+> disqualified by the question rather than by the data.
+
+```{r sn-match}
+```
+
+The file only lists names held by a hundred people or more, so `r n(sum(!sc$matched))` members have no entry at all, and the Bureau suppresses the distribution for the rarest of the names it does list. Suppression is not noise here: it is the Bureau declining to publish a number that would identify people, which means **the method is weakest exactly where a name is unusual**.
+
+> **Before you read the next table, commit to two numbers.** The surname file is
+> about to be graded against the Historian's lists at a 50% cutoff — call
+> someone Hispanic if their surname is more than half Hispanic, Black if it is
+> more than half Black. **Out of `r n(sum(sc$hisp))` Hispanic members and
+> `r n(sum(sc$black))` Black members, how many does it recover?**
+>
+> Write two numbers. They are not close to each other, and the gap between them
+> is not a fact about the file.
+
+```{r sn-grade}
+```
+
+**For Latino members the file works, and works cleanly.** At the 50% cutoff it recovers `r n(sg$tp[sg$group == "Hispanic" & sg$threshold == 50])` of `r n(sum(sc$hisp))`, and it produces **`r n(sg$fp[sg$group == "Hispanic" & sg$threshold == 50])` false positives** — not one member the Historian does not also list. The median Hispanic member's surname is `r pc(median(sc$pcthispanic[sc$hisp], na.rm = TRUE))`% Hispanic.
+
+**For Black members it does not work at any cutoff.** At 50% it recovers `r n(sg$tp[sg$group == "Black" & sg$threshold == 50])` of `r n(sum(sc$black))`. Loosen it to 25% and recall climbs to about half, but `r n(sg$fp[sg$group == "Black" & sg$threshold == 25])` members who are not on the Historian's list are swept in with them — more false positives than true ones. Loosen it to 10% and it finds nearly everybody, along with `r n(sg$fp[sg$group == "Black" & sg$threshold == 10])` people who do not belong. There is no threshold at which the answer is usable.
+
+### Why the two groups come apart
+
+The signal is real but far too weak to threshold. The median Black member's surname is `r pc(median(sc$pctblack[sc$black], na.rm = TRUE))`% Black against `r pc(median(sc$pctblack[!sc$black], na.rm = TRUE))`% for everyone else — a genuine difference between two distributions that overlap almost entirely. `r n(sum(!sc$black & !is.na(sc$pctblack) & sc$pctblack >= 25))` members who are not on the Historian's list have a surname at least 25% Black.
+
+Look at which Black members the file scores highest.
+
+```{r sn-top}
+```
+
+The two highest are **Neguse** and **Omar** — Eritrean and Somali names, which the file scores as strongly Black precisely because they are *not* African-American surnames. The names it cannot see at all belong to Afro-Latino and Afro-Caribbean members: **Torres**, **Espaillat**, **Cherfilus-McCormick**. The method is not measuring what it appears to measure. It is measuring how recently, and from where, a family's name entered the country.
+
+That is the whole explanation. Surnames carried by Black Americans descend overwhelmingly from the same English stock as those carried by white Americans, assigned during and after slavery; Spanish-origin surnames mark a different and more recent migration. **A surname is evidence about ancestry only where ancestry and naming were not severed**, and for African-Americans they were severed on purpose.
+
+### The hyphen decides some of it
+
+`r n(nrow(hyp))` members have a surname with a space or a hyphen in it, and the file holds almost none of them as written. Something has to be picked: the first component or the last.
+
+The choice changes the classification of **`r n(sum(hyp$differs))` of `r n(nrow(hyp))`** of them. Taking the last component reads Chavez-DeRemer as *DeRemer* and misses a member the Historian lists; taking the first reads Ocasio-Cortez as *Ocasio* and Gluesenkamp Perez as *Gluesenkamp*, missing two others. Neither rule wins: first-component agrees with the Historian on `r n(sum(hyp$call_first == hyp$hisp))` of `r n(nrow(hyp))`, last-component on `r n(sum(hyp$call_last == hyp$hisp))`. This build takes the last component, and says so here rather than in a comment, because the rule is a guess and it is wrong about real people either way.
+
+### So: can it fill in a missing race?
+
+For Latino members, yes, as a supplement and never as a replacement. Zero false positives at the 50% cutoff means a hit can be trusted: if the surname file says Hispanic, the Historian agrees every time. But it misses `r n(sg$fn[sg$group == "Hispanic" & sg$threshold == 50])` of `r n(sum(sc$hisp))`, so a *miss* means nothing at all. Napolitano, Valadao, Trahan and Chavez-DeRemer are all on the Historian's list and all invisible to the file. It can add names to a list. It cannot be the list.
+
+For Black members the surname file alone is useless, and stopping there would be the wrong conclusion. The name is only half of what is known about these people.
+
+## Act six: adding the district back in
+
+The obvious next step is **BISG** — Bayesian Improved Surname Geocoding, the method the [`bisg-check`](../bisg-check/bisg-check-brief.html) chapter grades against a known answer in Georgia. It multiplies what the name says by what the place says:
+
+$$P(\text{race} \mid \text{surname}, \text{place}) \;\propto\;
+P(\text{race} \mid \text{surname}) \times P(\text{place} \mid \text{race})$$
+
+Here the only place on file is the district. And that looks, at first, like cheating: **the district's racial composition is this chapter's independent variable.** Using it to label the member seems to assume the answer.
+
+It does not, and the distinction is worth being exact about. Recovering a member's race is a **measurement**. Asking which districts elect minority members is an **analysis**. A measurement is not disqualified by what information it uses — only by being wrong. A thermometer that corrects for altitude is still a thermometer.
+
+### Cutting both halves the same way
+
+The two factors can only be multiplied if they are cut into the same categories. The surname file splits a name six ways: non-Hispanic White, Black, Asian and Pacific Islander, American Indian, two or more races, and Hispanic of any race. The CVAP file's thirteen race lines fold onto exactly those six with nothing left over. Line 7 is White, line 5 is Black, and lines 4 and 6 are the Asian and Pacific Islander pair. Line 3 is American Indian, lines 8 through 12 are the multiracial combinations, and line 13 is Hispanic.
+
+It is tempting to skip that and take a shortcut — Black, Hispanic, and *everyone else* by subtraction. An earlier version of this build did. The leftover category quietly contained every Asian, American Indian and multiracial resident of the district. So a name that is 40% Asian arrived at the multiplication as evidence of being Hispanic. **The lines are published. Subtraction is a way of not reading them.**
+
+The mapping is worth checking rather than trusting, and checking it turns up something about the file. Lines 3 through 12 should reconstruct line 2, and line 2 plus line 13 should reconstruct line 1. They nearly do — and they are off by up to `r n(max(abs(rowSums(d[, c("r_white","r_black","r_api","r_aian","r_2prace","r_hisp")]) - d$pop_total)))` people, because **every estimate in this tabulation is rounded to the nearest five**. Ten rounded numbers cannot add up to an eleventh rounded number. The discrepancy is bounded at 25 people by that fact alone and never reaches it, or `r signif(100*max(abs(rowSums(d[, c("r_white","r_black","r_api","r_aian","r_2prace","r_hisp")]) - d$pop_total)/d$pop_total), 2)`% of a district. The build asserts the rounding tolerance rather than equality, and normalises each district's six shares instead of dividing by the published total.
+
+An assertion of exact equality fails here, and it fails on a file that is behaving correctly. That is the useful kind of failed check: it caught the file's precision, not an error.
+
+### Does it actually beat its own inputs?
+
+If BISG were merely reading the district's majority race back out, it could not beat a baseline that does *only* that. So run three labellers: the district's plurality race alone, the surname alone, and both.
+
+```{r bisg-overall}
+```
+
+BISG beats both. It is using the name and the place together, not laundering one of them. And the sterner version of the test — does it still win *within* strata of district composition, where the district tells you almost nothing because it is nearly held fixed?
+
+```{r bisg-cal}
+```
+
+It wins in every one of the `r n(nrow(cal))` strata, and against *both* baselines — including the band where geography alone does best and the two where the surname alone collapses. **The measurement gain is real**, and the circularity objection fails.
+
+### What does not fail
+
+Read the last two columns down the table instead of across. BISG recovers `r n(cal$black_found_bisg[1])` of `r n(cal$black_members[1])` Black members in districts under 10% Black, and `r n(cal$black_found_bisg[4])` of `r n(cal$black_members[4])` in districts between 30 and 50% Black. That is a recovery rate climbing from `r pc(100*cal$recovery_bisg[1], 0)`% to `r pc(100*cal$recovery_bisg[4], 0)`% as the district gets Blacker.
+
+That is **differential measurement error**: the labels are wrong more often in some districts than others, and the districts where they are wrong are picked out by the independent variable itself. It is not circularity. It is worse in one specific way — circularity is visible in the design, and this is visible only if somebody computes the table.
+
+Run the chapter's own logit three times, on the same districts, changing nothing but where the dependent variable came from.
+
+```{r bisg-down}
+```
+
+The Historian's labels give `r pc(dv$coef[dv$labels == "Historian"], 3)`. BISG's give `r pc(dv$coef[dv$labels == "BISG"], 3)` — inflated by about `r pc(100 * (dv$coef[dv$labels == "BISG"] / dv$coef[dv$labels == "Historian"] - 1), 0)`%, because BISG finds minority members most reliably in the districts where the model already expects them.
+
+And note where the error is worst. **Lublin et al.'s entire claim is about districts that are *not* majority-minority.** That is the range where BISG misses the most Black members, and the misses thin out as minority share rises. A replication built on BISG labels without correction would find the 40–50% band emptier than it is, and the majority-minority districts fuller — which flatters the hypothesis in the direction the paper argues against.
+
+### The design that follows
+
+None of that forbids the method. It specifies the conditions.
+
+Congress is the **calibration set**: the one chamber with an independent list of who is Black or Latino *and* enough members to estimate an error rate by stratum. The table above is that estimate. So:
+
+1. Fit BISG where the answer is known, and grade it — the table above.
+2. Apply it where the answer is not known, which is the fifty state
+   legislatures, where no House Historian exists.
+3. Carry the stratum-specific recovery rates with the estimates, and correct
+   for the known differential error instead of treating a label as a fact.
+
+That is a real route to the part of Lublin et al. this chapter cannot otherwise reach: their state house and senate rows, thousands of districts against this chapter's `r n(NDIST)`. And it reaches them **for both groups**, not just Latinos. What it costs is that every number arriving that way has to be reported with the error rate that produced it.
+
+The [`bisg-check`](../bisg-check/bisg-check-brief.html) chapter grades this method where a state records the truth. The lesson here is the harder half. A method can improve every accuracy figure you would normally report and still bias the one estimate you actually care about. The only way to find out is to work out the error separately at each level of the very thing you are testing against.
+
+## What is actually going on
+
+Three things happened between the paper's data and this one, and only the first is the paper's.
+
+**The 40–50% band filled up and it behaves as predicted.** That is a real vindication of the substantive claim, on `r n(NOW_4050)` districts rather than `r n(LUB_4050)`.
+
+**The mechanism offered for it does not show up.** Conditional on composition, Republican share does nothing detectable, and inside the critical band the sign runs the wrong way. The sweet spot is a coherent story about primaries that the chamber does not currently show. That is not the same as saying it never operated, only that the chapter cannot find it in 2023.
+
+**A category the model excludes by construction became a fifth of the thing being counted.** Black and Latino Republicans are not a rounding error now.
+
+And underneath all three sits the problem this chapter opened with. The independent variable is an estimate covering `r n(sum(d$pop_total))` people, built from a rolling survey sample by people who check boxes about themselves, and the Bureau publishes a margin of error on every cell of it. The dependent variable is a judgment made by historians about `r n(NDIST)` biographies, published as a photo gallery, with no inclusion rule and no margin of error at all. **They are joined on a filename.** Every number above is only as good as that join, and no confidence interval anywhere in the literature is computed over it.
+
+## What this chapter cannot tell you
+
+**Whether the sweet spot ever operated.** This is one Congress, seen once. Lublin et al. wrote about a change between 1992 and 2015, and a cross-section of 2023 cannot test a claim about a trajectory. That the mechanism is undetectable now is consistent with its having worked and stopped, with its having worked only in the South, and with its never having worked — and nothing here separates those.
+
+**Whether the Historian's list is right.** It has no published inclusion rule, no appeal, and no margin of error, and this chapter has not audited a single entry against anything. The three members who appear on both lists show the categories overlap; they do not show the categories are otherwise correct. Everything in Acts two and four inherits whatever that list gets wrong.
+
+**Where inside the bounds the truth sits.** The any-part Black interval is a genuine interval, not an estimate with error bars. This chapter reports both ends, and the count of districts that straddle 50%. It cannot say which of the six answers is *the* answer, and the fourth write-up question is asking you to choose one anyway.
+
+**Anything about state legislatures.** Lublin et al.'s strongest evidence is in their state house and senate rows, which have thousands of districts against this chapter's `r n(NDIST)`. The CVAP file ships state legislative districts too. This chapter stops at Congress because no equivalent of the House Historian's list exists for the fifty states, which is the chapter's own point arriving as a limit.
+
+Acts five and six say what it would take to lift it. A surname file alone reaches Latino legislators and nobody else. BISG reaches both groups at a measured cost: a recovery rate that varies with the district composition on the other side of the equation, and is worst in the districts this paper is actually about.
+
+The route exists and this chapter has not walked it. What it can say is the price of admission. Any state-legislative number built this way has to arrive with its own error rate attached, band by band, and an uncorrected one would tilt toward the very finding it was built to test.
+
+> ### Write-up
+>
+> **1.** The paper reports 100.0% in a cell containing one district. Rewrite
+> that cell the way you think it should have been printed, and say what is lost.
+> Then answer the harder question: the claim it supported turned out to be
+> correct. Does that change your answer?
+>
+> **2.** You are advising a legislature that wants to know how many
+> majority-Black congressional districts the country has. Give them one number.
+> Defend the choice among the six in the table above, and say who is
+> disadvantaged by your choice.
+>
+> **3.** $\sigma$ = .03 is described by its authors as arbitrary. Using Figure 1,
+> state precisely what a reader learns from the published figure that they would
+> not learn from the model with $\sigma$ left unspecified.
+>
+> **4.** The Historian's list and the Census file use the word "Black" to mean
+> two different operations. Describe both. Then name one finding in this chapter
+> that would change if the dependent variable were self-reported instead.
+
+## Sources
+
+**Data**
+
+- U.S. Census Bureau, Redistricting Data Office. *Citizen Voting Age Population
+  by Race and Ethnicity (CVAP) Special Tabulation, 2019–2023 American Community
+  Survey*, congressional district file.
+  <https://www2.census.gov/programs-surveys/decennial/rdo/datasets/2023/2023-cvap/CVAP_2019-2023_ACS_csv_files.zip>
+  Thirteen race lines by four population bases, with a margin of error on every
+  cell, for each of the `r n(NDIST)` districts of the 118th Congress.
+- Office of the Historian, U.S. House of Representatives. *Black Americans in
+  Congress* and *Hispanic Americans in Congress*, as the People search filters
+  `filter=1` and `filter=11`. <https://history.house.gov/People/Search/>
+  `r n(sum(read.csv("data/raw/historian.csv")$list == "black"))` and
+  `r n(sum(read.csv("data/raw/historian.csv")$list == "hispanic"))` members, all
+  time. Scraped by `data/fetch-historian.py`; Bioguide IDs recovered from
+  listing-photograph filenames, and from biography pages for the sixteen members
+  who have no photograph.
+- U.S. Census Bureau. *Frequently Occurring Surnames from the 2010 Census.*
+  <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>
+  Every surname held by 100 or more people, with its racial distribution.
+  **Read from `census_surnames.csv` rather than fetched again**,
+  so that the handling of the Bureau's suppressed cells is decided once, in that
+  chapter. Used in Act five to grade the Historian's lists against a second
+  source, and not used anywhere in Acts one to four.
+- `unitedstates/congress-legislators`, current and historical.
+  <https://unitedstates.github.io/congress-legislators/>
+  Who served, in which district, for which party, between which dates. It does
+  not record race.
+- The Downballot, presidential results by congressional district, 2020 on the
+  2022 lines — **read from `pres_by_cd.csv` rather than
+  fetched again**, so that the decision about which presidential year belongs
+  with which map is made once, in that chapter.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`bins.csv`](data/derived/bins.csv), [`bisg_calibration.csv`](data/derived/bisg_calibration.csv), [`bisg_downstream.csv`](data/derived/bisg_downstream.csv), [`bisg_members.csv`](data/derived/bisg_members.csv), [`districts.csv`](data/derived/districts.csv), [`fitted.csv`](data/derived/fitted.csv), [`lublin.csv`](data/derived/lublin.csv), [`members.csv`](data/derived/members.csv), [`simulation.csv`](data/derived/simulation.csv), [`surname_check.csv`](data/derived/surname_check.csv), [`surname_grade.csv`](data/derived/surname_grade.csv), [`surname_hyphen.csv`](data/derived/surname_hyphen.csv), [`sweetspot.csv`](data/derived/sweetspot.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `bins.csv` counts districts and Black members elected in each band of Black population. Compute the share elected per band. Where does the curve actually turn?
+- `fitted.csv` reports a `half` — the point where the fitted curve crosses fifty percent — for several definitions of the population base. Compare them. How much does the answer depend on which base you use?
+- `surname_grade.csv` gives `precision` and `recall` for identifying members by surname at different thresholds. Pick a threshold you would use, then look at `surname_hyphen.csv` to see what it does to hyphenated names.
+- `bisg_calibration.csv` shows how well the method recovers Black members by stratum, with `recovery_bisg`. Find where it works worst. Is that where the claim rests?
+
+**The paper**
+
+David Lublin, Lisa Handley, Thomas L. Brunell and Bernard Grofman, "Minority Success in Non-Majority Minority Districts: Finding the 'Sweet Spot'," *Journal of Race, Ethnicity, and Politics* 5 (2020): 275–298, doi:10.1017/rep.2019.24. Tables 1, 3 and 4 are keyed in by hand from the published PDF, **including the case counts**, and the Figure 1 simulation is rebuilt from the description at pp. 281–282.
+
+**Cases**
+
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986)
+- *Bartlett v. Strickland*, 556 U.S. 1 (2009)
+- *Allen v. Milligan*, 599 U.S. 1 (2023)
+- *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026)
+
+**Checks**
+
+```{r prov}
+```
+
+Every file this chapter reads can be rebuilt from source, with these checks re-run each time. That means downloading the CVAP special tabulation and the legislator files, running `data/fetch-historian.py` against the House Historian, and reading the presidential-by-district figures out of `house-competition/data/` rather than fetching them again.
+
+So this chapter cannot be rebuilt on its own, which is a cost. The compensation is that the decision about which presidential year goes with which map is made once, in the `house-competition` chapter, rather than redecided here.
+
+Lublin et al.'s Tables 1, 3 and 4 are keyed in by hand from the published PDF, including the case counts. A printed table is data. This chapter's second act is about a row of one that most readers skip.
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

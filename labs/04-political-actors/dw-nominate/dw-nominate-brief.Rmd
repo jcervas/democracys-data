@@ -1,0 +1,345 @@
+---
+title: "DW-NOMINATE and Congressional Polarization"
+subtitle: "A test the most popular explanation fails"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("dw-nominate-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Here is a problem with no obvious solution. Somebody wants to know how liberal or conservative a member of Congress is. They could read every bill she voted on and score it — but then *they* are deciding what counts as liberal, and somebody will reasonably disagree with every call.
+
+**DW-NOMINATE solves it by refusing to look at the bills at all.** It takes nothing but the pattern of who voted with whom, across every roll call in American history, and asks a single question: what arrangement of members along a line best predicts those votes? Nobody reads a bill. Nobody labels a policy. And the line that falls out of the arithmetic is the one everybody already calls left and right.
+
+That the first dimension looks like left and right is a **finding**, not an assumption, and it is the most remarkable thing about the method. What follows uses it to ask how far apart the parties are, whether that is new, and why — and then turns around and asks what kind of number was doing the measuring.
+
+## Polarization is not a mood
+
+It is a structural condition of a legislature, and the American system was designed on the assumption that it would be absent. Separated powers, bicameralism, the filibuster and the committee system all require cross-party coalitions to produce anything. When the parties are internally unified and mutually distant, those features stop being checks and start being blockages.
+
+The measurement matters as much as the fact. McCarty, Poole and Rosenthal's *Polarized America* (2006) used NOMINATE to argue that congressional polarization moved in step with income inequality across a century. That claim could only be made because somebody had put a number on 535 people, every two years, back to the founding.
+
+## Two disputes, neither settled
+
+The first is about the cause. The most popular public explanation is **gerrymandering**: safe districts produce members who fear only a primary and therefore drift to the extremes. It is intuitive and it is repeated constantly, and it turns out to be testable.
+
+The second is about the measurement itself, and it is more serious. **The scale is relative to the votes actually held.** If Congress stops voting on some issues and starts voting on others, a member who never changed their mind can move on the scale. Bateman, Clinton and Lapinski (2017) rebuilt the estimates while holding the policy content of votes constant. They found a different picture: today's parties less divided than the standard series suggests, with conflict concentrated in a narrower band of policy.
+
+**"Republicans moved right" and "the agenda moved and Republicans stood still" produce the same picture in this data**, and there is no way to tell them apart from inside it.
+
+## An official record, and an academic estimate sitting on top of it
+
+There are two layers under every number in this chapter and they have completely different pedigrees. The bottom layer is a public record: the House and Senate publish how each member voted on each roll call, and have since long before anybody thought to score them. Nothing about that is contested and nothing about it is estimated. The top layer is not a record at all.
+
+DW-NOMINATE is a model fitted to those votes by a university project: Voteview, maintained by Jeffrey Lewis, Keith Poole, Howard Rosenthal and colleagues. It is distributed as a single CSV that anybody can download without a key, an account or a citation requirement. No agency produces it. No statute requires it. If the grant ended and the site went dark tomorrow, there is no other file in the world that would do its job, which is worth knowing about a number this heavily used.
+
+It is nonetheless the right evidence here, for a reason that is easy to state and hard to satisfy. The question is how far apart the parties are *over time*, and being able to compare across `r max(nom$year) - min(nom$year)` years is not something you can add afterwards. Because every Congress is scaled in the same estimation, a coordinate from `r min(nom$year)` and a coordinate from `r max(nom$year)` are on one ruler. Nothing else does that.
+
+What would have been better exists, but it does not cover the ground. Bateman, Clinton and Lapinski's reconstruction holds the policy content of votes fixed, which is precisely the weakness described above. It is also a smaller, harder-won object covering less of the period, rather than a drop-in replacement.
+
+The hard part of interpreting it is the previous section's subject and will not be repeated here, except to note where the difficulty actually lives. It is not in the file. The roll calls are exact, the coverage is complete, and the arithmetic below is trivial. The difficulty is that **the quantity cannot be observed at all**. Nobody can see a legislator's position, only their votes. Turning the second into the first takes a model whose scale is set by the very votes it is fitted to.
+
+A file cannot fix that, and a bigger file makes it worse rather than better.
+
+Four filters were applied before anything in this chapter was computed, and each one is a decision. The two chambers are kept and presidents dropped. Presidents are scored on announced positions rather than roll calls, so folding them into a chamber median would compare unlike things. The build keeps only the two major parties, so the handful of independents are simply absent, and it drops members with no coordinate.
+
+It then begins at the 46th Congress, in `r min(nom$year)`, on the judgment that before that the party labels do not mean the same thing and the scores rest on far fewer votes. `r n(nrow(nom))` rows survive. One more choice was made by which file was downloaded. Voteview publishes a variant in which a member's coordinates may drift from Congress to Congress, and this folder holds the other one, in which they do not. That turns out to decide what a moving party median can possibly mean, and the chapter comes back to it.
+
+```{r switchers, include=FALSE}
+```
+
+Those four are this chapter's decisions and they are written down. The deeper inheritance is not. Congress publishes roll calls. Congress does not publish a machine-readable series of them running from `r min(nom$year)` to `r max(nom$year)`, with every vote matched to the person who cast it.
+
+Voteview built that: assigning each member an identifier, reconciling the spellings, deciding when two records are the same human being. Then it fitted the model on top. So this file arrives usable because a research team spent decades making it so, and the decade of judgment calls arrives with it, unannounced. The download took one line.
+
+One of those calls is visible here if you look for it. `r SWN` member-Congress records are the same person listed twice, in the same chamber in the same Congress. In all `r SWP` of them the two rows carry different parties. Voteview opens a new record when a member switches party mid-term, rather than overwriting the old one.
+
+That is a reasonable convention. Nothing in the file states it. Count members by name and those `r SWN` are counted twice; take a party median and each of them is inside both parties. The rows do not look wrong, which is the whole difficulty with data somebody else has already cleaned.
+
+## The download, and the row it becomes
+
+The paragraphs above describe the filters. This section shows them happening, because the distance between what Voteview publishes and what this chapter reads is not obvious from either end.
+
+The download is one file: `HSall_members.csv`, `r RAWMB` MB, no key, no login. This course keeps a verbatim copy of it — the [`retirements`](../../03-elections/retirements/retirements-brief.html) lab downloaded it and committed it, and the copy on disk is byte-for-byte identical to what the same URL returns today. Everything below is read out of that copy. Nothing is reconstructed and nothing is retyped.
+
+Here is the header line, exactly as it arrives, folded so it fits this page:
+
+```{r nom-raw-header}
+```
+
+`conditional` is worth one sentence. It has a name, it has a position, and in this release **all `r n(nrow(rawnom))` of its values are missing** — a column that exists as a column and not as data. Nothing in the file says so.
+
+`r ncol(rawnom)` columns. Here are three rows out of `r n(nrow(rawnom))`, again verbatim, again folded. They are not the first three — the file is sorted by Congress, so the first row of it is George Washington. They were picked to show the three kinds of row this chapter treats differently. An ordinary member of the `r RAWCG`th House, the President in the same Congress, and a member whose party code is neither of the two the build keeps.
+
+```{r nom-raw-rows}
+```
+
+Read those three and the shape of the problem is already visible. Party is a number, `100` or `200` or `328`, not a word. Chamber can say `President`. Several fields are simply empty, and the emptiness means different things in different columns. And the year of the Congress appears nowhere at all.
+
+One oddity does not even show up in three rows. The same party is written `200` on some rows and `200.0` on `r n(NDOT)` others, because the column passed through a tool that turned whole numbers into decimals and then back. Read that column as text and those `r n(NDOT)` rows silently vanish from every count.
+
+Five random rows, so that the three above are not doing all the work:
+
+```{r nom-peek}
+```
+
+The scanner says the rest:
+
+```{r nom-scan}
+```
+
+Now the same person, in the file this chapter actually reads:
+
+```{r nom-clean}
+```
+
+Nine columns instead of `r ncol(rawnom)`, and `r n(nrow(rawnom) - nrow(nom))` fewer rows. Six decisions did that.
+
+**Presidents are not members.** `r n(NPRES)` rows in the raw file have `chamber` set to `President`. They carry DW-NOMINATE coordinates, and those coordinates are estimated from announced positions rather than roll calls. Folding them into a chamber median would average a different measurement into the same number, so they go first.
+
+**`r n(NPARTY)` party codes become two.** `party_code` is a number standing in for a label, and the raw file uses `r n(NPARTY)` distinct ones across its history. Whigs, Populists, Anti-Masonics, and the codes still in use in the `r RAWCG`th Congress that are neither `100` nor `200`. The build keeps `100` and `200`, and drops `r n(NDROPPARTY)` rows.
+
+That is the largest single cut in the build, and the one most worth arguing with. Every independent in American history leaves here, including the ones who caucus with a party and vote with it.
+
+**A number is translated into a word.** `100` becomes `Democrat` and `200` becomes `Republican`, from a key that is documented on Voteview's website and nowhere in the file. Get the key backwards and every figure in this chapter reverses, and nothing in the data would object.
+
+**A missing coordinate is a missing row.** The coordinate field is blank on `r n(NDROPDIM)` rows that survive the party filter — members who served too briefly for the model to place them. They are dropped rather than carried as holes, which is the right call for a median and quietly changes what "every member" means.
+
+**A year is computed, not read.** Congress numbers are in the file; years are not. `year` is arithmetic: the first Congress met in 1789, and a new one begins every two years. So the whole horizontal axis of every figure in this chapter is a computed column, not a recorded one. It is right, and it is not evidence.
+
+**The column that makes a row unique is thrown away.** `icpsr` is Voteview's person identifier, and `congress` + `chamber` + `icpsr` identifies every one of the `r n(nrow(rawnom))` raw rows without a single collision. The build does not keep it. What survives to name a person is `bioname`, a string, and `congress` + `chamber` + `bioname` collides `r SWN` times — the party switchers discussed above. **The file arrived with a key and the cleaning discarded it.** Every question this chapter asks survives that; a question about one member's career across Congresses would not.
+
+One more thing is visible only because the raw file is here to compare against. Run those six filters over today's download and `r n(NSURV)` rows survive; the file this chapter reads has `r n(nrow(nom))`. The extra row is a senator seated after the build was run. **Voteview is a living file at a fixed address**, and a URL is not a version.
+
+## What one record is
+
+```{r one-row}
+```
+
+One row is one member in one Congress. **`dim1` is the left–right coordinate**: negative is liberal, positive is conservative, and the scale runs roughly −1 to +1.
+
+```{r coverage}
+```
+
+Note what a row is **not**. It is not a survey answer, a statement of belief, or anything the member said. It is a position estimated from votes cast, and the estimate exists only because other members voted too.
+
+## Two clouds, and nothing between them
+
+```{r current}
+```
+
+```{r strip-prep, include=FALSE}
+```
+
+```{r current-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r current-plot-static, eval=!knitr::is_html_output(), fig.height=2.6}
+```
+
+**Figure 1. The House of `r YRNOW`, one dot per member.** Position along the horizontal axis is the member's DW-NOMINATE first-dimension coordinate, from liberal at the left to conservative at the right. Vertical position is random and carries no information, so that overlapping members can be told apart. Blue is Democratic and red Republican.
+
+**Two clouds, and nothing between them.** The separation is not something anybody put into the method, which never saw a party label. It is what the voting produced.
+
+## It was not always like this
+
+```{r sixties-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r sixties-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+**Figure 2. The same chamber, three times, on the same axis.** The House in `r Y67`, in `r STRIPS[["c105"]]$year1[1]`, and in `r YRNOW`, drawn identically. In the top panel the two clouds overlap in the middle: there were liberal Republicans and conservative Democrats, and they occupied the same ideological space. By the bottom panel there is no middle to occupy.
+
+## The gap, measured
+
+Take the median of each party in each Congress and subtract.
+
+```{r gap-table}
+```
+
+**The gap was `r nm(g(H, 90))` in `r Y67`. It is `r nm(g(H, NOWH))` now** — the widest in a series that reaches back to `r min(H$year)`.
+
+## The left half of the series
+
+```{r extremes}
+```
+
+The three widest Congresses on record are all recent. The three narrowest are all mid-century, and **the narrowest of all is `r nm(min(H$gap))`, in `r H$year[which.min(H$gap)]`.**
+
+But the 1890s reached **`r nm(G1890)`**, in `r Y1890` — not far below today. **The shape is a U, and the era that produced most of our intuitions about how Congress is supposed to work sits at the bottom of it.**
+
+That has an uncomfortable consequence. If the mid-twentieth century was the anomaly, "returning to normal" is not a coherent goal: the normal you would return to is the 1890s. And the bipartisan era rested on a party system that included conservative Southern Democrats, which the civil-rights realignment ended. **Nobody can want the comity without the coalition that produced it.**
+
+## The year the middle ran out
+
+A sharper question than "how far apart are the medians?" is **"is there anybody in between?"** Count the Republicans sitting to the left of the most conservative Democrat.
+
+```{r overlap}
+```
+
+```{r overlap-prep, include=FALSE}
+```
+
+```{r overlap-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r overlap-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```
+
+**Figure 3. The size of the congressional middle, House, by Congress.** Each needle counts the Republicans sitting to the left of the most conservative Democrat in that Congress. The tallest is `r PEAKOV$year` with `r PEAKOV$overlap`; the red needle is `r LASTYR`, the last Congress with any overlap at all, holding `r H$overlap[H$congress == LASTOVH]` members. Every Congress since is a gap in the series. So, though, are several before 1950 — which is why the disappearance of the middle is only half the story.
+
+**The `r LASTOVH`th Congress, `r H$year[H$congress==LASTOVH]`–`r H$year[H$congress==LASTOVH]+1`, was the last in which a single Republican sat to the left of a single Democrat.** There were `r H$overlap[H$congress==LASTOVH]` of them. Since then, zero, every time.
+
+And note: **zero overlap is not new.** It happened repeatedly between `r min(ZEROH)` and `r max(ZEROH[ZEROH < 1950])`. What is unprecedented is zero overlap *alongside a gap this wide* — two different measures telling two different stories, and only their combination is new.
+
+## Both parties moved; they did not move equally
+
+```{r asymmetry}
+```
+
+Since `r Y67` the Democratic median has moved `r nm(abs(DMOVE))` to the left. The Republican median has moved `r nm(RMOVE)` to the right — **`r pc(RMOVE/abs(DMOVE))` times as far.**
+
+This is the finding called **asymmetric polarization**, and it is one of the most contested claims in the study of Congress. The reasons have nothing to do with the arithmetic and everything to do with what the scale is anchored to.
+
+> **Before you read on, write down a number.** The most common explanation for
+> all of this is gerrymandering: safe districts produce members who fear only a
+> primary challenge. Now consider the Senate. Senators represent whole states,
+> and **nobody draws a state line.** If districting is the engine, the Senate
+> should have polarized markedly *less* than the House. **How much less?** Put
+> down a fraction — half as much, a quarter, none at all — before you look.
+
+## The chamber nobody draws
+
+```{r chambers}
+```
+
+Most readers write down something between a half and a quarter. **They are nearly identical.** The House went from `r nm(g(H, 90))` to `r nm(g(H, NOWH))`. The Senate went from `r nm(g(S, 90))` to `r nm(g(S, NOWS))` — a change of `r nm(g(S, NOWS) - g(S, 90))` against the House's `r nm(g(H, NOWH) - g(H, 90))`.
+
+```{r senate-asym}
+```
+
+The asymmetry is there too, at almost the same size. The middle emptied in the Senate one Congress *later* than in the House, and has been empty since.
+
+**That is real evidence against the districting explanation**, and it is worth sitting with, because gerrymandering is the story most people arrive holding. Two chambers, one of them redistricted every ten years by partisan legislatures and one of them never redistricted at all, polarized in near-lockstep over sixty years.
+
+**Do not overclaim in the other direction either.** This shows districting is not *sufficient* to explain polarization. It does not show districting has no effect. Both chambers face primary electorates, national donors, and the same media environment, and those are shared causes that would produce exactly this pattern. **The result rules out one story; it does not establish another.**
+
+```{r d3-gap, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r gap-static, eval=!knitr::is_html_output(), fig.height=3.8}
+```
+
+**Figure 4. Two chambers, one of them redistricted every decade and one of them never.** The distance between party medians, House and Senate, in every Congress from `r min(H$year)` to `r YRNOW`. The two lines run in near-lockstep through the mid-century compression and the widening that followed. If partisan districting were the engine of polarization, the dashed line should be visibly flatter than the solid one. That is a chamber whose boundaries have not moved since statehood. It is not.
+
+## What kind of number this is
+
+Everything above treats `dim1` as a measurement. It is not one. **It is a model estimate**, and three properties follow.
+
+```{r properties}
+```
+
+The first is the serious objection to the asymmetry above, and it is exactly what Bateman, Clinton and Lapinski (2017) formalize. The `r pc(RMOVE/abs(DMOVE))`-times figure should never be reported without the caveat, and should never be dismissed because of it.
+
+The method also knows something it is rarely asked about: there is a **second dimension**, and it used to matter.
+
+```{r dim2}
+```
+
+Dimension 2 captured the split over civil rights that cut across both parties. Its spread has fallen from `r nm(d2[1])` in `r d2y[1]` to `r nm(d2[4])` today. Draw both dimensions at once and the change is not subtle.
+
+```{r space-prep, include=FALSE}
+```
+
+```{r space-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r space-static, eval=!knitr::is_html_output(), fig.height=3.8}
+```
+
+**Figure 5. The House in two dimensions, `r YRB - YRA` years apart.** Both panels run from −1 to +1 on both axes. The horizontal is the familiar left–right dimension. The vertical is the second dimension, which for most of the twentieth century captured the split over civil rights that cut across both parties. The spread of that second dimension falls from `r nm(SD2[1])` in `r YRA` to `r nm(SD2[2])` in `r YRB`.
+
+In `r YRA` the House is a cloud with height as well as width, and members of the two parties are smeared through each other vertically. In `r YRB` it is two knots on a line. **American politics used to be two-dimensional. It is now very nearly one** — and that collapse, rather than any movement along dimension 1, may be the deepest change in the series.
+
+One further property, and it is the one most often misread. **In this file every member has a single pair of coordinates for their whole career.** Of the `r n(NMEM)` House members here, `r n(NMOVE)` have more than one value of `dim1`, and those are people who left Congress and later came back. So none of the widening measured above can be a sitting member changing their mind: it cannot be, by construction. Every movement in a party median is somebody arriving or leaving. Voteview also publishes a variant that lets a member's position vary from Congress to Congress; reading the two as though they were the same number is a common error.
+
+## The argument about causes
+
+It is genuinely open, and the Senate result narrows it. Districting cannot be the main engine, since the un-districted chamber moved just as far. What remains is primary electorates, the nationalization of political media, and the sorting of an already-polarized public into consistent parties. In McCarty, Poole and Rosenthal's account, it is also the way polarization moves in step with income inequality.
+
+**The argument about the measure is more technical and more consequential.** Poole and Rosenthal's original claim (1985, 1997) is strong: a single dimension predicts a large majority of roll-call choices across two centuries. The objection is not that the model fits badly but that **what the dimension means depends on what was voted on**, and the agenda is chosen by the majority party. Bateman, Clinton and Lapinski's reconstruction finds contemporary parties less divided than the standard series implies once policy content is held fixed.
+
+**A third argument is about the asymmetry**, which has become politically charged. On this measure Republicans moved `r pc(RMOVE/abs(DMOVE))` times further than Democrats since `r Y67`. Whether that reflects a party changing or an agenda changing is precisely what the previous paragraph says cannot be resolved from these coordinates alone.
+
+## What a fitted coordinate can testify to
+
+The evidence here is as complete as political data ever gets, and it is still an estimate rather than an observation. Both halves of that need saying.
+
+It is complete because the file covers every member of both chambers from `r min(nom$year)` to the present — a census, not a sample, with no coverage question to argue about. The scale is derived from behavior rather than from anybody's judgment about what counts as liberal, so the usual complaint about ideology scores does not apply. It is comparable across time by construction, which is exactly what makes long-run claims possible at all. And the first dimension's alignment with left and right is a finding rather than an assumption.
+
+It is still an estimate, and six things follow. The scale is relative to the agenda, which is the central interpretive limit and the reason two incompatible stories fit the same picture. No uncertainty is attached in this file, so two members a few hundredths apart are not actually distinguishable. The current Congress is still voting, so its scores will move.
+
+Independents are dropped, so a handful of members are simply absent. Presidents are excluded, because they are scored on announced positions rather than roll calls and mixing them into a chamber median would compare unlike things. And all of it is elites: 535 people, not a country.
+
+So the sentences this chapter will bear are these. The distance between the House parties has risen from `r nm(g(H, 90))` in `r Y67` to `r nm(g(H, NOWH))` today, the widest since `r min(H$year)`, and no Republican has sat to the left of any Democrat since the `r LASTOVH + 1`th Congress. Sharper, and the point of the whole exercise: **the Senate polarized as much as the House**, in a chamber whose boundaries nobody has ever drawn. It went from `r nm(g(S, 90))` to `r nm(g(S, NOWS))`, against `r nm(g(H, 90))` to `r nm(g(H, NOWH))` in the House. The most popular explanation for polarization fails a test it did not have to fail.
+
+What cannot be said is that the parties' policy positions moved by these amounts, because the scale is relative to the agenda. Nor that individual members became more extreme, since party medians here move only because different people arrive. Nor anything at all about sincere versus strategic voting. And nothing about the electorate, which is a different question, needing different data and giving a much less clear answer.
+
+Three things stay open. What actually drives polarization, now that districting is ruled out as a sufficient cause. Whether the asymmetry is real or an artifact of agenda change — a question this data is structurally unable to settle. And whether the public polarized alongside its legislature, which the roll calls cannot speak to.
+
+**A score is a model, not a measurement.** DW-NOMINATE is the most successful measurement instrument political science has produced, and it is still a fitted object with assumptions, uncertainty, and a scale defined by the data it was fitted to. That the two clouds in Figure 1 do not touch is a fact about how Congress voted. Everything else in this chapter is an interpretation of a coordinate that nobody observed.
+
+## Sources
+
+**Data**
+
+- **Voteview** — Lewis, J. B., Poole, K., Rosenthal, H., Boche, A., Rudkin, A.
+  and Sonnet, L., *Congressional Roll-Call Votes Database*.
+  <https://voteview.com>. Every member of the House and Senate from the
+  `r min(nom$congress)`th Congress (`r min(nom$year)`) to the present, with
+  DW-NOMINATE coordinates.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`nominate_members.csv`](data/derived/nominate_members.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `nominate_members.csv` has `dim1` for every member of every Congress. Compute each party's mean by year and plot both. Which party moved, and when?
+- Compute the distance between the two party means for each Congress. Then compute the spread within each party. Is polarization the parties separating, or each becoming more uniform?
+- The most popular explanation for polarization is gerrymandering. Compare House and Senate members in the same Congress. Does the chamber that draws no districts polarize too?
+- `dim2` is a second dimension that mattered historically and now barely does. Plot its spread across the series. What issue disappeared from American politics?
+
+**Academic literature**
+
+- Poole, K. T. and Rosenthal, H. (1985). "A Spatial Model for Legislative Roll
+  Call Analysis." *American Journal of Political Science* 29(2): 357–384.
+- Poole, K. T. and Rosenthal, H. (1997). *Congress: A Political-Economic History
+  of Roll Call Voting.* Oxford University Press.
+- McCarty, N., Poole, K. T. and Rosenthal, H. (2006). *Polarized America: The
+  Dance of Ideology and Unequal Riches.* MIT Press.
+- Bateman, D. A., Clinton, J. D. and Lapinski, J. S. (2017). "A House Divided?
+  Roll Calls, Polarization, and Policy Differences in the U.S. House,
+  1877–2011." *American Journal of Political Science* 61(3): 698–714.
+
+**How the figures were made**
+
+The Voteview member file is pulled from the address above and reduced to one row per member per Congress, with both DW-NOMINATE coordinates. Every median, every gap, every overlap count and every dot above is computed from that file at the moment this document is rendered; nothing is copied from a published polarization series.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

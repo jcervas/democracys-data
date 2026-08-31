@@ -1,0 +1,358 @@
+---
+title: "Lab 7: Measuring Ideology Without Reading a Single Bill"
+subtitle: "84-355 Democracy's Data | Week 7"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Here is a hard problem. You want to know how liberal or conservative a member of
+Congress is. You could read every bill they voted on and score it — but that
+means *you* are deciding what counts as liberal, and somebody will reasonably
+disagree with every call you make.
+
+DW-NOMINATE solves this by refusing to look at the bills at all.
+
+It takes nothing but the pattern of who voted with whom, across every roll call
+in American history, and asks: what arrangement of members on a line best
+predicts those votes? The answer falls out of the arithmetic. Nobody read a
+bill. Nobody labelled a policy. And the line it produces turns out to be the one
+we call left and right.
+
+Today you will use it to watch Congress come apart.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: A scale nobody designed
+
+```{r read}
+nom <- read.csv("data/nominate_members.csv", stringsAsFactors = FALSE)
+dim(nom)
+head(nom[, c("congress","year","chamber","state","bioname","party","dim1")], 4)
+```
+
+Every member of the House and Senate since 1879. `dim1` is the left–right
+coordinate: negative is liberal, positive is conservative, and the scale runs
+roughly −1 to +1.
+
+Look at the current House:
+
+```{r current}
+now <- max(nom$congress)
+h <- nom[nom$chamber == "House", ]
+cur <- h[h$congress == now, ]
+
+c(congress = now, year = cur$year[1], members = nrow(cur))
+aggregate(dim1 ~ party, data = cur, FUN = function(x) round(median(x), 3))
+```
+
+```{r current-plot, fig.width = 8, fig.height = 4}
+par(mar = c(4, 1, 3, 1))
+plot(cur$dim1, jitter(rep(1, nrow(cur)), 8), pch = 19, cex = 0.7,
+     col = ifelse(cur$party == "Democrat", "#2166AC66", "#B2182B66"),
+     yaxt = "n", ylab = "", xlab = "DW-NOMINATE dimension 1 (liberal → conservative)",
+     xlim = c(-1, 1), main = paste0("The House, ", cur$year[1]))
+abline(v = 0, lty = 3, col = "grey60")
+```
+
+> Two clouds, and nothing between them. That separation is not something anybody
+> put into the method — it is what the voting produced.
+
+***
+
+# Part 2: It was not always like this
+
+The same picture, sixty years earlier.
+
+```{r sixties, fig.width = 8, fig.height = 6}
+par(mfrow = c(3, 1), mar = c(3.5, 1, 2.5, 1))
+for (cg in c(90, 105, now)) {
+  x <- h[h$congress == cg, ]
+  plot(x$dim1, jitter(rep(1, nrow(x)), 8), pch = 19, cex = 0.7,
+       col = ifelse(x$party == "Democrat", "#2166AC66", "#B2182B66"),
+       yaxt = "n", ylab = "", xlab = "", xlim = c(-1, 1),
+       main = paste0(cg, "th Congress (", x$year[1], ")"))
+  abline(v = 0, lty = 3, col = "grey60")
+}
+par(mfrow = c(1, 1))
+```
+
+In 1967 the two clouds overlap in the middle. There were liberal Republicans and
+conservative Democrats, and they sat in the same ideological space.
+
+***
+
+# Part 3: The gap, measured
+
+Take the median of each party in each Congress and subtract.
+
+```{r gap}
+med <- function(cg, p) median(h$dim1[h$congress == cg & h$party == p])
+cgs <- sort(unique(h$congress))
+
+gap <- data.frame(
+  congress = cgs,
+  year = 1789 + 2 * (cgs - 1),
+  dem  = sapply(cgs, med, p = "Democrat"),
+  rep  = sapply(cgs, med, p = "Republican"))
+gap$gap <- gap$rep - gap$dem
+
+tail(gap, 4)
+```
+
+```{r gap-plot, fig.width = 8.5, fig.height = 5}
+plot(gap$year, gap$gap, type = "l", lwd = 2.5, col = "#54278F",
+     xlab = "", ylab = "Distance between party medians",
+     main = "How far apart the two parties are, House, 1879-present")
+abline(h = 0, col = "grey70")
+```
+
+```{r gap-numbers}
+gap[gap$congress %in% c(90, 100, 110, now), c("congress","year","dem","rep","gap")]
+```
+
+> The gap was **0.584** in 1967. It is **0.925** now — the widest in this entire
+> series, which reaches back to 1879.
+>
+> But look at the left half of that plot before you conclude anything. The 1890s
+> reached **0.852**, not far below today. The genuine outlier is the middle of
+> the twentieth century: the narrowest gap on record is **0.498**, in 1947. The
+> shape is a U, and the era that produced most of our intuitions about how
+> Congress is supposed to work sits at the bottom of it.
+
+***
+
+# Part 4: The overlap, and the year it ran out
+
+A sharper question than "how far apart are the medians?" is: **is there anybody
+in between?**
+
+Count the Republicans who sit to the left of the most conservative Democrat.
+
+```{r overlap}
+overlap <- function(cg) {
+  x <- h[h$congress == cg, ]
+  sum(x$dim1[x$party == "Republican"] < max(x$dim1[x$party == "Democrat"]))
+}
+ov <- data.frame(congress = cgs, year = gap$year,
+                 overlapping = sapply(cgs, overlap))
+
+ov[ov$congress %in% 100:112, ]
+```
+
+```{r overlap-plot, fig.width = 8.5, fig.height = 4.5}
+plot(ov$year, ov$overlapping, type = "h", lwd = 2, col = "#B2182B",
+     xlab = "", ylab = "Republicans left of the rightmost Democrat",
+     main = "The vanishing middle")
+```
+
+> **The 107th Congress — 2001 to 2002 — was the last one in which a single
+> Republican sat to the left of a single Democrat.** There were two of them.
+> Since the 108th, in 2003, the number has been zero every time.
+
+***
+
+# Part 5: Both parties moved. They did not move equally.
+
+```{r asymmetry}
+c(dem_1967 = round(med(90, "Democrat"), 3),
+  dem_now  = round(med(now, "Democrat"), 3),
+  dem_moved = round(med(now, "Democrat") - med(90, "Democrat"), 3))
+
+c(rep_1967 = round(med(90, "Republican"), 3),
+  rep_now  = round(med(now, "Republican"), 3),
+  rep_moved = round(med(now, "Republican") - med(90, "Republican"), 3))
+```
+
+```{r asymmetry-plot, fig.width = 8.5, fig.height = 5}
+plot(gap$year, gap$rep, type = "l", lwd = 2.5, col = "#B2182B",
+     ylim = c(-0.6, 0.7), xlab = "", ylab = "Party median, dimension 1",
+     main = "Each party's median over time")
+lines(gap$year, gap$dem, lwd = 2.5, col = "#2166AC")
+abline(h = 0, col = "grey70", lty = 3)
+legend("topleft", c("Republicans", "Democrats"),
+       col = c("#B2182B", "#2166AC"), lwd = 2.5, bty = "n")
+```
+
+> Since 1967 the Democratic median has moved **0.053** to the left. The
+> Republican median has moved **0.289** to the right — **five and a half times as
+> far**.
+>
+> This is the finding called **asymmetric polarization**, and it is one of the
+> most contested claims in the study of Congress. Part 6 is about why.
+
+***
+
+# Part 6: What the number cannot tell you
+
+**The scale is relative, not absolute.** DW-NOMINATE places members relative to
+the votes actually held. If Congress stops voting on some issues and starts
+voting on others, a member who never changed her mind can move on the scale.
+"Republicans moved right" and "the agenda moved and Republicans stayed put"
+produce the same picture here, and this data cannot separate them. That is the
+serious objection to the asymmetry finding, and you should take it seriously.
+
+**It measures voting, not belief.** A member who votes with her party while
+privately disagreeing looks identical to a true believer.
+
+**And it is elites, not voters.** Everything here is about 535 people. Whether
+the public has polarized the same way is a *different question with different
+data* — which is exactly the debate we set up on Tuesday.
+
+```{r dim2}
+sapply(c(80, 90, 100, now), function(cg) round(sd(h$dim2[h$congress == cg]), 3))
+```
+
+One more thing the method knows: there is a **second dimension**, and it used to
+matter. It captured the split over civil rights that cut across both parties.
+Its spread has fallen from 0.561 in 1947 to 0.315 today. American politics used
+to be two-dimensional. It is now very nearly one.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — The Senate, or another era
+
+```{r opt-a, fig.width = 8.5, fig.height = 5}
+which_chamber <- "Senate"        # <- change to "House"
+
+ch <- nom[nom$chamber == which_chamber, ]
+cg2 <- sort(unique(ch$congress))
+m2 <- function(cg, p) median(ch$dim1[ch$congress == cg & ch$party == p])
+g2 <- data.frame(year = 1789 + 2*(cg2-1),
+                 dem = sapply(cg2, m2, p = "Democrat"),
+                 rep = sapply(cg2, m2, p = "Republican"))
+g2$gap <- g2$rep - g2$dem
+
+plot(g2$year, g2$gap, type = "l", lwd = 2.5, col = "#54278F",
+     xlab = "", ylab = "Distance between party medians",
+     main = paste("Party distance,", which_chamber))
+
+g2[g2$year %in% c(1967, 1987, 2007, max(g2$year)), ]
+```
+
+**Write about:** does the Senate tell the same story as the House? Report the
+1967 gap and the current one for your chamber. The Senate is smaller, its
+members serve six years, and its states are whole states rather than drawn
+districts — if districting were the main driver of polarization, the Senate
+should look different. Does it? What does your answer imply about the
+gerrymandering explanation you will meet in Week 15?
+
+***
+
+### Option B — Has this happened before?
+
+```{r opt-b, fig.width = 8.5, fig.height = 5}
+start_year <- 1879              # <- change this. Try 1930, 1950, 1980.
+
+g <- gap[gap$year >= start_year, ]
+plot(g$year, g$gap, type = "l", lwd = 2.5, col = "#54278F",
+     xlab = "", ylab = "Distance between party medians",
+     main = paste("Party distance from", start_year))
+abline(h = gap$gap[gap$congress == 90], lty = 2, col = "grey50")
+
+# The most and least polarized Congresses on record
+rbind(head(gap[order(-gap$gap), c("congress","year","gap")], 4),
+      head(gap[order( gap$gap), c("congress","year","gap")], 4))
+
+# Congresses with no overlap at all
+ov$year[ov$overlapping == 0]
+```
+
+**Write about:** start at 1980 and the story is a straight line upward. Start at
+1879 and it is a U. Which is the honest picture? Note that **zero overlap is not
+new** — it also happened repeatedly between 1879 and 1921. Then the harder
+question: if the mid-twentieth century was the *unusual* period rather than the
+current one, what does that do to the way polarization is usually discussed?
+
+***
+
+### Option C — Who is in the middle?
+
+```{r opt-c}
+which_congress <- 90            # <- change this. Try 100, 107, 119.
+
+x <- h[h$congress == which_congress, ]
+dmax <- max(x$dim1[x$party == "Democrat"])
+dmin <- min(x$dim1[x$party == "Republican"])
+
+cat("Congress", which_congress, "(", x$year[1], ")\n")
+cat("most conservative Democrat: ", round(dmax, 3), "\n")
+cat("most liberal Republican:    ", round(dmin, 3), "\n")
+cat("members in the overlap:     ", sum(x$dim1 > dmin & x$dim1 < dmax), "\n\n")
+
+mid <- x[x$dim1 > dmin & x$dim1 < dmax, c("bioname","party","state","dim1")]
+head(mid[order(mid$dim1), ], 12)
+```
+
+**Write about:** who were these people, and where were they from? Run it for the
+90th and you will get a long list; run it for the 107th and you will get almost
+nobody. Look at the **states** in the 90th — the conservative Democrats and the
+liberal Republicans were not randomly scattered. Connect that to Week 4's Solid
+South: what happened to those members, and was it that they changed their minds
+or that they were replaced?
+
+***
+
+### Option D — Ask your own question
+
+Look up a member you have heard of. Compare your own state's delegation across
+two eras. Follow whatever nags.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can read a measurement carefully enough to say what it does
+and does not establish.
+
+***
+
+## Where the data came from
+
+**Voteview** (<https://voteview.com>) — Jeffrey B. Lewis, Keith Poole, Howard
+Rosenthal, Adam Boche, Aaron Rudkin and Luke Sonnet, *Congressional Roll-Call
+Votes Database*. Every member of the House and Senate from the 46th Congress
+(1879) to the present, with DW-NOMINATE coordinates.
+
+Three things about this file worth holding on to:
+
+- **Presidents are in the source and are dropped here.** They receive scores
+  based on announced positions rather than roll calls, and folding them into a
+  chamber median would compare unlike things.
+- **The current Congress is still voting.** Its scores are estimated from the
+  roll calls held so far and will shift slightly.
+- **The scale is estimated, not observed.** DW-NOMINATE is a model fitted to
+  votes; the coordinates have uncertainty that this file does not carry, and
+  small differences between two members are not meaningful.
+
+The script that downloaded, filtered and checked the file is `data/build-data.R`.
+It prints the party medians, the asymmetry, and the overlap series, so the
+numbers in this lab can be checked against the source in one command.

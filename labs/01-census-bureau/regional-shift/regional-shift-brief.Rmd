@@ -1,0 +1,450 @@
+---
+title: "Regional Population Shift and House Seats"
+subtitle: "Nobody proposed it, nobody voted on it, and no single decade announced it"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("regional-shift-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Between the census of `r Y1` and the census of `r Y2`, seats in the United States House of Representatives changed states. No voter anywhere cast a ballot on the question.
+
+No bill was introduced. No legislature approved the transfer, no president signed it, no court ordered it, and no candidate ran on it. Every ten years the country is counted. The `r n(sum(sc$reps_2020))` seats of the House are then divided among the states by a formula fixed in law, and the states that grew faster than the country take seats from the states that did not. The whole procedure is carried out by a statistical agency and published as a table.
+
+How many seats moved altogether is the number this chapter is built around, and it is held back for a few pages on purpose. You will be asked to guess it first. The guess is worth something; it is worth nothing once you have read the answer.
+
+This would be a curiosity if a House seat were only a seat. It is not. A seat is a vote on legislation and a share of committee power. And because a state's electors equal its House seats plus two, it is also **an elector in the Electoral College**. Anything that moves a seat moves a presidential elector.
+
+Reapportionment is the one mechanism in American politics that reallocates power automatically, on a fixed schedule, with no election and no debate. Gaines and Jenkins (2009) put the point sharply. Handing House seats to states *also* sets Electoral College weights. The choices buried in that hand-out attract almost no public attention, because they arrive looking like arithmetic.
+
+So the question is not whether the transfer happened. It is how a country performs a reallocation on this scale without ever deciding to, and whether the number survives being pushed on. Both answers are in a single file of about a hundred kilobytes, published by the government that did the reallocating.
+
+## Who is counted, and where
+
+Whether the House should still have `r n(sum(sc$reps_2020))` members at all is a separate argument, and a serious one — the number has not moved since 1929 while the country tripled. That dispute is about the size of the thing being divided. **Two other disputes bear directly on the shift measured here, and both are about who counts.**
+
+**Who is counted where.** People in prison are counted at the facility, not at their home address. Lotke and Wagner (2004) were the first to measure it. The rule moves population from the urban neighbourhoods people came from to the rural counties that hold them. The effect is largest inside states, but it is not zero between them.
+
+**Who is counted at all.** Apportionment uses total resident population: everybody, including children and non-citizens. In *Evenwel v. Abbott* (2016) the Supreme Court held unanimously that a state *may* draw districts on total population, while declining to say it *must*. The push to apportion on citizens instead has been live since.
+
+It is not regionally neutral. **This file cannot tell you by how much.** It has no citizenship column, and saying so is better than guessing.
+
+## Three different things stacked in one column
+
+Before the clean table, the download. The lines below are read out of the raw download while this page is being built. They are the header and four rows, folded at their commas to fit the page and otherwise untouched:
+
+```{r rawapp}
+```
+
+`r n(NRAW)` rows and `r NCRAW` columns, and the first thing to notice is that they are not `r n(NRAW)` states. **One column holds three different kinds of row in a single stack:** states, the Bureau's own four regions, and the nation. A reader who summed the population column without filtering would count the country three times over. That stacking is a gift rather than a nuisance, and this chapter uses it as one. The published region rows are what the build checks its own state-to-region arithmetic against.
+
+**Every population is a quoted string with commas in it.** Florida's 1960 figure arrives as `"4,951,560"`. Handed to R the obvious way it becomes a missing value, without a warning, for every number over 999 — which is every number that matters. The build strips the separators before it converts, and this chapter's setup reads the finished file rather than the raw one for exactly that reason.
+
+**Two rows are constitutional exceptions, and in this file they look identical.** Puerto Rico is typed `State`, carries a population, and has nothing at all in the three seat columns. The District of Columbia is typed `State`, carries a population, and has nothing at all in the three seat columns.
+
+There is a difference between them. Puerto Rico is *outside* the national total and the District is *inside* it. That difference appears nowhere in these `r NCRAW` columns, which is why both have to be handled by name rather than by rule.
+
+Blanks are also the one thing a careless read turns into zeros. A zero here would be a claim the file never makes.
+
+Here is what a Florida row becomes:
+
+```{r cleanstate}
+```
+
+The population is a number now, and six columns have appeared that are nowhere in the download. Two of them, region and division, come from the Census Bureau's own published hierarchy. The second was trimmed out of the table above to keep it readable.
+
+The other four are *rival definitions of the South*, each a list of states somebody wrote down, carried side by side rather than resolved. That is unusual and deliberate. The file refuses to answer "is this state in the South" with one column, because the answer depends on whose definition you are using. A later section shows that choice moving the headline number.
+
+The one column the build did *not* create is `repchg`. The Bureau supplies it, and the build carries it through untouched. That matters. A chapter about seats moving could easily have worked that column out for itself, got it subtly wrong at the two moments the country changed size, and never known.
+
+## One row, sixty years apart
+
+The file has one row per state per census. Here is Florida, twice, six decades apart.
+
+```{r one-record}
+```
+
+Two things about that row will mislead anyone who opens the file carelessly.
+
+**The numbers arrive as quoted strings with thousands separators.** Florida's `r Y1` population is written `"4,951,560"`. Asking R to read that as a number returns a missing value, silently, without a warning, for every figure above 999 — which is every figure that matters. Read the file the obvious way and you get a country of about six hundred people.
+
+**And the column headed `change this decade` is the trap the rest of this chapter is about.** Florida gained `r st$repchg[st$name == "Florida" & st$year == Y2]` seat in `r Y2`. That is the number the file hands you and the number the news reports on apportionment day. It is also the least interesting number in the file.
+
+## An unusually clean source, and the two rows that are not
+
+```{r file}
+```
+
+One producer, one file, no key and no joins is a rare position to be in, and it is worth saying why the source deserves the trust rather than assuming it.
+
+Start with how it was obtained, which is the shortest such account in this book. It was downloaded. There was no request to file, no page to scrape, no compilation by a third party to inherit, and no reconstruction of a table nobody publishes. That is not luck.
+
+**The body that produced these numbers is the body that publishes them.** Nothing stands between the count and the file. Whatever is wrong with it is the Bureau's own, and is described in the Bureau's own documentation rather than having to be discovered.
+
+Elsewhere in this book a chapter pays for its evidence in letters to police departments, in a PDF read by eye, or in a table assembled from scratch because no agency assembles it. This one paid a single request, and the reason to notice that is that it is the exception.
+
+The Bureau also publishes its **own** four-region totals in the same file as the state rows. That makes the state-to-region assignment used throughout this chapter *checkable* rather than merely asserted. The build rebuilds the published region rows from the state rows and stops if they disagree. All `r nrow(reg)` region-years reproduce exactly, and the state rows sum to the published national total in all `r nrow(nat)` years.
+
+Two rows still have to be handled by hand, and both are constitutional rather than clerical.
+
+**Puerto Rico appears as a `State` row and is not in the national total.**
+
+**The District of Columbia is in the national total and has no representative.** So it belongs in every population figure below, and in none of the seat figures.
+
+```{r map-prep, include=FALSE}
+```
+
+```{r map-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r map-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The Census Bureau's four regions and nine divisions.** Every state sits in exactly one division and every division in exactly one region; the grouping is the Bureau's own, from its *Statistical Groupings of States and Counties*. The heavier lines are the division boundaries. These four colors mean these four regions in every figure that follows. Alaska and Hawaii, both in the Pacific division, are drawn inset below the Southwest, Alaska well under scale. The District of Columbia is on the map too, in the South Atlantic division — counted in every population figure in this chapter and absent from every seat count.
+
+## A seat count is a strange instrument for a question about people
+
+**Nobody chose to produce this file.** The Constitution requires a count every ten years, and requires that Representatives be apportioned by it. So the apportionment happens whether or not anyone wants the resulting table. The Bureau publishes the table because the apportionment is a legal act that has to be on the record.
+
+That is a different way of coming into existence from almost everything else in this book. Nobody stands between the event and the file. There is no guestbook, no vendor, and no editorial decision about what to include, because what to include was settled in 1787 and altered once, by the Fourteenth Amendment.
+
+**It is the right file because seats are not a proxy for the thing in question.** The question is where American political power went. A House seat is not an indicator of political power. It *is* political power, in the currency the Constitution uses. Employment series, housing starts and tax receipts would all describe the rise of the Sun Belt better than `r nrow(nat)` decennial rows can. None of them would answer this question, because none of them is what a state actually received.
+
+The genuine improvement would be finer time rather than more columns. `r n(nrow(st))` state-year rows across `r max(nat$year) - min(nat$year)` years means the country is observed once a decade and never in between. So every question about *when* something happened has to be answered to the nearest ten years. The Bureau does publish yearly components of population change: births, deaths, and movement in and out. Those would say why a state grew. But they do not reach back to 1910, and their definitions do not survive the trip.
+
+**The challenge is not in the file, which is the point.** These populations are printed as exact integers, and they are not exact. A census is not a measurement of a population. It is an attempt to contact every household in the country, and it fails at different rates for different people in different places. The Bureau knows this and measures it.
+
+After each count it runs a follow-up survey and publishes estimates of who was over- and undercounted. Those estimates cannot be used to correct the apportionment.
+
+In 1999 the Supreme Court read the Census Act to forbid statistical sampling in producing the numbers seats are divided by. So the count that hands out power has to be the count that was taken, rather than the best estimate of the population. So the figures in this chapter are exact as a matter of law and wrong by their own producer's published estimate, at the same time. There is no column in this file where that fact could be written down.
+
+**The cleaning is small and checkable, and one step of it is a habit worth stealing.**
+
+Stripping the thousands separators, dropping Puerto Rico from the national total, and holding the District out of the seat columns are the whole of it.
+
+The file is small enough that all three can be checked by eye, which is true of nothing else in this book.
+
+The step worth stealing is the region assignment. Sorting fifty states into four regions is a lookup table somebody types, and a typed lookup table is exactly the sort of thing that is never checked.
+
+Here it can be. The Bureau publishes its own region totals in the same file, so the build rebuilds those `r nrow(reg)` region-years from the state rows and refuses to write anything if one of them disagrees. **A list you wrote by hand should be checked against something you did not.** It is worth noticing how rarely a source makes that possible.
+
+## The country becomes fifty states in 1960
+
+```{r ak-hi}
+```
+
+Alaska and Hawaii are in the file from 1910, with populations and **no representatives**, because they were territories. They enter the House in `r Y1`.
+
+That fixes the window. `r Y1` is the first census after which the United States had fifty states, and it is therefore the earliest year from which a sixty-year comparison of *seats* is a comparison of the same country. Population is a different matter and can be traced back to 1910. It will be, later, and clearly labelled as such, because the denominator changes underneath it. The denominator is the bottom number, the thing being divided by.
+
+## What one reapportionment looks like from inside
+
+Here is the most recent one, in its entirety — every state whose delegation changed size.
+
+```{r one-decade}
+```
+
+**`r n(byd[as.character(Y2)])` seats changed states in `r Y2`**, across `r n(nst[as.character(Y2)])` states, none of them moving more than two. New York lost one, and lost it by 89 people: had the count in New York come in 89 higher, the last seat allocated in the country would have stayed there. That margin is the kind of thing that gets an hour of television.
+
+And `r Y2` is a typical decade.
+
+```{r decades}
+```
+
+The busiest reapportionment in this window moved `r n(max(byd))` seats out of `r n(sum(sc$reps_2020))`, which is under five percent of the House; the quietest moved `r n(min(byd))`. New York's worst single decade in the whole period was `r n(abs(min(st$repchg[st$name == "New York" & st$year > Y1], na.rm = TRUE)))` seats, and in most decades it lost one or two. Taken alone, each of these tables reads as maintenance, and each was reported that way at the time.
+
+***
+
+> **Stop here and write down two numbers before you turn the page.**
+>
+> You have just read New York's worst single decade in this period, and in most
+> decades it lost one or two. **How many seats do you think New York lost in
+> total between `r Y1` and `r Y2`?**
+>
+> And, adding down the middle column of the table above: **how many seats do you
+> think have changed states altogether?**
+>
+> Written down, not thought about. The rest of this chapter is a comparison
+> between the two numbers you just wrote and the two numbers on the next page,
+> and it does not work if you skip your half of it.
+
+***
+
+## What the maintenance adds up to
+
+```{r pivot}
+```
+
+**Most people who put a number on paper put down twenty or thirty. It is `r n(gross)`.** Six of those unremarkable decades come to `r n(gross)` seats, and no single one of them announced it. By `r Y2`, `r pc(100 * gross / sum(sc$reps_2020))`% of the House of Representatives sat in a different state from the one it sat in sixty years earlier.
+
+The state that carried the cost is the one that had the most to lose. **New York fell by `r n(abs(ny$change))` seats** — it held `r n(ny$reps_1960)` in `r Y1` and holds `r n(ny$reps_2020)` now. **`r n(smaller)` of the `r nrow(sc)` states do not have `r n(abs(ny$change))` seats in total**, so what New York lost would today be the `r n(sum(sc$reps_2020 > abs(ny$change)) + 1)`th-largest delegation in the country, ahead of every state but six.
+
+```{r bars-static, eval=!knitr::is_html_output(), fig.height=5.2}
+```
+
+```{r bars-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The `r nrow(moved)` states whose delegation changed size between `r Y1` and `r Y2`.** Color is Census region. `r sum(sc$change > 0)` states gained, `r sum(sc$change < 0)` lost and `r sum(sc$change == 0)` finished where they started. Four states take most of the gains: Florida `r sprintf("+%d", sc$change[sc$name == "Florida"])`, Texas `r sprintf("+%d", sc$change[sc$name == "Texas"])`, California `r sprintf("+%d", sc$change[sc$name == "California"])` and Arizona `r sprintf("+%d", sc$change[sc$name == "Arizona"])`.
+
+Four take most of the losses: New York `r n(sc$change[sc$name == "New York"])`, Pennsylvania `r n(sc$change[sc$name == "Pennsylvania"])`, Ohio `r n(sc$change[sc$name == "Ohio"])` and Illinois `r n(sc$change[sc$name == "Illinois"])`.
+
+**Both lists are geographically pure, and nobody arranged that.** The gainers are Southern and Western, the losers Northeastern and Midwestern, and no step in the procedure that produced them knows what a region is. The formula sees fifty population counts.
+
+That is the change. The levels tell a second story, because the order of the largest delegations was rewritten.
+
+```{r slope, include=FALSE}
+```
+
+```{r slope-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r slope-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The twelve largest delegations in either year, and where they finished.** Dashed lines fall. New York was the largest delegation in the country in `r Y1`, with `r n(ny$reps_1960)` seats. It now has `r n(ny$reps_2020)`. California passed it, Texas passed it, and so did Florida — which had `r n(sc$reps_1960[sc$name == "Florida"])` seats in `r Y1`, ranked `r n(sc$rank_1960[sc$name == "Florida"])`th in the country, and now sends `r n(sc$reps_2020[sc$name == "Florida"])`. Texas was `r n(sc$rank_1960[sc$name == "Texas"])`th in `r Y1` and is `r n(sc$rank_2020[sc$name == "Texas"])`nd now.
+
+## Where the moved seats went
+
+```{r regions-seats}
+```
+
+**The Northeast and Midwest lost `r n(abs(netreg["Northeast"] + netreg["Midwest"]))` seats between them; the South and West gained the same `r n(netreg["South"] + netreg["West"])`.** Of the `r n(gross)` seats that changed states, `r n(netreg["South"] + netreg["West"])` crossed a regional boundary. The remaining `r n(gross - (netreg["South"] + netreg["West"]))` moved between states inside one region.
+
+The last row of the last column is worth reading slowly. **In `r Y1` the Northeast and Midwest together held a majority of the House of Representatives** — `r n(b60["NE+MW"])` seats of `r n(sum(b60))`. They now hold `r n(b20["NE+MW"])`, which is `r pc(100 * b20["NE+MW"] / sum(b20))`% of it. A region that could pass a bill on its own votes now cannot, and the loss of that majority was never on any agenda.
+
+## Two totals that do not match
+
+There is an obvious objection to reading any of this as a trend. Seats bounce. A state that gains three in one decade and loses three in the next has moved six seats' worth of political attention and nothing at all in the end. If that is what has been happening, `r n(gross)` is a sum of churn rather than a direction, and the honest description of American population movement is a sloshing rather than a shift.
+
+The file answers this in a way that is unusually clean. Add up the per-decade columns, meaning every seat any state gained at any reapportionment since `r Y1`. The total is `r n(sumdec)`. The sixty-year figure is `r n(gross)`. The difference is `r n(sumdec - gross)`.
+
+It has to be. A state that only ever gains contributes the same amount to both totals; so does a state that only ever loses, namely nothing. **The only way the two totals can differ is a state that gains a seat and later hands it back**, which is counted in the per-decade sum and canceled out of the sixty-year one. The size of the gap is therefore not a measure of anything approximate. It is a count of reversals, and the count is `r n(sum(GAPS))`:
+
+```{r reversals}
+```
+
+`r sum(mono)` of the `r length(mono)` states moved in one direction only across the whole period. The `r length(NONMONO)` exceptions are the three rows above, and each accounts for exactly one seat of the gap. California gained `r n(POSDEC["California"])` seats and returned one in `r Y2`. Montana lost its second seat in 1990 and won it back in `r Y2`. Tennessee dipped once in 1970 and recovered in 1980.
+
+There is nothing else in fifty states and six reapportionments. Everyone else travelled in a single direction for sixty years.
+
+This is not a cycle. It is a ratchet, and a ratchet does not have to move quickly to end up somewhere a cycle never could.
+
+## Seats are lumpy; people are not
+
+A state has to gain a whole seat or none, which means the seat counts lag the thing they measure and arrive in jumps. Population share does not. Here is the share of the country living in each region, back to 1910, with the fifty-state window marked.
+
+```{r lines-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r lines-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r cross, include=FALSE}
+```
+
+**Figure 4. Each Census region's share of the national population, 1910 to `r Y2`.** The dotted rule marks `r Y1`, the first apportionment with fifty states. Everything left of it is a country of a different shape, which is why the seat comparisons in this chapter begin there. The Northeast falls the whole way, from `r pc(sh("Northeast", 1910))`% to `r pc(sh("Northeast", Y1))`% to `r pc(sh("Northeast", Y2))`%, the only region with no reversal and no plateau across `r max(nat$year) - min(nat$year)` years.
+
+The West is the fastest thing on the chart, going from `r pc(sh("West", 1910))`% to `r pc(sh("West", Y2))`%. It passes the Northeast in `r c_wn` and the Midwest in `r c_wm`. The South passes the Midwest in `r c_sm` and never gives the lead back.
+
+The fourth thing on the chart is the one that ought to be surprising. **The rise of the South does not begin when the phrase suggests.** Between 1910 and `r Y1` the Census South's share of the country actually *fell*, from `r pc(dv("Census South (16 states + DC)", 1910))`% to `r pc(dv("Census South (16 states + DC)", Y1))`%. The eleven-state Confederate South was flat over the same half century, moving only from `r pc(dv("Confederate South (11 states)", 1910))`% to `r pc(dv("Confederate South (11 states)", Y1))`%.
+
+Everything the phrase refers to happens after `r Y1`. The window here was chosen because that is when the fifty-state House begins. It turns out to be the right cut on the substance as well. That is luck, and it is worth noticing as luck rather than as judgment.
+
+## Whether the South is eleven states or seventeen
+
+The most common objection to a regional finding is that the region is a choice. It is a fair objection, and here it is unusually easy to press, because there is no agreed answer to what the South is. Political history usually means the eleven former Confederate states. The Census Bureau means sixteen states plus the District of Columbia, adding Maryland, Delaware, Oklahoma, West Virginia and Kentucky — a materially different claim about where the country's largest region begins. Anyone who dislikes the result can reach for the other definition.
+
+***
+
+> **Before you look at the table, commit to a direction.**
+>
+> Is Maryland Southern? Oklahoma? Delaware? West Virginia? However you would
+> vote, one of the two definitions has to show the larger rise in the South's
+> share of the country between `r Y1` and `r Y2`. **Which one — the narrow
+> eleven, or the broad sixteen-plus-DC that contains all eleven and six units
+> more?** Pick one before you read on. There is no third answer and one of them
+> is wrong.
+
+***
+
+So compute it every way, and add the states the definitions disagree about as a category of their own.
+
+```{r southdefs}
+```
+
+You might have picked the broad one, on the reasoning that more Southern states means more Southern growth. The table has just disagreed with you. **The narrower definition gives the larger rise.** The eleven Confederate states gain `r pc(dv("Confederate South (11 states)", Y2) - dv("Confederate South (11 states)", Y1))` points of national population share. The Census South, which contains all eleven and six units more, gains only `r pc(dv("Census South (16 states + DC)", Y2) - dv("Census South (16 states + DC)", Y1))`.
+
+That is arithmetically possible only if the extra states are a drag on the average, and they are. **Maryland, Delaware, Kentucky, Oklahoma, West Virginia and the District of Columbia went from `r pc(dv("Border South only (DC, DE, KY, MD, OK, WV)", Y1))`% of the country to `r pc(dv("Border South only (DC, DE, KY, MD, OK, WV)", Y2))`%.** They shrank while the states below them grew. Demographically they behave like the Northeast rather than like Georgia, whatever they are called.
+
+They do not, however, behave alike. A region's share is just the sum of its states' shares. So the effect of admitting any one state to the definition is exactly that state's own change, and the six can be priced one at a time.
+
+```{r border, include=FALSE}
+```
+
+```{r bordertab}
+```
+
+**Maryland runs the other way.** Adding it to the Confederate eleven raises the measured rise of the South from `r pc(CONF, 2)` points to `r pc(CONF + bg("Maryland", "change"), 2)`; Delaware adds a further `r pc(bg("Delaware", "change"), 2)`. West Virginia alone costs `r pc(abs(bg("West Virginia", "change")), 2)` points, more than those two return together, which is why the six are a drag in aggregate while two of them are not. The objection that the answer depends on what you mean by the South is correct and, unusually, comes with a price list.
+
+**The finding is not a trick of where the boundary was drawn.** It survives every version of the South in the table, and the broadest, most generous version is the one that understates it.
+
+It could easily have gone the other way. Had Maryland and Delaware boomed while the Deep South stalled, "the South is rising" would have been a statement about the Washington suburbs wearing a Confederate label. This chapter would have had to say so.
+
+## The denominator was frozen in 1929
+
+The House reached `r n(sum(sc$reps_2020))` members in 1913 and has not moved since. The Permanent Apportionment Act of 1929 did not choose that number. It made reapportionment automatic at whatever size the House already was, which turned a figure from 1911 into a standing one. The country has not been fixed at anything.
+
+```{r perseat}
+```
+
+**A member of the House now speaks for `r pc(P2 / P1, 2)` times as many people as in 1910.** The two multiples in that table are nearly identical, and that is the entire mechanism. With the number of seats frozen, district size is just population growth with a constant attached.
+
+```{r step-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r step-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. People per representative, 1910 to `r Y2`.** The line is drawn as a step because that is what it is: this number changes only at a reapportionment, and it has gone up at every single one. The district of 1910 held `r n(P1)` people; the district of `r Y2` holds `r n(P2)`. The dashed rule is the 1910 level, which the country has never returned to and, with the House fixed by statute, cannot.
+
+One caution belongs here, because it cuts against the obvious reading. Bigger districts are not the same thing as *less equal* districts.
+
+```{r spread}
+```
+
+**Interstate inequality got slightly better while district size nearly doubled.** Those are two different complaints about the House, and this file keeps them apart. Cervas and Grofman (2020) work through why the measure you choose changes the answer you get.
+
+## Electoral votes moved, and nobody voted
+
+A state's electors equal its House seats plus two, so everything above has a presidential counterpart that follows automatically.
+
+```{r ec}
+```
+
+**In `r Y1` the Northeast and Midwest controlled a majority of the electoral votes** — `r n(ev60["NE+MW"])` of the `r n(sum(ev60))` cast by the fifty states, which is `r pc(100 * ev60["NE+MW"] / sum(ev60))`%. By `r Y2` they controlled `r pc(100 * ev20["NE+MW"] / sum(ev20))`%. The bloc that could not quite elect a president by itself in `r Y1` is now further from it by `r n(netreg["South"] + netreg["West"])` votes.
+
+Two honest footnotes. **The District of Columbia is excluded** from both columns: it had no electoral votes in `r Y1` and received three by constitutional amendment in 1961, which is a change in the rules rather than in population. Including them lowers both shares slightly and changes nothing. **And electoral votes are not themselves partisan.** This file has no election results in it, so nothing here says which party benefited, and any sentence that did would be coming from somewhere else.
+
+## Why the Sun Belt grew
+
+The reallocation is not in dispute. The reason for it is, and the dispute is about agency.
+
+Glaeser and Tobio (2008) test three explanations against income, housing-price and population data. The three are rising Southern productivity, rising demand for warm weather, and a housing supply that simply permitted more building. They give a large role to the last. The South and West grew partly because they let people build houses, which is a local policy choice rather than a fact about the sun.
+
+Schulman (1991) tells a different story about the same decades: the federal government transformed the Southern economy on purpose, first through New Deal programs and then, after 1950, through defense contracting. On that account the Sun Belt was **subsidized into existence**, and the seats it later took were paid for by the country that lost them. Kruse (2005) adds a third layer from inside one Sun Belt city, where the same growth was also white flight from Atlanta into its suburbs.
+
+None of the three can be tested against the file used here, and naming what you cannot test is the discipline. What this file *can* say is that population share moved and that seats followed within ten years.
+
+There is also a version of the argument in which the formula itself is doing some of the work. Li (2022) argues that the Huntington–Hill method has produced biased apportionments in eight of the nine since 1941, consistently against populous states. And the biggest losers in Figure 2 are populous states. If she is right, some fraction of this shift is method rather than migration. That is a live disagreement with Balinski and Young (2001), who defend the current method as the one that avoids population paradoxes. It is settled by running other apportionment methods on the same published counts, not by anything printed here.
+
+## What the count can testify to
+
+The evidence in this chapter is unusually solid in one respect and unusually narrow in another, and both deserve stating without hedging.
+
+It is solid because there is one producer, one file, no key and no joins, and a `r max(nat$year) - min(nat$year)`-year series on definitions that do not move. It is also *self-checking* in a way that is rare. The Bureau publishes its own region and nation totals alongside the state rows, so the state-to-region mapping that carries the whole regional argument was checked against the source rather than trusted. And seats are not estimates. They are the legal result: the actual number of members each state sent to Washington, not a modeled quantity with a range around it.
+
+It is narrow in five specific ways.
+
+The populations are printed as exact whole numbers, which gives the file a false air of precision. Census coverage error is real, is published elsewhere, and is not in here. There are twelve observations, so anything that happened between two censuses is invisible: a hurricane, a plant closure, a pandemic. The regions are the Bureau's, four categories for fifty states, and the South is the most contested of them. Testing three definitions measures how much the finding depends on that choice. It does not make the category natural.
+
+Resident population is not apportionment population. The base used to hand out seats adds federal employees serving overseas, so the per-representative column and the state population column do not divide into each other exactly. And there is no mechanism in the file at all. No births, movement, incomes, housing costs, election results or party labels. That is why every explanation in the previous section came from outside it, and why the electoral-vote table is arithmetic about states rather than a claim about who wins.
+
+That last limit is worth being blunt about, because it is where readers most want to over-read. **This file cannot say why anybody moved.** It has population and seats and nothing else. It cannot distinguish a family arriving in Phoenix from Michigan from a family arriving from abroad, or either from families in Arizona simply being larger than families in Ohio.
+
+Nor can it certify that the count is exactly right. The margins here happen to be large enough that coverage error does not threaten them, since `r n(abs(ny$change))` seats is not an error bar. But a single decade can turn on 89 people, and one of them did.
+
+Three questions are left genuinely open, and none will be settled by more of these tables.
+
+First, whether the ratchet continues. `r n(byd[length(byd)])` seats moved in `r Y2`, the smallest reapportionment in the window. That is either a slowdown or noise, and twelve observations cannot tell you which.
+
+Second, how much of the shift is method and how much is migration. That is Li (2022) against Balinski and Young (2001), and it is answerable — but with an apportionment calculation rather than with a population series.
+
+Third, what a different apportionment base would do: citizens only, or prison populations counted at the address people came from. Neither can be computed from a file that has no citizenship column and no facility addresses.
+
+What remains is the thing the chapter opened with, and it survives every test put to it here. `r n(gross)` House seats changed states between `r Y1` and `r Y2`. `r n(netreg["South"] + netreg["West"])` of them crossed a regional boundary, taking the same number of electoral votes with them. The Northeast and Midwest went from holding a majority of the House to holding `r pc(100 * b20["NE+MW"] / sum(b20))`% of it. The movement is not churn: `r sum(mono)` of `r length(mono)` states traveled in one direction only, and the entire discrepancy between the per-decade accounts and the sixty-year total is `r n(sum(GAPS))` states handing back one seat each. It is not an artifact of what anyone means by the South, because every definition of the South produces it and the widest one produces the smallest version.
+
+A reapportionment table is the least dramatic document in American politics: fifty numbers from a statistical agency, most of them identical to the fifty published ten years earlier. Six of them laid end to end moved a majority of the House of Representatives out of the region that had held it since before the Civil War. Nobody proposed that, nobody voted on it, and the only reason it can be seen at all is that the government which did it also published the arithmetic.
+
+## Sources
+
+**Data**
+
+- U.S. Census Bureau, *Apportionment Data (Text Version)*, decennial
+  apportionment time series 1910–2020.
+  <https://www.census.gov/data/tables/time-series/dec/apportionment-data-text.html>
+  Direct file:
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/apportionment/apportionment.csv>
+- U.S. Census Bureau, *Statistical Groupings of States and Counties*
+  (Geographic Areas Reference Manual, ch. 6), for the four regions and nine
+  divisions.
+- U.S. Census Bureau, *Cartographic Boundary Files*, 2020, states at
+  1:20,000,000 — the generalized, shoreline-clipped outlines the Bureau draws
+  its own national maps from, used here for the map of regions and divisions.
+  Direct file:
+  <https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_state_20m.zip>
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`divmap.csv`](data/derived/divmap.csv), [`maplabels.csv`](data/derived/maplabels.csv), [`nation.csv`](data/derived/nation.csv), [`regions.csv`](data/derived/regions.csv), [`seatchange.csv`](data/derived/seatchange.csv), [`southdefs.csv`](data/derived/southdefs.csv), [`statemap.csv`](data/derived/statemap.csv), [`states.csv`](data/derived/states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `southdefs.csv` defines the South four different ways and gives each a population and a share. Follow one definition across the years, then follow another. How much of "the South is growing" is a choice about which states you meant?
+- `seatchange.csv` has `reps_1960` and `reps_2020` for every state alongside `pop_growth`. Sort by `change`. Do the states that gained the most seats always have the fastest growth?
+- `regions.csv` carries both `share` of population and `seat_share`. Take the difference for each region and year. Does representation track population immediately, or lag behind it?
+- `states.csv` flags each state as `south_census`, `south_confed`, `sunbelt` or `border_south`. Find the states the labels disagree about. What is a regional label actually measuring?
+
+**Cases and statutes**
+
+- *Evenwel v. Abbott*, 578 U.S. 54 (2016).
+- *Department of Commerce v. Montana*, 503 U.S. 442 (1992).
+- *Department of Commerce v. United States House of Representatives*, 525 U.S.
+  316 (1999), holding that the Census Act forbids the use of statistical
+  sampling to produce the population figures used for apportionment.
+- Permanent Apportionment Act of 1929, 46 Stat. 21.
+
+**Academic literature**
+
+- Balinski, M. L. and Young, H. P. (2001). *Fair Representation: Meeting the
+  Ideal of One Man, One Vote*, 2nd edn. Washington, D.C.: Brookings Institution
+  Press.
+- Cervas, J. R. and Grofman, B. (2020). "Legal, Political Science, and Economics
+  Approaches to Measuring Malapportionment: The U.S. House, Senate, and Electoral
+  College 1790–2010." *Social Science Quarterly* 101(6): 2238–2256.
+- Gaines, B. J. and Jenkins, J. A. (2009). "Apportionment Matters: Fair
+  Representation in the US House and Electoral College." *Perspectives on
+  Politics* 7(4): 849–857.
+- Glaeser, E. L. and Tobio, K. (2008). "The Rise of the Sunbelt." *Southern
+  Economic Journal* 74(3): 609–643.
+- Kruse, K. M. (2005). *White Flight: Atlanta and the Making of Modern
+  Conservatism.* Princeton: Princeton University Press.
+- Li, R. (2022). "The Malapportionment of the US House of Representatives:
+  1940–2020." *PS: Political Science & Politics* 55(4): 647–654.
+- Lotke, E. and Wagner, P. (2004). "Prisoners of the Census: Electoral and
+  Financial Consequences of Counting Prisoners Where They Go, Not Where They Come
+  From." *Pace Law Review* 24(2): 587.
+- Schulman, B. J. (1991). *From Cotton Belt to Sunbelt: Federal Policy, Economic
+  Development, and the Transformation of the South, 1938–1980.* New York: Oxford
+  University Press.
+
+**How the figures were made**
+
+The build reads the Census Bureau's published apportionment file, strips the thousands separators, and rebuilds the Bureau's own region and nation rows from the state rows as a check. It then writes the small files this chapter draws on. Every number printed above is computed from those files at the moment this document was rendered. The state outlines in Figure 1 are the Bureau's generalized cartographic boundary file, drawn on the Albers equal-area projection with Alaska and Hawaii inset at reduced scale. They are colored by the same state-to-region assignment the region totals were checked against.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

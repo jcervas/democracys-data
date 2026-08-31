@@ -1,0 +1,442 @@
+---
+title: "County FIPS as a Join Key"
+subtitle: "One federal code, two files four years apart, and a join that never failed"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("data-sources-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+A five-character string, `11001`, is the federal government's name for the District of Columbia. Not a neighborhood of it, not a ward of it: the whole city, treated as a single county-equivalent because it has no counties. The code has meant that since the standard was written, and it means that in every federal file that uses it.
+
+Put two ordinary county-level election files side by side: the 2020 presidential returns and the 2024 presidential returns, downloaded from the same repository and built by the same person. Match them on that code, and one row of the result reads like this. Between 2020 and 2024 the District of Columbia moved `r pc(abs(dcrow$swing), 2)` points *toward* the Democrats, while the median county in the same table moved `r pc(MEDSW, 2)` points the other way.
+
+> **Before you read on, commit to an answer.** That row came out of a merge on
+> `11001`, and behind the code the place had changed: one file means one thing by
+> it, the other means something smaller. Write down what the merge does with a
+> pair like that — refuse the match, drop the row, print a warning, come back
+> short of the row count you expected, or hand you a complete and tidy table with
+> nothing out of place. Pick exactly one. Then read on.
+
+Most readers pick one of the loud answers, because a key that has quietly stopped meaning what it meant sounds like the sort of thing software is built to catch. Nothing catches it.
+
+The row is wrong. It is not wrong in any way that arithmetic will catch. Its 2020 half is the whole District, `r n(dc20)` ballots. Its 2024 half is Ward 1, `r n(dc24)` ballots, or roughly `r pc(DCSHR, 0)`% of the city.
+
+The two are joined because both files carry a row labeled `11001`, and in one of them that string means the city and in the other it means an eighth of it. The merge did not fail. It did not warn. It returned `r n(nrow(sw))` tidy rows, and this was one of them.
+
+Getting from that string to that row takes most of this chapter, because the interesting question is not how the mistake happened. It is how a file in which such a thing is *possible* came to be the standard evidence for how Americans voted.
+
+## Nobody makes American election returns
+
+Almost every other body of political evidence has a producer you can name. The census is made by the Census Bureau. Survey estimates are made by a pollster. Lobbying disclosures are made by a filing office. Ask who is responsible and there is an answer, an address, and usually a statute.
+
+**American election returns have no producer.**
+
+A voter marks a ballot in a precinct. The precinct's count goes to a county clerk, who canvasses it. The county certifies a return to a secretary of state, who canvasses again and certifies a statewide total, some weeks later. Nobody in that chain publishes a national file, because there is no national election administrator in the United States.
+
+Every county-level dataset of American election results that anyone has ever used was assembled by somebody. A news organisation, an academic project, a hobbyist. Whoever it was collected fifty-one separate things and stapled them together.
+
+An election is a public act, and the record of it is the only durable evidence that the act took place as claimed. When that record exists only as a private reconstruction, nobody can audit the compiler's judgment calls, because they are not written down. Nobody notices when the units change, because no agency owns the definition. And the people who need the data most are the least able to build it themselves: voting-rights litigants, local journalists, down-ballot candidates.
+
+That is not a complaint about accuracy. The file below is impressively close to the certified totals — its national tallies land within about eight thousand votes for one candidate and eleven thousand for the other. It is a complaint about accountability, which is a different thing, and for a democracy a more consequential one.
+
+## So who stapled this one together
+
+The file this chapter works is Tony McGovern's compilation of presidential results by county, deposited with a DOI and a version history, covering every election from 2008 forward. The 2024 numbers in it were scraped off Fox News's results pages as they filled in on election night. The 2020 numbers came from Fox News, Politico and the New York Times. The repository's own README states that the results are not authoritative. That sentence is the most valuable thing in the file, and it is why this file was chosen over a tidier one. A compiler who tells you he is not the state of record has given you the one thing the polished commercial equivalents leave out.
+
+Two other sources sit beside it, and their status is entirely different. The Census Bureau's 2024 Gazetteer supplies the legal county list. That is `r n(nrow(cen))` county-equivalents across `r length(unique(cen$state_name))` states and state-equivalents, trimmed here to codes and names. It is authoritative in the narrow sense that it is what officially counts as a county.
+
+Set it against the returns file's `r n(nrow(cty))` rows for 2024 and `r n(nrow(old))` for 2020, and the arithmetic already misbehaves. Three files all claim to describe American counties, and none of them agrees with the others about how many there are.
+
+The state-level returns are a third thing again. They descend from certified canvasses by way of a different compiler, and they store percentages where the county file stores ballots.
+
+That mismatch is why these are the right files for the question. A chapter about what happens when nobody owns a dataset needs three things. A dataset nobody owns. An official list to hold it against. And a second reconstruction of the same election, so the two can be made to disagree.
+
+The evidence that would be better is easy to describe and does not exist. A certified county-level national return, published by whoever is responsible. There is no such office. That is the finding, not a shortfall in the sourcing.
+
+The challenges are correspondingly not the usual ones. Nothing here is missing, misspelled or malformed. `r n(sum(cty$total_votes))` ballots are accounted for, every FIPS code is five characters, no row is duplicated, and no cell is blank -- the build script checks all of that and stops if any of it fails. The trouble is that a code can be well-formed, unique, and quietly no longer mean what it meant, and no test in any language detects a definition that moved. Nor is the underlying quantity as solid as it sounds. "How a county voted" presumes the county is the unit that reported, which three states contradict, and presumes the county still exists, which Connecticut stopped guaranteeing when it replaced its counties with planning regions.
+
+What cleaning happened is small and worth knowing exactly. Both years are downloaded, six columns of the source's ten kept, dropping the derivable percentage columns, sorts by FIPS, and forces the code column to character so that a leading zero survives. On the Gazetteer it drops land area, centroids, and the territories and outlying areas that cast no presidential votes. It edits no value by hand, and it prints the Connecticut code change out of two vintages of the Bureau's own list rather than asking to be believed. A reader redoing this would have to repeat exactly that, and would have to decide for themselves whether to keep the rows this chapter is about.
+
+Notice the asymmetry in that. Acquiring this file took one download from a repository. Assembling it took a person pulling results off news pages in fifty-one jurisdictions while the counts were still filling in. Then doing it again four years later.
+
+Somebody else paid the acquisition cost, once, and what reaches the table is a tidy CSV in which nothing records that any of it happened. What does come with the file is his conventions. How Alaska is numbered, what counts as a row, which night the count was taken from. Those are not notes sitting beside the data. They are the data.
+
+Most of the rest of this chapter is what it looks like when one of those conventions changes between releases and nobody is obliged to announce it.
+
+## The two downloads, before anybody touched them
+
+The paragraph above says six columns of ten were kept. Here are the ten. Verbatim copies of both downloads are kept, the returns file and the Gazetteer file, and everything in this section is read out of them.
+
+```{r ds-raw-returns}
+```
+
+Ten columns, one header line, one row per reporting unit. Four of the ten are arithmetic the file did on itself. `diff` is the Republican count minus the Democratic one. `per_gop` and `per_dem` are each divided by `total_votes`. And `per_point_diff` is one percentage minus the other. They agree with the counts they were computed from in every one of the `r n(nrow(rawret))` rows, to the last digit a computer can hold.
+
+Here is the Gazetteer, which is a different kind of file entirely — tab separated, and padded on the right with spaces to a fixed width:
+
+```{r ds-raw-gaz}
+```
+
+The last column of that table is the width of each field as the file actually stores it, before anything is trimmed. The file's own lines run to `r max(nchar(GL[1:5]))` characters, almost all of it padding. **The padding lands on the last column and only the last column**, so every longitude in the file arrives with a hundred spaces stuck to it. Nothing in this chapter notices, because longitude is one of the columns the build throws away. That is luck rather than care. It is exactly the kind of thing that bites a chapter keeping one more column than this one does.
+
+The scanner, run on both raw files at once, finds the defect that matters:
+
+```{r ds-scan}
+```
+
+`county_fips` arrives as a number and is not one. That is this chapter's next section and will not be pre-empted here. Note instead that **the Census Bureau's own file does exactly the same thing**: read with no instructions, the Gazetteer's `GEOID` becomes `r format(rawgaz$GEOID[1])` too, in `r n(sum(nchar(as.character(rawgaz$GEOID)) == 4))` of its `r n(nrow(rawgaz))` rows. The defect is not the compiler's and not the Bureau's. It is what happens every time a code made of digits meets a program that assumes digits are amounts, and the only thing that prevents it is somebody saying so in advance.
+
+Five random rows of the returns file, so the two above are not doing all the work:
+
+```{r ds-peek}
+```
+
+And the same rows after the build:
+
+```{r ds-clean}
+```
+
+Six decisions turned the first block into the last, and none of them is technical.
+
+**Four columns were dropped because they could be rebuilt.** `diff`, `per_gop`, `per_dem` and `per_point_diff` all follow from `votes_gop`, `votes_dem` and `total_votes`. Keeping them costs nothing and risks something. A file that stores both a count and a percentage of it can be edited in one place and not the other. Then it disagrees with itself, and there is no way to tell which half is right. Dropping them removes a way of being wrong.
+
+It also removes a way of *catching* somebody else's mistake. Those four columns are the only independent evidence in the file that the compiler's arithmetic was sound.
+
+**The code was made to stay a code.** `county_fips` is read as text rather than as a number. That is the subject of the next section, and the single most consequential decision made in preparing this file.
+
+**The rows were sorted by that code.** The download arrives in the compiler's own order; the build sorts by FIPS, and so does the Gazetteer extract. Two files sorted the same way *look* aligned when they are placed side by side, and this chapter is largely about how badly they are not. Sorting is a convenience that manufactures an appearance.
+
+**Seventy-eight rows left the Gazetteer, and they are all one place.** The raw county list holds `r n(nrow(rawgaz))` rows. The build keeps `r n(nrow(cen))`. Every one of the `r n(nrow(rawgaz) - nrow(cen))` dropped is in Puerto Rico. It is a county-equivalent, it is in the Census Bureau's official list, and it casts no vote for president.
+
+**The rule that removed them is "did they vote in the election this chapter is about", not "are they a county".** That is a political test applied to a geographic file. It is right here and would be wrong in a chapter about population.
+
+**Three of the Gazetteer's ten columns survived**: the code, the name, and the state abbreviation. Land area, water area, the two centroid coordinates and the ANSI code all go. None of them is wrong; none of them answers a question this chapter asks.
+
+**And one column in the clean file is not in either download.** The full state name, "Alabama" rather than "AL", appears nowhere in the Gazetteer. That file carries only the two-letter abbreviation. The build attaches it from `state.name`, a fifty-element list of strings that ships inside R itself, with "District of Columbia" added by hand, because the language's list does not include it.
+
+**A column that reads like Census Bureau data is a built-in list from a programming language, plus one typed string.** Nothing in the finished file says so. It is correct. It is also the one column here whose origin is a footnote in somebody's software manual.
+
+## One row is a reporting unit, and usually that means a county
+
+One row of `pres2024_counties.csv` is **one reporting unit** — usually a county:
+
+```{r one-row}
+```
+
+Note what is and is not here. **These are counts of ballots**, unlike the companion state file, which stores percentages. You cannot add a percentage to a count, and you cannot compare them until you convert one to the other. Obvious written down; a genuine source of published errors in practice.
+
+And note the word *usually*. Nothing in this file says a row is a county. It says a row is a reporting unit, which is whatever the state that produced it happened to report in — and three states report in something else.
+
+## A code that is not a number
+
+A **FIPS code** is the federal government's identifier for a place: two digits of state, three of county. Autauga County, Alabama is `01001`. It is a label, like a phone number, and it is not a quantity.
+
+`read.csv()` sees a column of digits and disagrees.
+
+```{r fips}
+```
+
+**`r n(sum(nchar(naive$county_fips) == 4))` of `r n(nrow(naive))` rows are broken, and they are not a random `r pc(100*sum(nchar(naive$county_fips)==4)/nrow(naive), 0)`%.** They are exactly the states whose FIPS code begins with a zero:
+
+```{r fips-states}
+```
+
+Alabama through Connecticut, alphabetically, and nothing after. Match these against any other government file and none of them will match — **silently.**
+
+This is the single most common bug in real election-data work, and the fix is one argument: tell `read.csv()` the column is text. Everything below uses the fixed version.
+
+## The check almost nobody runs
+
+If the county file is right and the state file is right, summing a state's counties should reproduce that state's result. It is the most obvious check available, and almost nobody runs it.
+
+```{r agg}
+```
+
+**Every single disagreement runs the same way.** Not one state's counties give Harris a lower share than the state file does. Random error does not behave like that; a one-sided error is systematic, and systematic errors have findable causes.
+
+Before chasing it, say the honest summary out loud: the disagreement is real, it is systematic, and **it does not change who won anywhere.** All three parts matter.
+
+## Two million people who are not in the file
+
+If Harris's share is too high in the county sums, either her count is too big or the denominator is too small. The denominator is the bottom number, the thing you divide by. Look at it: everyone who is neither Harris nor Trump.
+
+```{r other}
+```
+
+In 2024 more than two million Americans voted for someone other than Harris or Trump. In how many counties did literally nobody? Almost certainly none.
+
+**In Alaska and New York, every reporting unit shows zero** — and those are exactly the two states at the top of the disagreement above. The data does not say "no one voted third party in New York." It says the compiler never got New York's third-party numbers. Figure 1 puts every state on the same shading, so the shape of the omission is visible at once.
+
+```{r tp-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r tp-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The third-party vote as this file records it, one square per state.** Shading is the share of ballots the county file assigns to somebody other than the two major-party nominees, from zero to `r pc(max(tile$share))`%. Nationally more than two million Americans voted for a third candidate in 2024. The `r length(zero_st)` states outlined in red record that number as exactly zero in every one of their reporting units: `r paste(zero_st, collapse = ", ")`. That is not a fact about their voters. `r n(sum(cty$other == 0))` of `r n(nrow(cty))` units nationwide report no third-party ballots at all.
+
+**A zero and a missing value are not the same thing, and a spreadsheet cannot tell them apart.** That is the whole of it. The file has a column for third parties, the column is populated, every value in it is a number, and in two states every one of those numbers is a fiction produced by an absence.
+
+The same disease is in the *other* file. The state returns have an `other` column too, and it reads zero in `r sum(stt$other == 0)` of `r nrow(stt)` states — while not one state's three percentages sum to 100. The shortfall is the third-party vote, unlabeled.
+
+## Putting a number on the ballots that never arrived
+
+If the county file's Harris *count* is right and the state file's Harris *share* is right, the true statewide total must be the count divided by the share. The difference is what the county file never saw.
+
+```{r missing}
+```
+
+**Alaska is missing `r pc(cmp$missing_pct[cmp$state_name == "Alaska"], 1)`% of its ballots and New York `r pc(cmp$missing_pct[cmp$state_name == "New York"], 1)`% — roughly `r n(cmp$missing[cmp$state_name == "New York"])` votes.** Those are not rounding errors. They are entire candidates.
+
+```{r miss-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r miss-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The `r MISSN` least complete state files, measured against what the state returns imply.** Each bar is the share of a state's ballots that never reached the county file. It is the gap between the ballots the file holds and the total implied by dividing its Harris count by the Harris share the state file reports. Alaska is missing `r pc(cmp$missing_pct[cmp$state_name == "Alaska"], 1)`% of its ballots.
+
+New York is missing `r pc(cmp$missing_pct[cmp$state_name == "New York"], 1)`%, or about `r n(cmp$missing[cmp$state_name == "New York"])` votes. Below those two the tail falls away to fractions of a percent. Bars above `r pc(MISSRED, 1)`% are drawn in red.
+
+Alaska and New York are in a class of their own; after them the tail is small and unstructured. Is incompleteness explained by anything structural, like state size? The correlation between the missing share and log(total votes cast) is **`r pc(cor(cmp$missing_pct, log(cmp$total_votes)), 3)`** — essentially nothing. **These are fifty-one separate administrative decisions, not a pattern**, and saying so is a finding rather than a failure to find one.
+
+The diagnosis makes a prediction we can test. If only the *denominator* is wrong, then removing third parties from both files should make the disagreement vanish — and it does. Comparing **two-party** shares instead of all-party shares, the median gap falls from `r pc(median(abs(cmp$dh)))` to `r pc(median(abs(cmp$d2)))` points and the number of states agreeing within 0.05 points rises from `r sum(abs(cmp$dh) < 0.05)` to `r sum(abs(cmp$d2) < 0.05)` of `r nrow(cmp)`. **The test could have failed and did not**, which is what makes it evidence rather than decoration.
+
+## Names were never meant to be keys
+
+Everything so far compared *states*, where there are 51 things and the names are unambiguous. Counties are where joins go to die.
+
+Bring in the Census Bureau's official county list, `r n(nrow(cen))` county-equivalents, and match on the county name.
+
+```{r namejoin}
+```
+
+`merge()` matches every row on the left against every row on the right that shares the key. With `r nw` Washington Counties on each side that produces `r n(nw^2)` rows, of which `r nw` are right and `r n(nw^2 - nw)` are garbage. **County names are not unique and were never meant to be.** Figure 3 draws all `r n(nw^2)` of them.
+
+```{r wash-static, eval=!knitr::is_html_output(), fig.height=6.4}
+```
+
+```{r wash-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Every row a name join produces for one repeated county name.** Each line joins a "Washington County" in the election returns, on the left, to one in the Census Bureau's official list, on the right. There are `r nw` on each side, so the join emits `r n(nw^2)` rows.
+
+The `r sum(wpair$ok)` red lines are the ones where both sides are the same place. The `r n(sum(!wpair$ok))` grey lines are pairs of unrelated counties in unrelated states, and nothing in the output tells them apart from the red ones.
+
+Matching on state *and* name does better, at `r n(nrow(by_key))` rows. But it drops `r n(nrow(cty) - nrow(by_key))`, entirely from Alaska and the District of Columbia. Both of those will be back.
+
+## Codes are what codes are for, and it still goes wrong
+
+Join on FIPS instead. `r n(nrow(by_fips))` rows match, up from `r n(nrow(by_key))`. We joined on a code, so whatever matched should be the same place. Check it — compare the name that came from the returns against the name that came from the census.
+
+```{r wrongjoin}
+```
+
+**`r nrow(wrong)` rows joined successfully to the wrong place.** Anchorage Municipality, a city of nearly 300,000, has been handed `r n(anch)` votes belonging to a state legislative district. The District of Columbia, all 700,000 residents of it, has become Ward 1.
+
+Nothing errored. Nothing warned.
+
+The cause is three jurisdictions that do not report presidential results by county at all. **Alaska** tabulates by state house district and has no federal code for one. So the compiler invented codes by tacking district numbers onto Alaska's state code `02`. Those collide with the real borough codes `02013`, `02016` and `02020`.
+
+**The District of Columbia** is one county-equivalent, `11001`, which this file splits into eight wards numbered `11001` to `11008`, so Ward 1 inherits the code meaning "all of DC."
+
+**Hawaii** fails in the other direction. Kalawao County, the former leprosy settlement on Molokai, has about eighty residents, and its ballots are counted with Maui's. It is a real county that never appears in election returns.
+
+None of these are errors, exactly. Each is a reasonable local decision by somebody with a deadline and a state that would not cooperate. What none of them is, is recorded: the file carries the invented codes and not the fact that they were invented.
+
+## The same compiler, four years later
+
+Both county files came from the same repository, built by the same person, four years apart. Surely those can be compared.
+
+```{r years}
+```
+
+Three states, three different stories.
+
+**Connecticut abolished its counties.** They stopped functioning as governments in 1960 and survived as statistical lines. The state asked the Census Bureau to replace them with the nine planning regions its councils of government actually use, and the Bureau agreed in a notice dated 6 June 2022. New boundaries, new names, new codes. And the regions are not the counties regrouped, so no lookup table turns one into the other.
+
+**Alaska was renumbered by the compiler.** In 2020 this source coded Alaska's districts `02901`–`02940`, deliberately clear of real borough codes. In 2024 it switched to `02001`–`02040`, which are not. That was not a change in the world. It was a change in one person's convention, announced nowhere.
+
+**DC changed shape**, from one row to eight.
+
+Two of those three announce themselves. Connecticut's old codes are simply absent from the new file and its new codes are absent from the old one, so any merge on FIPS drops the state entirely and the row count says so. Alaska does the same thing for the same reason. A careful analyst who counts rows before and after will notice both within a minute.
+
+The District of Columbia does not announce itself, because its old code did not go anywhere. It stayed, attached to something else.
+
+## The swing everybody published
+
+```{r swing}
+```
+
+That is a real and famous result: the biggest Republican shifts of 2024 were in heavily Hispanic border counties in south Texas and Imperial County, California, with the New York City boroughs close behind. A journalist could publish it today.
+
+Now the bookkeeping the headline skips.
+
+```{r bookkeeping}
+```
+
+Two entire states vanished without an error message. And then there is this row:
+
+```{r dcrow}
+```
+
+That is the row this chapter opened on, now with everything needed to read it. The label comes from the 2020 file, so the table calls it the District of Columbia. The 2020 percentages are the District of Columbia: `r n(dc20)` ballots. The 2024 percentages are Ward 1: `r n(dc24)` ballots, about `r pc(DCSHR, 0)`% of the same city. Subtracting one from the other yields `r pc(dcrow$swing, 2)` points, and the sign of that number is opposite to the median county's `r pc(MEDSW, 2)`.
+
+The result is not absurd. It is not flagged. It sits in a table of `r n(nrow(sw))` rows and looks exactly like its neighbors. It is also meaningless, in the one way no amount of arithmetic can detect. **The join did not fail.** Both files carry a row coded `11001`, so the merge matched them and returned `r n(nrow(sw))` rows without a warning.
+
+The code is identical. What it points at is not. Nothing in either file records the change. A join key is only as good as the promise that the same string means the same thing on both sides. **That promise is not stored anywhere.** It lives in a README, in somebody's memory, or nowhere.
+
+Which is where the question of who made the file stops being background and starts doing work. Nobody certified these numbers, nobody is obliged to correct them, and no state signed anything. So there is no office to notice that a code changed hands, and no procedure by which the noticing would happen. **A definition can move because there is nobody whose job it is to hold it still.**
+
+Figure 4 accounts for every reporting unit on both sides of that merge at once.
+
+```{r alluvial-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r alluvial-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. What became of every reporting unit between the two files.** The left column is the 2020 file and the right is the 2024 file. Each ribbon carries a count of reporting units, the same count and so the same thickness at both ends. `r n(RIBLEG$k[RIBLEG$kind == "kept"])` units keep a code that means the same place in both years.
+
+`r n(RIBLEG$k[RIBLEG$kind == "dropped"])` exist in 2020 and are gone in 2024. `r n(RIBLEG$k[RIBLEG$kind == "invented"])` appear in 2024 with no counterpart in 2020. Those are Alaska's renumbering and Connecticut's replacement of counties with planning regions, and both show up as a change in the row count.
+
+**The red ribbon is one row.** It is the only unit whose code survives intact while the place underneath it changes. It is also the only failure in this figure that a row count cannot see. The `r sum(rib$floored)` thinnest ribbons are drawn at a minimum width so they stay visible. Every other ribbon is to scale, across a range of `r n(max(rib$k))` to `r n(min(rib$k))` units.
+
+**A join that produces plausible output is not a join that is correct.** Row counts, dropped keys and matched names are not housekeeping. In a file nobody is responsible for, they are the only evidence available about whether the thing you just computed refers to anything.
+
+## Fifty-one separate administrative decisions
+
+The four failures assembled so far are not evenly distributed. Run each of them as a check against every state at once and you can see where they live. Most of the country passes all five. The damage is concentrated in a handful of jurisdictions whose reporting arrangements differ from everybody else's.
+
+```{r checks-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r checks-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. Where the failures actually live.** Each cell is the share of a state's reporting units failing one of five checks. The five are these. A county code mangled when the column is read as a number. No third-party vote recorded anywhere. A code absent from the Census Bureau's official list.
+
+A code that matches the census list while naming a different place. And a code with no counterpart in the 2020 file.
+
+Only the `r nrow(hot)` states with at least one failure are shown. The other `r clean` are clean on all five. The concentration is the point.
+
+This is not a file that is uniformly a little wrong. It is almost entirely right, and then catastrophically wrong in a small number of named places. That is a far harder failure to notice.
+
+Of the four failures assembled here, two belong to this family of evidence and two do not. **The missing third parties and the units that changed meaning between years happen because no single body produces American election returns.** Fifty-one jurisdictions certify separately, a scraper stitches, and the stitching inherits every inconsistency underneath. A census or a campaign-finance filing cannot fail in those ways, because somebody is accountable for the whole file. Joining on names, and a join that succeeds while being wrong, will bite an analyst in any dataset in any field.
+
+Which of the two files is *right* is a question this evidence cannot answer. Neither is authoritative. The state file descends from official canvasses and is closer to certified totals; the county file was scraped from a broadcaster's results pages, as its own README admits. "Right" depends on the question, and the compiler's choices are documented nowhere except in the discrepancies between them.
+
+Nor is the border-county headline wrong. It probably is not — the south Texas shift is real and would survive every repair proposed here. **The file is broken in ways that happen not to change that particular result**, which is luck rather than method, and luck is not a property you can rely on for the next question.
+
+## Whose job is this?
+
+**The first dispute is whether this is anybody's job.** The United States has no national election administrator by design. Elections are run by states and localities under the Elections Clause, and the federal role is limited. Defenders of that arrangement point to resilience: there is no single system to attack or capture. Critics point at exactly what you have just done. With no national record, the record is built by volunteers and news desks, and the country's own election results are in practice privately owned.
+
+Academic infrastructure has grown up in the gap. The MIT Election Data and Science Lab publishes cleaned county-level presidential returns back to 2000, and Ansolabehere, Palmer and Lee assembled precinct-level returns for 2002–2012. Both projects exist because the official version does not, and both make documented choices where this file makes silent ones.
+
+**The second dispute is about the units**, and this is where the file's own choices stop being invisible. Connecticut looks like a live example of the **modifiable areal unit problem** — the fact that statistical results depend on the arbitrary boundaries used to aggregate them, formalized by Openshaw (1984). Planning regions are not worse than counties; they are simply different, and any quantity computed per county in 2020 and per region in 2024 is not a time series.
+
+But it is worth being exact about who changed the units, because the file does not say and the answer is not Connecticut. The state's county-equivalents *for statistical purposes* did become nine planning regions in 2022. The Secretary of the State did not follow. The certified Statement of Vote summarises the presidential result by the same **eight counties** in 2024 as in 2020, and the phrase "planning region" appears in neither document. The compiler re-aggregated Connecticut's returns onto the newer Census geography. That is a defensible choice, and it is a choice — made silently, by somebody who is not Connecticut.
+
+**The third dispute is about who is harmed.** Not analysts. The people who need county- and precinct-level returns as evidence, above all plaintiffs in voting-rights cases, who must show how a jurisdiction's voters actually behaved. Evidence that takes a specialist a week to assemble is functionally unavailable to a small plaintiff and readily available to a state attorney general.
+
+## What the states actually published
+
+Every criticism above was made without the thing that would settle it. That thing now exists. The certified returns from all fifty-one state chief election offices, both years, fetched one office at a time. Each is recorded with its address, the format that arrived, and whether the page called the result official. It is assembled in `county-returns/` alongside this chapter, and it is what the rest of this section compares against.
+
+**Start with the code this chapter is named after.** Across both years, the compilation contains `r N11001_CMP` rows bearing the FIPS code `11001`. The official returns contain **`r N11001_OFF`**.
+
+That is not because the states are careless. It is because the code does not mean what the file needed it to mean. The District of Columbia has exactly one county-equivalent code, `11001`, meaning the whole District. Its eight wards have none, because wards are not county-equivalents and the Census Bureau has never issued codes for them. The District publishes by ward. The official files record eight ward rows with the FIPS field **left empty**, in both years, because the alternative is to invent an identifier.
+
+The compilation invented `11001` through `11008`. The join in this chapter did not fail on a real code that changed meaning. It failed on codes that were made up, one of which collided with a real one.
+
+**Then Connecticut.** The compilation has `r CT_CMP20` units in 2020 and `r CT_CMP24` in 2024. The official returns have `r CT_OFF20` and `r CT_OFF24` — the same eight counties both times, because that is what Connecticut certified.
+
+**Then the size of it all.** Of the counties both files identify with a real five-character code, `r DISAGREE24` disagree on at least one major-party count in 2024. `r DISAGREE20` disagree in 2020. The largest single gap is Jackson County, Missouri, and it is not an error in either file.
+
+Kansas City is its own returning jurisdiction in Missouri's official canvass. So the official Jackson County row is the county without the city, and the compilation's is the county with it. Two defensible definitions, one column name.
+
+```{r offvcomp}
+```
+
+Against the Associated Press's certified state totals, the official assembly is off by `r n(abs(OFF_ERR))` votes nationally and the compilation by `r n(abs(CMP_ERR))` — about `r round(abs(CMP_ERR)/abs(OFF_ERR))` times further. Both are small against 75 million. Neither is zero, which is the other lesson: there is no number to be exactly right against, because the national total is itself a sum of fifty-one certifications.
+
+**What the official assembly costs.** It is not free and it is not tidy. `r NOFIPS` of its rows carry no county code at all, and every one is a place the compilation would have given one. There are Rhode Island's forty towns, whose five counties have had no government since 1846 and for which the state publishes no county figures at all. There are the District's eight wards, Maine's statewide overseas ballots, and Kansas City.
+
+The rule that produced those blanks is *never invent an identifier*. It is what makes the file harder to join, and it is the reason it can be trusted where it does have one.
+
+## What a stapled file can testify to
+
+The strengths of this file are real and should be stated before the objections, because the objections are easier to remember. It is remarkably close to the truth in aggregate. It covers essentially every reporting unit in the country. It is free and downloadable in one file. Unusually, its compiler documents his sources candidly enough that the criticisms above are possible at all. A file that hid where its numbers came from would have failed none of the checks in Figure 5, because none of them could have been run.
+
+What it cannot support is anything that depends on the denominator. The third-party vote is missing in whole states, so every share computed with `total_votes` underneath it is wrong there, and wrong in a direction that always flatters the same candidate. Nor can it support anything that depends on the units being what they appear to be. The reporting units are not counties everywhere, and the file does not say where they are not.
+
+Invented codes collide with real ones, so a join can succeed and lie. The unit definitions changed between 2020 and 2024, silently, in three states, which means no quantity computed per unit in both years is a time series without checking first. And the file carries counts and nothing else. No turnout, no registration, no equipment, no precincts. All of it rests on one compiler's judgment, exercised in good faith and audited by nobody.
+
+Three questions are left genuinely open, and none of them will be settled by running more checks on this file. The first is how much published analysis rests on files like this one, and how much of it would survive repair. Almost certainly a great deal rests on it, and nobody has looked systematically.
+
+The second is whether a national returns file should exist at all, which is a political question about federalism rather than a technical one, and which has been unsettled since 1789.
+
+The third is the uncomfortable one. What else is wrong here that nothing in the arithmetic catches? Every failure above announced itself through a check somebody thought to run. The whole lesson of `11001` is that the failures which matter most produce a plausible number instead of an error. There is no reason to believe all the checks have been thought of.
+
+The code is still `11001`. It still means the District of Columbia in the federal standard, and it still means Ward 1 in one widely used file. Nothing anywhere in either file will ever tell you which one you have got. That is what it means for a record to have no producer: not that it is inaccurate, but that there is nobody to ask.
+
+## Sources
+
+**Data**
+
+- Tony McGovern, *United States General Election Presidential Results by
+  District, Ward, or County from 2008 to 2024*
+  (<https://github.com/tonmcg/US_County_Level_Election_Results_08-24>,
+  DOI 10.5281/zenodo.14223604). The 2024 figures were scraped from a
+  broadcaster's results pages; the README states plainly that the results are not
+  authoritative.
+- U.S. Census Bureau, *2024 Gazetteer Files, Counties*, trimmed to codes and
+  names for the 50 states and DC.
+- State returns from Jason Timm, *PresElectionResults*
+  (<https://github.com/jaytimm/PresElectionResults>).
+- MIT Election Data and Science Lab, *County Presidential Election Returns
+  2000–2024*, Harvard Dataverse, doi:10.7910/DVN/VOQCHQ — the maintained
+  alternative, cited here for comparison rather than used.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`census_counties.csv`](data/derived/census_counties.csv), [`pres2020_counties.csv`](data/derived/pres2020_counties.csv), [`pres2024_counties.csv`](data/derived/pres2024_counties.csv), [`pres2024_states.csv`](data/derived/pres2024_states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `pres2020_counties.csv` and `pres2024_counties.csv` have different row counts, and `census_counties.csv` has another. Work out which units are in one file and not the others.
+- Join the two election files on `county_fips`. Count the rows that match. Then find what the unmatched rows actually are before you call them errors.
+- `pres2024_states.csv` has `harris`, `trump` and `other` as percentages. Add the county totals within a state and check them against the state row. Do they agree?
+- A join that never fails is suspicious. Work out what would have to be true of these files for a silent mismatch to hide inside a successful join.
+
+**Academic literature**
+
+- Ansolabehere, S., Palmer, M. and Lee, A. (2014). *Precinct-Level Election
+  Data, 2002–2012.* Harvard Dataverse.
+- Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* Concepts and
+  Techniques in Modern Geography 38. Norwich: Geo Books.
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

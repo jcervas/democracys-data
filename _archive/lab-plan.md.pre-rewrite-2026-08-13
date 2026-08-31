@@ -1,0 +1,232 @@
+# Lab Build Plan — Fall 2026
+
+Labs are the spine of the course; the Sides et al. chapters are context. Every
+Thursday session needs a working R lab. This tracks what exists, what gets ported
+from Moon Duchin's PUBPOL 2130, and what has to be built new.
+
+> **Design rule (set after reviewing the F25 evaluations).** 84-355 is a gen-ed
+> with no coding prerequisite. **Students never write code.** Every lab arrives
+> working; exercises are given as runnable chunks with one parameter to change;
+> the graded deliverable is written interpretation. Ports and new builds must
+> follow this — a lab that asks students to author code is out of spec.
+>
+> This is not a lowering of demand. F25 students reported **4.4 hrs/week against
+> a 6.75 CST norm**, and the one substantive comment asked for *more* structure.
+> The bar goes up on writing and interpretation as the coding bar comes down.
+
+**Classes begin Tue Aug 24, 2026.** Ordering below is by when each lab is needed,
+not by unit.
+
+---
+
+## 1. Labs that already exist in R
+
+Usable more or less as-is.
+
+| Lab | File | Used |
+|---|---|---|
+| ~~Apportionment~~ | **REBUILT** — `labs/apportionment/`, student + key, both knit | **Wk 2** (Sep 3) |
+| ~~DW-NOMINATE~~ | **REBUILT** — `labs/dw-nominate/`, student + key, both knit | Wk 7 (Oct 8) |
+| ~~Samples & survey research~~ | **REBUILT** — `labs/poll-simulation/`, student + key, both knit | Wk 10 (Oct 29) |
+| RPV | `2025/Assignments/labs/RPV/RPV.rmd` + `ny_2020_vtd.csv` | Wk 15 (Dec 1) |
+| CA redistricting | `2025/Assignments/labs/gerrymandering/CA_Redistricting_Worksheet.Rmd` | Wk 15 (Dec 3) |
+| Census population | `2024-2025/Data-Assignments/census-pop.rmd` | Wk 12 (Nov 12) |
+| TX redistricting | `Texas-Redistricting-Worksheet.rmd` (root) | spare |
+
+## 2. Worksheets with data but no R code
+
+These have handouts and datasets; they need code written around them.
+
+| Material | Has | Needs |
+|---|---|---|
+| ~~Campaign visits~~ | AP tracker, markdown handout | **BUILT** — `labs/campaign-visits/`, student + key, both knit |
+| ~~Surnames~~ | `Names_2010Census.csv`, markdown handout | **BUILT** — `labs/surnames/`, student + key, both knit |
+| ~~Section 203~~ | markdown + PDF only | **BUILT** — `labs/section-203/`, student + key, both knit |
+| ~~Census data 1–3~~ | markdown + PDF only | **SUPERSEDED** — `labs/census-race/` (Duchin Week2 ported to base R) |
+| ~~Partisan bias~~ | markdown + PDF only | **BUILT** — `labs/redistricting/` (DRA worksheet preserved as Option D) |
+
+## 3. Ports from Duchin PUBPOL 2130
+
+Her notebooks are small — 100–200 lines of code each, heavy on markdown
+narrative. The narrative is the valuable part and translates directly.
+
+| Notebook | Topic | LOC | Python | R equivalent | Difficulty |
+|---|---|---|---|---|---|
+| `Week1.ipynb` | Census I: why we count, who counts | 141 | pandas, matplotlib | dplyr, ggplot2 | **Easy** |
+| ~~`Week2.ipynb`~~ | Census II: classifying people (PL 94-171) | 124 | census, pandas | **PORTED** — `labs/census-race/`, base R, no API key |
+| `Week3.ipynb` | Geography I: units, hierarchies, boundaries (ACS) | 102 | geopandas, folium, colorcet | **sf**, leaflet, viridis | **Easy–moderate** |
+| `Week4.ipynb` | Geography II: the MAUP | 208 | geopandas (imports `maup` but never calls it) | sf | **Moderate** |
+| `Week6.ipynb` | Elections and political geography | 495 | geopandas, **maup** | sf + areal | **Hard — the only real work** |
+| `Week14.ipynb` | Communities and redistricting (Districtr) | 105 | geopandas, folium, seaborn | sf, leaflet, ggplot2 | **Moderate** |
+
+### Package mapping
+
+| Python | R |
+|---|---|
+| pandas | dplyr / tidyr |
+| matplotlib.pyplot, seaborn | ggplot2 |
+| numpy | base R |
+| geopandas | **sf** |
+| census, us | **tidycensus**, tigris |
+| folium | leaflet |
+| colorcet | viridis, RColorBrewer |
+| `maup.assign` | `sf::st_join(..., join = st_within)`, or largest-overlap assignment |
+| `maup.prorate` | `areal::aw_interpolate()`, or manual area-weighted split via `st_intersection` |
+
+**Dependencies that do *not* transfer, and don't need to:** her custom
+`lib/pubpol2130` package is used only in Weeks 5 and 7 (arms transfers,
+migration) — material we aren't taking. `maup` is the sole genuine gap, and only
+Week 6 calls it, for `assign` and `prorate`.
+
+**Data is already local** under `notebooks-main/data/` — NY precincts (Weeks 3, 6),
+block/tract geodata (Week 4), MI and WI communities of interest (Week 14). Note
+these are NY/MI/WI; consider pulling PA equivalents with `tidycensus` so the maps
+are local to students.
+
+## 4. New labs to build
+
+No existing material. All fall in the Sides half of the semester.
+
+| Lab | Week | Chapter | Notes |
+|---|---|---|---|
+| ~~2024 electoral map / R onboarding~~ | Wk 1 (Aug 27) | — | **BUILT** — `labs/electoral-map/` |
+| ~~Election data sources & wrangling~~ | **Wk 1** (Aug 27) | — | **BUILT** — `labs/data-sources/`, student + key, both knit |
+| ~~A century of campaigns~~ | Wk 4 (Sep 17) | Ch. 3 | **BUILT** — `labs/historical-campaigns/`, student + key, both knit |
+| ~~FEC campaign finance~~ | Wk 5 (Sep 24) | Ch. 4 | **BUILT** — `labs/campaign-finance/`, student + key, both knit |
+| ~~Media & misinformation~~ | Wk 9 (Oct 22) | Ch. 8 | **BUILT** — `labs/media-attention/`, student + key, both knit |
+| ~~2026 election night returns~~ | Wk 11 (Nov 5) | Ch. 9–11 | **BUILT (two-stage)** — map + baseline final; results chunks written, tested, dormant behind `REHEARSAL <- TRUE` |
+
+---
+
+## Build order
+
+**Before Aug 24 — done.** Both opening labs are built, with instructor keys, and
+both knit. Wk 3 apportionment already existed. **The critical path is clear;
+the semester can open.**
+
+Weeks 1, 2, 4, 5 and 6 are built. **Every lab through Oct 8 is now ready**
+(Wk 3 apportionment and Wk 7 DW-NOMINATE already existed).
+
+> **Security note.** The old F25 surnames handout
+> (`F25/Assignments/labs/surnames/surnames.md`) contains a live Census API key
+> in plain text and was distributed to students. That key should be revoked at
+> <https://api.census.gov/data/key_signup.html>. The new Week 14 lab needs no
+> key and no packages.
+
+**All nineteen labs are built** — each with a
+student version and an instructor key. **All thirty-eight files knit**, and every
+lab has a `data/build-data.R` that regenerates its data from source.
+
+**Two more added after reading the textbook** (Aug 2026), both short and both
+built on the book's own worked material:
+
+| Lab | Week | Source | State |
+|---|---|---|---|
+| `vote-targeting/` | **Wk 4** (self-study), second lab | Ch. 5 Tables 5.1–5.3, rebuilt from NC State Board of Elections | **complete** — student + key, both knit |
+| `gotv/` | Wk 10 Tue, second half | Ch. 12 Table 12.1 → Green & Gerber, *Get Out the Vote!* 5e | **complete** — student + key, both knit |
+| `midterm-loss/` | Wk 11 Thu, **before** election night | House Historian party divisions, 1858–2024 | **complete** — student + key, both knit |
+
+**One more added after reading Lublin et al.** (Aug 2026), unscheduled — the
+week grid is being redone, so this is listed by what it is rather than when it
+runs:
+
+| Lab | Source | State |
+|---|---|---|
+| `sweet-spot/` | Lublin, Handley, Brunell & Grofman, "Minority Success in Non-Majority Minority Districts," *JREP* 5 (2020): 275–298 | **complete** — brief knits to HTML and PDF |
+
+It rebuilds the paper's Figure 1 simulation exactly, then sweeps the standard
+deviation the authors call "arbitrarily .03" and shows the sweet spot moving
+10.5 points; reprints Table 3A's U.S. House row **with the case counts** (the
+40–50% claim rests on n=2 and n=1) and rebuilds it on the 118th Congress, where
+the same band holds 20 districts and the forecast holds up; and then asks how
+many majority-Black congressional districts there are, getting **six answers
+between 8 and 14** from one file. Six districts sit on both sides of
+*Bartlett*'s line depending only on the denominator. The paper's actual
+mechanism — success peaking at intermediate Republican share — **does not appear
+in the 118th**: the quadratic term has p = 0.60, and inside the critical band
+the winners' median Trump share is 23.5 against 54.5 for the losers.
+
+The dependent variable is the interesting part. **No federal file records the
+race of a member of Congress.** `fetch-historian.py` scrapes the House
+Historian's photo gallery and recovers Bioguide IDs from image filenames,
+because that is the only machine-reachable form the attribute has. Pairs with
+`vote-dilution` (Gingles I), `officeholder-age` (the attribute the Bioguide
+*does* record), and `census-api` (files that exist because the VRA needs them).
+Borrows presidential-by-district from `house-competition` rather than re-fetching.
+
+**One more added Aug 2026, built but deliberately unplaced:**
+
+| Lab | Week | Source | State |
+|---|---|---|---|
+| `bellwether/` | **unplaced** | Grofman & Chen 2023, *PRQ* 76(1) | **complete** — brief knits to HTML + PDF |
+
+`bellwether/` tests the bellwether-county myth on county presidential returns
+1960–2024. It reproduces Grofman and Chen's two published figures (2% of
+counties perfect over 1960–1980, 0.3% over 2000–2020) and then reproduces the
+*Wall Street Journal*'s November 2020 list of nineteen bellwethers **exactly**
+— searching all 3,081 counties for a perfect 1980–2016 record returns those
+nineteen and no others, from a source the *Journal* did not use. Eighteen of
+them died in 2020 and the last, Clallam County WA, died in 2024. **Zero perfect
+records over the full seventeen elections, under either definition of "the
+national winner."**
+
+It has no session yet. Natural homes, in order: **Tue Oct 20** beside
+`midterm-loss` (the two argue with each other — one rule is certain about the
+sign and useless about the size, the other looks predictive and is not a rule
+at all); Session 9 beside `models-markets`; or Session 4 as a second
+self-study brief.
+
+> **This is the only lab whose `build-data.R` cannot run unattended**, and the
+> reason is the lab's subject. The long series is Algara and Amlani's
+> replication archive (doi:10.7910/DVN/DGUMFI), which is free and openly
+> licensed but sits behind an AWS WAF: a scripted request returns **HTTP 202
+> with an empty body** and `x-amzn-waf-action: challenge`. Not 403 — a
+> success-shaped status code and zero bytes, which a careless script would
+> record as a successful download. The file must be fetched once in a browser
+> into `data/raw/`; the script refuses to run rather than pretend. Every other
+> route to a long county series is worse: ICPSR 8611 needs an institutional
+> login, CQ Press and Leip are paid. There is no free official national county
+> file because **no federal agency counts votes** — the `returns-source`
+> argument, arriving as an obstacle rather than a claim.
+>
+> The hand-carried file is audited two ways, both automatic: against MEDSL's
+> independent 2000–2016 compilation (15,562 county-elections, 12 winner
+> disagreements at 0.077%, none touching a bellwether) and against the 26
+> states' certified 2024 returns already assembled in `county-returns/` (1,909
+> counties, every vote total identical). The 12 disagreements are all New York
+> fusion voting, Kansas City reporting separately from Jackson County, and one
+> transposition — the same fusion problem that bit `parse-clerk.py`.
+
+The NC lab downloads ~110 MB of precinct returns for four elections and
+aggregates to county. It reproduces the book's five printed counties exactly,
+and finds two errors in the book's statewide row — Table 5.3 gives the 2016
+Republican total as 2,289,880 where Table 5.2 and the state both say 2,298,880,
+and the 2020 figure is off by one. `build-data.R` re-checks this on every run.
+
+> ### One action required during the semester
+> **Morning of Thu 5 Nov 2026.** Put results in
+> `labs/election-night/data/results_senate_2026.csv` (template with the
+> required columns is already there), then change `REHEARSAL <- TRUE` to
+> `FALSE` in Part 4 of `election-night.Rmd` and knit. Both code paths have
+> been rendered and verified. Full checklist at the top of the Week 11 key.
+>
+> Also check that file's `senator_last` column against who is actually on the
+> ballot — it was built in August 2026 and does not know about retirements.
+
+> **Correction to an earlier note:** `m-q-2024.csv` in the course root is
+> *Martin–Quinn* scores — Supreme Court justice ideal points, 1937–2024 — not
+> 2024 election data. It is not a starting point for the electoral map lab, but
+> it would make a good polarization lab alongside DW-NOMINATE in Week 7.
+
+**September:** Wk 4 historical campaigns, Wk 5 FEC. Port campaign-visits to R for
+Wk 6. DW-NOMINATE is ready for Wk 7.
+
+**October:** Wk 9 media lab. Survey labs already exist for Wk 10.
+
+**November (Unit V):** the Duchin ports. Start with Week1/Week2 → census (easy),
+then Week3 → geography. Week 6 is the hard one and is needed for Dec 1 RPV — but
+your existing `RPV.rmd` already covers that session, so the Week 6 port is an
+upgrade rather than a dependency.
+
+**Critical path is short.** Two new labs before opening day; everything through
+Oct 8 either exists or is a straightforward build.

@@ -1,0 +1,379 @@
+---
+title: "Census Geography and Why Data Will Not Join"
+subtitle: "Why so much data will not join"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("census-geography-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+`r CHV("block","geoid")` is fifteen digits long. It names a piece of ground in middle Georgia about the size of a few city blocks. It also names the block group, the census tract, the county and the state that contain that ground, with no lookup table anywhere. Each of those is the front of the same string.
+
+That is a remarkable property for a number to have, and almost every claim anybody makes about an American place depends on it. Turnout *in* a county. Segregation *in* a neighborhood. A ballot rejection rate *in* a jurisdiction. Each requires knowing what the place is and where its edges are. Each also requires, crucially, that two different datasets agree about it.
+
+For some places they do. For others there is no identifier that could make them agree, and this chapter is about which is which and why.
+
+## Where the lines are drawn decides what the numbers say
+
+That is obviously true of districts, where it has a name and a body of law: gerrymandering. It is just as true, and far less noticed, of the units used to *measure* anything.
+
+Segregation computed across tracts and segregation computed across counties are different numbers for the same city. A precinct result and a census demographic cannot be joined without a decision about how to split people who live in both. Each of those decisions is made by somebody, usually invisibly, and each moves the answer.
+
+There is also a plainly administrative stake. **Federal money, representation, and civil-rights enforcement are all allocated using these units.** Getting the geography wrong is not a technicality; it is the mechanism.
+
+## One identifier, read from the outside in
+
+The identifier above is a real one — the **GEOID** of a single census block in `r FV("county_name")`, the county mapped throughout this chapter. Taken apart, it is five identifiers stacked:
+
+```{r geoid}
+```
+
+The identifier is not arbitrary. **It is built by concatenation**, and each prefix names the parent. That means a block's county can be read straight off its identifier with no lookup table at all. *The first five digits are the county.* It is a claim about a string, and it is testable.
+
+**It is also not only a claim about a string.** Each of those prefixes is a place somebody could drive to. Here is the same identifier read from the outside in — five maps, each one the shaded unit of the map before it:
+
+```{r zoom-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r zoom-static, eval=!knitr::is_html_output(), fig.height=2.4}
+```
+
+**Figure 1. One block identifier, and the five places it names.** The digits at the top are the identifier split at its four internal boundaries, each coloured to match the map beneath it. Every shape in every panel was selected by slicing digits off that string and matching what came out. Each panel is the shaded unit of the panel to its left, enlarged. The sequence runs from a state to a piece of ground a few hundred metres across, with no step that required a lookup.
+
+**On one side the nesting is a fact about a string; on the other it is a fact about the ground. They are the same fact.** State `r CHV("state","digits")` is Georgia, and county `r CHV("county","digits")` is `r sub(",.*", "", FV("county_name"))`. The rest of the digits pick out one tract of `r n(FV("n_tracts"))`, one block group inside it, and finally one block among the county's `r n(FV("n_blocks"))` blocks.
+
+Read upward instead and the identifier simply stops at the state. The Bureau's hierarchy does not: its tabulations carry two more summary levels, the **division** (`030`) and above it the **region** (`020`), and Figure 2 draws them. But they are a different kind of thing from everything below. A division is a grouping *of* states, published as a one-page list; it is not in the string. No digit of any GEOID says what division or region a place is in, and there is no division prefix to slice off. The spine of prefixes runs block to state, and stops.
+
+```{r regions-prep, include=FALSE}
+```
+
+```{r regions-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r regions-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+**Figure 2. The two rungs above the state, which no identifier carries.** Four regions, nine divisions, every state in exactly one of each — the Bureau's own grouping, from its *Statistical Groupings of States and Counties*. It is drawn on the course's standard base map (the Bureau's generalized cartographic boundary file; Alaska and Hawaii inset at reduced scale), with heavy lines for the division boundaries. Unlike everything below the state, these rungs exist only as summary levels `020` and `030` in tabulations. To find a block's region you look its state up in a table, the one operation the rest of the spine never needs. [`regional-shift`](../regional-shift/regional-shift-brief.html) is the chapter where the four regions do real work, and [`demographics`](../demographics/demographics-brief.html) reads their summary-level rows directly.
+
+## Where the definitions come from
+
+```{r source}
+```
+
+One flat file per geography type, and one shapefile per geography type. Set that against the ordinary experience of American public data: the interface that needs a key, the repository that needs a guestbook, the PDF with no machine-readable version. **The layer that defines what a place *is* turns out to be the one thing that is genuinely, frictionlessly open.** The government charges nothing and asks nothing for the answer to *what is a place*.
+
+From here down, every map is one county: `r FV("county_name")`, `r n(FV("pop"))` people over `r FV("county_sq_mi")` square miles, small enough that all `r n(FV("n_blocks"))` of its census blocks fit on a page.
+
+There is something odd about calling this a dataset at all, and the oddness is worth sitting with rather than glossing over. **A gazetteer does not measure anything.** It has no estimate in it. No margin of error saying how far off a number could be, no respondent, and nobody counting. It is a declaration. These `r n(g("census tract","count"))` strings are the census tracts, and a tract is whatever the Bureau's file says a tract is.
+
+You cannot ask whether it is accurate, because there is nothing outside it to be accurate about. What you can ask, and what this chapter asks, is three things. Whether the declaration agrees with itself. Whether the identifiers do what their shape implies. And what the Bureau chose not to declare.
+
+The file answers all three, and it answers them completely, because the file is the whole population rather than a sample of it.
+
+Its purpose is worth naming too, because it explains the one thing that looks like an omission. The gazetteer exists so that the Bureau's own products can be indexed: every table it publishes has to say what area each row refers to, and these are the areas. That is a bookkeeping obligation, not a mapping one, which is why the file records identifiers, names and areas and says nothing whatever about *why* any boundary is where it is. It is also why voting precincts are absent from it.
+
+That absence needs stating carefully, because the obvious reading of it is wrong. Precincts are not a standard census geography. No gazetteer file defines them, the Bureau does not maintain them between censuses, and they are set by states and counties rather than federally.
+
+**But they are a census tabulation unit, once a decade, in one file.** The redistricting file carries population inside voting districts, and the [API chapter](../census-api/census-api-brief.html) finds `voting district` sitting in its geography catalog. So the right claim is narrower than "never a tabulation unit". It is that precincts are not part of the standing geography this chapter is about.
+
+They get into that one file because states put them there. Under the Bureau's Redistricting Data Program, states are invited in the years before a census to submit their own precinct boundaries for tabulation, and the invitation is voluntary. A state that declined has no voting-district rows to read.
+
+So a precinct is a geography the Bureau publishes without defining, for one purpose, on somebody else's authority. Every unit in the gazetteer is the opposite of that, which is the real reason none of them is a precinct.
+
+Two sources are spliced here and the seam should be visible. The national counts come from the 2024 gazetteer. The shapes come from the 2020 TIGER/Line release, along with the block assignment and ZCTA relationship files that supply the crossings.
+
+For the spine that splice is harmless, because tracts and block groups are redrawn once a decade and did not move between those two dates. For the crosscutting geographies it is not harmless at all. Municipal annexations and ZIP code approximations are revised every year. So a place count from one release and a place boundary from another are not, strictly, describing the same day.
+
+The chapter's claim about the spine is therefore stronger than its claim about the overlays, which is the correct order for those two claims to be in.
+
+The cleaning was slight and one detail of it is load-bearing. Each gazetteer file is tab-separated and padded on the right with spaces to a fixed line width. So both the column names and the values are trimmed before anything is compared. An untrimmed name matches nothing. The next section shows exactly where that padding falls, which is narrower and nastier than it sounds.
+
+Every identifier is held as text from beginning to end. Nothing was imputed, meaning no missing value was filled in by guessing, and no row was dropped. All `r n(sum(lv$count))` units of the `r nrow(lv)` types pulled are counted.
+
+The one substantive decision is that the nesting claims below were **run rather than looked up**. The Bureau documents which geographies nest. The build records the result of testing every identifier against that documentation. That is how the ZCTA file's missing state column turned up as a finding instead of a footnote.
+
+## Seven files in, seven rows out
+
+The table in the next section has one row per geography type. The download has one row per *unit* — one line for every county, every tract, every ZIP approximation in the United States. Verbatim slices of all seven downloads appear below, and this section is the distance between them.
+
+Here are three of the seven, opened at the top. Each table is the file's own header line turned into rows, with two of its data lines beside it. That is the only arrangement in which three files with different columns can be read against each other.
+
+```{r geo-raw-setup, include=FALSE}
+```
+
+**Counties.**
+
+```{r geo-raw-counties}
+```
+
+**Census tracts.**
+
+```{r geo-raw-tracts}
+```
+
+**ZCTAs — ZIP code approximations.**
+
+```{r geo-raw-zcta}
+```
+
+Read the three header lines against each other and the chapter's argument is already sitting there in plain text. Counties carry `USPS`, a state. Tracts carry `USPS`. **ZCTAs do not.**
+
+There is no state column in that file, and no state in that identifier. `00601`, the first row of it, is in Puerto Rico. You can only discover that by already knowing it.
+
+The other four files are the same story, and the whole picture fits in one grid:
+
+```{r geo-headergrid, fig.height=3.2}
+```
+
+**Every column of every file.** Seven gazetteer files, and the union of their fields. A filled cell means the file has that column. One file is missing the first column, and it is the one everybody uses.
+
+Now the row the chapter actually reads, for those same three geographies:
+
+```{r geo-clean}
+```
+
+`r n(GS("zcta_rows") + GS("counties_rows") + GS("tracts_rows"))` lines became three. Six decisions did it, and only two of them are arithmetic.
+
+**Counting is the whole measurement.** `count` is the number of lines in the file, and that is not a shortcut. A gazetteer *is* the list, so its length is the answer rather than an estimate of the answer. Every other dataset in this book counts something that exists independently of the file. This one does not.
+
+**The padding is stripped, and it falls in exactly one place.** Every line of all seven files is padded on the right to a fixed width. The ZCTA file's lines run to `r n(GS("zcta_max_line_chars"))` characters. The padding lands on the last field and no other. It does so in `r n(GS("zcta_rows_with_padded_last_field"))` of the ZCTA file's `r n(GS("zcta_rows"))` rows, or `r round(100 * GS("zcta_rows_with_padded_last_field") / GS("zcta_rows"))`% of them.
+
+**The header line is padded too**, which is the part that bites. Read the file without trimming and the last column is not named `INTPTLONG`. It is named `INTPTLONG` followed by a hundred spaces. Every attempt to ask for it by name fails, while every column count still comes out right.
+
+**Nothing is ever converted into a number except the areas.** Identifiers stay text from the first line that reads them to the last that writes them. `01001` is a county in Alabama; `1001` is nothing, and there is no error message between the two.
+
+**The median is a median of land, and the guard on it never fires.** `ALAND_SQMI` is taken over units with a non-blank, non-zero land area. Across all seven files, `r n(GS("all_blank_or_zero_land_area"))` units are excluded by that rule, because none has zero land. The guard was written for a defect that is not in this vintage. It stays because the next vintage is not this one.
+
+**Two of the five columns are not in the download at all.** `the ID encodes` and `nests into` appear in no gazetteer file. They are typed in by hand, by a person reading the Bureau's documentation. "Five digits, nothing else" for a ZCTA. "State(2) + county(3) + tract(6)" for a tract.
+
+**They are the chapter's argument, sitting in a table and wearing the costume of data.** A reader who found that file alone could not tell those two columns from the three that were counted. This is the single most important thing to notice about the file, and it is invisible from inside it.
+
+**Which is exactly why the nesting claims were run instead of quoted.** The `nests into` column is somebody's reading of a document. `derived/nesting.csv` next to it is a test: take every tract identifier, cut the first five characters, and ask whether that is a real county. All `r n(ne$n_total[ne$test == "tract GEOID[:5] is a real county"])` pass. **A typed claim and a run test can sit in the same folder looking identical, and only one of them would notice if the Bureau changed its mind.**
+
+## How many of each thing there are
+
+```{r levels}
+```
+
+**`r n(g("census tract","count"))` census tracts, `r n(g("county","count"))` counties, `r n(g("ZCTA (ZIP approximation)","count"))` ZCTAs.** Median land area runs from `r g("census tract","median_sq_mi")` square miles for a tract to `r g("county","median_sq_mi")` for a county — a factor of roughly `r round(g("county","median_sq_mi")/g("census tract","median_sq_mi"))`.
+
+```{r counts-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r counts-static, eval=!knitr::is_html_output(), fig.height=2.9}
+```
+
+**Figure 3. Seven kinds of American place, by how many of them there are.** Bars are counts on a log scale, with each geography's median land area printed alongside. There are more census tracts than anything else and fewer counties than almost anything else; the median tract is `r g("census tract","median_sq_mi")` square miles and the median county `r g("county","median_sq_mi")`, a factor of roughly `r round(g("county","median_sq_mi")/g("census tract","median_sq_mi"))`. The colors are the finding, and nothing so far has justified them.
+
+## Do not take the nesting on faith
+
+**Take every tract, slice off the first five digits, and check whether that county exists.**
+
+```{r tests}
+```
+
+**All `r n(ne$n_total[1])` tracts match a real county by prefix. Zero orphans.** The same holds for all `r n(ne$n_total[2])` county subdivisions.
+
+That is the **spine**: block → block group → tract → county → state. Each level nests inside the next, exactly, and the nesting is encoded in the identifier. Because it nests, you can aggregate up without any assumptions — a county's population *is* the sum of its tracts, by construction.
+
+**Both halves of that sentence are one county.** Here is the same ground four times. Nothing is redrawn between panels; the units simply get bigger, and each one is an exact union of the ones to its left.
+
+```{r scales-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r scales-static, eval=!knitr::is_html_output(), fig.height=2.9}
+```
+
+**Figure 4. The same county four times, at four rungs of the spine.** Nothing is redrawn between panels; the units simply get bigger, and each one is an exact union of the ones to its left. In red, from the left: the block from the opening of this chapter, then the block group, the tract and the county containing it. The subtitle under each panel is the number of digits its identifier takes, which is the same information as the panel itself.
+
+**Every line in the third panel is also a line in the second, and every line in the second is also a line in the first.** That is what nesting looks like. The boundaries of the big units are drawn from the boundaries of the small ones. So `r n(FV("n_blocks"))` blocks become `r n(FV("n_bg"))` block groups, which become `r n(FV("n_tracts"))` tracts, which become one county, without anything being cut.
+
+The red unit is the block the chapter opened with. In the first panel it is a speck about `r round(FN("blocks_per_tract"))` times smaller than the tract it sits in, and its identifier contains the identifier of every shape that swallows it.
+
+> **Before you read on, commit to two numbers.** Every one of the
+> `r n(ne$n_total[1])` census tracts in the country just matched a real county by
+> having five digits sliced off its identifier — a perfect score. Two more tests
+> were run on the same principle. **What share of the
+> `r n(g("ZCTA (ZIP approximation)","count"))` ZCTAs do you think carry a state,
+> and what share of the `r n(g("place","count"))` places carry a county?** Write
+> down two percentages before you look.
+
+## A test that cannot be run
+
+Here are the two rows that were left out of the table above.
+
+```{r fails}
+```
+
+Almost everybody writes down two high percentages — ninety-something, or "nearly all, with a handful of exceptions along state lines." **The units-passing column is empty, and that is not a rendering problem.**
+
+Neither test could be run at all. Not failed: *unrunnable*, because **the files contain no such column.** The place file records no county. The ZCTA file records no state.
+
+A test that cannot be executed is a different kind of result from a test that fails, and it is a stronger one. It means the Census Bureau declined to record the relationship — and it declined because the relationship does not exist.
+
+## What each identifier actually encodes
+
+```{r encodes}
+```
+
+**Four of the seven do not nest into the spine.**
+
+Places, school districts of both kinds, and ZCTAs are all drawn for other purposes: municipal incorporation, school administration, mail routing. None of them respects county lines. Their identifiers say so. A place identifier is `state(2) + place(5)`, with **no county part**, because a place can span several counties.
+
+Look at the ZCTA row. Its identifier is **five digits encoding nothing at all.**
+
+## Three geographies over the same thirty-eight tracts
+
+Three geographies, laid over the same `r n(FV("n_tracts"))` census tracts of `r FV("county_name")`. One of them is on the spine and two are not, and you can tell which is which without being told.
+
+**A tract is *cut* when a boundary runs through it** — when part of the tract is inside some unit of the other geography and part is outside. Tracts that are cut are shaded below, and counted underneath.
+
+```{r nest-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r nest-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+**Figure 5. One geography on the spine, two crossing it.** The same `r n(FV("n_tracts"))` census tracts of `r FV("county_name")` appear in all three panels, outlined in grey. Over them, in colour, are the boundaries of block groups, city limits and ZCTAs in turn. A tract is shaded when a boundary of the overlay runs through it.
+
+The left panel has `r n(SP("block group", "units"))` block groups and `r n(SP("block group", "tracts_split"))` shaded tracts. The middle has `r n(SP("census place (city limits)", "units"))` places and `r n(SP("census place (city limits)", "tracts_split"))` shaded tracts. The right has `r n(SP("ZCTA (ZIP approximation)", "units"))` ZCTAs and `r n(SP("ZCTA (ZIP approximation)", "tracts_split"))`. Which of the three is on the spine is legible without the labels.
+
+**Zero, and `r n(SP("census place (city limits)", "tracts_split"))`.** The left panel has `r n(SP("block group", "units"))` block groups inside `r n(FV("n_tracts"))` tracts and not one of them crosses a tract line, because a block group is *defined* as a piece of a tract. The middle panel has `r n(SP("census place (city limits)", "units"))` places: three incorporated cities and the Air Force base. Their boundaries cut `r n(SP("census place (city limits)", "tracts_split"))` of the `r n(FV("n_tracts"))` tracts, or `r SP("census place (city limits)", "pct_split")`% of them. ZCTAs cut `r n(SP("ZCTA (ZIP approximation)", "tracts_split"))`.
+
+That middle panel is a city drawn by annexation. `r n(FV("pop_wr"))` people live inside the Warner Robins city limits, and `r n(FV("pop_unincorporated"))` in the county live inside no city at all.
+
+The line between them wanders through `r n(FV("tracts_pop_mixed_place"))` tracts holding people on both sides of it. Warner Robins itself does not stay in the county. Of its `r FV("wr_sq_km_total")` square kilometres, `r FV("wr_sq_km_in_county")` are in `r sub(",.*", "", FV("county_name"))`. The rest are in the next county over.
+
+**That is the concrete reason a place identifier has no county in it.** There is no county to put there.
+
+Suppose you have a statistic for the city and you need it for a tract. Or the reverse, which is far more common, because the demographics you want are published by tract. There is no join. There is only an assumption about where inside those `r n(SP("census place (city limits)", "tracts_split"))` tracts the people are.
+
+## The one everybody uses is the one that works worst
+
+```{r zcta}
+```
+
+**A ZIP code is not a place.** It is an operational artifact of mail delivery, and the Census approximates it with a ZCTA precisely because the original has no boundaries to borrow.
+
+**The ZCTA file has no state column and no state in the identifier.** That is not an oversight. Some ZIP codes cross state lines, so there is no single state to record.
+
+The right-hand panel of Figure 5 is that fact drawn. `r n(FV("n_zctas"))` ZCTAs have land in this one county, they cut `r n(SP("ZCTA (ZIP approximation)", "tracts_split"))` of its `r n(FV("n_tracts"))` tracts, and **`r n(FV("zctas_multi_county"))` of the `r n(FV("n_zctas"))` are not in one county at all** — one of them is spread over `r FV("zcta_max_counties")`. A ZCTA does not respect the tract lines below it or the county line above it, because it was never drawn against either. It was drawn against delivery routes.
+
+**This is not an academic point.** A survey that wants to know where its respondents live asks for a ZIP code, because that is the thing people know about themselves. It is the natural question to ask and the hardest answer to join to anything else.
+
+## Why this keeps happening
+
+```{r recap}
+```
+
+**Every one of those is this fact.** Four different investigations, four apparently unrelated obstacles, one cause: the United States is covered by two systems of geography, and only one of them nests.
+
+Once it has a name, it stops being a data-cleaning nuisance and becomes a property of the country.
+
+## Two problems with no fix
+
+Two long-standing problems, both unresolved because both are unresolvable.
+
+**The modifiable areal unit problem.** Openshaw (1984) demonstrated that statistics computed over area-based units depend on the units chosen — both on their *size* and on how they are *drawn* at a given size. In his experiments, correlations between the same two variables ranged across nearly the whole possible interval depending only on how the map was cut. **There is no correct zoning**, because the units are not features of the world; they are choices.
+
+**The ecological fallacy.** Robinson (1950) showed that a relationship holding across areas need not hold across people, and can invert. His example is the standard one. Across U.S. states in 1930, higher shares of foreign-born residents went with *higher* literacy, while individually the foreign-born were *less* likely to be literate. Immigrants had settled in states that were literate for other reasons. **Aggregate data will support a confident and exactly backwards conclusion, and nothing internal to the data announces it.**
+
+Neither problem has a fix. Both have a discipline: **know which unit you are using, and say so.**
+
+## What a definition file can testify to
+
+The evidence here is authoritative in a way almost nothing else in public data is, and narrow in ways that are easy to forget once the argument has landed.
+
+It is authoritative because these are the definitions themselves — the units every other federal dataset refers to when it says "county" or "tract." Coverage is complete by construction, since the file *is* the list. And the identifiers tested here are the actual join keys used in practice, so testing them is testing the thing that matters rather than a proxy for it.
+
+It is narrow in six specific ways. This is one vintage. Tracts are redrawn every ten years, so a 2024 file will not join cleanly to 2010 data. That is a separate and equally well-known problem, and nothing above addresses it.
+
+It is one county on the ground. Every map is `r FV("county_name")`. The counts are national, but `r n(FV("tracts_split_place"))` of `r n(FV("n_tracts"))` is a fact about this county rather than a national rate. Whether the crossing is worse in a dense city or a rural county is not settled here, and could plainly go either way.
+
+Land area is not population, so the median areas describe shape rather than people. Voting precincts are absent entirely, because the Census does not publish them at all. That is itself the reason precinct data is the hardest American election data to source.
+
+The gazetteer says nothing about *why* the crossing geographies were drawn as they were, only that they were.
+
+And seven geography types are not all of them. Congressional districts, urban areas and public-use microdata areas are further crossing systems that would have behaved the same way.
+
+So the sentences this chapter will bear are these. **American geography has a spine and a set of crosscutting systems.** The spine's identifiers carry the nesting inside them, so adding up along it requires no assumptions at all. Everything off the spine requires a crosswalk, a table that translates one set of areas into another, built on an assumption somebody chose.
+
+Which of the seven geographies here is which was tested rather than read out of documentation, and tested twice. Once on `r n(g("census tract","count"))` identifiers, where every tract matched its county by its opening digits. And once on the ground, where a city limit cut `r n(FV("tracts_split_place"))` of one county's `r n(FV("n_tracts"))` tracts and a block group boundary cut none.
+
+What cannot be done is to move data between crossing geographies without deciding how people are spread inside the units. No data will check that decision.
+
+Three things stay open, and none is a matter of better files. Which unit is right for a given question: there is no answer, because Openshaw's point is that the question is malformed, and what is available instead is honesty about the choice and sensitivity to alternatives. How to move data between crosscutting geographies: area-based interpolation and population-weighted crosswalks both exist and both require assumptions about where people live inside a unit. And whether precinct geography should be federal at all, given that it is currently assembled by volunteers and academics, state by state.
+
+The block identifier this chapter opened with does something no ZIP code can. It tells you, at a glance and for free, exactly which county, tract and block group its ground belongs to. That property is not a feature of geography. It is a feature of a filing system, built once by an agency that decided the nesting was worth writing into the number. And it stops working the moment a boundary was drawn by anybody else, for any other reason.
+
+## Sources
+
+**Data**
+
+- U.S. Census Bureau, *Gazetteer Files*, 2024 — the counts, the identifier
+  lengths and the median areas.
+  <https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/>
+- U.S. Census Bureau, *TIGER/Line Shapefiles*, 2020 — every boundary drawn here:
+  blocks, block groups, tracts, places and ZCTAs.
+  <https://www2.census.gov/geo/tiger/TIGER2020/>
+- U.S. Census Bureau, *2020 Block Assignment Files* — which block is in which
+  municipality, the Bureau's own assignment rather than one of our making.
+  <https://www2.census.gov/geo/docs/maps-data/data/baf2020/>
+- U.S. Census Bureau, *2020 ZCTA relationship files* — how ZCTA land divides
+  among tracts and counties.
+  <https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/>
+
+All keyless.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`chain.csv`](data/derived/chain.csv), [`levels.csv`](data/derived/levels.csv), [`map_ids.csv`](data/derived/map_ids.csv), [`map_units.csv`](data/derived/map_units.csv), [`nesting.csv`](data/derived/nesting.csv), [`splits.csv`](data/derived/splits.csv), [`tract_split.csv`](data/derived/tract_split.csv), [`us_divisions.csv`](data/derived/us_divisions.csv), [`us_ids.csv`](data/derived/us_ids.csv), [`us_map.csv`](data/derived/us_map.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `levels.csv` lists each geography with its `id_length` and what the identifier `id_encodes`. Take a block identifier from `map_ids.csv` and read it from the outside in. Name every level it belongs to.
+- `tract_split.csv` flags whether each tract is split by a block group, a place, or a ZCTA. Count each kind. Which boundary is the one that will break your join?
+- `splits.csv` distinguishes overlays that sit on the spine from those that do not. Work out what that means for anyone trying to put ZIP-code data on a tract map.
+- `levels.csv` has `median_sq_mi` for each level. Compare a tract to a county. If you only had county data, what kind of question could you no longer ask?
+
+**Law**
+
+- U.S. Census Bureau, 2020 Census Redistricting Data Program — the five-phase
+  programme under which states suggest census block boundaries and submit
+  their own voting districts for tabulation. The voting-district submission is
+  voluntary, which is why a precinct is a unit the Bureau publishes without
+  defining.
+- National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
+  NCSL, October 2019), ch. 1 and Exhibit 1.3, for that programme and the list
+  of geographies P.L. 94-171 delivers.
+
+**Academic literature**
+
+- Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* Concepts and
+  Techniques in Modern Geography 38. Norwich: Geo Books.
+- Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
+  Individuals." *American Sociological Review* 15(3): 351–357.
+
+**How the figures were made**
+
+The national counts and the nesting tests come from the gazetteer files. The shapes and the crossing counts come from the TIGER files and the block assignment file. Every number and every boundary above comes from those files, at the moment this page was built. The nesting tests are run rather than reported, which is why two of them have empty columns.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

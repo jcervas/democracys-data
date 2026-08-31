@@ -1,0 +1,240 @@
+---
+title: "Data Session 13 Key: The Ballots Themselves"
+subtitle: "84-355 Democracy's Data | Session 13 — Cast vote records | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+s    <- read.csv("data/sequences.csv", stringsAsFactors = FALSE)
+cols <- grep("^rank", names(s), value = TRUE)
+ru   <- rowSums(s[, cols] != "")
+tr   <- read.csv("data/official_transfers.csv", stringsAsFactors = FALSE)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** Session 13, and it is the only session in the course where
+students see **individual votes**. Everything else has been totals, samples, or
+inferences about people from aggregates. Say that out loud at the start: today
+the unit of observation is one ballot, and that is extraordinary.
+
+**Logistics.** This is the **remote session** and the week before Thanksgiving.
+Board posts are due **Mon, Nov 30**, not Friday. There is no draw this week.
+The lab is well suited to Zoom — it is one small file and a lot of reading.
+
+Every number below was run against the data file.
+
+***
+
+# The session in one sentence
+
+Alaska publishes the ballots, so we recount a congressional election ourselves,
+match the official percentages exactly, and discover that two-thirds of voters
+declined the one thing ranked-choice voting exists to offer.
+
+***
+
+# The findings
+
+```{r headline}
+c(ballots        = sum(s$ballots),
+  sequences      = nrow(s),
+  bullet_votes   = sum(s$ballots[ru == 1]),
+  pct_bullet     = round(100 * sum(s$ballots[ru == 1]) /
+                         (sum(s$ballots) - sum(s$ballots[ru == 0])), 1),
+  howe_exhausted = tr$ballots[tr$eliminated == "Howe, John Wayne" &
+                              tr$transferred_to == "Exhausted"])
+```
+
+- **340,778 ballots** collapse to **926 distinct ranking sequences.**
+- **65% of voters who voted in this race ranked exactly one candidate.**
+- Our recount gives **Begich 51.22%, Peltola 48.78%** — the official figures to
+  two decimals.
+- **45% of Howe's 13,871 ballots exhausted** when he was eliminated.
+- **3,790 ballots name the same candidate twice.**
+
+***
+
+# The three things to get said
+
+**1. This file exists because Alaska decided it should.** No federal law
+requires publishing a cast vote record, and most states do not. Ask what would
+change if every state did — and then ask what the risk is, which is the privacy
+point below. **The availability of data is a political choice**, which is the
+argument the whole course has been circling.
+
+**2. Sixty-five percent bullet voting is the finding, and it is not a failure.**
+Students will want it to mean voters were confused. Push back: ranking one
+candidate is a coherent, sincere ballot. It does mean the *mechanism* did less
+work than its advocates suggest, and it means a voter's influence ends when
+their candidate does. **Both readings are defensible; an essay that only holds
+one is a 2.**
+
+**3. Matching to two decimals and missing by 150 ballots is the methodological
+lesson.** We reproduced the percentages exactly. We did not reproduce the counts,
+because the official tabulator applies documented rules ours does not —
+*exclude unresolved write-ins*, *exhausted on two or more ranks skipped*, and
+its own overvote handling, all printed on page 1 of the state's report. **The
+rules are not in the data. They are a separate document, and they change the
+answer.** In this race by 0.05%; in a closer one, by the outcome.
+
+**The line for the board:** the ballots do not count themselves.
+
+***
+
+# The privacy point — make it explicitly
+
+A CVR carries **no name** and is a public record. It is also
+**individual-level**, and a distinctive ranking in a small precinct can narrow
+down who cast it. That is why the committed file is collapsed to sequences with
+counts and why precinct and tabulator identifiers were dropped before anything
+was saved.
+
+Worth five minutes: **anonymous is not the same as unidentifiable.** This is the
+same lesson as Session 7's BISG, arriving from the opposite direction — there,
+we inferred an identity nobody recorded; here, an identity could be inferred
+from a record with no name on it.
+
+***
+
+# Option A — Abolish the runoff
+
+## Verified output
+
+```{r a}
+p <- tapply(s$ballots, s$rank1, sum)
+p <- sort(p[names(p) != ""], decreasing = TRUE)
+round(100 * p / sum(p), 2)
+c(plurality_winner = names(p)[1],
+  margin = unname(p[1] - p[2]))
+```
+
+**Begich wins under plurality too**, by 6,816 first-preference votes; the
+instant-runoff margin is 7,876. **RCV did not change the outcome of this race.**
+
+**3/4:** Reports that the winner is the same either way.
+
+**4/4:** Notices that "the same winner" is not "no difference." Under plurality
+Begich wins with **48.3%** — a plurality, not a majority. Under RCV he finishes
+above 50% of continuing ballots. The systems produce the same *person* and a
+different *claim to legitimacy*, and the second is what the argument is usually
+about.
+
+**4/4, best:** Notices that 7,595 ballots were exhausted by the final round, so
+Begich's 51.22% is a majority **of the ballots still in the count**, not of the
+people who voted. Of all 340,778 ballots, his final-round total is about 48%.
+**A student who works out that the majority is manufactured by shrinking the
+denominator has found the sharpest criticism of IRV there is** — and should also
+be asked what the alternative denominator would even mean.
+
+***
+
+# Option B — Exhaustion by candidate
+
+## Verified output
+
+```{r b}
+for (c in c("Begich, Nick", "Peltola, Mary S.", "Howe, John Wayne", "Hafner, Eric")) {
+  k <- s$rank1 == c
+  cat(sprintf("  %-18s %8s voters   %5.1f%% ranked only that candidate\n",
+              c, format(sum(s$ballots[k]), big.mark = ","),
+              100 * sum(s$ballots[k & ru == 1]) / sum(s$ballots[k])))
+}
+```
+
+**This is the best option and the one to steer strong students toward.**
+
+**Begich voters bullet-voted at 76.1%. Peltola voters at 56.4%.** A twenty-point
+asymmetry between the two major candidates' supporters.
+
+**3/4:** Reports the gap and notes it is large.
+
+**4/4:** Offers a mechanism. The most likely is **campaign instruction** —
+"rank the red" style messaging telling supporters that ranking anyone else helps
+the other side. A student who says the ballots are showing us the *campaigns'*
+strategies, not just the voters' preferences, has understood what individual
+data reveals.
+
+**4/4, best:** Notices the pattern runs down the ballot — Howe 43.4%, Hafner
+35.4% — so **the smaller your candidate, the likelier you are to rank a second.**
+That is exactly what a rational voter would do, and it means bullet voting is
+concentrated among front-runners' supporters, who lose nothing by it. The
+behaviour is strategic, not confused.
+
+***
+
+# Option C — A different overvote rule
+
+## Verified output
+
+```{r c}
+has_ov <- apply(s[, cols], 1, function(r) any(r == "OVERVOTE"))
+c(sequences_with_overvote = sum(has_ov),
+  ballots = sum(s$ballots[has_ov]),
+  overvote_at_rank1 = sum(s$ballots[s$rank1 == "OVERVOTE"]))
+```
+
+**1,472 ballots contain an overvote**, 610 of them at the first rank. Changing
+the rule from *stop* to *skip* rescues some of these into the count.
+
+**3/4:** Makes the change, reports how many ballots move, notes the winner does
+not change.
+
+**4/4:** Observes that 1,472 is small **here** and would not be in a closer
+race — and that whether an overvoted ballot is discarded or partially honoured
+is a policy question with no technically correct answer. Alaska's own report
+names its choice; the choice is not in the data.
+
+**4/4, best:** Connects it to Part 4. We already know our count differs from the
+official one by ~150 ballots because of rules like this. **Option C is a
+demonstration that the count is a function of the rulebook**, and a student who
+says they would want the rulebook published alongside every result has arrived
+at the professional standard.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating bullet voting as behaviour to be
+  explained rather than as a mistake to be deplored.
+- **A 2** is "RCV is confusing, look how many people got it wrong." Nothing here
+  shows anyone got anything wrong.
+- **Reward anyone who notices the denominator** in the final round.
+
+## Anticipated questions
+
+- *"Is this legal to publish?"* — Yes, and Alaska does it deliberately, for
+  transparency. Note that most states do not, and that reasonable people
+  disagree about whether they should.
+- *"Could I find my own ballot?"* — In principle a sufficiently distinctive
+  ranking in a small precinct narrows things down, which is why our file has no
+  precinct. Do not brush this off; it is the real objection to publishing CVRs.
+- *"Why doesn't our total match the certified result?"* — Two reasons, both
+  from Alaska: hand-counted ballots are excluded, and our tabulation rules are
+  simpler. Say both.
+- *"Did RCV cost Peltola the seat?"* — No. She lost under both systems on this
+  data. Do not let the room turn this into a referendum on RCV using one race.
+- *"Why can Alaska rank the presidential race?"* — It does; contest 4 allows
+  eight ranks. Worth mentioning as an aside about how far the system extends.
+
+## Connections
+
+- **Session 1 (returns)** — totals, which is all any other state publishes.
+- **Session 7 (BISG)** — anonymity and identifiability, opposite directions.
+- **Session 10 (live returns)** — election night reports the first-round
+  numbers; this is what was underneath them.
+- **The wrap (Dec 3)** — the four-standards debate explicitly asks students to
+  score electoral systems. **They will have handled RCV's ballots by then**, and
+  should be told to use what they saw.

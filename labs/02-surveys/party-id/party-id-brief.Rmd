@@ -1,0 +1,159 @@
+---
+title: "Party Identification and the Leaner Problem"
+subtitle: "One coding decision, and the most repeated number in American politics moves by a factor of five"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("party-id-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+*A third of Americans are independents.* You have read that sentence. It is printed every election cycle, in every outlet, usually with a note that the number is at or near a record.
+
+In the `r LAST` American National Election Study, the share of independents is **`r p1(PURE)`%**. It is also **`r p1(WITH)`%**. Both numbers come from the same column of the same file, counted over the same respondents. They differ by a factor of `r p1(FACTOR)`, and the difference is one decision that the sentence never mentions.
+
+## Where the file comes from, and what it is for
+
+The American National Election Studies has asked the party identification question in the same form since 1952. That is `r nrow(sev)` studies, every presidential year and most midterms. It is the longest continuous measure of partisanship anywhere. It can be compared across seventy-two years because ANES staff reconciled the wording and the coding, study by study, so that one variable number means one thing throughout.
+
+**Why it fits the question.** Partisanship is not an administrative fact. Nobody registers as a "weak Democrat," and in most states nobody registers as anything at all. It exists only as something people say about themselves, which means it exists only in surveys, which means the survey's design decisions are not a layer over the measurement — they *are* the measurement.
+
+**What it costs to get.** Requested, not handed over. The download page returns 403 to a script and 200 to a browser, so a person has to fetch it; the file is 163 MB and is not redistributed with this chapter.
+
+**What has already been done to it.** More than the column admits, which is the subject of the next two sections.
+
+## One column, three questions
+
+`VCF0301` has seven values and looks like a seven-point scale. It is not a scale. It is the record of a branching interview.
+
+```{r raw, comment="", class.output="rawblock"}
+```
+
+The people in categories **3** and **5** answered *"Independent"* to the first question. They named a party only when asked a second time whether they felt closer to one. They are called **leaners**, and whether they belong in the independent column is the entire subject of this chapter.
+
+Notice what the data can and cannot tell you. The seven numbers are just numbers; nothing in them records that 3 and 5 came from a different branch of the interview than 2 and 6. That fact lives in the codebook. A file that contained only the column would be unusable for the question the column is mostly used to answer.
+
+## The number, three ways
+
+Here is the share of independents in every study year, counted first as *only those who claimed no party at all*, and then as *everyone who said the word independent*.
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The share of independents, 1952–2024, under two definitions.** The shaded band is the disagreement between them: every point inside it is a person whose classification depends on a decision nobody states. Hovering breaks the band into leaning Democrats, pure independents and leaning Republicans, so you can see the disagreement is almost entirely about leaners. In `r LAST` the two definitions differ by `r p1(ind$spread[ind$year == LAST])` points.
+
+```{r tab1}
+```
+
+The two lines tell different stories. The upper one shows a country that became markedly less partisan between the 1950s and the 1970s and has stayed there. The lower one shows independents as a small group that grew, peaked, and has recently **shrunk** — in `r LAST` it is `r p1(PURE)`%, lower than at any point since the 1960s.
+
+Neither line is wrong. They are answers to different questions that are almost always asked in the same words.
+
+> **Before you read on, commit to a view.** You have to report one number for
+> "the share of independents" in a news story. **Which line do you use, and
+> what is the one sentence you must include so that the reader is not
+> misled?**
+
+## What the leaners do
+
+The decision is not arbitrary, because leaners can be watched rather than argued about. Here is how each of the seven groups voted for president, across every year in which both questions were asked.
+
+```{r tab2}
+```
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.9}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Two measures of the same seven groups.** The leaners are the third and fifth bars; if they were independents they would look like the middle one. The first button shows the direction of the vote, which makes a staircase. The second folds both sides together into loyalty to whichever party the person leans toward. On that measure the leaners sit *above* the weak partisans on both sides, which is the finding the chapter turns on. Hovering gives both numbers at once.
+
+**Leaning Democrats vote Democratic `r p1(LD)`% of the time. Weak Democrats vote Democratic `r p1(WD)`% of the time.** The same holds on the other side: leaning Republicans are loyal `r p1(LR)`% of the time against `r p1(WR)`% for weak Republicans.
+
+People who decline to call themselves partisans are *more* reliable partisan voters than people who accept the label. Whatever the leaners are, they are not undecided, and they are not up for grabs.
+
+And look at the middle bar. Respondents who claimed no party at all split `r p1(PI)`% to `r p1(100 - PI)`% — the only group in the file that behaves the way the word *independent* is supposed to describe. That group is `r p1(PURE)`% of `r LAST` respondents, not a third.
+
+## The column that decides for you
+
+None of this would matter much if the choice were always conscious. It is not, because the file offers a shortcut.
+
+Alongside the seven-point column sits `VCF0303`, a tidy three-category version. Its codebook note reads, in full:
+
+```
+Collapsed from VCF0301, 1-3=1, 4=2, 5-7=3
+  1. Democrats (including leaners)
+  2. Independents
+  3. Republicans (including leaners)
+```
+
+ANES has already decided. In the convenience column, leaners are partisans.
+
+```{r tab3}
+```
+
+Reach for the three-category column, because it is tidier and a three-way split is what the analysis needs, and you will report an independent share of **`r p1(FILE_IND)`%**. Do the collapse yourself from the seven-point column and you may report **`r p1(OWN_IND)`%**. The difference is not an error in either direction. It is a definition, made by someone else, in a note.
+
+This is the shape of the problem the whole book is about. The number is not uncertain and the data is not dirty. Everything is documented and nothing is hidden. The gap opens because an ordinary English word, *independent*, has no ordinary-English answer in the file. The file supplies one anyway, to anybody who does not look.
+
+> **A second prediction.** ANES could have shipped a three-category column that
+> put leaners with the independents instead. **Name one thing that would look
+> different in published American politics if it had** — and say whether you
+> think the published claim would be more or less true.
+
+## What this chapter cannot tell you
+
+The vote comparison pools every study year, so it shows that leaners have behaved like partisans on average since 1952, not that they have always done so or do so equally today. Party loyalty has risen across all seven groups; a year-by-year version would show the leaners' loyalty rising with everyone else's.
+
+Nothing here is weighted. `VCF0009z` is in the file and deliberately unused, so every percentage describes the people ANES interviewed rather than the country. For comparisons between groups inside one survey this matters less than it would for a level, but it is a choice, and it was made.
+
+The chapter takes no position on what partisanship *is* — whether it is a running tally of evaluations or a social identity acquired early and rarely revised. That argument is real and long, and none of it can be settled by noticing that a column has three questions in it.
+
+Finally: leaners voting like partisans is evidence that they are partisans, not proof. A person can vote for the same party every time and still refuse the label, and refusing the label may be the more interesting fact about them. The data can tell you what they did. It cannot tell you what to call them.
+
+## Sources
+
+- American National Election Studies. *ANES Time Series Cumulative Data File
+  (1948–2024)*, version of 5 February 2026. Ann Arbor, MI and Palo Alto, CA:
+  University of Michigan and Stanford University.
+  <https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/>
+- ANES. *Time Series Cumulative Data File Codebook*, same release. The
+  branching wording of `VCF0301` and the collapse note for `VCF0303` are quoted
+  from it directly.
+- Campbell, Angus, Philip E. Converse, Warren E. Miller and Donald E. Stokes
+  (1960). *The American Voter.* John Wiley & Sons. The seven-point measure
+  begins here.
+- Keith, Bruce E., David B. Magleby, Candice J. Nelson, Elizabeth Orr, Mark C.
+  Westlye and Raymond E. Wolfinger (1992). *The Myth of the Independent Voter.*
+  University of California Press. The book-length version of Figure 2.
+- Petrocik, John R. (2009). "Measuring party support: Leaners are not
+  independents." *Electoral Studies* 28(4): 562–572.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`collapse.csv`](data/derived/collapse.csv), [`independents.csv`](data/derived/independents.csv), [`leaners.csv`](data/derived/leaners.csv), [`sevenpoint.csv`](data/derived/sevenpoint.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `independents.csv` reports the share of independents three ways for every year, plus the `spread` between them. Sort by `spread`. Pick the coding you would use, then argue for it.
+- `leaners.csv` gives each category a `pct_voted_democratic`. Compare the leaners against the weak partisans. Do leaners behave like independents or like partisans?
+- `sevenpoint.csv` keeps all seven categories by year. Follow `pure_ind` across the whole series. Is the rise of the independent voter visible in this column at all?
+- `collapse.csv` shows where the file itself puts each category. Find the decision you disagree with, and work out how much the headline number moves if you change it.
+

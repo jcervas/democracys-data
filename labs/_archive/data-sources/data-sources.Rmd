@@ -1,0 +1,773 @@
+---
+title: "Lab 1b: Where Election Data Comes From"
+subtitle: "84-355 Democracy's Data | Week 1 — Election returns"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+On Tuesday you drew a map of the 2024 election from a file that was simply handed
+to you, and we named the **four families of evidence** this course runs on:
+
+| Family | Made by | Made how | Weeks |
+|---|---|---|---|
+| **Election returns** | nobody in particular | counted, canvassed, certified — separately, by every county and state | **this week** |
+| **The census** | one agency, on a legal schedule | a constitutionally required count, plus a rolling survey | 2, 12–15 |
+| **Surveys** | pollsters and agencies | asking a sample and weighting the answers | 3, 10 |
+| **Administrative records** | a bureaucracy, as a by-product | filings and logs kept for some other purpose | 5, 7 |
+
+Today is the first family, and it is the strangest of the four. The other three
+have a producer you can name. Returns do not.
+
+Here is the chain that produces an official presidential result. A voter marks a
+ballot in a precinct. The precinct's count goes to a county clerk, who canvasses
+it. The county sends a certified return to the secretary of state, who canvasses
+again and certifies a statewide total, usually a few weeks after election day.
+Nobody in that chain publishes a tidy national file. **There is no national
+election administrator in the United States, and therefore no official national
+returns file.** Every dataset you have ever seen of American election results was
+assembled by somebody — a news organization, an academic project, a hobbyist —
+who went out and collected fifty-one separate things and stapled them together.
+
+Today you will do the stapling yourself, and watch it fail in four different
+ways. Keep asking, as each failure appears, whether it is a *returns* problem or
+a problem any data would have. Some of what breaks today breaks because nobody
+is in charge — and that is specific to this family.
+
+The same rules as last week: grey blocks are code chunks, run them with the green
+▶ arrow or **Cmd/Ctrl+Shift+Enter**, everything is base R, and **work in order**
+because later chunks depend on earlier ones.
+
+***
+
+# Part 1: Four files, and a trap in the first one
+
+The `data/` folder has four files.
+
+| File | Rows | What it is |
+|---|---|---|
+| `pres2024_counties.csv` | 3,160 | 2024 presidential votes by county |
+| `pres2020_counties.csv` | 3,152 | the same, for 2020 |
+| `census_counties.csv` | 3,144 | the Census Bureau's official list of counties |
+| `pres2024_states.csv` | 51 | last week's state file, unchanged |
+
+Start with the county returns:
+
+```{r read-naive}
+cty <- read.csv("data/pres2024_counties.csv", stringsAsFactors = FALSE)
+head(cty)
+```
+
+Everything looks fine. It is not.
+
+Look at `county_fips`. A **FIPS code** is the federal government's unique
+identifier for a place: two digits for the state, three for the county. Autauga
+County, Alabama is `01001` — state `01`, county `001`. That is a *label*, like a
+phone number. It is not a quantity.
+
+But `read.csv()` looks at a column of digits and decides it is a number:
+
+```{r fips-class}
+class(cty$county_fips)
+head(cty$county_fips)
+```
+
+The leading zero is gone. `01001` has become the number `1001`. How much damage?
+
+```{r fips-damage}
+table(nchar(cty$county_fips))
+```
+
+```{r fips-damage-states}
+short <- cty[nchar(cty$county_fips) == 4, ]
+sort(unique(short$state_name))
+```
+
+> **Pause and read that output.** 328 of 3,160 rows are broken, and they are not
+> random — they are exactly the seven states whose FIPS code begins with a zero.
+> Alabama, Alaska, Arizona, Arkansas, California, Colorado, Connecticut. If you
+> later try to match these against any other government file, none of them will
+> match, and the failure will be silent.
+
+This is the single most common bug in real election-data work. Fix it by telling
+`read.csv()` that the column is text, not a number:
+
+```{r read-fixed}
+cty <- read.csv("data/pres2024_counties.csv",
+                stringsAsFactors = FALSE,
+                colClasses = c(county_fips = "character"))
+
+table(nchar(cty$county_fips))
+head(cty$county_fips)
+```
+
+`colClasses` takes a named vector: the name is the column, the value is the type
+you want. Now every code is five characters, as it should be.
+
+Read the other three files the same careful way:
+
+```{r read-rest}
+old <- read.csv("data/pres2020_counties.csv",
+                stringsAsFactors = FALSE,
+                colClasses = c(county_fips = "character"))
+
+cen <- read.csv("data/census_counties.csv",
+                stringsAsFactors = FALSE,
+                colClasses = c(fips = "character"))
+
+st  <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+
+dim(cty); dim(old); dim(cen); dim(st)
+```
+
+One more thing to notice before we go on. Compare the two 2024 files:
+
+```{r counts-vs-pct}
+head(cty[, c("state_name", "county_name", "votes_dem", "votes_gop")], 3)
+head(st[, c("state", "harris", "trump")], 3)
+```
+
+The county file is **counts of ballots**. The state file is **percentages**. You
+cannot add a percentage to a count, and you cannot compare them until you convert
+one to the other. That sounds obvious written down; it is a genuine source of
+published errors.
+
+***
+
+# Part 2: Adding the counties up
+
+If the county file is right and the state file is right, then adding up a state's
+counties should reproduce that state's result. Let's find out.
+
+`aggregate()` is the base R tool for "add up this column, grouped by that
+column." The formula reads *left side, broken out by right side*:
+
+```{r aggregate}
+agg <- aggregate(cbind(votes_dem, votes_gop, total_votes) ~ state_name,
+                 data = cty, FUN = sum)
+
+nrow(agg)
+head(agg)
+```
+
+51 rows — 50 states and DC, which is what we want. Now convert counts to
+percentages so the two files speak the same language:
+
+```{r shares}
+agg$harris_c <- round(100 * agg$votes_dem / agg$total_votes, 2)
+agg$trump_c  <- round(100 * agg$votes_gop / agg$total_votes, 2)
+```
+
+The `_c` suffix is a reminder: these came from the *counties*.
+
+Now join the two tables. `merge()` matches rows between two data frames using a
+shared column. Ours are named differently, so we say which is which:
+
+```{r merge-states}
+cmp <- merge(agg, st, by.x = "state_name", by.y = "state")
+nrow(cmp)
+```
+
+51 rows out, 51 rows in. The join worked. Now the moment of truth:
+
+```{r diffs}
+cmp$dh <- round(cmp$harris_c - cmp$harris, 2)
+cmp$dt <- round(cmp$trump_c  - cmp$trump,  2)
+
+sum(cmp$dh == 0 & cmp$dt == 0)
+```
+
+Eighteen states agree exactly. Thirty-three do not. Here are the worst:
+
+```{r worst}
+worst <- cmp[order(-abs(cmp$dh)), ]
+head(worst[, c("state_name", "harris", "harris_c", "dh",
+               "trump", "trump_c", "dt")], 8)
+```
+
+A picture of all 51:
+
+```{r discrepancy-plot, fig.width = 7.5, fig.height = 6}
+top <- cmp[order(-abs(cmp$dh)), ][1:15, ]
+top <- top[order(abs(top$dh)), ]
+
+par(mar = c(5, 10, 4, 2))
+barplot(top$dh,
+        names.arg = top$state_name,
+        horiz = TRUE, las = 1, border = NA,
+        col = ifelse(abs(top$dh) > 1, "#B2182B", "#999999"),
+        xlim = c(0, 2),
+        xlab = "County sum minus state file (Harris, percentage points)",
+        main = "Where the two files disagree")
+```
+
+> **Pause and read that plot.** Two things are strange. First, Alaska and New
+> York are in a class of their own. Second — and this is the real clue — look at
+> the direction. Check it:
+
+```{r direction}
+c(higher = sum(cmp$dh > 0), equal = sum(cmp$dh == 0), lower = sum(cmp$dh < 0))
+```
+
+**Every single disagreement runs the same way.** The county sums never give
+Harris a *lower* share than the state file; they give her a higher one, or the
+same one. Random errors do not behave like that. A one-sided error means
+something systematic, and systematic errors have findable causes.
+
+Before we chase it: does any of this change who won?
+
+```{r winner-check}
+cmp$winner_c <- ifelse(cmp$harris_c > cmp$trump_c, "Harris", "Trump")
+sum(cmp$winner_c != cmp$winner)
+```
+
+No. Zero states flip. That is worth saying plainly, because it is the honest
+summary: **the disagreement is real, it is systematic, and it does not change the
+outcome.** All three parts of that sentence matter.
+
+***
+
+# Part 3: The vote that isn't there
+
+If Harris's share is too *high* in the county sums, either her count is too big
+or the denominator is too small. Let's look at the denominator.
+
+Every county's `total_votes` should be Harris plus Trump plus everybody else.
+So everybody else is:
+
+```{r other}
+cty$other <- cty$total_votes - cty$votes_gop - cty$votes_dem
+summary(cty$other)
+```
+
+No negatives, so the arithmetic is at least internally consistent. But look at
+the minimum. How many counties report *zero* third-party votes?
+
+```{r other-zero}
+sum(cty$other == 0)
+```
+
+In 2024 more than two million people voted for someone other than Harris or
+Trump. In how many counties did literally nobody? Almost certainly none. So a
+zero here is not a measurement. Where are they?
+
+```{r other-zero-states}
+zeros <- tapply(cty$other, cty$state_name, function(x) sum(x == 0))
+zeros[zeros > 0]
+```
+
+```{r other-zero-frac}
+units <- table(cty$state_name)
+names(zeros)[zeros == units[names(zeros)]]
+```
+
+> **There it is.** In Alaska and New York, *every* reporting unit shows zero
+> third-party vote. Those are exactly the two states at the top of our
+> disagreement plot. The data does not say "no one voted third party in New
+> York." It says the person compiling this file never got New York's third-party
+> numbers.
+
+**A zero and a missing value are not the same thing, and spreadsheets cannot tell
+them apart.** This is the most important sentence in the lab.
+
+Now watch the same disease in the *other* file. The state file has an `other`
+column too:
+
+```{r state-other}
+sum(st$other == 0)
+```
+
+42 of 51 states report zero third-party vote. But those three percentages should
+add to 100. Do they?
+
+```{r state-sums}
+st$total_pct <- st$harris + st$trump + st$other
+range(st$total_pct)
+sum(abs(st$total_pct - 100) <= 0.01)
+```
+
+Not one state sums to 100. Every state is short by one to four points — and that
+shortfall *is* the third-party vote, sitting there unlabelled. We can recover it:
+
+```{r implied-other}
+st$other_implied <- round(100 - st$harris - st$trump, 2)
+head(st[order(-st$other_implied), c("state", "other", "other_implied")], 5)
+```
+
+So now we can estimate how many ballots the county file never saw. If the county
+file's Harris *count* is right, and the state file's Harris *share* is right, then
+the true statewide total must be the count divided by the share:
+
+```{r missing}
+cmp$implied_total <- round(cmp$votes_dem / (cmp$harris / 100))
+cmp$missing       <- cmp$implied_total - cmp$total_votes
+cmp$missing_pct   <- round(100 * cmp$missing / cmp$implied_total, 2)
+
+head(cmp[order(-cmp$missing_pct), c("state_name", "total_votes",
+                                    "implied_total", "missing", "missing_pct")], 6)
+```
+
+Alaska is missing about 13,000 ballots — 3.9% of everything cast there — and New
+York roughly 182,000, or 2.2%. Those are not rounding errors. They are entire
+candidates.
+
+We will test this diagnosis properly in the exercises.
+
+***
+
+# Part 4: Joining on names is a trap
+
+Everything so far compared *states*, where there are only 51 things and the names
+are unambiguous. Counties are where joins go to die.
+
+Bring in the Census Bureau's official county list. **This is the first time two
+families meet in this course**: returns assembled by a news organisation, checked
+against geography defined by a federal agency. Watch which one you end up
+trusting, and notice that you did not decide it on evidence — you decided it on
+who produced the file.
+
+```{r census-head}
+head(cen)
+nrow(cen)
+```
+
+3,144 county-equivalents. Our returns file has 3,160 rows. Close, and we will
+come back to the gap.
+
+Suppose we want to attach these official records to our returns. The obvious move
+is to match on the county name. Try it:
+
+```{r name-join}
+by_name <- merge(cty, cen, by.x = "county_name", by.y = "name")
+nrow(by_name)
+```
+
+> **Pause.** We put in 3,160 rows of returns and got out more than 14,000. Where
+> did they come from?
+
+`merge()` matches *every* row on the left against *every* row on the right that
+shares the key. If a name appears in several states, you get every combination:
+
+```{r washington}
+sort(table(cty$county_name), decreasing = TRUE)[1:6]
+```
+
+```{r washington-join}
+c(returns = sum(cty$county_name == "Washington County"),
+  census  = sum(cen$name == "Washington County"),
+  joined  = sum(by_name$county_name == "Washington County"))
+```
+
+Thirty Washington Counties on each side, matched every-which-way: $30 \times 30 =
+900$ rows, of which 30 are right and 870 are garbage. County names are not unique
+and were never meant to be.
+
+The usual first fix is to match on state *and* name together. `paste()` glues
+strings into one key:
+
+```{r state-name-join}
+cty$key <- paste(cty$state_name, cty$county_name)
+cen$key <- paste(cen$state_name, cen$name)
+
+nrow(merge(cty, cen, by = "key"))
+```
+
+Much better. But we started with 3,160 rows and only 3,112 came through:
+
+```{r state-name-miss}
+missed <- cty[!cty$key %in% cen$key, ]
+table(missed$state_name)
+```
+
+Alaska and the District of Columbia, entirely. Hold that thought.
+
+***
+
+# Part 5: The join that succeeds and is still wrong
+
+Names are bad keys. Codes are what codes are for. Join on FIPS instead:
+
+```{r fips-join}
+by_fips <- merge(cty, cen, by.x = "county_fips", by.y = "fips")
+nrow(by_fips)
+```
+
+3,116 matched, up from 3,112. Which returns still found no home?
+
+```{r fips-miss}
+table(cty$state_name[!cty$county_fips %in% cen$fips])
+```
+
+And which official counties got no returns?
+
+```{r fips-miss-other}
+table(cen$state_name[!cen$fips %in% cty$county_fips])
+```
+
+Now here is the part that should make you uneasy. We joined on a code, so
+whatever matched should be the same place. Check it — compare the name that came
+from the returns against the name that came from the Census:
+
+```{r wrong-match}
+wrong <- by_fips[by_fips$county_name != by_fips$name, ]
+wrong[, c("county_fips", "state_name.x", "county_name", "name", "total_votes")]
+```
+
+> **Read that table slowly.** Four rows joined *successfully* to the wrong place.
+> Alaska's State House District 13 is now labelled Aleutians East Borough.
+> Anchorage Municipality — a city of nearly 300,000 — has been handed 6,965 votes
+> from a state legislative district. And the District of Columbia, all 700,000
+> residents of it, is now Ward 1.
+>
+> Nothing errored. Nothing warned. If you had joined and moved on, you would have
+> published it.
+
+## Three places that don't have counties
+
+The four wrong matches and the 44 orphans all come from the same place: three
+jurisdictions that do not report presidential results by county at all.
+
+**Alaska** has 30 boroughs and census areas, but does not tabulate votes in them.
+It reports by **state house district** — 40 of them. There is no federal code for
+"Alaska House District 7," so whoever built this file invented one by tacking the
+district number onto Alaska's state code `02`. That is a reasonable improvisation
+right up to the moment it collides with real codes `02013`, `02016` and `02020`,
+which belong to actual boroughs.
+
+```{r alaska}
+head(cty[cty$state_name == "Alaska", c("county_fips", "county_name", "total_votes")], 4)
+head(cen[cen$state_abbrev == "AK", c("fips", "name")], 4)
+```
+
+**The District of Columbia** is one county-equivalent, `11001`. This file splits
+it into eight **wards** and numbers them `11001` through `11008` — so Ward 1
+inherits the code that means "all of DC."
+
+```{r dc}
+cty[cty$state_name == "District of Columbia",
+    c("county_fips", "county_name", "total_votes")]
+cen[cen$state_abbrev == "DC", c("fips", "name")]
+```
+
+**Hawaii** is the small mystery in the other direction — one official county with
+no returns:
+
+```{r hawaii}
+cen[cen$state_abbrev == "HI", c("fips", "name")]
+cty[cty$state_name == "Hawaii", c("county_fips", "county_name", "total_votes")]
+```
+
+Kalawao County has about eighty residents. It is the former leprosy settlement on
+Molokai, it is administered by the state health department, and its ballots are
+counted with Maui's. It is a real county that never appears in election returns.
+
+***
+
+# Part 6: The same source changed its mind
+
+One more failure, and it is the sneakiest. Both county files came from the *same
+repository*, built by the *same person*, four years apart. Surely those can be
+compared.
+
+```{r compare-years}
+c(rows_2020 = nrow(old), rows_2024 = nrow(cty))
+```
+
+```{r compare-fips}
+sum(!cty$county_fips %in% old$county_fips)   # in 2024, not in 2020
+sum(!old$county_fips %in% cty$county_fips)   # in 2020, not in 2024
+```
+
+```{r compare-where}
+table(cty$state_name[!cty$county_fips %in% old$county_fips])
+table(old$state_name[!old$county_fips %in% cty$county_fips])
+```
+
+Three states, three different stories.
+
+**Connecticut abolished its counties.** Connecticut's eight counties stopped
+functioning as governments in 1960 and survived only as statistical lines on a
+map. The state eventually asked the Census Bureau to replace them with the nine
+**planning regions** its councils of government actually use, and the Bureau
+agreed in a Federal Register notice dated June 6, 2022. New boundaries, new
+names, new codes:
+
+```{r ct}
+old[old$state_name == "Connecticut", c("county_fips", "county_name")]
+cty[cty$state_name == "Connecticut", c("county_fips", "county_name")]
+```
+
+```{r ct-overlap}
+length(intersect(old$county_fips[old$state_name == "Connecticut"],
+                 cty$county_fips[cty$state_name == "Connecticut"]))
+```
+
+Zero codes in common. And the regions are not the counties regrouped — the lines
+themselves moved, so there is no lookup table that turns one into the other
+without going back to town-level data.
+
+**Alaska got renumbered by the compiler.** In 2020 this source coded Alaska's
+districts `02901`–`02940`, deliberately staying clear of real borough codes. In
+2024 it switched to `02001`–`02040`, which does not:
+
+```{r ak-recode}
+head(old$county_fips[old$state_name == "Alaska"], 3)
+head(cty$county_fips[cty$state_name == "Alaska"], 3)
+```
+
+That was not a change in the world. That was a change in one person's convention,
+and nothing in the file announces it.
+
+**DC changed shape.** In 2020 this source had one DC row. In 2024 it has eight.
+
+```{r dc-2020}
+old[old$state_name == "District of Columbia", c("county_fips", "county_name")]
+```
+
+Now put it together. Suppose you want the swing from 2020 to 2024 in every
+county. You join on FIPS:
+
+```{r swing}
+sw <- merge(old[, c("county_fips", "state_name", "county_name",
+                    "votes_dem", "votes_gop")],
+            cty[, c("county_fips", "votes_dem", "votes_gop")],
+            by = "county_fips", suffixes = c("_20", "_24"))
+nrow(sw)
+```
+
+```{r swing-calc}
+sw$r20 <- 100 * sw$votes_gop_20 / (sw$votes_gop_20 + sw$votes_dem_20)
+sw$r24 <- 100 * sw$votes_gop_24 / (sw$votes_gop_24 + sw$votes_dem_24)
+sw$swing <- round(sw$r24 - sw$r20, 2)
+
+head(sw[order(-sw$swing), c("state_name", "county_name", "r20", "r24", "swing")], 6)
+```
+
+That is a real and famous result — the biggest Republican shifts of 2024 were in
+heavily Hispanic border counties in south Texas and in Imperial County,
+California, with the New York City boroughs close behind.
+
+And then there is this row:
+
+```{r swing-dc}
+sw[sw$county_fips == "11001",
+   c("county_fips", "county_name", "r20", "r24", "swing")]
+```
+
+> **Look at what that says.** All of the District of Columbia in 2020, compared
+> against Ward 1 in 2024, producing a swing of $-0.25$ points. The number is not
+> absurd. It is not flagged. It sits in a table of 3,104 rows and looks exactly
+> like its neighbours. It is also meaningless.
+>
+> **This is the lesson of the lab.** A join that produces plausible output is not
+> a join that is correct. The only way to know is to check the join itself — count
+> your rows, look at what dropped, and look at what matched.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option below is a working chunk with one thing to change, or nothing at all to
+change. Run it, look at what comes out, and tell me what it means.
+
+Pick **one**.
+
+***
+
+### Option A — Test the diagnosis
+
+Part 3 blamed the disagreement on the county file's *denominator*: it misses
+third-party ballots, so its Harris share comes out too high. That is a claim
+about the world, and it makes a prediction we can check. If the counts are fine
+and only the denominator is wrong, then throwing third parties out of *both*
+files should make the disagreement disappear.
+
+```{r opt-a}
+# All-party share (what Part 3 compared)
+cmp$dh <- round(100 * cmp$votes_dem / cmp$total_votes - cmp$harris, 2)
+
+# Two-party share — third parties removed from both sides
+cmp$h2_cty <- 100 * cmp$votes_dem / (cmp$votes_dem + cmp$votes_gop)
+cmp$h2_st  <- 100 * cmp$harris    / (cmp$harris    + cmp$trump)
+cmp$d2     <- round(cmp$h2_cty - cmp$h2_st, 2)
+
+c(median_gap_all_party = median(abs(cmp$dh)),
+  median_gap_two_party = median(abs(cmp$d2)))
+
+c(states_agreeing_all_party = sum(abs(cmp$dh) < 0.05),
+  states_agreeing_two_party = sum(abs(cmp$d2) < 0.05))
+
+head(cmp[order(-abs(cmp$d2)), c("state_name", "dh", "d2", "missing_pct")], 5)
+```
+
+**Write about:** did the prediction hold? Say what happened to the number of
+states that agree. Then look at the handful that still disagree — check their
+`missing_pct` column. Does the leftover disagreement have the same explanation as
+the original, or a different one? A diagnosis that survives a test it could have
+failed is worth more than one that was never tested; say whether this one earned
+that.
+
+***
+
+### Option B — Rank the states by data quality
+
+Which states' county returns are least complete?
+
+```{r opt-b, fig.width = 7.5, fig.height = 5.5}
+n <- 12                                  # <- change this number
+
+q <- cmp[order(-cmp$missing_pct), ][1:n, ]
+q <- q[order(q$missing_pct), ]
+
+par(mar = c(5, 10, 4, 2))
+barplot(q$missing_pct, names.arg = q$state_name, horiz = TRUE, las = 1,
+        col = "#4D4D4D", border = NA,
+        xlab = "% of ballots the county file never saw",
+        main = "Where the county returns are least complete")
+
+# Is incompleteness about how big a state is?
+round(cor(cmp$missing_pct, log(cmp$total_votes)), 3)
+```
+
+**Write about:** name the worst states. Then take the correlation seriously — it
+is about $-0.19$, which is nearly nothing. So incompleteness is *not* explained by
+state size. Try to say what it is explained by, and be willing to end at "these
+are individual state reporting decisions, not a pattern." That is a real finding,
+and it is more honest than inventing a story. Why would it matter to a journalist
+which states these are?
+
+***
+
+### Option C — Where did the country move, and who is missing?
+
+The famous 2024 result — big Republican swings along the Texas border and in the
+Bronx — with the question the headline never asks.
+
+```{r opt-c, fig.width = 7.5, fig.height = 5.5}
+top_sw <- head(sw[order(-sw$swing), ], 10)
+top_sw <- top_sw[order(top_sw$swing), ]
+
+par(mar = c(5, 12, 4, 2))
+barplot(top_sw$swing, names.arg = paste0(top_sw$county_name, ", ",
+        substr(top_sw$state_name, 1, 2)), horiz = TRUE, las = 1,
+        col = "#B2182B", border = NA,
+        xlab = "Republican two-party swing, 2020 to 2024 (points)",
+        main = "Largest Republican swings")
+
+# Now the bookkeeping the headline skips
+c(counties_in_2024_file = nrow(cty),
+  counties_in_2020_file = nrow(old),
+  counties_that_matched = nrow(sw))
+
+setdiff(cty$state_name, sw$state_name)     # states with no rows at all
+sw[sw$county_fips == "11001", c("county_name", "r20", "r24", "swing")]
+```
+
+**Write about:** describe the pattern in the figure. Then do the part the
+headline skips — two whole states are missing from this analysis entirely, and
+one row in the table is comparing two different things. Name them, explain why
+each happened, and say whether their absence changes how much you would trust a
+national story built on this table.
+
+***
+
+### Option D — Ask your own question
+
+If something in this lab made you suspicious, chase it. You do not need new code
+— re-running an existing chunk with a different state, a different year, or a
+different threshold is enough. A sharp question answered with a chunk you barely
+touched beats an elaborate figure with nothing to say.
+
+***
+
+**What to submit.** Knit this document to HTML or PDF and upload it to Canvas,
+with your chosen chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a result and tell me what it does and does not
+support.
+
+One answer is always available to you and is always worth full marks when it is
+true: *the data cannot support this claim, and here is the check that convinced
+me.*
+
+***
+
+
+# What today was really about
+
+Four things broke, and it is worth sorting them by cause.
+
+**Two were about this family specifically.** The missing third-party votes and
+the county that changed meaning between 2020 and 2024 happen because **no single
+body produces American election returns**. Fifty-one jurisdictions certify
+separately, a scraper stitches them together, and the stitching inherits every
+inconsistency underneath. A census or an FEC filing cannot fail this way,
+because somebody is accountable for the whole file.
+
+**Two were general.** Joining on names rather than codes, and a join that
+succeeds while still being wrong, will bite you in any dataset in any field.
+You will meet both again in Week 12 with census geography.
+
+So the lesson is not "election data is bad." It is that **each family fails in
+its own characteristic way**, and knowing the family tells you what to check
+first:
+
+- **Returns** — who assembled this, from how many separate sources, and does it
+  match the certified count? (Ours was about 8,000 votes off for one candidate.)
+- **The census** — what exactly was counted, on what date, and what is the
+  margin of error? *(Week 2)*
+- **Surveys** — who was asked, how many refused, and how were the rest
+  weighted? *(Week 3)*
+- **Administrative records** — what was this collected *for*, and what does that
+  purpose leave out? *(Weeks 5 and 7)*
+
+Those four questions are most of what this course teaches. Everything after
+today is practice.
+
+***
+
+## Where the data came from
+
+**County returns, 2020 and 2024** — Tony McGovern, *United States General
+Election Presidential Results by District, Ward, or County from 2008 to 2024*
+(<https://github.com/tonmcg/US_County_Level_Election_Results_08-24>,
+DOI 10.5281/zenodo.14223604). The repository's README is worth reading precisely
+because it is candid: the 2024 figures were **scraped from Fox News's results
+pages**, the 2020 figures from Fox News, Politico and the New York Times, and the
+README states plainly that the results "are not authoritative." Almost every
+county-level analysis you will read in the press rests on a file like this one.
+Its national totals land about 8,000 votes below the certified count for Trump
+and 11,000 below for Harris — impressively close, and still not the official
+number.
+
+**Official county list** — U.S. Census Bureau, *2024 Gazetteer Files, Counties*
+(<https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/>),
+trimmed to codes and names for the 50 states and DC. This is the legal geography:
+what officially counts as a county in 2024.
+
+**State returns** — the identical file you used in Week 1, built from jaytimm's
+`PresElectionResults` compilation. Its vote columns are percentages, and its
+`other` column is zero wherever the source did not separately tabulate
+third-party votes — which, as Part 3 showed, is most of the country.
+
+The script that downloaded, trimmed and checked all of this is
+`data/build-data.R`. Run it and it will rebuild every file in the folder from the
+original sources. You should be able to ask that of any dataset you are handed,
+and you should be suspicious when you cannot.

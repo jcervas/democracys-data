@@ -1,0 +1,259 @@
+---
+title: "Felony Disenfranchisement and the Voting-Eligible Population"
+subtitle: "Felony disenfranchisement, state by state, and a category that outlives the sentence"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("disenfranchisement-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+A man serving a sentence for a felony in Vermont votes. He votes from inside the prison, by absentee ballot, in the town where he lived before he was sentenced. Nobody regards this as remarkable. Vermont has never taken the vote away for a criminal conviction, and neither has Maine.
+
+The same man, convicted of the same offense in `r TOP`, does not vote in prison. He does not vote on parole. He does not vote on probation. And on the day his sentence ends he still does not vote, along with the `r n(sv(TOP,"post_sentence"))` people in that state who have finished their sentences in full and remain barred. `r TOP` withholds the franchise from `r pc(max(st$pct))`% of its adult citizens. `r paste(ZERO, collapse = " and ")` withhold it from nobody.
+
+No federal rule governs the difference. Every other boundary of the American electorate has been settled at the national level, by amendment or by statute: age, citizenship, residency. **On criminal conviction nothing has been settled at all**, and the result is fifty answers to the same question.
+
+This chapter counts the people that produces, which turns out to be harder than it sounds, and then asks what the count is a count *of*.
+
+## The number is not in any government file
+
+There is no federal register of disenfranchised Americans. Nobody in the government is required to produce one, and nobody does. The figure that appears in litigation, in journalism and in the academic literature exists because a research organization builds it. It is built state by state, out of corrections data and each state's own statutes, and then published the way research organizations publish things.
+
+```{r source}
+```
+
+The last row is the one that matters here. To use these numbers at all, the build script here extracts text from the report and parses fixed-width columns by character position. There is no API, no CSV, no supplementary file.
+
+That is worth naming plainly, because it recurs across almost every subject this course touches: **public is not the same as usable.** This number is authoritative, it is cited in federal litigation, and it cannot be downloaded as data.
+
+Parsing columns by character position is also fragile in a specific and dangerous way. A state whose name runs long, or a figure wide enough to touch its neighbor, corrupts a row silently — no error, no warning, just a wrong number that looks exactly like a right one. So the build checks itself against a property the report guarantees: the five categories are mutually exclusive and must add to the state total.
+
+```{r validate}
+```
+
+`r sum(st$diff == 0)` states sum exactly, `r sum(abs(st$diff) == 1)` are off by a single person, and none is off by more than that. Both halves of that result say something. **The off-by-one states are rounding in the published report**, not a parsing failure: the report's own components do not quite add to its own totals, which is what happens when independently rounded estimates are summed. A discrepancy of one person in `r n(sv("Texas","total"))` is not a data problem.
+
+And the check earned its place. An early version of this parse put a column boundary two characters too far right and split Texas's figures across two fields, which produced discrepancies in the tens of thousands. A total that adds up is weak evidence that a parse worked; a total off by five orders of magnitude more is proof that it did not.
+
+## What a number nobody collects is made of
+
+The parse can be right and the numbers still be estimates, and here they are. *Locked Out* is a series that four criminologists have maintained since the late 1990s, and each edition is built the same way. It takes correctional populations from the federal statistical series, and reads them against what each state's law says about who in those populations may vote.
+
+For the people currently under supervision, that is close to bookkeeping. A state knows how many are in its prisons. For the largest of the five categories it is not bookkeeping at all. **No agency anywhere maintains a list of people who finished a sentence and are still barred.**
+
+That population has to be built up out of decades of past convictions, then reduced by everything that takes somebody out of it. Deaths. Reconvictions that put a person back in a category already counted. Moves across state lines into states that would have restored them. Each of those is a modeled adjustment, and none of them is observable in the way a prison roll is. `r n(na$post_sentence)` is the report's best estimate of an unobserved quantity, not a tally.
+
+That is the right evidence anyway, and for a reason worth stating exactly. It is not the only estimate one could build. It is the estimate that operates.
+
+Courts cite it, journalists quote it, and legislatures argue about it. A chapter asking what the American electorate excludes is better served by the number the argument actually runs on than by a cleaner one nobody uses. The alternative that would be better is not a different research group.
+
+It would be a federal register that does not exist, or fifty state agencies publishing who they currently bar, which none of them does. Every year this series continues is a year in which a private organization is doing a job no one has assigned to anybody.
+
+Two things about the file's shape follow from its being a table in a report rather than a data product. It covers `r nrow(st)` states and stops there: the District of Columbia is not in Table 2, so it is not here, and no amount of care in the parse will produce it. And the denominator these rates use, the bottom number each one is divided by, is printed in the same table. So nothing in this chapter is a fraction assembled from two unrelated files. That is a virtue, and it is also why swapping in a denominator of your own means leaving the report's arithmetic behind. A later section takes up what that denominator actually means.
+
+A third thing follows, and it is the price of getting data this way. The parse is pinned to a single printing. Those column boundaries were measured against the 2024 report, and *Locked Out* is a series. The next edition will be a new PDF at a new address, typeset again from scratch, and nothing obliges its columns to land where these ones do. What was acquired here is therefore not the numbers but one particular setting of them in type, and keeping this chapter current is not a matter of re-running the script. It is a matter of doing the work again.
+
+## A page of a report, and the file it had to be turned into
+
+Everything above says the source is a PDF. Here is the PDF: Table 2 exactly as the converter renders it, with no character added, removed or straightened. This section is what stands between that and `states.csv`.
+
+The left half of the table first: the caption, the two lines of heading, and six of the fifty-one rows. Characters 1 to 63 of each line, unaltered.
+
+```{r lo-raw-left, results='asis'}
+```
+
+And the right half — characters 64 to `r max(nchar(BLK))` of the same lines, which is where the report puts the totals and the rate:
+
+```{r lo-raw-right, results='asis'}
+```
+
+Three things about that block are the whole problem.
+
+**There is no header row.** The column heading reads "Voting Eligible" on one line and "Population" on the next, because that is how it was typeset to fit the page. Nothing a program can read says which column is which. The eight field names in `states.csv` were typed in by a person looking at this page.
+
+**There are no separators.** The gap between `19,816` and `5,550` is spaces — the same character as the gap inside the heading, the same character as the gap after `Alabama`. What tells the numbers apart is *where on the line they sit*.
+
+**And the empty cells are not damage.** Look at California: one number, then nothing until the total. Look at Maine: nothing at all, and a total of `0`. Those blanks are the report saying that the category does not exist in that state's law.
+
+```{r lo-clean}
+```
+
+Six decisions turned the first block into the second, and the first of them is the one nobody would guess.
+
+**The columns were cut at measured positions, not obvious ones.** The heading suggests a boundary between prison and parole around character 30. Texas reports `r n(sv("Texas","prison"))` in prison and `r n(sv("Texas","parole"))` on parole, and those two numbers are wide enough that a cut at 30 slices the first one in half. The build cuts at 28 instead. That single character is the difference between a file that is right and a file in which one large state is quietly wrong:
+
+```{r lo-boundary}
+```
+
+**A blank became a zero, and that is a claim rather than a convenience.** A blank cell is read as `0`. It could as easily have been read as missing, and the two are not the same statement. `0` says California disenfranchises nobody on parole. Missing would say the report does not tell us.
+
+Here `0` is right, and the report's own text says so. But **the rule was applied to `r n(NBLANK)` empty cells at once**, and nothing in the table tells apart a category a state does not have from a number that was left out. The post-sentence column alone is blank in `r n(NBLANKPS)` of the `r nrow(st)` states.
+
+**Commas came out.** `139,631` is text. `139631` is a number. Nothing else about that step is interesting, and it is the step that most often silently produces `NA`.
+
+**The Total row was routed somewhere else, and read a different way.** The last line of the table is the country, not a state, so it goes to `national.csv` instead. It is also read by splitting on spaces rather than by column position, because the word `Total` is short enough that the numbers after it do not land where a state's numbers land. **One table, two parsers**, which is what a table typeset for human eyes costs.
+
+**The rate was taken, not recomputed.** `pct` is the report's printed column, not `total` divided by `voting_eligible_pop`. The two agree: for all `r nrow(st)` states the printed rate matches the quotient to within `r pc(max(abs(100 * st$total / st$voting_eligible_pop - st$pct)), 3)` of a percentage point, which is rounding. Taking the printed one keeps the chapter arguing with the report rather than with itself.
+
+**Then the parse was made to prove itself.** Nothing here is trusted. The build refuses to write a file unless every state's five categories add to its printed total — the check run above, on the captured lines, in both positions. That is the only defence available. **A misread column produces numbers that look completely ordinary**, and the sum is the one thing the report prints twice.
+
+## Five categories, and only two of them involve a cell
+
+```{r one-record}
+```
+
+One row is a state, divided into five mutually exclusive groups of people who cannot vote because of a conviction. The argument of this chapter lives entirely in the distinction between them.
+
+- **Prison** and **jail** are people currently incarcerated.
+- **Parole** and **probation** are people under supervision, living in the
+  community, working, paying taxes, raising children.
+- **Post-sentence** are people who have **finished the sentence entirely** and
+  are still barred.
+
+```{r national}
+```
+
+About `r n(na$total)` American adult citizens, `r pc(na$pct, 1)`% of the total, cannot vote because of a felony conviction. And the first thing the breakdown says is that the intuitive picture is wrong: **`r pc(100*NOTINC/na$total, 1)`% of them are not in prison or jail.** Nearly three quarters of the disenfranchised population is living in the community. Anyone who thinks of this as a consequence of incarceration is describing a quarter of the phenomenon.
+
+## The largest category is the one that is already over
+
+```{r categories}
+```
+
+**`r n(na$post_sentence)` people, `r pc(100*na$post_sentence/na$total, 1)`% of the total, have completed their sentences in full and still cannot vote.** It is the single largest category, larger than prison and jail put together. Figure 1 draws the whole disenfranchised population one square at a time so that the two cut points can be seen against each other.
+
+```{r waffle-static, eval=!knitr::is_html_output(), fig.height=3.5}
+```
+
+```{r waffle-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The disenfranchised population of the United States, one square per `r n(PER)` people.** `r n(NSQ)` squares are `r n(na$total)` people, colored by the five mutually exclusive categories the source reports. The first dotted line marks the end of incarceration: everything to its right, `r n(NOTINC)` people or `r pc(100 * NOTINC / na$total, 0)`% of the whole, is living in the community. The second marks the end of punishment: everything to its right, `r n(na$post_sentence)` people or `r pc(100 * na$post_sentence / na$total, 0)`%, has completed a sentence in full.
+
+## Forty states have none of it
+
+The post-sentence category is not a national policy operating everywhere at modest scale. It is a small number of states operating at very large scale.
+
+```{r post-states}
+```
+
+**`r sum(st$post_sentence > 0)` states account for the entire post-sentence category.** The other `r sum(st$post_sentence == 0)` have none of it whatsoever. And inside those ten it is not a fringe: in Florida `r pc(ps$share[ps$state == "Florida"], 0)`% of everyone disenfranchised has already finished their sentence, in Tennessee `r pc(ps$share[ps$state == "Tennessee"], 0)`%, in Alabama `r pc(ps$share[ps$state == "Alabama"], 0)`%. These are not people being punished. The punishment is over. They are people for whom a completed sentence carries a permanent civic consequence that no judge imposed and no date ends.
+
+```{r psbar-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r psbar-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The `r nrow(ps)` states that have a post-sentence category at all.** Each bar is a state's disenfranchised population; the red portion has completed its sentence. Between them these states hold `r pc(PSCOV, 0)`% of the national post-sentence category, and the other `r sum(st$post_sentence == 0)` states hold none. Florida alone accounts for `r n(sv("Florida","post_sentence"))` people, `r pc(100*sv("Florida","post_sentence")/na$post_sentence, 0)`% of the national figure.
+
+## The same conviction, fifty answers
+
+Each state decides for itself whether a felony conviction costs a vote, and for how long. Nothing in federal law requires the answers to agree, and nothing about crime rates requires them to be close.
+
+> **Before you read on, commit to a number.** Across the `r nrow(st)` states in
+> this file, the average among those that disenfranchise anyone at all is
+> `r pc(mean(st$pct[st$pct > 0]))`% of adult citizens. **How many times that
+> average is the single highest state?** Write down a multiple. Then write down
+> how many states you think bar nobody at all.
+
+```{r extremes}
+```
+
+Most readers write down two or three times the average. `r TOP` disenfranchises `r pc(max(st$pct))`% of its adult citizens, `r pc(max(st$pct) / mean(st$pct[st$pct > 0]), 1)` times the average of the states that bar anyone at all; and `r sum(st$total == 0)` states disenfranchise nobody. That is not a difference of degree that a national average would smooth over. **The same conviction produces the loss of a vote in a federal election in one state and not in the one next door**, and Figure 3 shows how the country divides.
+
+```{r cartogram-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r d3-cartogram, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Share of adult citizens barred by a felony conviction, by state.** One tile per state in a rough geographic layout, shaded in six classes with zero as its own class. The dark tiles are the South plus Arizona; the `r sum(st$total == 0)` white tiles are the states at exactly zero, `r paste(ZERO, collapse = " and ")`. `r TOP` is the darkest at `r pc(max(st$pct))`%, `r pc(max(st$pct)/mean(st$pct[st$pct > 0]), 1)` times the average among states that bar anyone at all.
+
+```{r final}
+```
+
+## Which population, exactly
+
+Every percentage above divides by a **voting-eligible population**, and that denominator is itself an estimate rather than a count. It means adult citizens, which requires knowing who is a citizen, which requires a survey.
+
+```{r denom}
+```
+
+The distinction changes what the numbers mean. `r pc(max(st$pct))`% in `r TOP` means "this share of adult citizens is barred," not "this share of the electorate has been removed from it." Both quantities are defensible, they are not the same number, and a document that did not say which one it used would be unreadable.
+
+The point generalizes well beyond this chapter, which is why it is worth laboring. **Turnout is a fraction, and disenfranchisement changes its denominator.** Comparing a state that bars `r pc(max(st$pct))`% of its adult citizens with one that bars none is comparing two different electorates, and any quantity computed "per eligible voter" inherits that difference silently, without anybody choosing it.
+
+More directly still: representation is apportioned by *population*, and prisoners are counted where they are held. **A disenfranchised person is counted for apportionment and excluded from the electorate** — represented without a vote, which is a specific and very old constitutional problem rather than a modern accident. The effect is also not distributed evenly across the country's residents. Because felony conviction rates differ sharply by race, felony disenfranchisement removes Black adults from the electorate at several times the overall rate, a fact this file cannot show and the literature has documented repeatedly. **Uggen and Manza (2002)**, the paper that established this as a field, went further and estimated the electoral consequences directly, finding them large enough to have mattered in specific statewide races.
+
+## The argument is about the last category
+
+The disagreement in American politics is not really about voting from prison, where most people's intuitions are stable in one direction or the other and few minds move. It is about the `r pc(100*na$post_sentence/na$total, 1)`% in Figure 1's rightmost block.
+
+The case for restoration is that the sentence *is* the punishment. Once it has been served, continuing exclusion is a penalty imposed by no judge, carrying no end date and no demonstrated relationship to public safety. The case against rests on the vote as a trust rather than a right. On that view a serious breach of the social contract can justify a lasting change in civic status, and restoration is properly a matter of discretion rather than automatic.
+
+The politics have moved, unevenly, and Florida is the instructive case. Amendment 4 passed in 2018 with about 65% of the vote, restoring rights to most people who had completed their sentences. The legislature then required outstanding fines and fees to be paid first. **Florida has no reliable central record of what any given person owes**, so a large number of affected people cannot establish whether they are eligible to register. Registering when ineligible is itself a crime. Florida remains the largest post-sentence population in this file, at `r n(sv("Florida","post_sentence"))` people.
+
+**That is a data problem producing a rights problem**, which is as direct an illustration of this course's premise as the country has to offer.
+
+## What this evidence will bear
+
+The strengths of this file are real and worth stating before the limits. It covers all fifty states on one definition, and its categories do not overlap and add to their totals. The extraction was checked rather than trusted. And it is the source that courts and scholars actually use.
+
+The limits bound different claims. It is **a single organization's estimate**, because no government produces the count. So there is no independent figure to check it against. The sum test in the opening pages gives confidence in the parse, and none at all in the underlying numbers.
+
+It carries **no demographics**: no race, no age, no sex. So the racial disparity that motivates most of the literature cannot be computed from it, only cited. It is **one point in time**, which is a serious limitation for a subject whose law changes every legislative session. Its **jail counts are the softest figures in it**, because jail populations turn over rapidly and eligibility while in jail varies by state and by charge. And **state law here is summarized rather than reproduced**: several states attach conditions that no single category can express, and the file flattens them.
+
+Three questions stay open. How many of these people would actually vote is unknown and probably smaller than the raw counts suggest, since registration and turnout among restored populations run low, which cuts against the simplest electoral-effect claims. Whether outstanding fines and fees are a permissible condition on restoration is being litigated now. And whether the count is *right* has no answer, because nobody audits it, because nobody else produces one.
+
+What the file does establish is narrow and hard to argue with. Roughly four million adult citizens cannot vote because of a felony conviction. Nearly three quarters of them are not in prison, and two fifths have finished their sentences in full. `r sum(st$post_sentence > 0)` states account for that last group entirely, while `r paste(ZERO, collapse = " and ")` remove nobody from the electorate at all. Those states face the same criminal justice system as the rest of the country. **The variation is a policy choice, not a crime rate**, and the four million people it produces are counted for representation in Congress while being absent from every electorate that chooses it.
+
+## Sources
+
+**Data**
+
+- The Sentencing Project, *Locked Out: Estimates of People Denied Voting Rights
+  Due to a Felony Conviction.* <https://www.sentencingproject.org/> — the state
+  table in the published PDF report. Download it from that address; the state
+  table is extracted from it, the sum check quoted above applied, and the
+  three files every number in this chapter is computed from.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`grid.csv`](data/derived/grid.csv), [`national.csv`](data/derived/national.csv), [`states.csv`](data/derived/states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `states.csv` breaks the total into prison, parole, probation, jail and post-sentence. Sort by `post_sentence`. Which states disenfranchise most of their people after the sentence is finished?
+- `states.csv` gives each state a `pct` of its voting-eligible population. Find the highest and lowest. Then look up whether those states' laws differ, or their prison populations do.
+- `national.csv` has the same five categories nationally. Work out what share of the total is people not currently incarcerated. Does the phrase 'felon voting' describe them?
+- Nobody collects this number directly; it is assembled. Pick a state and list what would have to be counted, by whom, for its row to be right.
+
+**Academic literature**
+
+- Uggen, C. and Manza, J. (2002). "Democratic Contraction? Political
+  Consequences of Felon Disenfranchisement in the United States." *American
+  Sociological Review* 67(6): 777–803.
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

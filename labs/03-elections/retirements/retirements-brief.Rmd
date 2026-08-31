@@ -1,0 +1,270 @@
+---
+title: "Congressional Retirements Over Two Centuries"
+subtitle: "Two centuries of members leaving the House, and the one thing the record will not say"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("retirements-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Of the `r n(HI$members)` people who held a seat in the House of Representatives during the Congress that met in `r HI$year`, `r n(HI$left)` were gone by the next one. That is `r pc(HI$pct_left, 0)` percent of the chamber, replaced in a single stroke, and it was not a scandal or a realignment or a war. It was an ordinary decade in an institution where serving in Congress was a temporary condition, like jury duty.
+
+A century and a half later, in the Congress that met in `r LO$year`, the same number was `r LO$left` members out of `r n(LO$members)` -- `r pc(LO$pct_left)` percent. The House had stopped emptying.
+
+That much is a familiar story with a familiar name. What is less familiar, and what this chapter is actually about, is the mechanism. **When a member of the modern House leaves, it is usually not because anyone beat them.** Between `r min(EY$year)` and `r max(EY$year)`, `r n(TOTL)` members left the House. `r n(QUIT)` of them -- `r pc(100 * QUIT / TOTL, 0)` percent -- never stood on a ballot they could have lost.
+
+## Where the evidence comes from, and what it refuses to say
+
+Three files are stacked here, and they are not equally good, which is the first thing to say about them.
+
+```{r sources}
+```
+
+The **Voteview** file is the spine. It carries one row per member per Congress back to the First, with a chamber, a state, a district and a party, and it is the standard machine-readable form of the congressional membership record. From it, one fact is available for `r n(nrow(DP))` consecutive Congresses without any inference at all: a person served in Congress *N* and did not serve in Congress *N+1*. They left.
+
+What the file cannot say is why, and no membership record ever could. Leaving is recorded; the reason is not a field.
+
+It is worth being clear about what kind of object that spine is, because it arrives looking more official than it is. No agency publishes a machine-readable roster of everyone who has ever served in Congress. Voteview is a research project, built at UCLA over decades, and its raw material is roll-call votes; the membership table is a by-product of needing to know whose vote each one was. Somebody had to reconcile two centuries of names into one person per row, assign identifiers where the government supplies none, and code a party for members who served before the parties had settled names. All of that was done on judgment, before this chapter opened the file. It arrived usable because somebody else did the work, which is a debt and not a complaint.
+
+The debt comes with terms. Voteview's identifier is not a person: when a member changes party in the middle of a Congress the project issues them a *new* one, rather than amending the row they have.
+
+Keyed on that number, Ralph Hall of Texas leaves the House halfway through the 108th and a stranger takes his seat. So does Parker Griffith of Alabama in the 111th, who then went on to be refused the Republican nomination six months later. The file offers a false departure and a real one within a year of each other, and marks them the same way.
+
+There are `r ck("party switchers with two Voteview rows in one Congress")` such rows. The build keys on the Biographical Directory's identifier instead, which survives a switch, and drops the duplicate. Nothing in the file warns that any of this is necessary; the convention is documented nowhere the reader will look, and the only symptom is a departure count that comes out slightly too high.
+
+The **Federal Election Commission's** biennial compilation supplies the missing fact, for the years it covers. It reports, candidate by candidate, the primary vote, the runoff vote and the general-election vote for every House race, compiled from the official canvasses of the state election officials. Put it beside the membership file and each departing member falls into one of four places:
+
+```{r routes}
+```
+
+**The first of those four is a residual: the category for what is left over, everything not caught by the others. Residuals are where the trouble is.**
+
+Four very different people sit in it together, and they look identical. One announced a graceful retirement. One resigned under indictment. One died in August. And one quit rather than face a challenger they expected to lose to.
+
+Deaths can be pulled out, because the file records a death year, and so can members who ran for the Senate, because they appear in the same FEC compilation on the Senate side. What is left over is still not "retirement" in any sense that means *chose to stop*. It is **did not appear on a ballot**, and the distinction between choosing to leave and leaving before being pushed is not in any of these files, because it was never in any document.
+
+The obvious place to look for primary results is the Clerk of the House's *Statistics of the Congressional Election*, which another chapter in this book parses out of the Clerk's own PDFs. It does not have them and never has. Its title page says what it is: the vote cast for each *nominee*. Every edition from 1946 to 2024 was searched. The word "primary" appears in a handful of them, and in every case it is a footnote about Louisiana, whose nonpartisan blanket primary is that state's general election.
+
+The pre-2000 editions are photographic scans with no text in them at all and were checked by eye. **The FEC compilation is a different publication with a different remit, and for congressional primaries it is the only federal source there is.**
+
+It also stops. The FEC has not published a 2024 edition, and asking its document server for one is instructive. The address `fec.gov/documents/5675/federalelections2024.xlsx` returns a success code, eight megabytes, and the 2022 report as a PDF. That server addresses files by a number and ignores the filename entirely. A build script that trusted the status code would have shipped the wrong year under the right name.
+
+The **Brookings** table is the weakest of the three and the longest. It counts retirements, primary defeats and general defeats for every election from 1946 to 2024, and it is assembled from the Biographical Directory, *CQ Almanac* and the *National Journal* rather than derived from returns. It is here because it reaches back seventy-eight years, because nothing built from primary documents can, and because it gives the derivation above something to be wrong against.
+
+## The column that stops, and the file that does not mention it
+
+Before any of that can be joined to anything, the membership record has to be read, and it contains a trap that no amount of care about the FEC would catch. Here are two Alabama members in the 114th Congress and the same two in the 115th, out of `HSall_members.csv`:
+
+```{r rawocc}
+```
+
+Same men, same seats, consecutive Congresses, and **two columns quietly empty** in the second pair. `occupancy` records whether a member was the first, second or third person to hold that seat in that Congress. It is the only evidence anywhere in this file that somebody left in the middle of a term. `last_means` recorded whether a member arrived by general election or by special election. Both stop:
+
+```{r rawocc2}
+```
+
+Filled for every House row through the `r n(LASTC)`th and for none after it, and **nothing in the file announces it.** No footnote, no marker, no change of type. The cells are simply empty. A build that reached for `occupancy` to count mid-term replacements would run clean, report zero of them from 2017 onward, and describe a House in which nobody has ever been replaced between elections.
+
+That is why the denominator in this chapter is what it is. The denominator is the bottom number every rate here is divided by. The natural choice for a chapter about leaving would be the class the last general election seated: 435 people, one per seat, which is exactly what `occupancy` would let you isolate. It is not available for the recent Congresses this chapter cares most about. So the denominator is instead **every person who held a House seat during a Congress**: `r n(DP$members[DP$congress == 118])` people in the 118th, not 435. That is a defensible unit and it is not the one Brookings uses, which is one of the reasons the two series in this chapter run close without ever quite meeting.
+
+One more difference in those rows is worth catching, because it is the kind of thing that breaks a join silently. `district_code` is `3` in the 114th and `3.0` in the 115th. The value did not change; its written form did, halfway through a single file, and any key pasted together out of state and district as *text* would stop matching at exactly that Congress. **The join would not fail. It would return fewer rows**, quietly, and every count built on it would be too small by however many members happened to sit after 2017.
+
+Here is what a member becomes once the membership file and the ten workbooks have been put together — one row per sitting member per election cycle:
+
+```{r cleanexit}
+```
+
+`outcome` is the column the chapter is about and it exists in neither source. It is assembled from three facts: did this member appear on a House ballot at all, did they win the nomination, did they win in November. The first of those three is doing most of the work. A member who is simply *absent* from the FEC file did not stand, and `r n(QUIT)` of the `r n(TOTL)` departures in this window are that: **not an event recorded anywhere, but the absence of one.**
+
+## Two files that share no identifier
+
+Joining the membership record to the candidate record is the whole method, and the two have no key in common. The FEC has its own candidate identifiers; Voteview has ICPSR numbers; neither appears in the other's file. So the join is built on state and name, and names do not cooperate.
+
+```{r joinproblems}
+```
+
+The escape from most of that is not a cleverer name rule. It is an identifier that already exists: **the FEC gives each candidate a permanent number, and it persists across cycles.** Match a name once, in a year where the name is unambiguous, and the number carries the match into every later file.
+
+That is what rescues the two Sanchezes. They ran in renumbered districts in 2012, so state, surname, first initial and district number all fail at once. Their identifiers had already been matched in 2010, when the district numbers still agreed. Of `r ck("incumbent-cycles in the FEC files")` incumbent candidacies, `r ck("incumbent-cycles matched to a Voteview member")` were matched; `r ck("of those, matched by the permanent FEC candidate id")` came from the identifier and only `r ck("matched by a looser name rule")` needed a rule looser than an exact surname.
+
+Two things then go wrong in the other direction, and both are worth naming because both would have produced a confident wrong answer.
+
+**The FEC's incumbent marker is not always right.** The 2022 file marks Tim Reichert, a Republican candidate in Colorado's 7th district, as the incumbent. He had never held the seat; it was open that year because Ed Perlmutter retired. Every marked incumbent here is therefore required to appear in the membership record for that Congress, and `r ck("not matched at all, and dropped")` rows failed the test and were dropped. The same test catches former members trying to come back, whom the file also marks. Carol Shea-Porter and Joe Garcia both lost in 2014 and both ran again in 2016, carrying an incumbent marker they were not entitled to.
+
+**The marker is also sometimes simply missing.** Every row of Michigan's 7th district in the 2006 file has an empty incumbent column, including Joe Schwarz, who was the sitting member and lost the Republican primary. Searching the unmarked candidates by identifier recovers `r ck("incumbents the FEC did not mark, recovered by id")` such members. Searching them by *name* would recover Schwarz. It would also find, in the 2016 file, one Joe McDermott of Washington's 7th district. That is not Jim McDermott of Washington's 7th district, and the file would record a sitting member denied renomination.
+
+A third trap is smaller and more alarming. Several party cells in these workbooks end in a non-breaking space, which is not a space as far as any ordinary trimming function is concerned. In the 2016 Kansas file Roger Marshall's party is `R` followed by one of those characters, and Tim Huelskamp's is `R/W`. After ordinary cleaning the two sit in two different Republican primaries in the same district, each unopposed. Huelskamp lost that primary by fourteen thousand votes.
+
+## The long fall
+
+With the join built, the simplest question can be asked of every Congress since the first.
+
+```{r era-table}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+**Figure 1. The share of the House that did not come back, every Congress from `r min(DP$year)` to `r max(DP$year)`.** Each point is one Congress: the number of people who held a House seat during it and did not hold one in the next, divided by the number who held one. The peak is `r HI$year` at `r pc(HI$pct_left)` percent; the floor since 1900 is `r LO$year` at `r pc(LO$pct_left)` percent. The average has fallen from `r pc(era(1789, 1830))` percent in the first four decades to `r pc(era(1981, 2024))` percent since 1980.
+
+The shape is the professionalization of Congress, which **Polsby (1968)** described as the House acquiring boundaries, an internal career structure and universalistic rules -- an institution rather than a way station. Members stopped going home because there came to be something worth staying for. Committee seniority made a long career valuable, and a long career made the House worth organizing around long careers.
+
+That much is settled. The question this chapter is about starts where that one finishes: **once turnover has fallen to fifteen percent, who are the fifteen percent?**
+
+## The exits, sorted
+
+```{r pooled}
+```
+
+Those are the `r n(TOTM)` member-cycles in the ten elections from `r min(EY$year)` to `r max(EY$year)`: every person who held a House seat during a Congress, and what became of them at the election that followed.
+
+Four out of five came back. Of the `r n(TOTL)` who did not, the two routes that involve losing an election account for `r n(BEAT)`, and everything else -- `r n(QUIT)` members, `r pc(100 * QUIT / TOTL, 0)` percent of all departures -- accounts for the rest. The modal way to leave the House of Representatives is to stop being a candidate for it.
+
+> **Before you read on, commit to a number.** In the ten elections above,
+> `r n(TOTL)` members left the House and `r n(BEAT)` of them were beaten by
+> voters. Those defeats split two ways: beaten in November by the other party,
+> or refused renomination by their own. **How many of the `r n(BEAT)` were
+> refused renomination by their own party?** Write down a count, or a share of
+> `r n(BEAT)`, before you look at Figure 2.
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+**Figure 2. Every House departure from `r min(EY$year)` to `r max(EY$year)`, split at the line.** To the left of each year, members who left without standing on a ballot they could lose; to the right, members somebody defeated. Across the ten elections the left side totals `r n(QUIT)` and the right side `r n(BEAT)`. Of the `r n(BEAT)` defeats, `r sum(EY$lost_general)` were general elections and `r sum(EY$denied)` were primaries -- `r pc(100 * sum(EY$denied) / BEAT, 0)` percent of all defeats, and `r pc(100 * sum(EY$denied) / TOTM, 1)` percent of all member-cycles.
+
+Most readers put the primary share somewhere around a third, because primaries are where the attention is. It is `r sum(EY$denied)` of `r n(BEAT)`. A sitting member of the House is roughly `r pc(sum(EY$lost_general) / sum(EY$denied), 1)` times more likely to be beaten in November by the other party than to be refused renomination by their own. Both together are a minority of departures.
+
+**The wrong lesson to draw is that the House is safe.** The right one is that the mechanism of turnover has moved. Compare the earliest and latest quarter centuries in the Brookings series:
+
+```{r thenandnow}
+```
+
+The two lines swapped. In the first postwar quarter century an average of `r pc(mean(E1$lost_general), 0)` members a cycle were thrown out in November and `r pc(mean(E1$retired), 0)` left of their own accord. In the most recent quarter century it is `r pc(mean(E2$lost_general), 0)` thrown out and `r pc(mean(E2$retired), 0)` leaving. **The chamber did not become more stable so much as it changed who does the removing** -- and increasingly nobody does.
+
+That is the same finding the [`house-competition`](../house-competition/house-competition-brief.html) chapter reaches from the other side. Where a district's November result is a foregone conclusion, the general election cannot remove anybody, and the seat empties only when its occupant decides to go.
+
+## Do retirements cluster?
+
+The folk theory in Washington is that they do. Members can see a wave coming, a minority with no prospect of a majority is a miserable place to work, and the announcements come in a run. It is a testable claim, and the Brookings series is long enough to test it.
+
+The first test is the redistricting cycle. Every ten years the maps are redrawn and the first election on the new lines is the one held in a year ending in 2. A member whose district has been dismantled has an obvious reason to leave.
+
+```{r redist}
+```
+
+**Retirements barely move, and primary defeats more than double.** That is the opposite of the folk theory, and there is a simple explanation. A new map does not usually destroy a member's district so much as put two members into one. Two members in one district produce a primary, not a retirement. The clustering is real. It is in the wrong column.
+
+The second test is the wave. If retirements anticipate defeat, a party that loses many members to retirement should lose many seats at the same election.
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+**Figure 3. Retirements against seats won or lost, one point per party per election, `r min(AN$year)` to `r max(AN$year)`.** Retirement counts are from Brookings; the seat change is computed from the Voteview membership file, by counting each party's members in one Congress and in the next. The correlation across all `r nrow(AN)` points is `r pc(cor(AN$retired, AN$change), 2)`, and a straight line through them explains `r pc(100 * summary(ANF)$r.squared, 0)` percent of the variation. The horizontal bars are the mean seat change within each quarter of the retirement range: `r pc(ANQ$change[1], 1)`, `r pc(ANQ$change[2], 1)`, `r pc(ANQ$change[3], 1)` and `r pc(ANQ$change[4], 1)` seats.
+
+**The signal exists and it is almost entirely in the top quarter.** Below about `r round(quantile(AN$retired, 0.75))` retirements, a party's retirement count says nothing at all about how the election will go. The three lower bars sit on either side of zero without a pattern. Above it, the average party loses `r pc(abs(ANQ$change[4]), 1)` seats. A wave of retirements is a signal of a bad year for that party, but only when it is a wave. The relationship is far too loose to be the forecasting tool it is often treated as on television.
+
+Notice also what the figure cannot distinguish, and it is the same thing that has been missing since the first page. **A member who retires because they expect to lose and a member who retires because they are seventy-four and tired of flying to Washington produce the same row.** The correlation in Figure 3 fits members reading the polls. It fits equally well with the party having recruited badly in the same years, for the same underlying reasons. Nothing in these files chooses between the two.
+
+## The other half of an identity
+
+The [`officeholder-age`](../../04-political-actors/officeholder-age/officeholder-age-brief.html) chapter of this book reports that the median member of Congress has aged substantially since 1970, and that the aging comes almost entirely from members *arriving* older rather than from members *staying* longer. That is a claim about tenure, and tenure is arithmetically the inverse of the departures counted here: if members are not leaving faster, they are staying the same length of time.
+
+```{r consistency}
+```
+
+Both numbers are flat. Across `r nrow(MG)` Congresses the correlation between the share of the House that does not return and the average time its members have already served is `r pc(cor(MG$pct_left, MG$mean_years_since_entry), 2)`. That is strongly negative, as it must be, since the two are measuring the same career from opposite ends. The two chapters were built from the same Voteview file by different derivations, and they agree: **members of the modern House do not serve longer than members of the 1960s House did. They arrive older.**
+
+## What this evidence will bear
+
+The strengths are narrow and real. The membership series is a full enumeration rather than a sample, it is `r nrow(DP)` Congresses long, and the fact it rests on -- served then, did not serve now -- requires no judgment from anybody. The election series is a federal agency's compilation of the states' own canvasses, read here from the published workbooks rather than inherited second-hand. The classification it produces was checked against two independent hand-built counts. On primary defeats, this build and Brookings and the Giroux tracker agree exactly in `r sum(CM$gap_brookings == 0)` of the `r nrow(CM)` elections and are never more than one apart.
+
+The weaknesses begin with the residual and do not end there.
+
+**"Did not seek re-election" is a category of ignorance.** It contains a member who wanted to leave and a member who ran out of options, and this chapter cannot separate them. Telling them apart would need a record of what somebody intended, and no agency keeps one. Every sentence above about retirement being a choice is therefore a sentence about a category that also holds the people who were pushed.
+
+**Two years of the modern series are missing.** The FEC has published no 2024 compilation, so the four-way sorting stops at `r max(EY$year)` while the membership series runs to `r max(DP$year)`. The Brookings column covers 2024 and is not built from returns.
+
+**The denominator moved under the file.** Voteview's `occupancy` field recorded whether a member was the first or second person to hold a seat in a Congress. It is filled in for the 1st Congress through the 114th, and empty for every row after that. So after 2015 the class a general election seated cannot be told apart from the members who arrived mid-term. The denominator used throughout is everyone who held a seat during a Congress: `r n(dy(2023, "members"))` people in the Congress that met in 2023, rather than the 435 seats they sat in. Brookings counts the other way, which is one reason the two series are close without being identical.
+
+**Death and resignation are approximations.** The membership file records a death *year*, not a date, so a member who left in January and died in November of the same year cannot be told from one who died in office. The rule used here is deliberately conservative and therefore undercounts.
+
+**Two centuries are not one series.** A departure in 1841 and a departure in 2021 are counted identically, and they are not the same event. Before the Seventeenth Amendment a House member's route upward ran through a state legislature, and districts were often multi-member. The parties themselves dissolved and reformed twice inside the steepest part of Figure 1.
+
+And the largest limit is the one the chapter opened on. **This is a study of `r n(nrow(EX))` careers, and it never observes a decision.** It observes ballots and rosters. Anyone who wants to know why the House empties the way it does now will have to go and ask. The people worth asking are precisely the ones with a reason to give whichever answer reads best.
+
+## Sources
+
+**Data**
+
+- Lewis, J. B., Poole, K., Rosenthal, H., Boche, A., Rudkin, A. and Sonnet, L.
+  *Voteview: Congressional Roll-Call Votes Database*, member file
+  `HSall_members.csv`. <https://voteview.com/> — retrieved 2026-08-11,
+  `r ck("Voteview rows")` rows, Congresses `r ck("Congresses covered")`.
+- Federal Election Commission, *Federal Elections*, biennial compilations for
+  2004 through 2022.
+  <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>
+  — retrieved 2026-08-11, `r ck("FEC cycles read")` workbooks,
+  `r ck("FEC House candidate rows, 2004-2022")` House candidate rows. Compiled
+  by the Commission from the official canvasses of the state election officials.
+- Brookings Institution, *Vital Statistics on Congress*, Chapter 2, edition of
+  April 2026, Table 2-7 (House incumbents retired, defeated or re-elected,
+  1946–2024) and Table 2-9 (House and Senate retirements by party).
+  <https://www.brookings.edu/articles/vital-statistics-on-congress/>
+- Giroux, G. *Members of Congress Defeated For Renomination, 1966–2026.*
+  Publicly shared spreadsheet; used in this chapter only as an independent
+  check on the primary-defeat counts, and discussed at length in the
+  [`primary-defeats`](../primary-defeats/primary-defeats-brief.html) chapter.
+  <https://docs.google.com/spreadsheets/d/1X97S6hUby6PPHAMoEwvAxkAUo8EUwLk8xMosx4hVd8c/>
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`compare.csv`](data/derived/compare.csv), [`departures.csv`](data/derived/departures.csv), [`exits.csv`](data/derived/exits.csv), [`exits_by_year.csv`](data/derived/exits_by_year.csv), [`vsoc.csv`](data/derived/vsoc.csv), [`vsoc_party.csv`](data/derived/vsoc_party.csv), [`age_by_congress.csv`](../../04-political-actors/officeholder-age/data/derived/age_by_congress.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `exits_by_year.csv` splits every departure into re-elected, defeated, denied, died, or not running. Compute the share for each. Which is the main way members leave?
+- `departures.csv` runs back to the first Congress with `pct_left`. Follow it. When did serving in the House stop being something people did briefly?
+- `age_by_congress.csv` has `median_age` and `pct_70plus`. Plot both across the series. Is Congress getting older faster than the country?
+- `compare.csv` shows three sources counting the same departures and disagreeing. Pick a year with a gap and work out which source you would trust and why.
+
+**Academic literature**
+
+- Polsby, N. W. (1968). "The Institutionalization of the U.S. House of
+  Representatives." *American Political Science Review* 62(1): 144–168.
+
+**Further reading**
+
+- Mayhew, D. R. (1974). *Congress: The Electoral Connection.* Yale University
+  Press.
+- Jacobson, G. C. and Carson, J. L. (2019). *The Politics of Congressional
+  Elections.* 10th ed. Rowman & Littlefield.
+
+**How the figures were made**
+
+Every source above was fetched, the ten FEC workbooks parsed and joined to the membership file, giving the tables this document reads. It is also the build for the [`primary-defeats`](../primary-defeats/primary-defeats-brief.html) chapter, which asks a different question of the same derivation. It records every URL, the date each was retrieved, the byte counts that came back, and the validation results reproduced in `checks.csv`. Every number printed above is computed from the files it wrote, at the moment this document was rendered.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

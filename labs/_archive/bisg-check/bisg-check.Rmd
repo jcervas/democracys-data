@@ -1,0 +1,267 @@
+---
+title: "Lab 14b: Grading the Guess"
+subtitle: "84-355 Democracy's Data | BISG against the truth, Houston County, Georgia"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(x, big.mark = ",", trim = TRUE)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# The question
+
+This morning you learned how BISG works: take a surname, take a place, combine
+them, and out comes a probability that a voter is Black, or white, or Hispanic.
+Courts use it. Expert witnesses use it. The Voting Rights Act cases you read for
+Week 13 rest on it.
+
+And normally you can never check it, because the whole point is that you do not
+know the answer. That is what makes this an *inference* rather than a
+measurement.
+
+**Today we check it.** Georgia is one of a handful of states that records race on
+the voter registration form — collected for Voting Rights Act compliance, not for
+anybody's research. So for Houston County we have almost fifty thousand people
+whose race the method is trying to guess and whose race we already know.
+
+You are about to find out how good the guess is. It is not what the overall
+number will tell you.
+
+# Part 1 — The data
+
+```{r load}
+v <- read.csv("data/houston_voters.csv", colClasses = c(GEOID20 = "character"))
+g <- read.csv("data/houston_blocks.csv",  colClasses = c(GEOID20 = "character"))
+sn <- read.csv("../surnames/data/census_surnames.csv", stringsAsFactors = FALSE)
+
+str(v)
+sort(table(v$race), decreasing = TRUE)
+```
+
+Three columns: a surname, the race the voter reported, and the census block they
+live in. No names, no addresses — the model only ever gets the surname and the
+block, so that is all the file carries.
+
+```{r blocks}
+nrow(g)
+colSums(g[, -1])
+```
+
+The county is `r nn(sum(g$white))` white residents and `r nn(sum(g$black))`
+Black. That second file is the **geographic prior**: for each of
+`r nn(nrow(g))` blocks, who lives there.
+
+```{r setup-matrices}
+R  <- c("white", "black", "hispanic", "asian", "aian")
+sc <- c(white = "pctwhite", black = "pctblack", hispanic = "pcthispanic",
+        asian = "pctapi",   aian  = "pctaian")
+
+i <- match(v$surname, sn$name)
+cat("surnames found in the Census list:", sum(!is.na(i)),
+    sprintf("(%.1f%%)\n", 100 * mean(!is.na(i))))
+
+v <- v[!is.na(i), ]
+S <- as.matrix(sn[i[!is.na(i)], sc]); S[is.na(S)] <- 0
+keep <- rowSums(S) > 0
+v <- v[keep, ]; S <- S[keep, , drop = FALSE]
+S <- S / rowSums(S)          # P(race | surname)
+```
+
+# Part 2 — The surname alone
+
+```{r surname-only}
+sur <- R[max.col(S, ties.method = "first")]
+
+cat("SURNAME ONLY\n")
+cat(sprintf("  overall accuracy: %.1f%%\n\n", 100 * mean(sur == v$race)))
+for (r in R)
+  cat(sprintf("  %-9s n = %6d   correct %5.1f%%\n",
+              r, sum(v$race == r), 100 * mean(sur[v$race == r] == r)))
+```
+
+**Stop and look at that before going on.** Overall accuracy is
+`r pc(100 * mean(sur == v$race))`%, which sounds like a method that works. Now
+read down the column.
+
+It gets white voters right `r pc(100 * mean(sur[v$race == "white"] == "white"))`%
+of the time and Black voters right
+**`r pc(100 * mean(sur[v$race == "black"] == "black"))`%** of the time. The
+overall figure is not a summary of how the method performs — it is a summary of
+how many white people live in Houston County. A method that simply guessed
+"white" for everybody would score `r pc(100 * mean(v$race == "white"))`%.
+
+# Part 3 — Adding the place
+
+Surname alone is not BISG. The method combines the surname with where the person
+lives: if a name is ambiguous but the block is 90% Black, the block should carry
+the inference.
+
+```{r bisg}
+P <- as.matrix(g[, R]); rownames(P) <- g$GEOID20
+M <- sweep(P, 2, colSums(P), "/")[v$GEOID20, , drop = FALSE]   # P(block | race)
+
+# Two places the method has no answer, and what we do about it.
+empty <- rowSums(M) == 0                 # block with no recorded population
+M[empty, ] <- matrix(colSums(P) / sum(P), sum(empty), 5, byrow = TRUE)
+
+post <- S * M                            # P(race | surname) x P(block | race)
+degenerate <- rowSums(post) == 0         # surname and block flatly contradict
+post[degenerate, ] <- S[degenerate, ]
+
+post <- post / rowSums(post)
+bis  <- R[max.col(post, ties.method = "first")]
+
+cat("voters in a block with no census population:", sum(empty), "\n")
+cat("voters where surname and block cancel out:  ", sum(degenerate), "\n")
+
+cat("BISG: SURNAME + BLOCK\n")
+cat(sprintf("  overall accuracy: %.1f%%\n\n", 100 * mean(bis == v$race)))
+for (r in R)
+  cat(sprintf("  %-9s n = %6d   correct %5.1f%%\n",
+              r, sum(v$race == r), 100 * mean(bis[v$race == r] == r)))
+```
+
+Overall accuracy rises from `r pc(100 * mean(sur == v$race))`% to
+`r pc(100 * mean(bis == v$race))`%. That is the number a methods section would
+report.
+
+**Notice the two lines of housekeeping in that chunk**, because they are not
+housekeeping. Some `r nn(sum(empty))` voters live in a block the census records
+as having nobody in it — new construction, mostly — so the geographic term is
+empty and we fall back to the county. And for **`r nn(sum(degenerate))` voters
+the method simply has no answer**: their surname is 100% one race and their
+block has zero residents of that race, so the multiplication gives zero for
+every category. BISG is undefined for them.
+
+Without those two lines R would not have complained. `max.col` picks the first
+column when every value is zero, so those `r nn(sum(empty | degenerate))` people
+would have been silently predicted **white**, and
+`r nn(sum(v$race[empty | degenerate] == "black"))` of them are Black. A quiet
+default is worse than an error.
+
+# Part 4 — Who it helps, and who it costs
+
+```{r change}
+chg <- sapply(R, function(r)
+  100 * (mean(bis[v$race == r] == r) - mean(sur[v$race == r] == r)))
+round(chg, 1)
+```
+
+```{r change-plot}
+barplot(chg, col = ifelse(chg > 0, "#2c7fb8", "#C41230"),
+        ylab = "Change in accuracy from adding block (points)",
+        ylim = c(-12, 26))
+abline(h = 0)
+```
+
+**Adding geography is not a free improvement.** It is a trade:
+
+- **Black voters: `r sprintf("%+.1f", chg[["black"]])` points.** From
+  `r pc(100 * mean(sur[v$race == "black"] == "black"))`% to
+  `r pc(100 * mean(bis[v$race == "black"] == "black"))`%. This is the method
+  working, and it works because Black residents of Houston County are
+  geographically concentrated, so the block genuinely carries information.
+- **Asian voters: `r sprintf("%+.1f", chg[["asian"]])` points. Hispanic:
+  `r sprintf("%+.1f", chg[["hispanic"]])`.** The block makes them *worse*.
+  These populations are spread thinly across the county, so no block is
+  distinctively Asian or Hispanic. The geographic term drags the estimate toward
+  the local majority and overrides a surname signal that was already decent.
+- **White voters: `r sprintf("%+.1f", chg[["white"]])` points**, for the same
+  reason in reverse.
+
+The overall `r sprintf("%+.1f", 100 * (mean(bis == v$race) - mean(sur == v$race)))`
+hides all of this. One group gained twenty-four points, two groups lost.
+
+**And the number that should stay with you:** even with everything the method
+has, BISG identifies Black voters correctly
+**`r pc(100 * mean(bis[v$race == "black"] == "black"))`% of the time**. It is
+wrong about them more often than it is right — in a county that is
+`r pc(100 * sum(g$black) / sum(g[, R]))`% Black, on a question that Voting
+Rights Act litigation turns on.
+
+# Part 5 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Weight the classes.** `max.col` picks the largest posterior, which
+favours big groups. Instead of the winner, look at the *probability* BISG assigns
+to the truth: `mean(post[cbind(1:nrow(post), match(v$race, R))] / rowSums(post))`.
+Compare that across groups. Is the method badly calibrated, or just badly
+decided?
+
+**Option B — A different geography.** Replace the block prior with a county-level
+one — set every row of `M` to `colSums(P)/sum(P)` — so geography carries no
+information. What does accuracy fall to, and how close is that to Part 2? What
+does the answer say about how much of BISG is really the surname?
+
+**Option C — Only the ambiguous names.** Restrict to voters whose surname gives
+no group above 60% (`keep <- apply(S, 1, max) < 0.6`) and re-run both methods.
+These are the people the method is supposed to be *for*. Does it do better or
+worse on them?
+
+**Option D — Your own question.** `r nn(nrow(v))` voters,
+`r nn(length(unique(v$GEOID20)))` blocks.
+
+# What this lab cannot tell you
+
+- **One county.** Houston County's population is
+  `r pc(100 * sum(g$white) / sum(g[, R]))`% white and
+  `r pc(100 * sum(g$black) / sum(g[, R]))`% Black, and moderately
+  segregated. Somewhere more integrated, the block would carry less; somewhere
+  more segregated, more. Do not generalise the numbers, only the shape.
+- **The race on the form is also a measurement.** A voter picks one box. People
+  of two races, and Hispanic people of any race, are being flattened by the
+  registration form exactly as Week 12 showed the census flattening them.
+- **"Any-part Black."** We counted Black residents as Black alone *or in
+  combination*, which is Voting Rights Act practice. The stricter definition —
+  Black alone, not Hispanic — gives 51,992 for this county instead of
+  `r nn(sum(g$black))`, a difference of 4,528 people. Every number above would
+  shift.
+- **The surname list is from 2010.** The county is not.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** No length requirement; a sentence or two is enough, so
+long as it shows you engaged with what we did. Any *one* of the usual four.
+
+Three that would make good posts:
+
+- A method that is right `r pc(100 * mean(bis == v$race))`% of the time overall
+  and `r pc(100 * mean(bis[v$race == "black"] == "black"))`% of the time for
+  Black voters is used in federal voting-rights cases. Is that acceptable? Say
+  what would change your mind.
+- Adding geography helped one group and hurt two. Would you use it?
+- American Indian voters — `r nn(sum(v$race == "aian"))` of them — are identified
+  correctly `r pc(100 * mean(sur[v$race == "aian"] == "aian"))`% of the time by
+  the surname alone and `r pc(100 * mean(bis[v$race == "aian"] == "aian"))`% of
+  the time by BISG. What happens to a group the method cannot see?
+
+***
+
+### Where the data came from
+
+Houston County, Georgia voter registration with self-reported race, and the
+geocoded block assignment, from working data for the 2026 Houston County
+redistricting matter. Block population by race is 2020 Census PL 94-171 / DHC
+tables. Surname probabilities are the 2010 Census surname list you used this
+morning.
+
+**Rows where race had been filled in by BISG rather than reported by the voter
+were dropped** before anything else. Scoring BISG against BISG would have
+produced an excellent and completely meaningless result. The check is in
+`data/build-data.R`.

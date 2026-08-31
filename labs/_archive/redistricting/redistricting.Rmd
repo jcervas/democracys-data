@@ -1,0 +1,421 @@
+---
+title: "Lab 15: Finding a Gerrymander Without Looking at a Map"
+subtitle: "84-355 Democracy's Data | Week 15"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Everyone knows what a gerrymander looks like. It is the district shaped like a
+salamander, the one that reaches a tentacle across three counties to swallow a
+neighbourhood.
+
+The reading for today argues that this is wrong — that gerrymandered districts
+are often perfectly tidy, and that some of the ugliest districts in America are
+ugly for entirely innocent reasons, because rivers and county lines and the
+Voting Rights Act are all shapes too.
+
+> ### Note — the Voting Rights Act shape got smaller on 29 April 2026
+>
+> Some packed districts in this file exist because Section 2 of the Voting
+> Rights Act was understood to require them. *Louisiana v. Callais*, 608 U.S.
+> ___ (2026), narrowed that requirement sharply. *Thornburg v. Gingles* was not
+> overruled but updated: a plaintiff's illustrative map may use no race and must
+> meet every legitimate goal the State names, including its political ones;
+> racially polarized voting must now be shown net of party; and old
+> discrimination counts for much less. Section 2 still exists, but it reaches
+> far fewer maps than it did in 2024.
+>
+> **Nothing in the data below changes** — these are the 2024 maps and the 2024
+> presidential vote inside them. What changes is how much weight "the VRA
+> required it" carries when you reach for it as an innocent explanation in
+> Option A.
+
+So today we will not look at a single map. We will find the gerrymanders anyway,
+from nothing but a column of numbers, and by the end you will be able to say
+which states have biased plans and roughly how much bias they carry.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: The right instrument
+
+```{r read}
+cd <- read.csv("data/pres_by_cd_2024.csv", stringsAsFactors = FALSE)
+dim(cd)
+head(cd[, c("district", "dem_share", "pres_party", "house_rep_party")], 4)
+```
+
+This is the **2024 presidential vote, counted inside each congressional
+district**. Not the House result — the presidential result.
+
+That choice is the whole methodology. If you want to know whether a *map* is
+biased, you have to hold the voters constant and change only the lines. House
+results cannot do that: they mix the map together with incumbency, money,
+scandal, and seats nobody contested. The presidential race is the same contest
+in all 434 districts, so any difference in how those votes turn into seats is a
+property of the districting plan.
+
+This is how the question is asked in litigation, and it is what Dave's
+Redistricting App is doing when it reports partisan metrics.
+
+***
+
+# Part 2: The national picture
+
+```{r national}
+c(mean_district_dem_share = round(mean(cd$dem_share), 1),
+  democratic_districts    = sum(cd$dem_share > 50),
+  share_of_districts      = round(100 * mean(cd$dem_share > 50), 1))
+```
+
+> The average congressional district was **49.9%** Democratic. Democrats carried
+> **205 of 434** — **47.2%** of them.
+>
+> Roughly a tied electorate, distributed into districts in a way that gives one
+> side slightly fewer than half.
+
+That gap is small nationally. It is not small everywhere, and the national figure
+hides two large biases pointing in opposite directions.
+
+First, how many districts are actually in play?
+
+```{r competitive}
+c(competitive_45_to_55 = sum(cd$dem_share >= 45 & cd$dem_share <= 55),
+  pct = round(100 * mean(cd$dem_share >= 45 & cd$dem_share <= 55), 1))
+```
+
+```{r hist, fig.width = 8, fig.height = 5}
+hist(cd$dem_share, breaks = 30, col = "#BBBBBB", border = "white",
+     xlab = "Democratic share of the two-party presidential vote (%)",
+     ylab = "Districts",
+     main = "All 434 congressional districts")
+abline(v = 50, lty = 2, lwd = 2)
+abline(v = c(45, 55), lty = 3, col = "grey40")
+```
+
+Only **91 districts — 21%** — sit within five points of even. Four out of five
+seats in the House of Representatives were decided before anybody campaigned.
+
+***
+
+# Part 3: The empty middle
+
+Here is the trick. Compare three states.
+
+```{r three-states}
+show_state <- function(ab) {
+  s <- cd[cd$state == ab, ]
+  s <- s[order(-s$dem_share), ]
+  cat(ab, "-- statewide", round(mean(s$dem_share), 1), "% Dem,",
+      sum(s$dem_share > 50), "of", nrow(s), "seats\n")
+  cat(paste(sprintf("%.0f", s$dem_share), collapse = "  "), "\n\n")
+}
+show_state("NC"); show_state("WI"); show_state("PA")
+```
+
+Read those rows of numbers slowly.
+
+**North Carolina** was 48.5% Democratic and elected Democrats in 3 of 14
+districts. Its three Democratic districts sit at 73.5, 73.0 and 67.5. Its eleven
+Republican districts sit between 39.0 and 48.4. **There is no district between
+48.4 and 67.5.**
+
+**Wisconsin** was 50.2% — a tied state — and elected Democrats in 2 of 8. Two
+districts at 76.2 and 70.4; six between 38.6 and 47.7. **Nothing between 47.7 and
+70.4.**
+
+**Pennsylvania** was 49.4% and split 8–9. Its districts run smoothly from 27 up
+to 89, with five of them between 45 and 53.
+
+```{r gap-plot, fig.width = 8, fig.height = 5.5}
+par(mfrow = c(3, 1), mar = c(2.5, 4, 2.5, 1))
+for (ab in c("NC", "WI", "PA")) {
+  s <- cd[cd$state == ab, ]
+  plot(s$dem_share, rep(1, nrow(s)), pch = 19, cex = 2,
+       col = ifelse(s$dem_share > 50, "#2166AC", "#B2182B"),
+       xlim = c(15, 92), yaxt = "n", ylab = "", xlab = "",
+       main = paste0(ab, ": ", round(mean(s$dem_share), 1), "% Democratic, ",
+                     sum(s$dem_share > 50), "/", nrow(s), " seats"))
+  abline(v = 50, lty = 2, lwd = 2)
+}
+par(mfrow = c(1, 1))
+```
+
+> **That hole in the middle is the gerrymander.**
+>
+> To win most of the seats with fewer than half the votes, you do two things.
+> You **pack** the other side's voters into a few districts they win
+> overwhelmingly, wasting their surplus. Then you **crack** the rest across many
+> districts where they lose narrowly, wasting all of it.
+>
+> The result is a map with no competitive districts and a bimodal distribution:
+> a small clump way up high, a large clump just below half, and nothing between.
+> That is what North Carolina and Wisconsin look like. Pennsylvania does not look
+> like it.
+
+We have not looked at a single district's shape.
+
+***
+
+# Part 4: Putting a number on it
+
+The **efficiency gap** compares a party's share of seats to what proportionality
+would give it, in a form that counts wasted votes. In its simplest version:
+
+$$\text{EG} = (\text{seat share} - 50\%) - 2 \times (\text{vote share} - 50\%)$$
+
+A plan with no bias scores zero. Negative means the map favours Republicans;
+positive means it favours Democrats.
+
+```{r eg}
+st <- do.call(rbind, lapply(split(cd, cd$state), function(s) {
+  data.frame(state = s$state[1], n = nrow(s),
+             vote  = round(mean(s$dem_share), 1),
+             seats = sum(s$dem_share > 50),
+             seat_pct = round(100 * mean(s$dem_share > 50), 1))
+}))
+st$eg <- round((st$seat_pct - 50) - 2 * (st$vote - 50), 1)
+
+big <- st[st$n >= 6, ]
+big[order(big$eg), c("state", "n", "vote", "seats", "seat_pct", "eg")]
+```
+
+```{r eg-plot, fig.width = 8, fig.height = 6}
+b <- big[order(big$eg), ]
+par(mar = c(5, 5, 4, 2))
+barplot(b$eg, names.arg = b$state, las = 2, border = NA,
+        col = ifelse(b$eg < 0, "#B2182B", "#2166AC"),
+        ylab = "Efficiency gap (points)",
+        main = "States with 6+ districts, 2024 presidential vote")
+abline(h = 0, lwd = 2)
+```
+
+> The two worst Republican-favouring maps are **North Carolina (−25.6)** and
+> **Wisconsin (−25.4)**. The two worst Democratic-favouring are
+> **Massachusetts (+22.4)** and **Illinois (+19.0)**.
+>
+> **Massachusetts is 63.8% Democratic and elects Democrats in 9 seats out of 9.**
+> Nobody drew that to be unfair; there is simply no way to carve a Republican
+> seat out of Massachusetts without deliberately trying to.
+>
+> **Pennsylvania scores −1.7** — very nearly the fairest large map in the
+> country.
+
+That Massachusetts result is why the efficiency gap is contested. It cannot
+distinguish a map drawn to disadvantage a party from a state where that party's
+voters are too few and too evenly spread to win anywhere. Political geography
+produces bias all by itself.
+
+***
+
+# Part 5: The lines are not the whole story
+
+```{r crossover}
+cross <- cd[!is.na(cd$house_rep_party) & cd$pres_party != cd$house_rep_party, ]
+nrow(cross)
+cross[order(cross$state), c("district", "dem_share", "pres_party",
+                            "house_rep", "house_rep_party")]
+```
+
+Only **15 districts of 434** elected a House member from the party that lost the
+district's presidential vote. Every one of them is close: all fifteen fall
+between 46.3% and 52.3%.
+
+> A generation ago there were dozens of these. Their near-disappearance is the
+> same polarization you measured in Week 4 and Week 7, and it has a consequence
+> for redistricting: **when almost nobody splits their ticket, drawing the lines
+> is very close to choosing the winner.** A map-drawer in 1980 was making a bet.
+> A map-drawer today is making a decision.
+
+Pennsylvania's 1st district is on that list: Brian Fitzpatrick holds a seat
+Harris carried.
+
+***
+
+# Part 6: What this cannot tell you
+
+**The efficiency gap here is an approximation.** The proper formula uses actual
+wasted votes, which needs turnout by district. We have vote *shares*, so this
+version assumes districts cast equal numbers of votes. They do not — districts
+are equal in *population*, and turnout varies a great deal.
+
+**One election is not a map's record.** A plan that looks fair against 2024 may
+not against 2020 or 2028. This is why Dave's Redistricting reports metrics across
+several elections, and why you should look at more than one.
+
+**Bias is not always intent.** Massachusetts, again.
+
+**And one district is missing entirely.**
+
+```{r missing}
+nrow(cd)
+```
+
+New York's 21st has no presidential figures in the source file. Every national
+number in this lab is computed over 434 districts, not 435. It does not change
+any conclusion, and you should know it anyway.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — Diagnose a state
+
+```{r opt-a, fig.width = 8, fig.height = 4.5}
+this_state <- "OH"           # <- change to any state with several districts
+
+s <- cd[cd$state == this_state, ]
+s <- s[order(-s$dem_share), ]
+
+plot(s$dem_share, seq_len(nrow(s)), pch = 19, cex = 2,
+     col = ifelse(s$dem_share > 50, "#2166AC", "#B2182B"),
+     xlim = c(10, 95), yaxt = "n", ylab = "",
+     xlab = "Democratic share of two-party presidential vote (%)",
+     main = paste0(this_state, ": ", round(mean(s$dem_share), 1),
+                   "% Democratic, ", sum(s$dem_share > 50), " of ",
+                   nrow(s), " seats"))
+abline(v = 50, lty = 2, lwd = 2)
+text(s$dem_share, seq_len(nrow(s)), s$cd, pos = 3, cex = 0.7)
+
+s[, c("district", "dem_share", "house_rep_party")]
+round((100 * mean(s$dem_share > 50) - 50) - 2 * (mean(s$dem_share) - 50), 1)
+```
+
+**Write about:** is there a hole in the middle? Where are the packed districts,
+and what is in them? Report the efficiency gap and say whether the shape of the
+distribution agrees with it. Then the harder part: name at least one explanation
+other than deliberate gerrymandering that could produce what you see — political
+geography, the Voting Rights Act, a court-ordered map — and say what evidence
+would let you tell the difference.
+
+***
+
+### Option B — How much does the threshold matter?
+
+```{r opt-b, fig.width = 8, fig.height = 5}
+band <- 5                    # <- change this. Try 2, 5, 10, 15.
+
+cd$comp <- abs(cd$dem_share - 50) <= band
+by_state <- tapply(cd$comp, cd$state, sum)
+by_state <- sort(by_state[by_state > 0], decreasing = TRUE)
+
+c(competitive_districts = sum(cd$comp),
+  pct_of_house = round(100 * mean(cd$comp), 1))
+
+par(mar = c(5, 6, 4, 2))
+barplot(head(by_state, 15), las = 2, col = "#54278F", border = NA,
+        ylab = "Competitive districts",
+        main = paste("Districts within", band, "points of even"))
+```
+
+**Write about:** how many House seats are genuinely in play, and does that number
+survive changing the threshold? Then connect it to Week 6: candidates visited 7
+states and ignored 26. Here, four out of five House districts are not
+competitive. Are these the same phenomenon? What does it mean for a member of
+Congress if the only election that can end their career is a primary?
+
+***
+
+### Option C — Who is packed?
+
+```{r opt-c}
+cutoff <- 70                 # <- change this
+
+packed <- cd[cd$dem_share >= cutoff | cd$dem_share <= (100 - cutoff), ]
+c(safe_districts = nrow(packed),
+  very_dem = sum(packed$dem_share >= cutoff),
+  very_rep = sum(packed$dem_share <= (100 - cutoff)))
+
+head(cd[order(-cd$dem_share), c("district", "dem_share")], 8)
+head(cd[order(cd$dem_share),  c("district", "dem_share")], 8)
+
+table(packed$state[packed$dem_share >= cutoff])
+```
+
+**Write about:** the most Democratic district in the country is **PA-03, at
+89.1%** — Philadelphia. Compare the very-Democratic list to the very-Republican
+one: are they the same *kind* of place? You should find that extreme Democratic
+districts are urban and extreme Republican districts are much less extreme.
+Explain what that asymmetry does to the efficiency gap, and whether it is
+evidence of gerrymandering or of where people choose to live.
+
+***
+
+### Option D — Take it to Dave's Redistricting
+
+Go to <https://davesredistricting.org/maps> and open the official congressional
+map for a state you analysed above. Under **Advanced**, find its reported seat
+bias, vote bias and efficiency gap, across several elections.
+
+**Write about:** does DRA's verdict match yours? Where it differs, work out why —
+DRA uses actual votes rather than shares, and averages several elections. Which
+approach would you trust in court, and what would you want to see before
+concluding that a map was drawn to produce the result it produced?
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a column of numbers and tell the difference
+between a map that is unfair and a country that is unevenly settled.
+
+***
+
+## Where the data came from
+
+**Presidential results by congressional district, 2024** — Jason Timm,
+*PresElectionResults* (<https://github.com/jaytimm/PresElectionResults>), the
+same compilation used in Week 4. 434 of 435 districts; New York's 21st carries no
+presidential figures in the source.
+
+**Why not House results?** Because they cannot answer the question. A House
+result confounds the map with incumbency, money and uncontested seats. Holding
+the election constant and varying only the lines is the entire method, and it is
+what courts and analysts do.
+
+**On the efficiency gap.** The version computed here —
+$(\text{seat share} - 50) - 2(\text{vote share} - 50)$ — assumes equal turnout
+across districts. The full version uses wasted vote counts. The measure was
+introduced by Nicholas Stephanopoulos and Eric McGhee and was argued before the
+Supreme Court in *Gill v. Whitford* (2018); the Court declined to adopt it, and
+in *Rucho v. Common Cause* (2019) held that partisan gerrymandering claims are
+not justiciable in federal court. The measure remains central in **state** court
+litigation, which is now where these cases are fought — including in
+Pennsylvania, where the state Supreme Court struck down the congressional map in
+2018.
+
+**On the Voting Rights Act.** *Louisiana v. Callais*, 608 U.S. ___ (2026),
+decided 29 April 2026, held that Section 2 did not require Louisiana to draw an
+additional majority-minority district and that drawing one anyway was an
+unconstitutional racial gerrymander. It updated rather than overruled
+*Thornburg v. Gingles*, 478 U.S. 30 (1986). Section 2 claims are still available;
+they are much harder to win than they were when these maps were drawn.
+
+The script that downloaded, checked and wrote this file is `data/build-data.R`.
+It documents the missing district rather than filling it in.

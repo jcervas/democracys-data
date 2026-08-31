@@ -1,0 +1,389 @@
+---
+title: "Wikipedia Pageviews as a Measure of Attention"
+subtitle: "A year of Wikipedia pageviews, and what a country looking something up does not tell you"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("media-attention-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+```{r d3-load, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r wiki-grid, include=FALSE}
+```
+
+On 14 July 2024, `r cnt(von("JD_Vance", "2024-07-14"))` people opened J.D. Vance's Wikipedia article. On 15 July, `r cnt(VPEAK)` did. That is the largest single article-day anywhere in this file, larger even than the presidential election article on the day after the election. It is `r cnt(round(VPEAK / VPRE))` times the `r cnt(VPRE)` readers a day he had been drawing through the first half of the year.
+
+Nothing about the man had changed overnight, and nothing about the article had either. What changed was that somebody put his name on a ticket, and a country that had not been wondering who he was suddenly wanted to know.
+
+**An earlier version of this chapter opened with a different number and it was wrong.** It reported that a sitting United States senator was drawing `r cnt(VOLD)` readers a day, and that on several days of the year nobody at all looked him up. Both claims came from asking the Wikimedia API for the title the article has *now*. It did not have that title then, and the API reports by title. The whole story is in the section on the file's construction below, because it is a better lesson than the one it replaced.
+
+Wikipedia counts that. Every request for every English-language article, every day, published openly and going back years. It is not a survey, and nobody was asked anything. It is a **record of what people did**, which is a real advantage over a survey question about media use, where the answer depends on somebody remembering accurately and answering honestly.
+
+What it gives up in exchange is any theory of the electorate at all. **A pageview is one person choosing to look something up.** It is not exposure, it is not belief, and it is not support, and most of the work below consists of keeping those four things apart.
+
+That work is worth doing because attention is a scarce resource that campaigns compete for, and the shape of the competition determines what politics looks like. If public attention were spread evenly across a year, patient argument would be worth something. **If it is compressed into a handful of days, then manufacturing one of those days is worth more than months of ordinary campaigning**, and campaigns should be expected to behave accordingly.
+
+## Nobody set out to measure this
+
+The counts come from the Wikimedia Foundation's Pageviews API: daily totals for individual English Wikipedia articles, going back years and published for anybody who asks. It is worth being precise about why they exist, because it is not the reason the campaign-money and campaign-travel files exist. A treasurer files with the Federal Election Commission because a statute compels it. A wire service logs campaign stops because an editor thought it worth doing. Nobody at Wikimedia decided that American politics should be measured.
+
+These numbers are a by-product of running a very large website, tallied because a server tallies what it serves. They would look much the same if there had been no election at all.
+
+Wikimedia then publishes them under CC0. That legal fact has a practical consequence: this chapter ships its own copy of the file rather than a link to somebody's server, and can therefore still be read in ten years.
+
+That accidental quality is exactly what makes the series useful. The question is whether the public went looking, and looking is an act, so it can be counted instead of recalled. Better still, the count is daily and continuous over years, which gives a spike something to be a spike against. No survey in the United States is fielded every day, and none of them was in the field on the July afternoon this chapter turns on.
+
+The costs come in two kinds. The first is a choice: these `r length(unique(w$article))` articles are not a population, they are a list somebody wrote, and an article nobody thought to fetch cannot appear in any figure below. The second is a problem with the measure itself.
+
+A pageview is a request answered by Wikimedia's servers. A good deal sits between a person's curiosity and a tick of that counter: browsers fetching pages in advance, caching, mobile apps, and the handling of redirects. A redirect credits the request to whichever title the reader arrived through, rather than to the article. That last one is not a footnote here. It is the subject of the next section.
+
+What counts as a view is Wikimedia's definition, and it is not the only one available. Underneath all of that is the fact that attention has no natural unit at all. Ten seconds and ten minutes are the same row here, which should sound familiar: the travel log of campaign stops has the same problem with a rally and a diner.
+
+Cleaning was mostly a matter of not doing any. The API returns one JSON document per title. The build pulls the timestamps and the counts out of each one. It checks that the two came back the same length and that a full year of days arrived, then stacks the responses into a single long file. Nothing was imputed: no missing day was filled in by guessing. Nothing was smoothed either.
+
+The one thing done to the raw counts is described in the next section. Where an article held more than one title during the year, its daily counts are added together across them. The setup for this document builds a full article-by-day grid, so that a missing cell could not quietly become a zero later. With the titles fixed there are `r miss_n` missing cells and `r zero_n` zeroes to catch. A second file, `campaign_events_2024.csv`, was compiled by hand from the public record and deliberately not derived from the pageviews, because a yardstick built out of the thing it measures is not a yardstick.
+
+Neither file was expensive to obtain, and neither can be recovered from the other. The pageviews came out of `r length(unique(ti$title)) + length(unique(w$article)) - 1` requests to a public API with no key, one per title. The two choices this chapter names a few paragraphs below are not filters applied afterward to a downloaded file. They are written into the request URL itself, along with the language edition, the range of dates and the list of titles. Nothing larger sits behind `wiki_attention_2024.csv` out of which a different choice could be recovered; changing any one of them means going back to Wikimedia and asking again. The events file carries the opposite liability.
+
+It was typed by a person out of the public record. That is what makes it independent of the pageviews, and equally what makes it impossible for a machine to check. It cannot be fetched again or compared automatically, and the only way to check it is to read it back against the record a date at a time.
+
+The file that follows is as plain as a file gets. One row of it looks like this.
+
+```{r one-record}
+```
+
+One row is **one article on one day.** Three columns, no demographics, no referrer, no time on page, and nothing whatever about who the reader was.
+
+Two choices were made when this file was pulled, and both matter.
+
+**Human traffic only.** Wikimedia's API can return all requests including known bots and crawlers; this file uses the `user` filter, which excludes them. Raw all-agent counts are heavily contaminated and would show spikes no person caused.
+
+**English Wikipedia only.** A large share of the world's interest in an American election arrives in other languages, and none of it is here.
+
+## The cleaning happened in the address bar
+
+There is no downloaded file sitting behind `wiki_attention_2024.csv` waiting to be tidied. There is a URL, asked `r length(unique(w$article))` times:
+
+```
+https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/
+    en.wikipedia / all-access / user / Kamala_Harris /
+    daily / 20240101 / 20241231
+```
+
+**Every decision this chapter makes about what counts is a path segment in that address.** The language edition, the exclusion of bots, the daily grain, the year, and the title itself. None of them is a filter applied afterward to something bigger; they are the question, and asking a different one means going back to Wikimedia. That is unusual and worth noticing: in most chapters the judgment calls happen after the download, where they can be inspected. Here they happen before it, where the only record of them is the URL.
+
+What comes back is one JSON document per article. Four days of it, verbatim:
+
+| project | article | granularity | timestamp | access | agent | views |
+|:---|:---|:---|:---|:---|:---|---:|
+| en.wikipedia | Kamala_Harris | daily | 2024072000 | all-access | user | 91,314 |
+| en.wikipedia | Kamala_Harris | daily | 2024072100 | all-access | user | 1,501,857 |
+| en.wikipedia | Kamala_Harris | daily | 2024072200 | all-access | user | 2,532,334 |
+| *…* | | | | | | |
+
+And here is the same stretch after the build:
+
+```{r clean-media}
+```
+
+Eight fields became three, and the three that survived are the only three that vary. `project`, `granularity`, `access` and `agent` are identical on every one of the `r cnt(nrow(w))` rows in the file. **They are the request echoed back**, not measurements. Carrying them would have quadrupled the file to record four facts already written into the request.
+
+**`timestamp` is the interesting one.** `"2024072000"` is a date with an hour welded to the end of it, and the hour is always `00`, because daily data has no hour. It is ten characters of text where eight would do, and it is text: read it as a number and you get two billion and something. Turning it into a real date is the single genuine parsing step in this chapter.
+
+### Three decisions
+
+**Bots were excluded at the source, and cannot be added back.** The `user` segment is why the July spike below is people rather than crawlers. It also means this file cannot say how much automated traffic there was, or whether it moved differently — a question the raw counters could answer and this file never will.
+
+**An article is not its title, and the API only knows titles.** Where an article was renamed during 2024, both titles were requested and the daily counts summed. This is the one operation performed on the raw numbers, it applies to exactly one of the twelve articles, and the section after next is entirely about why.
+
+**The population is a list somebody wrote.** `article` takes `r length(unique(w$article))` values, and there is no sense in which they are a sample of anything. An article nobody thought to request produced no rows, casts no spike, and is indistinguishable in this file from an article nobody read.
+
+## Every article, every day
+
+```{r scope}
+```
+
+`r cnt(nrow(w))` rows, and a complete grid would have `r cnt(length(unique(w$article)) * length(unique(w$date)))` — **the file is complete, with no zero days in it.** It was neither of those things until the titles were fixed. The hole and the zeroes are the same fact: both belonged to one article that was being asked for under a name it did not yet have.
+
+Thirteen titles for twelve articles is the whole of that repair, and the next section is the evidence for it.
+
+Figure 1 is the entire file: every article, every day, one cell each.
+
+```{r hgrid-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r hgrid-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The whole file, one cell per article-day.** Twelve articles down, `r length(unique(w$date))` days across, shaded by how many people read each article on each day. Rows differ in level by orders of magnitude, which is why every later figure in this chapter measures an article against its own baseline rather than against the others. The Vance row is the one to look at twice: dark from mid-July, and pale but never empty before it.
+
+## The day the article got a new name
+
+The Wikimedia API reports pageviews **by title**. That sounds like a detail about a URL and it is a claim about identity: two titles are two series, and the API will not tell you that they were ever the same page.
+
+English Wikipedia's article on JD Vance was called *`r gsub("_", " ", TI_OLD)`* until editors moved it to *`r gsub("_", " ", TI_NEW)`*. The traffic crosses from the old title to the new one on `r format(MOVE, "%e %B %Y")`, which is `r as.integer(MOVE - NAMED)` days after he was named to the ticket. The rename was itself a consequence of the attention. Ask the API for the title the article has today and you get, for every day before that, only the people who arrived through the leftover redirect. That is a real number and it is not readership. It is what produced the `r cnt(VOLD)`-readers-a-day median this chapter used to print.
+
+```{r fig-move-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+```{r fig-move-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. One article, two titles.** Daily pageviews under each title, on a log scale because for most of the year the two series are two to three orders of magnitude apart. They cross exactly once, on `r format(MOVE, "%e %B")`, and after that they swap roles completely. Neither line is a plausible readership series for a national political figure on its own; their sum is.
+
+This is why the counts are summed rather than spliced at the move. A splice would need a cut-point, and it would throw away the redirect traffic on either side of it. The sum needs no decision and loses nothing. At any moment one title is the article and the other is a redirect to it, and a redirect hit is a real person arriving at the page.
+
+After the move the old title keeps `r pc(VRESID, 1)`% of the article's daily traffic. That is the residual: what is left over. Those are people following old links. They are real readers, and a splice would throw them away.
+
+**The general lesson is not about Wikipedia.** Any identifier that can be reassigned will do this: a district renumbered between censuses, a committee that changes its FEC name, a county that merges. The record keeps reporting the identifier and stops reporting the thing. The check that caught this one is now crude on purpose. It fails if any article's busiest month is more than a thousand times its quietest. That is not a news cycle, it is a rename.
+
+## One series, start to finish
+
+```{r election-article}
+```
+
+A typical day sent about `r cnt(med(elec))` people to the article about the election. The peak sent `r cnt(pk(elec))` — **`r pc(pk(elec)/med(elec), 0)` times the median.**
+
+That ratio is the single most important fact about the media environment here, and it is visible before a single event has been named.
+
+Figure 3 lays the same series out as a calendar: each square is one day of 2024, weeks running left to right, darker where more people were reading.
+
+```{r cal-prep, include=FALSE}
+```
+
+```{r cal-static, eval=!knitr::is_html_output(), fig.height=1.7}
+```
+
+```{r cal-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. A year of interest in the presidential election itself, day by day.** One square per day of 2024, shaded by readers of the election article. The median day drew `r cnt(med(elec))`; the darkest, `r pkd(elec)`, drew `r cnt(pk(elec))`, or `r pc(pk(elec)/med(elec), 0)` times as many. Most of the year is indistinguishable from the rest of the year.
+
+## Attention does not accumulate
+
+If attention built up gradually over a campaign, a year's views would be spread across a year's days. They are not.
+
+```{r concentration}
+```
+
+**Half of everything ever read about Kamala Harris in 2024 arrived in `r conc("Kamala_Harris")[3]` days.** For Donald Trump it took `r conc("Donald_Trump")[3]`.
+
+That contrast is not a measure of importance. Trump was continuously famous throughout 2024; Harris became the nominee overnight in July. **Concentration is measuring novelty**, which is an idea worth fixing in place now, because most of what follows turns on it.
+
+Notice also that the *topics* behave differently from the *people*. It took `r conc("Opinion_poll")[3]` days for the polling article to reach half its annual traffic, against `r conc("Kamala_Harris")[3]` for Harris. People spike; concepts trickle.
+
+Figure 4 stacks all twelve series, so that the thickness of the whole ribbon is the day's total attention and each band is one article's share of it.
+
+```{r stream-prep, include=FALSE}
+```
+
+```{r stream-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r stream-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Twelve articles, stacked, across 2024.** The height of the ribbon on any day is the total attention across all twelve; the height of each band is that article's share of it. Almost the entire year sits at the baseline, and almost all of the area under the curve arrives in a handful of vertical episodes.
+
+## The day the race changed
+
+```{r july}
+```
+
+Biden withdrew on 21 July. **Harris went from `r cnt(von("Kamala_Harris", "2024-07-20"))` readers on the 20th to `r cnt(von("Kamala_Harris", "2024-07-22"))` on the 22nd** — `r pc(pk("Kamala_Harris") / med("Kamala_Harris"), 0)` times her baseline for the year.
+
+Millions of people went to find out who she was, in a country where she had been Vice President for three and a half years. **That is the shape of the whole dataset**: a flat line, an event, a vertical wall.
+
+```{r lines-static, eval=!knitr::is_html_output(), fig.height=5}
+```
+
+```{r lines-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. The twelve series drawn as lines, on a scale that can hold all of them.** Each line is one article's daily readership across 2024. The vertical walls are the events; the flat stretches between them are the rest of the year, during which a presidential campaign was continuously under way.
+
+## From nobody to nominee in a day
+
+The running mates are the clearest case in the file, because before their selection very few people were looking for them. The baseline below is each article's median day **before it was named to a ticket**, not its median day across the year. A running mate's own median for the year is half made of the attention the announcement created, and dividing by it understates the jump.
+
+```{r vps}
+```
+
+A sitting United States senator ran at `r cnt(base_before("JD_Vance"))` readers a day and a sitting governor at `r cnt(base_before("Tim_Walz"))`. Against the scale of a national campaign those are very small numbers, and that is the finding: **national political figures command little attention until somebody elevates them.** The apparatus that makes a person famous is not slow accumulation. It is a single announcement — `r cnt(VPEAK)` people in one day, a figure this file does not reach again.
+
+Figure 6 puts every spike in the file on one pair of axes. Each dot is a day on which an article drew at least twice its own median, placed by how many times its median it reached.
+
+```{r spike-prep, include=FALSE}
+```
+
+```{r spike-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r spike-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 6. Every spike in the file, measured against each article's own baseline.** One dot per article-day on which readership reached at least twice that article's median, positioned by date and by the multiple of the median it reached. Measuring each series against itself is what lets an article read by twenty people a day and an article read by a million appear on the same axes.
+
+## A false claim moves attention exactly like a true one
+
+On 10 September 2024, during the presidential debate, a false claim was aired that Haitian immigrants in Springfield, Ohio were eating their neighbors' pets. Local officials investigated and found it baseless.
+
+**The claim was false. The attention was not.**
+
+```{r springfield}
+```
+
+A small Ohio city drew `r med("Springfield,_Ohio")` readers on a normal day and **`r cnt(pk("Springfield,_Ohio"))` on `r pkd("Springfield,_Ohio")`** — `r pc(pk("Springfield,_Ohio")/med("Springfield,_Ohio"), 0)` times its baseline. The effect spilled over: `r nice("Haitian_Americans")` ran at `r med("Haitian_Americans")` views on a median day and peaked at `r cnt(pk("Haitian_Americans"))` on `r pkd("Haitian_Americans")`.
+
+**But read the table one row higher than you expected to.** On 9 September, the day *before* the debate, the article had already drawn `r cnt(von("Springfield,_Ohio", "2024-09-09"))` readers, `r pc(von("Springfield,_Ohio","2024-09-09")/med("Springfield,_Ohio"), 0)` times its median. The debate did not start this. It was already moving online, and the debate put it in front of a mass audience.
+
+Figure 7 follows the claim through the file.
+
+```{r spring-prep, include=FALSE}
+```
+
+```{r spring-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r spring-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 7. Springfield, Ohio and its neighbors in the file, around 10 September 2024.** Daily readership of the articles the claim implicated, through the week of the debate. Springfield drew `r med("Springfield,_Ohio")` readers on a median day of 2024 and `r cnt(pk("Springfield,_Ohio"))` on `r pkd("Springfield,_Ohio")`. The rise begins before the debate does.
+
+This is agenda-setting caught in the act. Nothing told these readers what to think about Springfield. **It told them that Springfield was a thing to think about at all — and a false statement did that at least as efficiently as a true one would have.**
+
+## The largest day in the file
+
+> **Before you read the next table, write a ranking down.** Four people stood on
+> the two national tickets in 2024: Kamala Harris, Donald Trump, JD Vance, Tim
+> Walz. Put all four in order by the largest number of readers any of them drew
+> on a single day of that year — not by total attention across the year, not by
+> how the election turned out, just by each person's one biggest day.
+> **Who is first, and who is fourth?** Commit to the whole order of four before
+> you look.
+
+```{r peaks}
+```
+
+**The two running mates are first and second, and the two presidential nominees are third and fourth.** JD Vance's `r cnt(pk("JD_Vance"))` on `r pkd("JD_Vance")` and Tim Walz's `r cnt(pk("Tim_Walz"))` on `r pkd("Tim_Walz")` are both larger than Trump's election-day peak of `r cnt(pk("Donald_Trump"))` and Harris's `r cnt(pk("Kamala_Harris"))`.
+
+One of those tickets lost. Both running mates outdrew both nominees.
+
+Hardly anyone writes that ranking down. Most readers lead with Trump and finish with a running mate, because the order they have in mind is really an order of fame, or of how the election came out. This table is neither. It ranks the four by how many strangers, on one day, needed to find out who they were — and being already known is precisely what keeps a number here low.
+
+Figure 8 ranks the four of them against each other on every day of the year, with rank 1 going to whoever drew the most readers that day.
+
+```{r bump-prep, include=FALSE}
+```
+
+```{r bump-static, eval=!knitr::is_html_output(), fig.height=3.8}
+```
+
+```{r bump-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 8. Who the country was reading about, day by day.** The four people on the two national tickets, ranked against one another on a seven-day trailing mean of daily readership; rank 1 is whoever drew the most readers. Both running mates appear from nowhere and cross both principals within days of being chosen.
+
+And it is not a one-day artifact. Count the days each of the two principals led the other.
+
+```{r lead}
+```
+
+**From 21 July, Harris drew more readers than Trump on `r lead["from 21 July", "Harris"]` days out of `r sum(lead["from 21 July", ])`.** Her ticket lost the election.
+
+**If attention converted into votes, these two tables would be a forecast. They are not one.** They are a record of what surprised people, and a country looking something up is a country that does not already know. Concentration measures novelty: Walz's `r pc(pk("Tim_Walz")/med("Tim_Walz"), 0)`-fold peak is not evidence that anybody liked him, it is evidence that on `r pkd("Tim_Walz")` almost nobody knew who he was.
+
+## What a year of pageviews will support
+
+Public attention to politics is event-driven and extraordinarily concentrated. Half of a year's attention to Harris arrived in `r conc("Kamala_Harris")[3]` days. The election article's peak was `r pc(pk(elec)/med(elec), 0)` times its median day. And two men who would shortly be on national tickets were drawing a few thousand readers a day until the moment they were chosen, then several million within twenty-four hours.
+
+Sharper: a false claim produced a `r pc(pk("Springfield,_Ohio")/med("Springfield,_Ohio"), 0)`-fold surge in attention to a small Ohio city, which is direct evidence that agenda-setting does not require accuracy.
+
+What pageviews do not measure is exposure. Far more people saw a headline about Springfield than went and looked it up, and this file counts only the fraction curious enough to act. Nor do they measure belief: someone who looked up Springfield may have been checking whether the claim was true, appalled by it, or looking for driving directions, and the number cannot tell them apart. Nothing here records what anyone thought before or afterwards.
+
+And they do not measure support. That is the whole point of the ranking above, and the reason this file is worth reading carefully: **its most striking numbers point away from the conclusion a careless reader would draw from them.**
+
+## Whether a digital trace measures anything
+
+**Whether digital traces measure anything politically meaningful is genuinely disputed.** The optimistic case is that they are cheap, continuous, and free of the reporting biases that afflict surveys. The skeptical case is that they measure a self-selected sliver of behavior with no established link to opinion. A decade of claims to predict elections from social data has mostly not survived being tested on cases it was not built from.
+
+**McCombs and Shaw (1972)** established the framework. They compared the issues undecided voters in Chapel Hill named as important against the issues local and national media had covered, and found a near-perfect match. From that they proposed that media influence what the public considers important, rather than what it concludes. Springfield is that mechanism observed directly rather than inferred from a survey.
+
+**Yasseri and Bright (2016)** did the most careful work on this exact data source, and their result is a warning. They modeled Wikipedia pageviews against results in the 2009 and 2014 European Parliament elections. They found that **Wikipedia offers little insight into absolute vote outcomes**, but does carry useful information about *changes*: in turnout, and in a party's vote share against last time. Their explanation is that voters are cognitive misers who look things up only when they are considering changing their vote.
+
+That theory predicts the ranking above exactly. Attention should track *who is newly under consideration*, not who is preferred, which is why the candidate nobody had heard of drew the largest single day in the file.
+
+**Mellon (2014)** reached a compatible conclusion for search data. Google Trends tracks how much attention an issue is getting reasonably well for some issues and badly for others. These series should be treated as measures of attention rather than of opinion. The general lesson across both: **digital traces measure attention well and preference badly**, and the temptation to slide from one to the other is where this literature has gone wrong.
+
+**The strongest objection to everything above** is that a pageview is a peculiar, self-selected act. English Wikipedia readers are not a sample of anything, and the set of people who look things up online has changed steadily over the period these series cover. There is no way to weight this file to a population, because there is no population it is a sample of. Nothing here corrects for that, and nothing can.
+
+## What the pageviews can testify to
+
+The strengths of this evidence are specific. It is behavioral rather than self-reported, so there is no recall and no social desirability. It is consistently defined and consistently measured over years. Its resolution is daily, which is fine enough to attribute a spike to a particular event on a particular afternoon. It is published under CC0, so the file can travel with this chapter. And the events used to check the spikes were compiled independently of the pageviews, which makes them a yardstick rather than a restatement.
+
+The weaknesses are equally specific. This is **English Wikipedia only**, so a large share of global interest in an American election is simply absent. There are **no demographics whatever**: no age, no location, no party. So no breakdown by group is possible at all.
+
+A pageview is one act by one unknown person with no intent attached to it. Bots are filtered but not eliminated: the `user` filter excludes *known* automated traffic and nothing more. There are twelve articles here, chosen in advance by somebody who already knew what 2024 contained, so anything off that list is invisible. And the events file is deliberately incomplete, which is what makes an unexplained spike a finding rather than an error, but also means that "no event" never means "no event happened."
+
+Four questions stay open. Whether any of this affected a vote is unknown, and unknowable from this file. Separating attention from persuasion is the central difficulty of media-effects research, and has been for eighty years. What made Springfield move on 9 September, before the debate, is not identified by anything here.
+
+Whether attention has any value to a campaign at all is undecided. The ranking shows it does not turn straightforwardly into votes, which is not the same as showing it is worthless. Name recognition may well matter in ways this file cannot measure. And whether the concentration is new would need a far longer file than one year.
+
+What can be said is this. A country's political attention in 2024 was almost entirely absent, and then, on a few dozen days, overwhelming. It went where it was directed rather than where it was warranted. And the largest single day of it in this file belonged to a man most of the country had never heard of, on the day it heard of him.
+
+## Sources
+
+**Data**
+
+- Wikimedia Foundation Pageviews API, daily counts for English Wikipedia,
+  1 January to 31 December 2024, `user` agent filter (human traffic).
+  <https://wikimedia.org/api/rest_v1/#/Pageviews%20data>. Published under CC0.
+  Requested by title, one request per title; where an article was renamed during
+  the year, every title it held was requested and the daily counts summed.
+- `wiki_titles_2024.csv` — the un-summed daily counts for the one
+  article that has two titles, kept so that the sum can be checked rather than
+  taken on trust.
+- `campaign_events_2024.csv` — `r nrow(ev)` dated events compiled by hand
+  from the public record, kept deliberately separate from the pageview file.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`campaign_events_2024.csv`](data/derived/campaign_events_2024.csv), [`wiki_attention_2024.csv`](data/derived/wiki_attention_2024.csv), [`wiki_titles_2024.csv`](data/derived/wiki_titles_2024.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `wiki_attention_2024.csv` has daily views per article. Join `campaign_events_2024.csv` and look at the days around each event. How long does attention last after something happens?
+- `wiki_titles_2024.csv` records the same article under different titles on different dates. Find where a name changes. What happens to a series that does not account for the rename?
+- Pick two articles and compare their peaks. Does the size of a spike tell you anything about importance, or only about surprise?
+- Attention was never meant to be measured this way. List what a pageview cannot distinguish between, and decide whether the measure survives your list.
+
+**Academic literature**
+
+- McCombs, M. E. and Shaw, D. L. (1972). "The Agenda-Setting Function of Mass
+  Media." *Public Opinion Quarterly* 36(2): 176–187.
+- Mellon, J. (2014). "Internet Search Data and Issue Salience: The Properties of
+  Google Trends as a Measure of Issue Salience." *Journal of Elections, Public
+  Opinion and Parties* 24(1): 45–72.
+- Yasseri, T. and Bright, J. (2016). "Wikipedia traffic data and electoral
+  prediction: towards theoretically informed models." *EPJ Data Science* 5: 22.
+
+
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

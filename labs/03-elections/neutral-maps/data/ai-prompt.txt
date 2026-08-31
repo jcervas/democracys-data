@@ -1,0 +1,63 @@
+I want to rebuild a public dataset from its original source, without
+any starting files. Please do the following and show your work.
+
+THE SOURCE. The ALARM Project's 50-State Redistricting Simulations,
+on the Harvard Dataverse: doi:10.7910/DVN/SLCD3E. For every state
+with more than one congressional district, it holds a table with one
+row per district per redistricting plan. Query the Dataverse API for
+the file list, then download each state's "<STATE>_cd_2020_stats.tab"
+file with ?format=original appended to the access URL, which returns
+the original CSV rather than Dataverse's re-encoded copy. Forty-four
+states qualify; the six single-district states (Alaska, Delaware,
+North Dakota, South Dakota, Vermont, Wyoming) are not in the file at
+all, because a state with one district has nothing to simulate.
+
+Each file is 7 to 18 MB, so do not commit the raw downloads -- pull
+them into a temporary folder, compute what you need, and keep only
+the small summary tables.
+
+The `draw` column tells you which plan each row belongs to:
+"cd_2020" is the map the state actually enacted after the 2020
+census; the 5,000 draws numbered 1 through 5000 are computer-drawn
+plans, built to the same population-equality, contiguity, and
+compactness rules, with no information about party or race.
+
+WHAT TO BUILD.
+1. COMPETITIVENESS. For each state and each of four thresholds
+   (2.5, 5, 7.5, 10 percentage points), count the districts within
+   that many points of a 50-50 two-party vote share (columns ndv and
+   nrv) in the enacted plan, and average the same count across the
+   5,000 neutral plans.
+2. BLACK REPRESENTATION UNDER A MAXIMIZED GERRYMANDER. Restricted to
+   the 20 states Republicans controlled after the 2020 census (TX,
+   FL, GA, NC, SC, TN, AL, MS, LA, AR, MO, KS, OK, IA, NE, IN, OH,
+   KY, WV, UT). A district is "Black-plurality" if Black voting-age
+   population is the largest of all eight reported VAP columns
+   (vap_white, vap_black, vap_hisp, vap_aian, vap_asian, vap_nhpi,
+   vap_other, vap_two) -- not merely larger than white VAP alone.
+   For each state, report the enacted count, the mean across the
+   5,000 neutral plans, and -- among whichever plans are tied for
+   that state's highest Republican-seat count -- the fewest
+   Black-plurality districts found among them.
+
+A note on staleness: the enacted ("cd_2020") plan in this dataset
+predates two court-ordered maps that added a second Black-opportunity
+district for the 2024 election onward, in Alabama (Allen v. Milligan,
+2023) and Louisiana (Robinson v. Ardoin, 2024 -- the same map
+Louisiana v. Callais later ruled on in 2026). If you want the current
+picture rather than the file's own snapshot, add one seat to each of
+those two states' enacted counts by hand, and say that you did.
+
+CHECK YOUR WORK. The copy this book used was fetched in August 2026.
+If your rebuild matches it, across the 44 states (429 districts) you
+should find:
+- 79 districts competitive within 5 points in the enacted maps,
+  against a mean of 108.8 across the neutral plans
+- Texas: 2 competitive districts enacted, 8.7 expected under neutral
+  maps -- the largest gap of any state
+Restricted to the 20 Republican-controlled states (191 districts),
+with the Alabama/Louisiana correction applied:
+- 14 Black-plurality districts enacted, a mean of 5.3 under neutral
+  maps, and 2 under a maximized gerrymander
+- Georgia is the only one of the 20 that keeps any Black-plurality
+  district under the maximized gerrymander (4 enacted, 2 remaining)

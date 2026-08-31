@@ -1,0 +1,150 @@
+---
+title: "Nobody Started Liking Their Own Side More"
+subtitle: "Forty-six years of feeling thermometers, the half of the gap that moved, and the two numbers that are not temperatures"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("thermometers-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Every two years since 1978, the American National Election Studies has asked people to rate the two parties on a thermometer. A hundred is warm, nought is cold, fifty is neither.
+
+Subtract a partisan's rating of the other party from their rating of their own. That is the standard measure of **affective polarization**: not how far apart the parties are on policy, but how much more warmly people feel toward their own side. That number has more than doubled, from `r p1(F("gap_first"))` degrees in `r F("first_year")` to `r p1(F("gap_last"))` in `r F("last_year")`.
+
+It is a difference, so it has two halves. They did not do the same thing.
+
+## Before you read on
+
+`r mnote("Two numbers again. The interesting one is the first.")`
+
+In `r F("first_year")`, partisans rated their own party `r p1(F("in_first"))` degrees and the other party `r p1(F("out_first"))`.
+
+**By `r F("last_year")`, what had each of those become?** Write down both.
+
+## The file, and the door in front of it
+
+This is the ANES Time Series Cumulative Data File: `r n(FN("src_rows"))` respondents interviewed between `r F("src_first")` and `r F("src_last")`, `r n(1030)` variables, 156 MB.
+
+It is free, and it cannot be downloaded by a script. ANES requires an account and agreement to terms, and hands the file only to a logged-in browser. So this chapter's source arrived the way [`ga-precinct-returns`](../../03-elections/ga-precinct-returns/ga-precinct-returns-brief.html) and the media chapters' did, by a person clicking a button. It is preserved in `raw/` rather than discarded, so nobody has to click it twice.
+
+Set that against the [GSS chapters](../gss-confidence/gss-confidence-brief.html), whose file any script can fetch. Same kind of survey, same kind of question, different answer to "can you have it". The [survey access chapter](../survey-access/survey-access-brief.html) measures those doors directly.
+
+## Two numbers in this column are not temperatures
+
+Before any average, the trap.
+
+The scale everybody describes as nought to a hundred is coded **0 to `r F("top_code")`** in this file. There is no value of 100 anywhere in it: `r F("n_at_100")` respondents in `r n(FN("src_rows"))` were recorded at a hundred degrees, because a hundred is not a code the file uses.
+
+What it does use is `98` for *don't know* and `99` for *not ascertained*. `r n(FN("n_code98"))` and `r n(FN("n_code99"))` entries carry them.
+
+**Nothing about that is hidden, and nothing about it is visible either.** A 98 sits inside the range a reader expects, so it does not look wrong. It looks like somebody who feels very warmly indeed.
+
+Believe them and the country warms by `r p1(F("mean_inflation"))` degrees: the average rating goes from `r p1(F("mean_clean"))` to `r p1(F("mean_naive"))`. Worse than the offset is that the codes are not evenly spread across years, so the error moves the trend rather than shifting it.
+
+Everything below drops them, along with `r F("n_negative")` negative codes.
+
+## The scale is coarser than it looks
+
+The thermometer offers `r F("distinct_used")` positions. People use about four.
+
+```{r heap-table}
+```
+
+`r p1(F("pct_multiple_10"))`% of all `r n(FN("n_ratings"))` ratings are multiples of ten. The 85s are the tell that this is habit rather than measurement: nobody feels 85 degrees about a political party, but it is where the hand goes when the answer is "warm, not the maximum".
+
+A number that fine-grained, used that coarsely, still averages perfectly well. It just does not mean what its precision suggests.
+
+## The two halves
+
+```{r halves-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r halves-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```
+
+*Figure 1. Warmth toward one's own party and toward the other, among partisans including leaners, `r F("first_year")` to `r F("last_year")`. In the browser, the buttons swap between the halves and the gap they produce.*
+
+**The green line does not move.** Partisans rated their own party `r p1(F("in_first"))` degrees in `r F("first_year")` and `r p1(F("in_last"))` in `r F("last_year")`, a change of `r p1(abs(FN("in_move")))` of a degree across forty-six years.
+
+The purple line falls off the table. Warmth toward the other party went from `r p1(F("out_first"))` to `r p1(F("out_last"))`, a drop of `r p1(abs(FN("out_move")))` degrees, and it is now well below the point the scale calls cold.
+
+**`r p1(F("share_from_out"))`% of the movement in the gap is the out-party half.** Nobody started liking their own side more. They stopped being able to stand the other one.
+
+## Where the coldness went
+
+The averages hide how it happened, and it is not everybody sliding down a few degrees.
+
+```{r zero-static, fig.height=2.9}
+```
+
+*Figure 2. The share of partisans rating the other party at absolute zero.*
+
+In `r F("first_year")`, `r p1(F("zero_first"))`% of partisans gave the other party the coldest rating available. In `r F("last_year")` it was `r p1(F("zero_last"))`%.
+
+That is a third of partisans choosing the bottom of the scale. The average fell partly because a large group stopped using the scale at all and went to its floor.
+
+## What this chapter cannot tell you
+
+**A thermometer reading is not a behaviour.** It is a number somebody said to an interviewer. Nothing here shows anyone acting on it, and the literature linking affective polarization to behaviour is contested.
+
+**The parties being rated changed.** "The Republican Party" meant something different in `r F("first_year")` than in `r F("last_year")`, and a respondent rating it coldly may be rating a different object rather than feeling differently about the same one.
+
+**These are cross-sections.** Different people every year. A series can fall because individuals changed or because the population changed underneath it, and this cannot separate those.
+
+**Leaners are counted as partisans**, which is the standard choice and is a choice: see [party identification](../party-id/party-id-brief.html), where it moves a headline number by a factor of five. Pure independents, `r n(FN("n_independents"))` of them, have no own party and are absent from every figure here.
+
+**And a year needs `r F("min_n")` respondents to appear.** That leaves `r F("n_years")` study years between `r F("first_year")` and `r F("last_year")`, so the lines connect points several years apart and the connecting segments are drawn, not measured.
+
+## What it does establish
+
+Affective polarization in the ANES is `r p1(F("gap_last"))` degrees, up from `r p1(F("gap_first"))`, and it peaked at `r p1(F("gap_max"))` in `r F("gap_max_year")`.
+
+**Essentially all of that is one half.** Warmth toward one's own party moved `r p1(abs(FN("in_move")))` of a degree in forty-six years. Warmth toward the other party fell `r p1(abs(FN("out_move")))`, and the share of partisans choosing absolute zero went from `r p1(F("zero_first"))`% to `r p1(F("zero_last"))`%.
+
+The single number that gets reported cannot show any of that, because a difference has no memory of which side moved. This book keeps meeting that shape: the [gender gap](../gender-gap/gender-gap-brief.html) is the same arithmetic on a different question, and it has the same answer.
+
+## Sources
+
+- **American National Election Studies**, Time Series Cumulative Data File
+  1948–2024, CSV distribution `anes_timeseries_cdf_csv_20260205.csv`.
+  `r n(FN("src_rows"))` respondents. Variables `VCF0218` and `VCF0224` are the
+  two party thermometers, `VCF0301` party identification, `VCF0009z` the
+  weight. <https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/>
+- **Not scriptable.** ANES serves the file only to a logged-in account holder.
+  It is preserved in `../anes/data/raw/`, which this chapter reads rather than
+  keeping a second 156 MB copy.
+- **Codebooks** are kept beside the data. The meaning of codes 98 and 99 was
+  read out of them rather than assumed.
+- **Build.** `data/build-data.R` reads five columns, drops the codes that are
+  not temperatures, and writes the three tables this chapter reads. Every
+  number above is computed at the moment this document was rendered.
+
+### Checks
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`out_party_zero.csv`](data/derived/out_party_zero.csv), [`thermometers_by_year.csv`](data/derived/thermometers_by_year.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `thermometers_by_year.csv` keeps `in_party` and `out_party` as separate columns beside the `gap`. Plot all three. Which line moved, and does the usual story about polarisation survive it?
+- `out_party_zero.csv` counts the people who rated the other side at the bottom of the scale. Follow it across the years. Is the gap widening, or is one tail getting heavier?
+- A thermometer runs from cold to warm, but people answer in round numbers. Look at where answers cluster and decide how many distinct values this scale really has.
+- `thermometers_by_year.csv` has `n` for every year. Find the thinnest ones, then decide whether the shape of the trend depends on them.
+
+```{r checks-table}
+```

@@ -1,0 +1,227 @@
+---
+title: "Data Session 2, part 3: Three Front Doors"
+subtitle: "84-355 Democracy's Data | Getting census data out of the Census Bureau"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+Everything here runs as given, **offline**. Nothing in this file needs a key or
+a working connection. Your job is to read what comes out and say what it means.
+
+***
+
+# The question
+
+You have spent this session with census numbers. Where do you actually *get*
+them?
+
+There are three ways in, they return the same population counts, and they are
+not interchangeable. **Which door you use decides what you can do.**
+
+| Door | What it is | Key? |
+|---|---|---|
+| **data.census.gov** | the website: search, click, download | no |
+| **www2.census.gov** | the raw published files, as released | no |
+| **the API** | a URL that returns data | **yes, since 2026** |
+
+The apportionment table you used earlier came through the second door. The
+county file in the race section came through the second door too. Today we look
+at the third one, because it is the only one you can automate — and it is the
+only one that is gated.
+
+# Part 1 — The API is two things, and only one is open
+
+Ask the API *what exists* and it answers immediately, no key:
+
+```
+https://api.census.gov/data/2020/dec/pl/variables.json
+https://api.census.gov/data/2020/dec/pl/geography.json
+```
+
+Ask it for *an actual number* and you get this:
+
+```
+https://api.census.gov/data/2020/dec/pl?get=NAME,P1_001N&for=state:42
+```
+
+> **Missing Key**
+
+Not an error code. Not JSON. **An HTML page** — which means a program asking for
+data without a key does not crash, it silently receives a web page where it
+expected numbers. Hold that thought; it comes back in Part 4.
+
+**The catalogue is public. The data is not.** We cached the two open files so
+this lab runs without a network:
+
+```{r load}
+v <- read.csv("data/api_variables.csv", stringsAsFactors = FALSE)
+g <- read.csv("data/api_geography.csv", stringsAsFactors = FALSE)
+
+c(variables = nrow(v), geography_levels = nrow(g))
+```
+
+# Part 2 — What the 2020 census actually released
+
+**338 variables.** Not 338 questions — the 2020 census asked about ten. These
+are 338 *published cross-tabulations* of the answers.
+
+```{r concepts}
+sort(table(v$concept), decreasing = TRUE)[1:6]
+```
+
+Look at the top two: the same table, run twice, once for everyone and once for
+**the population 18 years and over**. That is not curiosity. **The Voting Rights
+Act is about voters**, so every racial cross-tabulation is published a second
+time restricted to adults. Seventy-three variables exist because of a statute.
+
+```{r race-vars}
+p1 <- v[grepl("^P1_00", v$variable), c("variable", "label")]
+p1$label <- gsub("!!", " > ", p1$label)
+head(p1, 8)
+```
+
+The `!!` are nesting. `P1_003N` is *Total > Population of one race > White
+alone* — the count you would casually call "the white population," and it is
+three levels down inside a hierarchy, and it excludes anyone who ticked two
+boxes.
+
+# Part 3 — How small it goes
+
+```{r geo}
+nrow(g)
+g$name[1:14]
+```
+
+**Ninety-six geography levels**, and `block` is one of them. A census block is
+often a single city block; many contain nobody at all.
+
+This is the whole reason the API matters. The website will hand you states and
+counties comfortably. It will not hand you **eight million blocks** — but a
+program can ask for them one state at a time, which is exactly what the
+redistricting file in Session 14 is built from.
+
+```{r geo-tail}
+g$name[grepl("legislative|congress|school", g$name)]
+```
+
+Every one of these is a *political* geography — the Census Bureau publishes
+population inside district lines that the census itself was used to draw. That
+circularity is not a mistake; it is the machinery Session 14 takes apart.
+
+# Part 4 — Reading a URL
+
+```
+https://api.census.gov/data/2020/dec/pl?get=NAME,P1_001N&for=state:42
+└──────── host ────────┘└─ dataset ─┘ └── what ──┘ └── where ──┘
+```
+
+- `2020/dec/pl` — the 2020 **dec**ennial census, **P**ublic **L**aw 94-171 file
+- `get=NAME,P1_001N` — the name of the place, and total population
+- `for=state:42` — for state FIPS 42, which is Pennsylvania
+
+Change `for=state:42` to `for=county:*&in=state:42` and you get all 67
+Pennsylvania counties. That is the whole idea: **the URL is the query.**
+
+```{r urls}
+build <- function(vars, where) sprintf(
+  "https://api.census.gov/data/2020/dec/pl?get=NAME,%s&for=%s", vars, where)
+
+cat(build("P1_001N", "state:42"), "\n")
+cat(build("P1_001N", "county:*&in=state:42"), "\n")
+cat(build("P1_003N,P1_004N", "tract:*&in=state:42+county:003"), "\n")
+```
+
+**And every one of those, run today without a key, returns a web page saying
+"Missing Key."** Not an error your code would notice.
+
+**This is the practical lesson of the session.** A gate that returns HTML
+instead of failing loudly is worse than a gate that returns an error, because
+the failure only shows up later as an inexplicable number — or as no number at
+all, in a script nobody re-reads.
+
+# Part 5 — Getting a key, if you want one
+
+Free, instant, and **entirely optional for this course**.
+
+1. Go to <https://api.census.gov/data/key_signup.html>
+2. Give an email and an organisation ("Carnegie Mellon University")
+3. The key arrives by email — a long hexadecimal string
+
+Then append `&key=YOUR_KEY_HERE` to any of the URLs above.
+
+> **A key is a password.** It identifies you. Do not put one in a file you share,
+> a public repository, or a handout. This is not hypothetical: a live key sat in
+> a handout for this course's F25 section for a year.
+
+**Nothing in this course requires one.** Every lab ships its data. The key is
+for what you do afterwards.
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Find the adult version.** Every race table has a twin restricted to
+18-and-over. Find the concept, count its variables, and work out which `P` table
+number it uses (`grepl` on `v$concept`). Why does that twin exist, and what
+would you be unable to do without it?
+
+**Option B — Build a query.** Use `build()` to write the URL that would return
+the Hispanic population of every county in Georgia. You will need to search
+`v$label` for the right variable. You cannot run it without a key — say what you
+expect it would return, and how many rows.
+
+**Option C — The smallest unit.** How many of the 96 geography levels are
+*smaller* than a county? What does the existence of that many levels tell you
+about who the Census Bureau's users actually are?
+
+**Option D — Your own question.** 338 variables, 96 geographies, one cached
+catalogue.
+
+# What this cannot tell you
+
+- **We never ran a live query.** Everything here is the catalogue plus a URL
+  grammar. If the API changes its rules again — it just did — this lab describes
+  a system that no longer behaves that way.
+- **338 variables is one file.** The decennial PL file is the smallest thing the
+  Bureau publishes. The ACS has tens of thousands of variables, which is the
+  subject of the next session.
+- **The API returns what was published**, and publication involves decisions —
+  suppression, rounding, and since 2020 the deliberate noise of differential
+  privacy. The number in the JSON is not the number the enumerator wrote down.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- 73 of the 338 variables exist because a law needs them. What does that say
+  about where data comes from?
+- A missing key returns a *web page*, not an error. What breaks, and when would
+  anyone find out?
+- The Bureau publishes population inside congressional districts, which were
+  drawn using that population. Is that circular, and does it matter?
+
+***
+
+### Where the data came from
+
+`api_variables_2020pl.json` and `api_geography_2020pl.json` were fetched from
+the Census API's open metadata endpoints in August 2026 and are committed here
+unmodified. `build-api-data.R` converts them to the two CSVs this lab reads,
+using base R only.
+
+**The data endpoints were not used**, because they now require a key. The
+population figures elsewhere in this session came from the published PL 94-171
+files at `www2.census.gov`, which need no key and no account.

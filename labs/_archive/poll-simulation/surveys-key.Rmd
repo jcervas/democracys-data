@@ -1,0 +1,272 @@
+---
+title: "Data Session 9 Key, part 1: A Poll That Is Precise and Wrong"
+subtitle: "84-355 Democracy's Data | Session 9 — Polls, models, and markets | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+set.seed(2026)
+truth <- 0.4925; N <- 1000000
+population <- c(rep("Harris", round(N * truth)), rep("Trump", N - round(N * truth)))
+
+# This lab is a simulation, so the "verified output" below is the output of THIS
+# seeded run. Every figure in the prose and in the two tables is read back out
+# of the objects the chunks build, so a change of seed, sample size or chunk
+# order can never leave a typed number behind. The accumulators the chunks fill
+# consume no random numbers, so the printed output is exactly what it was.
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+sg <- function(x, k = 2) sprintf(paste0("%+.", k, "f"), x)
+MOE <- function(n) 1.96 * sqrt(0.25 / n) * 100
+```
+
+All Part 9 code is given to students. Grade the interpretation.
+
+Every number below was run. **Note that this lab is stochastic** — the student
+copy sets `set.seed(2026)`, so their numbers will match each other, but if a
+student re-runs a chunk interactively they will get slightly different values.
+That is not an error, and it is worth saying so in class before somebody panics.
+
+***
+
+# The lab in one sentence
+
+A margin of error describes sampling and nothing else — so a poll can be made
+arbitrarily precise and remain arbitrarily wrong, which is the actual condition
+of American polling and the argument of the Bailey reading.
+
+***
+
+# The demonstration
+
+```{r headline}
+answers <- ifelse(population == "Harris", 1.20, 1.00)
+hl <- data.frame()
+for (k in c(1000, 10000, 100000)) {
+  s <- sample(population, k, prob = answers, replace = TRUE)
+  est <- 100 * mean(s == "Harris"); m <- 1.96 * sqrt(0.25/k) * 100
+  hl <- rbind(hl, data.frame(n = k, est = est, moe = m,
+                             err = est - 100*truth,
+                             mult = abs(est - 100*truth) / m))
+  cat(sprintf("n = %6d  estimate %.2f  reports +/-%.2f  wrong by %+.2f  (%.0fx its own MoE)\n",
+              k, est, m, est - 100*truth, abs(est - 100*truth)/m))
+}
+```
+
+At n = `r format(hl$n[3], big.mark = ",")` the poll reports
+**±`r pc(hl$moe[3], 2)`** and misses by **`r pc(hl$err[3], 2)` points** —
+roughly **`r pc(hl$mult[3], 0)` times** its stated precision. The asymptotic
+value is
+**`r pc(round(100 * (truth * 1.20) / (truth * 1.20 + (1 - truth)), 2))`%**, not
+`r pc(100 * truth, 2)`: it converges on the wrong answer.
+
+```{r asymptote}
+round(100 * (truth * 1.20) / (truth * 1.20 + (1 - truth)), 2)
+```
+
+**This is the whole lab.** If a student leaves with one sentence, it should be
+that more data fixes variance and does nothing to bias.
+
+***
+
+# Option A — How big does the bias have to be?
+
+## Verified output
+
+```{r a}
+bA <- data.frame()
+for (g in c(0.05, 0.10, 0.20, 0.40)) {
+  a <- ifelse(population == "Harris", 1 + g, 1)
+  e <- replicate(300, 100*mean(sample(population, 1000, prob = a, replace = TRUE) == "Harris"))
+  asym <- 100 * (truth*(1+g)) / (truth*(1+g) + (1-truth))
+  bA <- rbind(bA, data.frame(gap = 100*g, bias = mean(e) - 100*truth,
+                             asym = asym - 100*truth))
+  cat(sprintf("  gap %2.0f%%: bias %+.2f  (asymptotic %+.2f)\n",
+              100*g, mean(e) - 100*truth, asym - 100*truth))
+}
+```
+
+| response gap | bias | vs. the real `r pc(100 * (1 - 2 * truth))`-pt margin |
+|---|---|---|
+| `r bA$gap[1]`% | **`r sg(bA$bias[1])`** | comparable to the entire margin |
+| `r bA$gap[2]`% | `r sg(bA$bias[2])` | larger than the margin |
+| `r bA$gap[3]`% | `r sg(bA$bias[3])` | three times the margin |
+| `r bA$gap[4]`% | `r sg(bA$bias[4])` | absurd, and invisible in the MoE |
+
+## What a good answer says
+
+**3/4:** Reports that even a `r bA$gap[1]`% gap produces about a point of bias,
+and notices that the advertised ±`r pc(MOE(1000), 1)` never changes.
+
+**4/4:** Puts it against the real election.
+**2024 was decided by `r pc(100 * (1 - 2 * truth))` points.** A
+5% difference in willingness to answer the phone — which no pollster could
+detect and which sounds like nothing — is of the same order as the entire result.
+So the honest reading of a poll showing a `r pc(100 * (1 - 2 * truth))`-point
+race is not "candidate A is
+narrowly ahead" but "this instrument cannot resolve this question."
+
+**4/4, best:** notices that the bias is roughly **linear in the gap** while the
+margin of error is **not affected at all**, so the two quantities are not
+commensurable and reporting only one of them is a choice. Asks what a poll would
+have to publish for a reader to judge it — and lands on something like "our
+assumed response model," which nobody publishes.
+
+**Common stumble:** treating the `r bA$gap[1]`% row as reassuring because
+`r pc(bA$bias[1], 2)` < `r pc(MOE(1000), 1)`. The comparison that matters is
+`r pc(bA$bias[1], 2)` against the *margin of the election*
+(`r pc(100 * (1 - 2 * truth))` points), not against the MoE.
+
+***
+
+# Option B — Does averaging help?
+
+## Verified output
+
+```{r b}
+a <- ifelse(population == "Harris", 1.20, 1)
+avg <- data.frame()
+for (np in c(5, 20, 200)) {
+  h <- replicate(np, 100*mean(sample(population, 1000) == "Harris"))
+  s <- replicate(np, 100*mean(sample(population, 1000, prob = a, replace = TRUE) == "Harris"))
+  avg <- rbind(avg, data.frame(np = np, honest = mean(h), skewed = mean(s)))
+  cat(sprintf("  %3d polls: honest avg %.2f | skewed avg %.2f\n", np, mean(h), mean(s)))
+}
+```
+
+Averaging honest polls converges on **`r pc(avg$honest[3], 2)`** — the truth is
+`r pc(100 * truth, 2)`. Averaging skewed polls sits at
+**`r pc(min(avg$skewed), 2)`–`r pc(max(avg$skewed), 2)`** and stays there however
+many you add.
+
+## What a good answer says
+
+**3/4:** Reports both averages and states that averaging fixes noise but not
+bias.
+
+**4/4:** Answers the aggregator question properly. A polling average's tight
+interval measures **the agreement among pollsters**, not the distance from the
+truth. Those are the same thing only if the polls' errors are independent — and
+they are not, because every pollster is drawing from the same shrinking pool of
+people who answer surveys and correcting with broadly similar methods. Agreement
+is evidence of shared method, not of accuracy.
+
+**4/4, best:** notices this predicts a specific failure mode — that when polls
+miss they should all miss *the same way at once*, which is exactly the observed
+pattern in 2016 and 2020, and why state-level errors are correlated rather than
+cancelling.
+
+***
+
+# Option C — Weighting on the wrong thing
+
+## Verified output
+
+```{r c}
+N2 <- 200000
+harris <- rbinom(N2, 1, truth)
+trust  <- rbinom(N2, 1, ifelse(harris == 1, 0.75, 0.45))
+tv <- 100 * mean(harris)
+wt <- data.frame()
+for (st in c(0.1, 0.35, 0.8)) {
+  resp <- ifelse(trust == 1, 1, st)
+  j <- sample(N2, 5000, prob = resp, replace = TRUE)
+  ss <- data.frame(h = harris[j], t = trust[j]); tgt <- mean(trust)
+  w <- ifelse(ss$t == 1, tgt/mean(ss$t), (1-tgt)/(1-mean(ss$t)))
+  wt <- rbind(wt, data.frame(st = st, raw = 100*mean(ss$h) - tv,
+                             wtd = 100*weighted.mean(ss$h, w) - tv))
+  cat(sprintf("  strength %.2f: raw %+.2f error | weighted %+.2f error\n",
+              st, 100*mean(ss$h) - tv, 100*weighted.mean(ss$h, w) - tv))
+}
+```
+
+| non-response strength | raw error | after weighting |
+|---|---|---|
+| `r pc(wt$st[1], 2)` (severe) | **`r sg(wt$raw[1])`** | `r sg(wt$wtd[1])` |
+| `r pc(wt$st[2], 2)` | `r sg(wt$raw[2])` | `r sg(wt$wtd[2])` |
+| `r pc(wt$st[3], 2)` (mild) | `r sg(wt$raw[3])` | `r sg(wt$wtd[3])` |
+
+## What a good answer says
+
+**3/4:** Reports that weighting rescues the estimate at every strength — every
+row lands within `r pc(max(abs(wt$wtd)))` of the truth — and that the raw error
+grows as non-response worsens.
+
+**4/4:** States the condition plainly — **weighting works because we can see
+`trust`**. The variable is in the dataset. If the thing driving non-response were
+something the pollster does not measure, the correction is unavailable and the
+raw error stands. Weighting is not a general remedy for non-response; it is a
+remedy for *known* non-response.
+
+**4/4, best:** connects to the industry's actual history. After 2016 pollsters
+discovered they had not been weighting by education and added it. In 2020 they
+missed again, in the same direction, because the next unmeasured variable was
+already waiting. The problem is not that pollsters are careless; it is that the
+variable you have not thought of is invisible by construction.
+
+**Watch for:** students concluding "so weighting is useless." It took
+`r sg(wt$raw[1])` to `r sg(wt$wtd[1])`. The point is narrower and more
+interesting than that.
+
+***
+
+# Option D — Their own question
+
+The best version is the trick question in the prompt: how large would a poll have
+to be for its margin of error to fall below the bias? At a `r bA$gap[3]`% gap the
+bias is `r pc(bA$bias[3], 2)` points, and MoE drops below that at roughly
+n = `r ceiling((98 / bA$bias[3])^2)` — so **the answer is "almost immediately,
+and it does not help."** Any poll worth running is already in the regime where
+bias dominates.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code, and this one is stochastic — do not
+  penalise numbers that differ from the key in the second decimal.
+- **The move that earns a 4** is comparing bias to the *election margin* rather
+  than to the margin of error. Students who stay inside the MoE frame have
+  reproduced the error the lab is about.
+- **Reward caution about Tuesday.** A student who says "I no longer know what to
+  make of the polls I am reading" has understood the lab, and should be told that
+  this is the correct state to be in, not a failure to reach a conclusion.
+
+## Anticipated questions
+
+- *"So are polls useless?"* — No. They are excellent at large differences and
+  poor at small ones, and 2024 was a small one. A poll showing a 20-point race
+  is almost certainly right about who is ahead.
+- *"Why not just poll more people?"* — Part 6. This is the question the lab
+  exists to answer.
+- *"Is the 20% gap realistic?"* — It is invented, and the lab says so. Real
+  response rates are under 1% and the composition of that 1% is not measured
+  directly. The shape transfers; the size does not.
+- *"Why is this a simulation when every other lab uses real data?"* — Because
+  you cannot see a poll fail without knowing the truth. Worth saying out loud;
+  several students will ask.
+- *"Did the 2024 polls actually miss?"* — Nationally they were closer than 2016
+  or 2020, and still understated Trump in most states. Do not overstate this in
+  either direction; the honest version is that the direction of error has been
+  consistent for three cycles and nobody has a settled explanation.
+
+## Connections
+
+- **Session 5 (media attention)** — attention and response are both behaviours we can measure; belief
+  is not. Same limit, different instrument.
+- **Session 10, next Thursday** — students will have the answers. The forecast they
+  read is now testable, and Option B's point about correlated errors is what to
+  watch for in the state-level misses.
+- **Session 3 (§203) and Session 2 (apportionment)** — both apply a sharp rule to an
+  estimated quantity. This lab is the same structure with the estimate's error
+  made visible.

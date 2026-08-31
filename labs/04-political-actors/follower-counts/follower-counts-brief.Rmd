@@ -1,0 +1,197 @@
+---
+title: "How Many People Follow a Member of Congress"
+subtitle: "Three platforms, one question, and three different Congresses"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("follower-counts-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+A member of Congress has an audience, and nobody publishes how big it is.
+
+There is no file to download. The House does not keep one and neither does the Senate. The platforms know the number exactly and sell access to it, or do not sell it at all. So this chapter does what you would have to do: go to `r FV("n_members")` public profile pages, `r FV("n_platforms")` platforms each, and write down what is on the screen.
+
+That is `r n(FV("n_rows"))` looks at a profile, on `r FV("scan_date")`. The answers do not agree, and the disagreement is not about arithmetic. **The three platforms are not describing the same Congress.**
+
+## How you would gather this yourself
+
+Nothing here needs a subscription, a licence or a request to anybody. It needs four decisions, and every one of them is a decision a reader is entitled to argue with.
+
+**First, decide who counts as Congress.** The usual list is [unitedstates/congress-legislators](https://github.com/unitedstates/congress-legislators), a public roster of sitting members with a stable identifier for each one. It is free, it needs no key, and it is **maintained by volunteers rather than by the House or the Senate**. Its Congress is `r FV("n_members")` people, not 535, because it includes the `r FV("n_delegates")` delegates who sit and speak and vote in committee but not on the floor. Neither figure is wrong. What is wrong is not saying which one you used.
+
+**Second, find the handles.** You cannot ask a platform for "the account belonging to the senator from Massachusetts". You can only ask about a handle, and no official body publishes the list. The same volunteer project keeps a social-media crosswalk — a table that translates one list into another, here from a member to their accounts on X, Instagram, Facebook and YouTube. It is the best list there is and it is still somebody's hobby.
+
+**Third, deal with the platforms the crosswalk does not cover.** Bluesky is not in it at all. The handles here were therefore **guessed**: take the member's name, put it under their own chamber's domain, and see whether anything answers. `schiff.senate.gov`. `ocasio-cortez.house.gov`.
+
+That guess has a property worth pausing on. A handle ending in `senate.gov` can only exist if somebody who controls `senate.gov` put it there — the platform verifies it against the domain's own DNS records, the same way a browser checks a padlock. **A hit cannot be an impersonator.** No blue check is involved, and no company decides who is authentic.
+
+This matters because the obvious alternative is worse than useless. Searching Bluesky by name for a well-known member returns, at the top, accounts whose own descriptions say *Parody* and *Satirical*. Guessing an obvious-looking handle for another member returns an account that has been suspended. Search by name and you collect satire; ask the domain and you get the Senate.
+
+**Fourth, get the number.** Bluesky answers a public request with an exact count, and asks for no account and no key.
+
+X and Instagram do not. X prices the number through an interface that starts at $200 a month, and Instagram offers no equivalent a student could use.
+
+What is left is the route any member of the public has. Open the profile page while signed out and read what is on the screen.
+
+### Six cautions before you start
+
+1. **Verify a handful by hand before trusting the list.** A crosswalk goes
+   stale, and not at random; the next section shows where.
+2. **Read logged out, one profile at a time, with a pause between.** Signing in
+   ties the collection to your own account and puts it at risk of being locked,
+   and a fast loop looks like an attack whatever you meant by it. Slow is the
+   whole technique.
+3. **Record the misses instead of dropping them.** A member with no row is not
+   a member with no followers, and the pattern in who is missing turns out to
+   be the larger finding here.
+4. **Freeze the file and put the date on it.** A follower count is not a
+   population or a vote total; it moves while you are writing it down. Anything
+   you collect is a reading taken at an instant.
+5. **Know one answer by hand before you trust a program that gives you five
+   hundred.** A dataset that is missing rows looks exactly like a dataset that
+   is not — there is a section near the end about the day that happened here.
+6. **Take the number in the form the platform gives it.** X prints `11.5M`, not
+   a count, and no amount of tidying turns the first into the second.
+
+## What each platform actually yielded
+
+```{r coverage}
+```
+
+Not one platform describes the whole institution. The best of them, **`r plat[cov$platform[1]]`, gave a number for `r FV(paste0("covered_", cov$platform[1]))` of `r FV("n_members")` members.**
+
+The misses are not all the same kind of thing, which is why they are counted separately. *No handle known* means the roster has no account on file — the failure is in the crosswalk, the table that translates one list into another. *No account found* means the member appears not to be on the platform at all. One is a gap in our knowledge; the other is a fact about the member.
+
+There is a third kind, and it is the most dangerous. `r FV("n_stale")` handles are **on file and wrong** — the roster names an account the platform does not have. Those are not scattered at random.
+
+```{r stale}
+```
+
+**`r FV("n_promoted")` of them belong to a member who got promoted.** They moved from the House to the Senate, renamed the account to match the new job, and the roster went on pointing at the old name. Speaker Johnson is the same story without the chamber change.
+
+A crosswalk decays fastest around the people whose careers move fastest, which means it is least reliable about exactly the members most likely to be studied.
+
+> **Before you read on, commit to a number.** Congress is
+> `r FV("bsky_rep_total")` Republicans and `r n(FN("n_members") - FN("bsky_rep_total"))`
+> others. Bluesky is a general-purpose platform, free to join, with no
+> gatekeeping of politicians. **How many of those `r FV("bsky_rep_total")`
+> Republicans do you expect to find there?** Write the number down before you
+> turn the page.
+
+## The turn: one platform is missing a party
+
+```{r party}
+```
+
+**`r FV("bsky_rep")`.**
+
+`r FV("bsky_dem")` Democrats have a verified Bluesky account under their own chamber's domain — `r FV("bsky_dem_pct")`% of the party. Republicans have `r FV("bsky_rep")`, out of `r FV("bsky_rep_total")`.
+
+This is not a bug in the collection and it is not a quirk of the guessing rule. The rule is blind to party: it builds the same candidate handles from a Republican's name as from a Democrat's, and asks the same question about each. The rule found no Republicans because there are almost none to find.
+
+Now hold that against X, where the same members were looked up the same way:
+
+```{r partyx}
+```
+
+X covers Republicans at `r FV("x_rep_pct")`% and Democrats at `r FV("x_dem_pct")`%. The chamber did not change between these two tables. **The instrument did.**
+
+So a sentence like *"the median member of Congress has N followers"* is a different sentence on each platform, and on Bluesky it is a claim about Democrats wearing the word *Congress*. The platform sorted the sample before anyone counted anything.
+
+## Who is the most-followed member depends on who you ask
+
+```{r leaders}
+```
+
+The three platforms name `r FV("n_distinct_leaders")` different people as the most-followed member of Congress. Each is correct about its own platform. None of them is answering the question you asked.
+
+The last column is the reason. A leader is only the largest value in whatever the platform happened to hold, and no two of them hold the same slice of Congress.
+
+The slice is measured against the roster this chapter started from: all `r n(FV("n_members"))` members, the `r FV("n_delegates")` delegates included. Count Congress as 535 instead and every one of these coverage figures moves, without a single profile having been read differently.
+
+## The collection itself can be wrong, and say nothing
+
+That is the fifth caution, and it is here because it happened while these numbers were being gathered.
+
+The first pass found 120 members on Bluesky. The right answer is `r FV("bsky_dem")` plus `r FV("bsky_rep")`, and the members that went missing included one with more than half a million followers.
+
+The cause was a diacritic — an accent mark. Bluesky handles may contain only plain ASCII letters, digits and hyphens, so a candidate handle built from the name *André Carson* was not a legal handle at all. Asking about the members in batches of 25 is the polite way to ask, because it is 25 requests the platform does not have to answer separately. But one illegal handle makes the platform reject **the whole batch of 25**, with an error easily mistaken for a shrug.
+
+So one member's accent quietly deleted up to twenty-four others, and the output looked completely normal: a plausible number, no error message, no gap where the missing people had been. It was caught only because one member known by hand to be there was not in the file.
+
+Both halves of the fix are worth stealing. Strip the accents and check that a candidate handle is even legal before asking about it. And when a batch is rejected, split it in half and ask again, so that a bad handle costs one row instead of twenty-five.
+
+**A dataset that is missing rows looks exactly like a dataset that is not.** That is the argument for checks that fail loudly, and for knowing one answer by hand before trusting a program that hands you five hundred.
+
+## What this chapter cannot tell you
+
+**It cannot rank Congress by followers.** No platform here supports that sentence. Bluesky is missing a party, Instagram is missing about a quarter of the members, and the largest counts on X arrive as `11.5M`.
+
+**It cannot tell you these are constituents, or voters, or even people.** A follower is an account that clicked a button, possibly years ago, possibly from another country, possibly automated. Nothing here distinguishes an engaged voter in the member's district from a retired account in another hemisphere.
+
+**It cannot tell you anyone is reading.** Follower count measures an audience that accumulated, not one that showed up. The [Wikipedia pageviews chapter](../media-attention/media-attention-brief.html) measures the opposite thing: attention paid on a particular day. The two are not versions of each other.
+
+**It is one day.** `r FV("scan_date")`, frozen deliberately so the numbers in this text can be checked. Every count has moved since.
+
+**It cannot tell you why the party gap exists.** The chapter establishes that Bluesky's congressional population is one party. Whether that is about when the platform grew, who left X and when, or a staffing decision repeated in office after office, is not in this file.
+
+## Every member, every platform
+
+Congress is small enough to print whole, so here it is: all `r n(FV("n_members"))` members, sorted by state with senators first. Find your own delegation and check it against the profiles.
+
+The X column reproduces what the profile prints, because that is all X gives. The Instagram and Bluesky columns are exact counts.
+
+Where there is no number, the reason is named rather than left blank. A blank reads as zero, and none of these are zero:
+
+- **no handle** means no account is listed for that member on that platform.
+- **handle wrong** means an account is listed and the platform does not have it.
+- **—** means nothing answered under the member's own chamber domain, which is
+  how Bluesky was asked.
+
+```{r allmembers}
+```
+
+## Sources
+
+**Follower counts.** Read from public profile pages on `r FV("scan_date")`, signed out, one profile at a time. That reading is frozen at that date and never re-fetched, so the numbers in this text stay checkable and every table above can be rebuilt with no network at all.
+
+- X — `https://x.com/<handle>`. Rounded counts only.
+- Instagram — `https://www.instagram.com/<handle>/`. A rounded count on the
+  screen, a fuller one carried in the page.
+- Bluesky — `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles`, the
+  free public API. No key, no account. Exact counts.
+
+**Who is in Congress, and their handles.** unitedstates/congress-legislators, current members and social-media crosswalk, retrieved `r FV("scan_date")`: `https://unitedstates.github.io/congress-legislators/legislators-current.csv` and `.../legislators-social-media.json`. Both are kept exactly as they arrived.
+
+**Not used.** The X API, which prices exact counts at $200 per month. The old free follower-count endpoint at `cdn.syndication.twimg.com` now returns an empty body.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`all_members.csv`](data/derived/all_members.csv), [`coverage.csv`](data/derived/coverage.csv), [`party_coverage.csv`](data/derived/party_coverage.csv), [`platform_leaders.csv`](data/derived/platform_leaders.csv), [`stale_handles.csv`](data/derived/stale_handles.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `coverage.csv` gives `pct_covered` for each platform, with the reasons for misses broken out. Which platform gives you the most complete picture of Congress?
+- `party_coverage.csv` splits coverage by party. Find the platform where one party is barely present. What would you conclude if you had not checked?
+- `platform_leaders.csv` names the most-followed member on each platform. They differ. What is a follower count actually measuring?
+- `stale_handles.csv` lists handles that no longer match the office held. Count them. How quickly does a hand-maintained list of accounts go wrong?
+
+```{r checks}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

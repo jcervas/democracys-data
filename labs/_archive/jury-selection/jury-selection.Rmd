@@ -1,0 +1,335 @@
+---
+title: "A Reason You Are Not Required to Give"
+subtitle: "84-355 Democracy's Data | Peremptory strikes in Mississippi, 1992–2017"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **One of three labs in this unit.** All three ask the same question of
+> different data: **can you show discrimination when nobody wrote down a
+> reason?** The others are redlining and policing. Whichever you did, you will
+> be asked to explain your inference to somebody who did a different one.
+
+> **Read `jury-selection-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"The prosecutor struck Black jurors because they were Black."*
+
+That is a constitutional violation. *Batson v. Kentucky* (1986) forbids striking
+a juror on account of race, and gives defendants a way to object.
+
+It is also almost impossible to prove one strike at a time. A **peremptory
+strike** is the one a lawyer may use *without giving a reason* — that is what
+"peremptory" means. Challenged under *Batson*, a prosecutor need only offer some
+race-neutral explanation, and almost any explanation will do: the juror seemed
+inattentive, had a relative with a conviction, lived near the defendant.
+
+**In the thirty years after *Batson*, the North Carolina Supreme Court never
+once found a strike to be racially discriminatory.**
+
+So how would you ever show it? Not from one strike. From thousands.
+
+# Step 1 — What one record is
+
+```{r load}
+s <- read.csv("data/strikes.csv", stringsAsFactors = FALSE)
+t <- read.csv("data/trials.csv",  stringsAsFactors = FALSE)
+
+c(trials = nrow(t))
+s
+```
+
+Journalists at APM Reports spent a year reading court records from **225 trials
+over 26 years** in Mississippi's Fifth Circuit — every trial prosecuted by
+District Attorney Doug Evans's office. **14,873 jurors**, each with a race and a
+record of what happened to them.
+
+They did it because of one defendant: **Curtis Flowers, tried six times for the
+same crime by the same prosecutor.** In *Flowers v. Mississippi* (2019) the
+Supreme Court threw out his conviction, and the majority relied heavily on the
+pattern of who Evans struck.
+
+# Step 2 — How many, and over what
+
+```{r scope}
+c(trials = nrow(t),
+  jurors_eligible = sum(t$black_eligible + t$white_eligible),
+  struck_by_state = sum(t$black_struck + t$white_struck))
+```
+
+One prosecutor's office, 26 years. That narrowness is the point: a national
+average would tell you about American prosecution, this tells you about a
+**decision-maker**.
+
+# Step 3 — The disparity
+
+```{r state}
+st <- s[s$side == "state", ]
+st
+round(st$pct[st$race == "Black"] / st$pct[st$race == "White"], 1)
+```
+
+**The state struck 49.8% of the Black jurors it could strike, and 11.2% of the
+white ones** — **4.4 times** the rate.
+
+Note the denominator, because it matters. A juror already removed for cause, or
+never reached, could not be struck by anybody. These rates count only jurors the
+**state was actually able to strike** — which is a stricter and fairer
+comparison than dividing by everyone in the room.
+
+# Step 4 — Why that is not yet an answer
+
+**A disparity is not proof.** The reply is ready, and it is not frivolous:
+perhaps the Black jurors in these pools differed in some legitimate way — more
+of them had relatives with convictions, or expressed doubts about the death
+penalty. If those characteristics are unevenly distributed in a county with this
+history, a race-neutral striking rule produces a racial disparity on its own.
+
+**You cannot refute that with the table above**, because it has no control
+group. What you need is a group of people who saw exactly the same jurors, in
+the same trials, under the same rules, and wanted the *opposite* outcome.
+
+# Step 5 — The control group is in the file
+
+**The defense strikes too.** Same trials, same jury pools, same *Batson* rules,
+opposite incentives.
+
+If Black jurors really were disproportionately strike-worthy for reasons both
+sides would recognise, the defense should strike them too — or at least not
+strike them dramatically *less*.
+
+**Before running the next chunk, write down what you expect the defense's two
+numbers to look like under each explanation.** The chunk is two lines and it
+will not wait for you.
+
+# Step 6 — The mirror
+
+```{r both}
+s
+```
+
+```{r mirror-plot}
+m <- matrix(c(s$pct[s$side == "state"   & s$race == "Black"],
+              s$pct[s$side == "state"   & s$race == "White"],
+              s$pct[s$side == "defense" & s$race == "Black"],
+              s$pct[s$side == "defense" & s$race == "White"]), nrow = 2)
+barplot(m, beside = TRUE, names.arg = c("struck by the STATE", "struck by the DEFENSE"),
+        col = c("#C41230", "#2c7fb8"), ylab = "% of eligible jurors struck",
+        legend.text = c("Black jurors", "white jurors"), ylim = c(0, 60))
+```
+
+**The state struck 49.8% of Black jurors and 11.2% of white.
+The defense struck 47.3% of white jurors and 15.0% of Black.**
+
+It is a mirror. Whatever made Black jurors worth striking to the prosecution
+made white jurors worth striking to the defense — at almost exactly the same
+rate, in the same courtrooms, from the same pools.
+
+**This is what makes the inference strong.** The "Black jurors were different"
+explanation now has to explain why white jurors were *equally* different, in the
+opposite direction, to the opposite side. There is one variable that does that
+easily, and both sides were clearly using it.
+
+Only one side's use of it is unconstitutional in the way *Batson* was written to
+catch.
+
+# Step 7 — Now try to prove it in a single trial
+
+Here is the difficulty at the centre of the law. ***Batson* is litigated one
+trial at a time**, in front of a judge who sees one jury pool. Aggregate
+patterns are not before the court.
+
+So take the first trial in the file on its own terms and ask: if the state had
+chosen its strikes at random, how often would the split have come out this
+lopsided or worse? That is an urn problem, and R has it built in.
+
+```{r one-trial}
+o <- t[1, ]
+p1 <- phyper(o$black_struck - 1, o$black_eligible, o$white_eligible,
+             o$black_struck + o$white_struck, lower.tail = FALSE)
+c(black_eligible = o$black_eligible, black_struck = o$black_struck,
+  white_eligible = o$white_eligible, white_struck = o$white_struck,
+  probability = round(p1, 3))
+```
+
+**About one chance in twenty-three.** Suggestive, and nowhere near enough. A
+judge would be right to say that unlikely things happen in single trials.
+
+**A single trial almost never carries the evidence.** That is not a flaw in this
+data — it is a description of how the rule works.
+
+# Step 8 — Twenty-six years of single trials
+
+Compute that same probability for every trial and count.
+
+```{r all-trials}
+t$p <- phyper(t$black_struck - 1, t$black_eligible, t$white_eligible,
+              t$black_struck + t$white_struck, lower.tail = FALSE)
+# The shortcut 0.05 * 211 assumes p-values spread evenly over 0 to 1. These are
+# hypergeometric tests on small counts, so their p-values are discrete and the
+# tests are conservative -- they fire LESS often than 5% of the time. Simulate
+# the real null instead: redraw each trial's strikes from its own margins.
+set.seed(20260810)
+sim <- replicate(2000, {
+  bs <- rhyper(nrow(t), t$black_eligible, t$white_eligible,
+               t$black_struck + t$white_struck)
+  sum(phyper(bs - 1, t$black_eligible, t$white_eligible,
+             t$black_struck + t$white_struck, lower.tail = FALSE) < 0.05)
+})
+c(trials = nrow(t),
+  significant_05 = sum(t$p < 0.05),
+  expected_shortcut = round(0.05 * nrow(t), 1),
+  expected_simulated = round(mean(sim), 1),
+  significant_01 = sum(t$p < 0.01))
+```
+
+**Ninety-nine of 211 trials clear the 0.05 threshold, where chance alone would
+produce about 3.5.** That is about twenty-eight times as many. Note that the
+textbook shortcut, 0.05 x 211 = 10.6, is wrong here and wrong in the direction
+that *understates* the finding: discrete tests on small counts are conservative,
+so the real chance rate is lower than the nominal one.
+
+# Step 9 — Trial by trial, and the one at the far corner
+
+```{r trials}
+t$black_rate <- ifelse(t$black_eligible > 0, 100 * t$black_struck / t$black_eligible, NA)
+t$white_rate <- ifelse(t$white_eligible > 0, 100 * t$white_struck / t$white_eligible, NA)
+k <- t$black_eligible >= 3 & t$white_eligible >= 3
+
+c(trials = sum(k),
+  struck_every_black_juror = sum(t$black_struck[k] == t$black_eligible[k]),
+  struck_no_white_juror    = sum(t$white_struck[k] == 0))
+```
+
+```{r trial-plot}
+plot(jitter(t$white_rate[k], 2), jitter(t$black_rate[k], 2), pch = 19,
+     col = adjustcolor("#C41230", 0.5), xlim = c(0, 100), ylim = c(0, 100),
+     xlab = "% of eligible white jurors struck by the state",
+     ylab = "% of eligible Black jurors struck by the state")
+abline(0, 1, lty = 2)
+```
+
+Every point above the dashed line is a trial where the state struck Black
+jurors at a higher rate than white ones. **188 of 202 trials — 93% — are above
+it.** In 11 trials the state struck *every* Black juror it could; in 59 it
+struck *no* white juror at all.
+
+This is also the level at which the law operates. A *Batson* challenge happens
+inside **one** trial, where the numbers are small and a prosecutor can explain
+each strike individually. The pattern is only visible from above — and no
+individual defendant has 225 trials to point at.
+
+**Curtis Flowers did, eventually, because journalists built this file.**
+
+```{r worst}
+w <- t[order(t$p), ][1, ]
+c(trial = w$trial, black_eligible = w$black_eligible, black_struck = w$black_struck,
+  white_eligible = w$white_eligible, white_struck = w$white_struck)
+format(w$p, digits = 2)
+```
+
+The most extreme trial in the file is **the third trial of Curtis Flowers**:
+fifteen Black jurors eligible and fifteen struck, twenty-one white jurors
+eligible and none. Roughly one chance in five billion.
+
+# Step 10 — What you can now say
+
+**You can say** that in this district, over 26 years, the state's strikes were
+not race-neutral — and that the conclusion does not rest on assuming which
+jurors *should* have been struck, because the defense's mirror-image behaviour
+supplies the comparison.
+
+**You can also say something about the law.** The pattern is overwhelming in
+aggregate and nearly invisible one trial at a time. Step 7 was not a detour: a
+4.4% probability is what a typical *Batson* motion actually has to work with,
+and it loses. **The rule is enforced at the only level where the evidence is
+weakest.**
+
+**You cannot say** why any individual juror was struck. No reasons are recorded,
+which is the whole design of a peremptory challenge.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — What are the odds?** Take a trial with, say, 5 eligible Black
+jurors and 20 white, where the state struck 5 and 3. If strikes were made
+without regard to race, the number of Black jurors struck follows a
+hypergeometric distribution — `phyper()` in R will give you the probability of a
+result that extreme. Compute it for a few trials. Is any *single* trial damning
+on its own?
+
+**Option B — The pooled test.** Do the same thing on the whole dataset at once
+(`prop.test` on the two strike rates). Compare the p-value to what you got from
+one trial in Option A, and say what that difference means for how *Batson* is
+enforced.
+
+**Option C — Missing race.** 4,752 of 14,873 jurors have race recorded as
+Unknown — about a third — and they are excluded from everything above. Give one
+scenario in which their exclusion inflates the disparity and one in which it
+hides it. Which do you think is likelier, and why?
+
+**Option D — Your own question.** 211 trials, two sides, one variable.
+
+# What this lab cannot tell you
+
+- **Why any individual juror was struck.** Peremptory strikes require no
+  reason, and the reasons given when challenged are not in this file. The
+  pattern is aggregate; the law is individual, and that mismatch is the whole
+  problem.
+- **Whether Doug Evans is unusual.** We have one district and one prosecutor.
+  Studies in North Carolina and Philadelphia found similar patterns, but this
+  file cannot establish that.
+- **What race the jurors would have claimed.** Race here was coded by
+  journalists from court records and other sources — not self-report. For a
+  third of jurors they could not determine it at all.
+- **Whether the juries were wrong.** Nothing here says anything about verdicts.
+  It is about who got to sit.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- The disparity alone was not proof; the defense's mirror-image strikes made it
+  much stronger. Why?
+- A pattern visible across 225 trials is invisible inside one. What should a
+  court do about that?
+- If you did one of the other two labs in this unit, which inference did you
+  find more convincing, and why?
+
+***
+
+### Where the data came from
+
+**APM Reports**, *In the Dark* season 2 — peremptory strikes in Mississippi's
+Fifth Circuit Court District, 1992–2017, compiled from court records across 225
+trials. <https://github.com/APM-Reports/jury-data>
+
+Strike rates use only jurors the relevant side was **eligible** to strike.
+Jurors whose race the reporters could not determine — 4,752 of 14,873 — are
+excluded. The build is in `data/build-data.py`.
+
+The Supreme Court's decision is *Flowers v. Mississippi*, 588 U.S. ___ (2019).

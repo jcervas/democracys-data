@@ -1,0 +1,607 @@
+---
+title: "Key: Seventy-Five Seats"
+subtitle: "84-355 Democracy's Data | Regional shift 1960–2020 | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.0,
+                      dpi = 108, fig.retina = 1)
+options(scipen = 999)
+
+st  <- read.csv("data/states.csv",     stringsAsFactors = FALSE)
+reg <- read.csv("data/regions.csv",    stringsAsFactors = FALSE)
+nat <- read.csv("data/nation.csv",     stringsAsFactors = FALSE)
+sc  <- read.csv("data/seatchange.csv", stringsAsFactors = FALSE)
+sd  <- read.csv("data/southdefs.csv",  stringsAsFactors = FALSE)
+
+Y1 <- 1960; Y2 <- 2020; HOUSE <- sum(sc$reps_2020)
+n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+dv <- function(d, y) sd$share[sd$definition == d & sd$year == y]
+
+DEF_CEN <- "Census South (16 states + DC)"
+DEF_CON <- "Confederate South (11 states)"
+DEF_BOR <- "Border South only (DC, DE, KY, MD, OK, WV)"
+DEF_SUN <- "Sun Belt (South + West)"
+
+gross  <- sum(sc$change[sc$change > 0])
+netreg <- tapply(sc$change, sc$region, sum)
+crossed <- sum(netreg[netreg > 0])
+ny     <- sc[sc$name == "New York", ]
+blk    <- ifelse(sc$region %in% c("Northeast", "Midwest"), "NE+MW", "S+W")
+b60    <- tapply(sc$reps_1960, blk, sum); b20 <- tapply(sc$reps_2020, blk, sum)
+ev60   <- b60 + 2 * table(blk);           ev20 <- b20 + 2 * table(blk)
+
+dec    <- st[st$year > Y1 & st$name != "District of Columbia" & !is.na(st$repchg), ]
+byd    <- tapply(dec$repchg, dec$year, function(x) sum(x[x > 0]))
+sumdec <- sum(byd)
+
+z    <- st[st$year >= Y1 & st$name != "District of Columbia", ]
+sp   <- split(z[order(z$year), ], z$name[order(z$year)])
+mono <- sapply(sp, function(x) { d <- diff(x$reps[order(x$year)])
+                                 all(d >= 0) || all(d <= 0) })
+NONMONO <- names(mono)[!mono]
+
+P1 <- nat$pop_per_rep[nat$year == 1910]; P2 <- nat$pop_per_rep[nat$year == Y2]
+NG <- 100 * (nat$pop[nat$year == Y2] / nat$pop[nat$year == Y1] - 1)
+
+# interstate spread in people per seat: largest state district / smallest
+ppr <- st[st$year >= Y1 & st$name != "District of Columbia" & !is.na(st$reps), ]
+ppr$per <- ppr$pop / ppr$reps
+SPREAD <- tapply(ppr$per, ppr$year, function(v) max(v) / min(v))
+
+# ---- the window sweep behind Option A --------------------------------------
+win <- function(S) {
+  a <- st[st$year == S  & st$name != "District of Columbia", c("name", "region", "reps")]
+  b <- st[st$year == Y2 & st$name != "District of Columbia", c("name", "reps")]
+  w <- merge(a, b, by = "name", suffixes = c("_s", "_e"))
+  w$ch <- w$reps_e - w$reps_s
+  w
+}
+WSTART <- seq(Y1, 2010, 10)
+
+# ---- the South sweep behind Option B ---------------------------------------
+CONFED <- c("Alabama", "Arkansas", "Florida", "Georgia", "Louisiana",
+            "Mississippi", "North Carolina", "South Carolina", "Tennessee",
+            "Texas", "Virginia")
+BORDER <- c("Maryland", "Delaware", "Oklahoma", "West Virginia", "Kentucky",
+            "District of Columbia")
+TOT    <- tapply(st$pop, st$year, sum)
+share_of <- function(v) {
+  s <- st[st$name %in% v, ]
+  100 * tapply(s$pop, s$year, sum) / TOT
+}
+
+# ---- render data.frames as tables; envir is required or knitr ignores it ----
+knit_print.data.frame <- function(x, ...) {
+  nm <- names(x); nm <- gsub("_", " ", nm)
+  nm <- sub("^(.)", "\\U\\1", nm, perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = nm, row.names = FALSE), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`regional-shift-brief.Rmd`) is now a chapter rather
+than a parallel copy of the lab: it is organised by argument, under idea
+headings, with four numbered figures and no numbered steps. The lab
+(`regional-shift.Rmd`) still runs Steps 1–11 with the code exposed.
+**Students should read the brief first.** **Step numbers below refer to the
+lab**; the chapter is cited by figure number or section title.
+
+**This session is built around a single reveal, and the chapter now protects it
+too.** The brief holds the total back for several pages and stops the reader
+with its own prediction box — write down two numbers, New York's total loss and
+the seats that changed states altogether — immediately before *What the
+maintenance adds up to*, which is where it reveals `r n(gross)`. A student who
+read the chapter properly has therefore already guessed, while the guess was
+still worth something. The lab repeats the structure: Steps 1–4 are deliberately
+boring — they show one reapportionment, it moves
+`r n(byd[[as.character(Y2)]])` seats, and the room concludes that
+reapportionment is administrative housekeeping — and Step 5 adds six of them
+together. **Get the prediction out of the room before Step 5 runs**: ask for the
+number they wrote down while reading, and collect a fresh guess from anyone who
+did not read. Everything else in the hour depends on that gap.
+
+Every number below was recomputed from the built files at knit time.
+
+***
+
+# The session in one sentence
+
+Between `r Y1` and `r Y2` the United States moved `r n(gross)` House seats —
+`r pc(100 * gross / HOUSE)`% of the chamber, and with them
+`r n(crossed)` electoral votes — from the Northeast and Midwest to the South and
+West, without a single vote being taken on any of it, and no individual decade
+ever looked like more than paperwork.
+
+***
+
+# The findings
+
+```{r headline}
+c(seats_that_changed_states = gross,
+  pct_of_the_house          = round(100 * gross / HOUSE, 1),
+  crossed_a_regional_border = crossed,
+  largest_single_decade     = max(byd),
+  smallest_single_decade    = min(byd),
+  new_york_loss             = abs(ny$change),
+  states_smaller_than_that  = sum(sc$reps_2020 <= abs(ny$change)),
+  ne_mw_seats_1960          = b60[["NE+MW"]],
+  ne_mw_seats_2020          = b20[["NE+MW"]],
+  ne_mw_pct_2020            = round(100 * b20[["NE+MW"]] / HOUSE, 1),
+  ne_mw_ev_pct_1960         = round(100 * ev60[["NE+MW"]] / sum(ev60), 1),
+  ne_mw_ev_pct_2020         = round(100 * ev20[["NE+MW"]] / sum(ev20), 1),
+  one_way_states            = sum(mono),
+  people_per_seat_multiple  = round(P2 / P1, 2),
+  population_multiple       = round(nat$pop[nat$year == Y2] /
+                                    nat$pop[nat$year == 1910], 2))
+```
+
+- **`r n(gross)` seats changed states, `r n(crossed)` of them left their region
+  entirely.** The shift is not neighbours trading; it is one half of the country
+  moving to the other.
+- **No decade did it.** The largest reapportionment in the window moved
+  `r n(max(byd))` seats, the smallest `r n(min(byd))`. The finding is entirely a
+  product of addition.
+- **New York lost `r n(abs(ny$change))`**, and `r n(sum(sc$reps_2020 <= abs(ny$change)))`
+  of the `r nrow(sc)` states do not have `r n(abs(ny$change))` seats in total.
+- **The Northeast and Midwest went from a House majority
+  (`r n(b60[["NE+MW"]])` of `r n(HOUSE)`) to `r pc(100 * b20[["NE+MW"]] / HOUSE)`%**,
+  and from `r pc(100 * ev60[["NE+MW"]] / sum(ev60))`% of the fifty states'
+  electoral votes to `r pc(100 * ev20[["NE+MW"]] / sum(ev20))`%.
+- **`r sum(mono)` of `r length(mono)` states moved in one direction only.** A
+  ratchet, not a cycle.
+- **A representative now speaks for `r pc(P2 / P1, 2)`× as many people as in
+  1910**, and the country grew `r pc(nat$pop[nat$year == Y2] / nat$pop[nat$year == 1910], 2)`×.
+  The near-identity is the mechanism: the denominator was frozen in 1929.
+
+**One arithmetic detail worth having ready**, because a sharp student will ask
+why the per-decade gains do not sum to the cumulative total:
+
+```{r reconcile}
+c(sum_of_per_decade_gains = sumdec,
+  cumulative_1960_to_2020 = gross,
+  difference              = sumdec - gross,
+  states_that_reversed    = length(NONMONO))
+NONMONO
+```
+
+The gap is exactly the number of states that moved in both directions
+(`r paste(NONMONO, collapse = ", ")`), each of which gained a seat it later gave
+back or gave one back it later regained. **Gross movement exceeds net movement by
+precisely `r sumdec - gross`, in sixty years.** That is the ratchet stated as an
+identity rather than as a metaphor.
+
+***
+
+# The three things to get said
+
+**1. The unit of observation is doing the work.** The same file, honestly
+reported, supports "reapportionment is minor administrative housekeeping" and
+"reapportionment moved a sixth of the House." Neither is a lie. The difference is
+whether you look at one decade or six. **Make somebody say why a news cycle
+produces the first framing** — because reporting is organised around events, and
+this is not an event. It is a rate. The course's recurring question, *what
+window is your claim about?*, has no cleaner example.
+
+**2. Nobody decided this, and that is the interesting part.** Students arrive
+expecting political change to have an author. Ask who is responsible for the
+transfer of `r n(crossed)` electoral votes between regions. There is no answer:
+no bill, no vote, no litigant, no agency. The Constitution specifies a procedure
+and the procedure ran. **A student who says "so it is nobody's fault" has
+half of it; push to the other half — the rules that convert population into power
+were chosen, and choosing not to revisit them is also a choice.** The House has
+been `r n(HOUSE)` since 1929.
+
+**3. Step 8 is the methodological spine, and it is the step that is easiest to
+skip.** "The South" has no agreed definition, the lab computes the finding under
+several, and the answer moves — but never reverses. That combination is what an
+honest sensitivity analysis looks like, and students almost never see one. See
+the dedicated section below; **do not let this become a two-minute aside.**
+
+**The line for the board:** power moved without anybody moving it, and the only
+reason it looks like nothing happened is that we keep checking every ten years.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1–3** One record, the file, why 1960 | Alaska and Hawaii have no seats before `r Y1` | 7 | **Do not skip the de-comma trap.** `"4,951,560"` becomes `NA` silently. It is the cheapest data-literacy lesson in the course. |
+| **4** One decade at a time | `r n(byd[[as.character(Y2)]])` seats, `r n(sum(st$year == Y2 & !is.na(st$repchg) & st$repchg != 0))` states in `r Y2` | 8 | **Let them conclude it is trivial.** The step is supposed to underwhelm. |
+| **—** The prediction | Written down, before Step 5 | **4** | **Non-negotiable.** Collect guesses aloud. Typical answers are 20–30; the answer is `r n(gross)`. |
+| **5** The pivot | `r n(gross)` seats, `r pc(100 * gross / HOUSE)`% of the House | **10** | **The session.** Sit in the silence. Then the New York comparison: `r n(sum(sc$reps_2020 <= abs(ny$change)))` of `r nrow(sc)` states are smaller than what one state lost. |
+| **6** Regions and the ratchet | `r n(b60[["NE+MW"]])` → `r n(b20[["NE+MW"]])`; `r sum(mono)` of `r length(mono)` states one-way | 8 | The monotonicity check is what upgrades "a shift" to "a trend". Students read it as a technicality. |
+| **7** The long line | Population share, 1910–`r Y2` | 8 | **The South's rise begins after `r Y1`, not before.** Between 1910 and `r Y1` its share *fell*. Nearly everyone assumes otherwise. |
+| **8** Defining the South | Four definitions, one direction | **10** | **The methods step.** See below. Take a vote on which definition is "right" before showing the table. |
+| **9** What a seat is worth | `r n(P1)` → `r n(P2)` people per seat | 6 | Separate *bigger* districts from *less equal* districts — the ratio actually improved (`r pc(SPREAD[[as.character(Y1)]], 2)`→`r pc(SPREAD[[as.character(Y2)]], 2)`). |
+| **10** Electoral votes | `r pc(100 * ev60[["NE+MW"]] / sum(ev60))`% → `r pc(100 * ev20[["NE+MW"]] / sum(ev20))`% | 6 | Keep it arithmetic. The file has no election results; do not let the room infer a partisan story it cannot support. |
+| **11** What you can say | Including what you cannot | 5 | The "why" is not in this file. Name `labs/migration` out loud. |
+
+**If you are short on time**, protect the prediction, Step 5 and Step 8. The
+underwhelming decade, the sixty-year total, and the demonstration that the total
+does not depend on how you drew the category are the whole argument. Steps 9 and
+10 are extensions.
+
+***
+
+# The South-definition sensitivity, and how to use it
+
+**This is the most transferable thing in the lab and it needs ten minutes, not
+two.** The lab hands students the finding "the South rose"; Step 8 asks whether
+that sentence survives a change in who counts as Southern.
+
+Run the vote first. Ask the room: *is Maryland Southern? Oklahoma? Delaware? West
+Virginia? the District of Columbia?* You will get disagreement in under a minute,
+and the disagreement is the point — these are not edge cases invented for a
+seminar. The Census Bureau counts all five as South. `house-competition` and
+`historical-campaigns`, both in this course, count none of them.
+
+Then show what it does to the answer.
+
+```{r sens}
+defs <- list(
+  "11 Confederate states"        = CONFED,
+  "  + Maryland"                 = c(CONFED, "Maryland"),
+  "  + Oklahoma"                 = c(CONFED, "Oklahoma"),
+  "  + Kentucky, West Virginia"  = c(CONFED, "Kentucky", "West Virginia"),
+  "  + District of Columbia"     = c(CONFED, "District of Columbia"),
+  "Census South (16 + DC)"       = c(CONFED, BORDER),
+  "Sun Belt (South + West)"      = c(CONFED, BORDER,
+                                     unique(st$name[st$region == "West"])))
+
+out <- do.call(rbind, lapply(names(defs), function(k) {
+  s <- share_of(defs[[k]])
+  data.frame(definition = k, states = length(defs[[k]]),
+             share_1910 = round(s[["1910"]], 2),
+             share_1960 = round(s[[as.character(Y1)]], 2),
+             share_2020 = round(s[[as.character(Y2)]], 2),
+             rise_1960_2020 = round(s[[as.character(Y2)]] - s[[as.character(Y1)]], 2),
+             drift_1910_1960 = round(s[[as.character(Y1)]] - s[["1910"]], 2))
+}))
+out
+```
+
+**Four things to draw out of that table.**
+
+**The direction never changes.** Every definition rises, and rises by at least
+`r pc(min(out$rise_1960_2020), 1)` points. **A finding that survives every
+plausible operationalisation of its central category is a robust finding**, and
+this is the sentence to make them say. It is not the same as a finding that is
+big — it is a finding that is not an artefact of a coding decision.
+
+**The magnitude does change, and by a defensible amount.** From
+`r pc(min(out$rise_1960_2020), 2)` points to
+`r pc(max(out$rise_1960_2020[out$definition != DEF_SUN]), 2)`
+across the South definitions — a spread of
+`r pc(max(out$rise_1960_2020[out$definition != DEF_SUN]) - min(out$rise_1960_2020), 2)`
+points, or
+`r pc(100 * (max(out$rise_1960_2020[out$definition != DEF_SUN]) - min(out$rise_1960_2020)) / max(out$rise_1960_2020[out$definition != DEF_SUN]))`%
+of the largest estimate. **So a student who reports the
+number to two decimals without saying which South they used has overstated their
+precision**, even though they have not overstated their conclusion.
+
+**The narrow definition gives the larger answer.** This is counter-intuitive and
+worth pausing on: adding states to a growing category makes the growth look
+*smaller*. It can only mean the added states are a drag, and they are. The border
+bloc as a whole went from `r pc(dv(DEF_BOR, Y1))`% of the country to
+`r pc(dv(DEF_BOR, Y2))`%.
+
+**But not all of them — and this is the reward for a student who checks.**
+Two of the six additions make the rise bigger, and Maryland is much the larger of
+the two:
+
+```{r border-detail}
+b <- do.call(rbind, lapply(BORDER, function(v) {
+  s <- share_of(v)
+  data.frame(state = v, share_1960 = round(s[[as.character(Y1)]], 3),
+             share_2020 = round(s[[as.character(Y2)]], 3),
+             change = round(s[[as.character(Y2)]] - s[[as.character(Y1)]], 3))
+}))
+b[order(-b$change), ]
+```
+
+Maryland and Delaware grew slightly faster than the country;
+`r paste(head(b$state[b$change < 0], -1), collapse = ", ")` and
+`r tail(b$state[b$change < 0], 1)` did not. **The
+Census South is a mixture of two demographic regimes wearing one label**, which
+is a better criticism of the category than "it includes Maryland and Maryland is
+not really Southern." The first is measurable; the second is an argument about
+identity that this file cannot adjudicate.
+
+**Where to land it.** The Census Bureau's regions are not wrong — they are a
+statistical convenience with a legal and historical basis, and the Bureau
+publishes its own totals so you can check your mapping against them, which
+`data/build-data.R` does. The lesson is that **a category boundary is a
+hypothesis, and a finding is only as strong as its behaviour when you move the
+boundary.** Students should leave able to ask, of any regional or demographic
+claim: *who is in the category, who decided, and does the answer move?*
+
+***
+
+# Option A — Move the window
+
+## Verified output
+
+```{r a}
+a <- do.call(rbind, lapply(WSTART, function(S) {
+  w <- win(S)
+  data.frame(window = paste(S, "to", Y2), decades = (Y2 - S) / 10,
+             seats_moved = sum(w$ch[w$ch > 0]),
+             per_decade = round(sum(w$ch[w$ch > 0]) / ((Y2 - S) / 10), 2),
+             NE_MW = sum(w$ch[w$region %in% c("Northeast", "Midwest")]),
+             S_W   = sum(w$ch[w$region %in% c("South", "West")]))
+}))
+a$pct_of_1960_total <- round(100 * a$seats_moved / a$seats_moved[1], 1)
+a
+```
+
+```{r a-check}
+half <- a[a$window == paste(1990, "to", Y2), ]
+c(full_window_seats   = a$seats_moved[1],
+  half_window_seats   = half$seats_moved,
+  half_of_full        = a$seats_moved[1] / 2,
+  ratio               = round(half$seats_moved / a$seats_moved[1], 3))
+```
+
+**The lab asks a specific question and it has a specific answer.** A window half
+as long (`r n(half$decades)` decades instead of `r n(a$decades[1])`) yields
+`r n(half$seats_moved)` seats, not the `r pc(a$seats_moved[1] / 2, 1)` a
+constant rate would give. The rate is
+**falling**: `r pc(a$per_decade[1], 1)` seats per decade over the full window,
+`r pc(a$per_decade[a$window == paste(2010, "to", Y2)], 1)` in the most recent one.
+
+**3/4:** Changes `START`, reports that a shorter window moves fewer seats, and
+gets the direction right — it is less than half, so the shift is decelerating
+rather than accelerating.
+
+**4/4:** Computes the per-decade rate rather than eyeballing the total, and
+notices that the ranking of gainers and losers barely moves while the magnitudes
+shrink — Texas, Florida and Arizona lead every window; New York, Ohio,
+Pennsylvania, Illinois and Michigan trail every window. **The composition is
+stable; only the speed changes.** That distinction is the answer.
+
+**4/4, best:** Takes the confidence question seriously, which the prompt asks for
+and most students skip. With `r n(a$decades[1])` observations of a per-decade
+rate, "decelerating" is a description of six numbers, not an estimate with a
+standard error — and the most recent point (`r n(min(byd))` seats in `r Y2`) is
+the smallest in the series and therefore the most tempting and least reliable
+place to draw a trend. A student who says *this could be a slowdown, or it could
+be that the 2020 census undercounted, or it could be one decade of noise, and
+this file cannot separate them* has understood what six observations buy you.
+**Reward explicitly.**
+
+***
+
+# Option B — Redefine the South
+
+## Verified output
+
+The full sweep is in the sensitivity section above. Students will typically run
+three or four variants; these are the ones the prompt names.
+
+```{r b}
+out[, c("definition", "states", "share_1960", "share_2020", "rise_1960_2020")]
+```
+
+**3/4:** Edits `MY_SOUTH`, reports that the share changes, and notices the rise
+happens regardless.
+
+**4/4:** Identifies *which* additions shrink the rise and says why — the added
+states grew slower than the country, so they dilute a growing category. Connects
+that back to the finding: the Census definition **understates** the shift, so
+using it is the conservative choice.
+
+**4/4, best:** Answers the harder half of the prompt — that the variable encodes
+an argument. The eleven-state list defines the South by a political event of the
+1860s; the Census list defines it by a line on a map maintained for statistical
+convenience. **These are claims about what a region *is*, and they are not
+interchangeable even though they produce similar answers here.** The strongest
+version notes that the two happen to agree in this application and would not
+agree in others — a lab about Reconstruction-era voting rights and a lab about
+Sun Belt housing markets should not use the same South — and then says which one
+this lab should use and why. Any defensible choice earns the mark; **the
+reasoning is the assignment.**
+
+The Maryland exception (`r pc(b$change[b$state == "Maryland"], 3)` points, the
+larger of the two border additions that make the rise *larger*) is now priced out in the
+chapter itself, under *Whether the South is eleven states or seventeen*, so
+naming it no longer earns anything on its own. **Reward instead the student who
+uses it:** who sees that the six border units are a drag in aggregate while two
+of them are not, and concludes that "the border states behave like the
+Northeast" is a statement about the aggregate that at least one member of the
+aggregate contradicts. That is the same reading skill the sensitivity table
+teaches, applied one level down.
+
+***
+
+# Option C — Growth is not seats
+
+## Verified output
+
+```{r c}
+c(correlation_all_states = round(cor(sc$pop_growth, sc$change), 2),
+  national_growth_pct    = round(NG, 1),
+  fastest_growing_state  = round(max(sc$pop_growth)),
+  its_seat_gain          = sc$change[which.max(sc$pop_growth)])
+
+big <- sc[sc$reps_1960 >= 10, ]
+c(states_with_10plus_seats_in_1960 = nrow(big),
+  correlation_among_those          = round(cor(big$pop_growth, big$change), 2),
+  correlation_with_size_x_relative_growth =
+    round(cor(sc$change, sc$reps_1960 * (sc$pop_growth - NG)), 2))
+
+x <- sc[sc$pop_growth > NG & sc$change <= 0,
+        c("name", "region", "pop_growth", "reps_1960", "change")]
+x$pop_growth <- round(x$pop_growth, 1)
+x[order(x$reps_1960), ]
+c(median_1960_delegation_of_those = median(x$reps_1960),
+  median_1960_delegation_all      = median(sc$reps_1960))
+```
+
+**The two reasons the prompt asks for, both visible in the scatter:**
+
+1. **Percentage growth ignores base size.** Nevada grew
+   `r n(sc$pop_growth[sc$name == "Nevada"])`% from a delegation of
+   `r n(sc$reps_1960[sc$name == "Nevada"])`; Florida grew
+   `r n(sc$pop_growth[sc$name == "Florida"])`% from a delegation of
+   `r n(sc$reps_1960[sc$name == "Florida"])`, and gained `r n(sc$change[sc$name == "Florida"])` seats to
+   Nevada's `r n(sc$change[sc$name == "Nevada"])`. Seats follow *people*, and a
+   large percentage of a small number is a small number.
+2. **Apportionment is relative, not absolute.** The national benchmark is
+   `r pc(NG)`% growth. Growing is not enough; you have to grow faster than
+   everyone else, and by enough to cross a whole-seat threshold.
+
+Put those together and the correlation stops being disappointing:
+`r pc(cor(sc$change, sc$reps_1960 * (sc$pop_growth - NG)), 2)` between seat
+change and *1960 delegation size × growth above the national rate*. **The raw
+0.45 is not weak measurement; it is the wrong quantity.**
+
+**3/4:** Reports the correlation, names Nevada and Florida, and gets at least one
+of the two reasons.
+
+**4/4:** Gets both reasons and identifies what the
+`r nrow(x)` no-gain fast-growers have in common — they are small
+(median `r n(median(x$reps_1960))` seats in `r Y1` against
+`r n(median(sc$reps_1960))` for all states) or they beat the national rate only
+narrowly (`r paste(x$name[x$pop_growth < 100], collapse = " and ")`). Whole seats
+are a coarse instrument, and a state with one seat cannot be given nine tenths of
+another.
+
+**4/4, best:** Reframes the correlation as a measurement question rather than a
+finding — asks what quantity *would* correlate with seat change, and constructs
+it, or gets close in words. A student who says *the right predictor is share of
+national population, not growth in own population* has stated the apportionment
+rule from scratch, which is the whole content of `apportionment` arrived
+at independently. **This is the strongest response the lab can produce; mark it
+as such.**
+
+***
+
+# Option D — Ask your own question
+
+Ungraded on content, graded on whether the question is answerable with this file.
+The 1920s prompt is the one most students take, so here is what it contains:
+
+```{r d}
+nat[nat$year %in% c(1910, 1920, 1930), c("year", "pop", "reps", "pop_per_rep")]
+
+chg <- st[st$year == 1920 & !is.na(st$repchg) & st$repchg != 0,
+          c("name", "year", "reps", "repchg")]
+chg
+c(states_with_any_change_in_1920 = nrow(chg),
+  states_in_1970_for_comparison  = sum(st$year == 1970 & !is.na(st$repchg) &
+                                       st$repchg != 0))
+```
+
+**Congress refused to reapportion after the 1920 census — the only time it has
+happened — and the file records the refusal as an absence.** Every state's change
+is zero except Arizona and New Mexico, which are not reapportionment at all: they
+became states in 1912 and enter the seat columns for the first time. **The
+absence of an event is the observation**, which is a genuinely hard thing to see
+in a data file and worth pointing out to anyone who takes this option.
+
+The population columns show the country that produced the refusal: the 1920
+census was the first to find a majority of Americans living in urban areas, and
+reapportioning would have moved seats from rural states to cities. The file
+shows the population change and is completely silent on the motive. **A student
+who asserts the motive from this file has made exactly the error the lab is
+about;** a student who says *the file shows the seats did not move and cannot
+tell me why* has got it right.
+
+Two smaller quirks in the source, in case they surface:
+
+- `Change in Number of Representatives` is the Bureau's own column and disagrees
+  with the difference of `Number of Representatives` in exactly two rows, both
+  Arizona and New Mexico in 1930, both outside the `r Y1`–`r Y2` seat window.
+- 1910 apportioned `r n(nat$reps[nat$year == 1910])` seats, not `r n(HOUSE)`;
+  Arizona and New Mexico brought it to `r n(HOUSE)` after statehood, where the
+  Permanent Apportionment Act of 1929 froze it.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus. Two or three paragraphs, one chosen chunk.
+
+- **Never penalise code.** It is given, and several options require changing one
+  literal — a student who changed it correctly has done everything asked.
+- **The move that earns a 4** is treating a methodological choice — the window,
+  the category boundary, the quantity correlated — as a substantive decision with
+  consequences, and saying what those consequences are.
+- **A 2** is "the South grew and the Northeast shrank." True, in the brief, and
+  requires nothing of the student.
+- **Also a 2**: any claim about *why* people moved. The file has population and
+  seats. Jobs, weather, housing and air conditioning are not in it, and the brief
+  says so twice.
+- **Also a 2**: treating `r n(gross)` as large or small without a comparison. The
+  number means nothing until it is put next to something — the size of a
+  delegation, a decade's movement, the margin in the House.
+- **Reward the reversal.** A student who notices that the same data supports two
+  opposite-sounding framings, and explains what makes each one honest, has the
+  point of the session.
+- **Reward anyone who asks for uncertainty.** There is none in this file:
+  populations print as exact integers, coverage error is published elsewhere.
+  Noticing its absence is the most sophisticated available response, and it is
+  the same instinct `apportionment` rewards for a case where an 89-person
+  margin decided a seat.
+
+## Anticipated questions
+
+- *"Why not go back to 1910? The population data is there."* — Because the seat
+  data would be comparing different countries. Alaska and Hawaii are in the file
+  from 1910 with populations and no representatives. The lab uses 1910 population
+  where it is honest to (Step 7, labelled) and 1960 seats everywhere else. **This
+  question comes up most sessions and the answer is a good one to have crisp.**
+- *"Isn't this just California and Texas?"* — No, and the bar chart answers it:
+  `r n(sum(sc$change != 0))` states changed size and
+  `r n(sum(sc$change < 0))` lost seats. But the follow-up is real — the top four
+  gainers account for `r n(sum(sort(sc$change, decreasing = TRUE)[1:4]))` of the
+  `r n(gross)` seats. Concentration and breadth are both true.
+- *"Does the South include Texas?"* — In every definition used here, yes. Texas
+  is `r n(sc$change[sc$name == "Texas"])` seats of the South's
+  `r n(netreg[["South"]])` net gain, so a student who wants to argue Texas is its
+  own thing is making a real point. Let them test it: remove Texas from
+  `MY_SOUTH` in Option B and see what is left.
+- *"Do the electoral-vote numbers mean Republicans gained?"* — Not from this
+  file. The regions that gained have voted differently in different decades, and
+  there is no election result anywhere in the data. **This is worth being firm
+  about**; it is the single most likely place for a student to overreach.
+- *"Will it keep going?"* — `r n(min(byd))` seats moved in `r Y2`, the smallest
+  reapportionment in the window. Either a slowdown or noise. Twelve observations
+  cannot tell you, and Option A is where a student can see that for themselves.
+- *"Why is the House still `r n(HOUSE)`?"* — Statute, not the Constitution;
+  Permanent Apportionment Act of 1929. `apportionment` runs that argument
+  properly and this lab deliberately does not.
+
+## Connections
+
+- **`apportionment`** — the same machinery over one decade instead of six.
+  That lab takes a single reapportionment apart, down to New York missing the
+  435th seat by 89 people; this one never opens the formula and asks only what
+  sixty years of it add up to. **Run `apportionment` first.** The
+  arithmetic is assumed here, not taught.
+- **`migration`** — the mechanism this lab can measure the consequence of and
+  cannot explain. Every "why" question raised in this session belongs there, and
+  saying so out loud is what keeps Step 11 honest.
+- **`house-competition`** and **`historical-campaigns`** — both use the
+  eleven-state Confederate South. Step 8 is the place to say that the course
+  itself uses two different Souths and that this is a defensible choice rather
+  than an inconsistency, provided each is stated.
+- **`precinct-geography`** — the other lab where two defensible operational
+  choices give different numbers from the same data. There it was areal versus
+  population weighting; here it is which states are Southern. Same lesson, and
+  students who have done both should be asked to name it.

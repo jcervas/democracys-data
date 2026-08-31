@@ -1,0 +1,223 @@
+---
+title: "How Much of 2024 Was Already Decided in 2020"
+subtitle: "One election against the next, one office against another, and the four states where the two answers disagreed"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("crossover-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Most of the 2024 election could have been written down in 2020. This chapter shows that three times over, at three scales, and then shows the place where the demonstration stops being about votes and starts being about a decision.
+
+American elections are said to have become predictable. That is two different statements and they are usually made in one breath.
+
+**One election predicts the next.** A county that voted a certain way for president in 2020 voted close to the same way in 2024.
+
+**One office predicts another.** A state or a district that backed a party's presidential candidate elected that party's candidate for the Senate or the House on the same ballot.
+
+Both are checkable, and they need different files. The first needs county returns for two elections. The second needs results for two offices from one election, published on the same page, so that any disagreement between them is not an accident of how two files were assembled.
+
+## Where the numbers here come from
+
+**Everything about president, Senate and House comes out of one document.** After every general election the Office of the Clerk of the U.S. House publishes *Statistics of the Presidential and Congressional Election*, compiled from the state canvasses. For 2024 it runs to `r n(fn("clerk_lines"))` lines of text, and it prints the presidential vote, the Senate vote and every House race for a state on the same pages. The [clerk-source chapter](../clerk-source/clerk-source-brief.html) is about that document and what makes it hard to parse.
+
+**No federal office collects election returns.** Elections in the United States are run by states and counted by states. Each state canvasses its own results, certifies them on its own schedule, and publishes them in its own format. Nothing arrives at a national desk. Two federal offices publish national compilations afterwards, the Clerk of the House and the Federal Election Commission, and both are transcriptions of what the states already did.
+
+So every national number is somebody's assembly, and assemblies of the same election disagree with each other. This book has measured that. The [county-returns chapter](../county-returns/county-returns-brief.html) sets two compilations of the same county vote side by side. They agree about who carried almost every county and disagree about how many votes were cast in half the country, and nothing in either file announces the difference.
+
+**That is why both offices here come out of one document.** The measure this chapter is built on is a subtraction: how a state voted for the Senate, minus how it voted for president. A subtraction is exactly where two differently-built files leak their differences into the answer. Take the presidential number from one compilation and the Senate number from another, and a state where the two offices disagree might be a state where the two files disagree. Both numbers come off the same page here, compiled by one office from one set of canvasses on one date, so that cannot happen.
+
+**The county numbers cannot come from there**, because the Clerk publishes nothing below the state. Nobody publishes them nationally. The compilations that exist were built by individuals out of the fifty-one state publications, one county at a time, and the [county-returns chapter](../county-returns/county-returns-brief.html) is about what that costs. This chapter uses the one the [data-sources chapter](../data-sources/data-sources-brief.html) documents and checks.
+
+## One row is a county
+
+```{r one-row}
+```
+
+```{r varmap}
+```
+
+The share is **of the two major parties**, not of every vote cast. Third-party votes were not the same size in the two elections. A share-of-everything comparison would read that difference as movement between the two parties, which it is not.
+
+`r n(NCTY)` counties appear in both files and are drawn below. `r n(fn("drop_2020"))` reporting units from 2020 and `r n(fn("drop_2024"))` from 2024 have no partner in the other year, and the reason is geography rather than a broken key. Alaska reports by state legislative district and renumbered them. Connecticut replaced its eight counties with nine planning regions in 2022. The District of Columbia is one row in 2020 and eight in 2024. The ground was recut, so there is nothing to join.
+
+## One election against the next
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Every county, twice.** Each dot is one county. Its position left to right is how Republican it voted in 2020, and its height is how Republican it voted in 2024. The dashed line is where a county would sit if nothing had changed. The two shaded boxes are the only places a county can land if it backed different parties in the two elections, and the ringed dots are the ones that did.
+
+The first statement holds, and it holds hard. The correlation between the two years is **`r p4(RCTY)`**, on a scale where 1 is a perfect straight line. Draw the best straight line through this cloud, and it misses a typical county by `r p1(RESID)` points. Knowing only how a county voted in 2020, you could have come that close to its 2024 result before a single ballot was cast.
+
+Almost nothing moved far. `r p1(fn("within5"))`% of counties finished within five points of where they started, and only `r n(FLIPS)` of the `r n(NCTY)` changed which party they backed.
+
+**Every one of those `r n(FLIPS)` moved the same way.** All `r n(fn("flips_to_r"))` went from Democratic to Republican, and the count in the other direction is `r n(fn("flips_to_d"))`. That is why one of the two shaded boxes in Figure 1 holds every ring and the other holds none, and it is the most useful thing in the figure. A country whose places were trading with each other would have put dots in both boxes.
+
+The `r n(FLIPS)` are not small places. They cast `r p1(fn("flip_vote_share"))`% of the votes in this file. Counting counties makes the change look smaller than counting voters does.
+
+> **Before you read on, write down two numbers.** Thirty-three states held a
+> Senate election in 2024. **In how many of them do you think the winner's
+> party was not the party that carried the state for president?** Then, harder:
+> **what would it take for a state to count?** Write down a rule you could hand
+> to somebody else, before you see the answer.
+
+## What a correlation of `r p3(RCTY)` does not say
+
+A correlation is a measure of *order*, not of *sameness*. It asks whether the counties are lined up the same way in both years. It does not ask whether they are in the same place.
+
+You can see the difference by pressing the button on Figure 1, or by arithmetic. Add ten points to every county's 2024 result. The country has now had a landslide that moved every single county. The correlation is **`r p4(RSHIFT)`**, which is the number it was before.
+
+So "strongly correlated with the previous election" is compatible with an enormous national swing. It rules out counties **changing places** with each other. It says nothing about the whole field moving at once.
+
+The number that answers the other question is the size of the move. The typical county moved `r sg(fn("median_swing"))` points toward the Republicans between 2020 and 2024, and `r f("biggest_county")` moved `r sg(fn("biggest_swing"))`. Both facts are true of the same data: almost nothing changed places, and almost everything moved.
+
+**Counties are also not people.** Figure 1 gives the smallest county in the file the same dot as Los Angeles, and that county cast fewer votes than a large high school. Weighting the counties by the votes cast in them, which means counting some counties more than others, drops the correlation only to `r p4(fn("r_weighted"))`. The conclusion survives, and it is worth knowing that it does: the plain figure is a statement about places rather than about voters.
+
+## One office against another
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=7.4}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The two offices, on one pair of axes.** This is Figure 1 with one axis replaced: the Senate vote instead of the next presidential election. A point's position left to right is how Republican the state voted for president, and its height is how Republican it voted for the Senate. The colour is the party of the senator elected, and an asterisk marks the two contests for the last weeks of a term. The two shaded boxes are again the only places a point can land if the state voted one way for president and the other for the Senate.
+
+There were **`r n(NCON)` Senate contests in `r n(NSST)` states**. Nebraska and California each held two, because in both a senator had left before a term ran out. California voted twice on the same seat, once for the last weeks of a term that ended on 3 January 2025 and once for the full term beginning the next day. Both went to Adam Schiff. Nebraska's two contests were two different seats, and one of them runs only to 2027.
+
+`r n(CROSS)` produced a senator whose **party** did not carry the state for president: `r f("crossover_states")`. All four went the same way. Trump carried the state and the voters sent a Democrat to the Senate. There is no state in the list where the reverse happened.
+
+**The rest of the figure is the answer to a question the count does not ask.** The dashed line is where a Senate candidate finished exactly level with their party's presidential candidate in the same state. Almost every point sits on it or just under it. The correlation between the two offices is `r p3(fn("r_office"))`, and the typical Senate candidate came within `r p1(fn("gap_median"))` points of their ticket. The two elections were held on one ballot and they came out very nearly the same election.
+
+The gaps that do open are small and one-sided. `r f("ahead_who")` ran `r p1(fn("ahead_by"))` points ahead of Trump in `r f("ahead_state")` and still lost by `r p1(sen$margin[sen$state == f("ahead_state")])`. `r f("behind_who")` ran `r p1(fn("behind_by"))` points behind him in `r f("behind_state")` and still won. Running ahead of your ticket is worth something only where the ticket was close to begin with.
+
+**That is what the `r n(CROSS)` crossovers are.** In each of them the Republican Senate candidate ran between `r p1(min(abs(sen$ran_ahead[sen$crossover])))` and `r p1(max(abs(sen$ran_ahead[sen$crossover])))` points behind Trump, which is an ordinary gap. It changed the outcome because Trump's own margin in those states was smaller than the gap. The magnified panel is where you can see that: four points a hair below the line, in states a hair to the right of it.
+
+So the count is `r n(CROSS)`, and it is a small number in a figure full of points sitting on a line. Now count again.
+
+## The count is a decision, not an observation
+
+Two points in Figure 2 are grey, and grey is not a party.
+
+```{r indep}
+```
+
+Maine and Vermont elected independents. Angus King and Bernard Sanders were not Democratic nominees, and the Clerk's document does not call them Democrats, because they did not run as Democrats. Both sit with the Democrats in Washington and both states voted for Harris.
+
+**So the count is `r n(CROSSS)`, not `r n(CROSS)`.** Read "a different party" as the words say, and Maine and Vermont belong in the list: neither senator ran on the party line of the candidate who carried the state. Read it as being about the two sides in Washington rather than the ballot line, and the count is `r n(CROSS)`. Neither reading is wrong. They are different questions wearing the same sentence.
+
+The count you were given a moment ago is `r n(CROSS)`, and now you know it is `r n(CROSS)` only because somebody made a decision about two senators. That is the ordinary condition of a published count. Somebody decided what a category means, the decision does not travel with the number, and the number gets quoted anyway. The [party-id chapter](../../02-surveys/party-id/party-id-brief.html) shows the same thing doing much more damage: one coding decision about people who say they are independent moves the most-quoted figure in American politics by a factor of five.
+
+**The rule of thumb.** When you are given a count of a category, ask what it would take for a case to be on the other side of the line. If you cannot answer, you do not yet know what the count means.
+
+## The same question, four hundred and thirty-five times
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The House, one dot per district.** A district's position left to right is how Republican it voted for president. Its colour is the party that won the seat. The circled dots are the districts where those two answers disagree, and they sit where you would expect, close to the middle.
+
+`r n(HCROSS)` districts out of `r n(NHOUSE)` split their vote between the two offices. `r n(fn("h_d_in_r"))` elected a Democrat in a district Trump carried, and `r n(fn("h_r_in_d"))` elected a Republican in a district Harris carried. That is `r p1(fn("h_pct_all"))`% of the chamber.
+
+Every district in Figure 3 has a winner, which is all that figure needs. Asking the question the Senate figure asked needs more than a winner, and this is where the House runs out of numbers.
+
+```{r fig4h-static, eval=!knitr::is_html_output(), fig.height=5.2}
+```
+
+```{r fig4h-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. The House, drawn the way the Senate was.** Presidential vote across, House vote up, both as the Republican share of the two-party vote. The dashed line is a House candidate running level with the presidential candidate of their own party. The ringed points are the `r n(HCROSS)` districts that split, and the two shaded boxes are the only places they can be.
+
+**`r n(fn("n_scatter"))` of the `r n(NHOUSE)` districts are drawn here, and the `r n(fn("n_no_share"))` missing ones are missing for a reason worth knowing.** A district needs two major-party candidates before it has a share to compare. In `r n(fn("n_no_share"))` districts it did not have them: nobody from the other party ran, or the two names on the November ballot belonged to the same party. Those seats have a winner and no contest, so they are dots in Figure 3 and blanks in Figure 4.
+
+The picture is the Senate's again. The two offices correlate at `r p3(fn("r_office_house"))`, and the typical House candidate finished within `r p1(fn("gap_median_house"))` points of their presidential ticket. The furthest any Republican House candidate ran ahead of Trump in their own district was `r p1(fn("h_ahead_by"))` points, in `r f("h_ahead_seat")`. The furthest behind was `r p1(fn("h_behind_by"))`, in `r f("h_behind_seat")`.
+
+**The `r n(HCROSS)` are the same story as the Senate's `r n(CROSS)`.** Every one sits within a few points of both fifty-per-cent lines. A candidate ran a little ahead of their own ticket in a district the other party carried narrowly, and that was enough.
+
+Here they are, most Republican district first. Both shares are Republican, so a Democrat holding the seat shows as a House number below fifty. The gap is the House number minus the presidential one.
+
+```{r crossover-table}
+```
+
+The House and the Senate agree, then, and at very different sizes: `r n(CROSS)` contests out of `r n(NCON)`, and `r n(HCROSS)` districts out of `r n(NHOUSE)`.
+
+## How unusual that is
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=3.8}
+```
+
+**Figure 5. The same count, back to `r f("trend_first")`.** Only presidential years are drawn, so every point compares a House election with the presidential election held on the same day.
+
+Split districts were once ordinary. `r p1(fn("h_pct_peak"))`% of contested districts split their vote in `r f("h_peak_year")`, and the line sits above thirty per cent in `r n(sum(trd$pct_split > 30))` of the `r n(nrow(trd))` elections drawn. It falls through the 1990s and keeps falling. The last two elections are the two lowest readings in the series.
+
+**The 2024 figure on this line is `r p1(fn("h_pct_24"))`%, and the one in the section above is `r p1(fn("h_pct_all"))`%.** They are the same `r n(HCROSS)` districts over two different bottom numbers. The line uses only districts where both parties ran, because a district with one name on the ballot has no two-party share to compare. Neither number is wrong, and quoting one where the other belongs is the commonest way this statistic is misused.
+
+## What this chapter cannot tell you
+
+**No voter appears anywhere in this chapter.** Every number here is a total for a place. A district that voted for Trump and elected a Democrat could be one where many people split their ballots, or one where two different sets of people turned out for the two contests. Guessing what individuals did from group totals is called ecological inference, and it is the subject of [its own chapter](../../06-putting-data-together/rpv/rpv-brief.html). Nothing in Figures 2, 3 or 4 is evidence about ticket splitting by any person.
+
+**A high correlation across places is not a claim about stability over time.** Figure 1 rules out counties changing places with each other. It does not rule out the whole country moving, and the whole country moved `r sg(fn("median_swing"))` points in the typical county. Both sentences describe the same picture.
+
+**Two elections are not a trend.** The county figure covers one pair of years. Figure 5 is a long series for the House, and there is no comparable series here for counties or for the Senate. Whether 2020 predicted 2024 unusually well is a question this chapter cannot answer.
+
+**The vertical axis of Figure 2 is not always Republican against Democrat.** It is the Republican against whoever finished closest to them, which in three contests was not a Democrat. Dan Osborn ran as an independent in Nebraska and took `r p1(100 * sen$runner_votes[sen$abbrev == "NE" & sen$term == "full"] / (sen$runner_votes[sen$abbrev == "NE" & sen$term == "full"] + sen$winner_votes[sen$abbrev == "NE" & sen$term == "full"]))`% against Deb Fischer; Maine and Vermont re-elected independents. A strict Republican-against-Democrat axis would report Maine as three-to-one Republican and Nebraska as unopposed, so this chapter does not use one. The cost is that those three points compare a Republican with somebody the presidential axis has no counterpart for.
+
+**Figure 4 drops the safest seats, and it drops them systematically.** The `r n(fn("n_no_share"))` districts with no two-party House share are not a random `r n(fn("n_no_share"))`. A district where nobody from the other party bothered to run is a district nobody thought was winnable, so the figure is missing its own most lopsided cases. That makes the cloud look slightly tighter around the line than the chamber really was.
+
+**Running ahead of the ticket is not a measure of a candidate.** The gap from the dashed line in Figures 2 and 4 is a subtraction, and a subtraction has two sides. A Senate candidate can open one by being unusually good, by drawing an unusually weak opponent, or by standing in a state where many people were willing to split their ballot. This chapter can measure the gap. It cannot tell you which of those produced it.
+
+**The county file is a compilation, not a public record.** No agency publishes it. The [county-returns chapter](../county-returns/county-returns-brief.html) shows how far the available compilations sit from what the states themselves published, and the 2020 file is the weaker of the two used here.
+
+## Sources
+
+- U.S. House of Representatives, Office of the Clerk. *Statistics of the
+  Presidential and Congressional Election of November 5, 2024*, published
+  10 March 2025. Read from the copy the
+  [house-competition chapter](../house-competition/house-competition-brief.html)
+  fetched and converted to text. Every presidential, Senate and House result in
+  this chapter comes from that document.
+  <https://clerk.house.gov/Votes/ElectionStatistics>
+- County presidential returns for 2020 and 2024, from the compilation the
+  [data-sources chapter](../data-sources/data-sources-brief.html) documents and
+  the [county-returns chapter](../county-returns/county-returns-brief.html)
+  checks against the fifty-one official state publications.
+  <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
+- Presidential vote by congressional district, 2024, from The Downballot,
+  fetched by the house-competition chapter. No government agency computes it.
+  <https://www.the-downballot.com/p/the-downballots-calculations-of-presidential>
+- The long House series in Figure 5 is that chapter's, built from Gary
+  Jacobson's House elections file and the Clerk's own documents.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`counties.csv`](data/derived/counties.csv), [`house.csv`](data/derived/house.csv), [`senate.csv`](data/derived/senate.csv), [`split_trend.csv`](data/derived/split_trend.csv), [`states.csv`](data/derived/states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `house.csv` has `ran_ahead` for every district, and a `crossover` flag. Count the crossover districts. Then look at which party holds them.
+- `split_trend.csv` gives `pct_split` for every year in the series. Follow it. When did splitting your ticket stop being normal?
+- `counties.csv` carries `swing` for every county. Sort by it. Do the counties that moved most have anything in common?
+- `senate.csv` compares each Senate result against the presidential result in the same state. Find the candidates who ran furthest ahead of their party. What did they have that the ticket did not?
+

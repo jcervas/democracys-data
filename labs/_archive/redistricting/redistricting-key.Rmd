@@ -1,0 +1,277 @@
+---
+title: "Dec 3 Wrap Key: Finding a Gerrymander Without Looking at a Map"
+subtitle: "84-355 Democracy's Data | Thu Dec 3 — Test 3, then the wrap | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+cd <- read.csv("data/pres_by_cd_2024.csv", stringsAsFactors = FALSE)
+st <- do.call(rbind, lapply(split(cd, cd$state), function(s) {
+  data.frame(state = s$state[1], n = nrow(s),
+             vote = round(mean(s$dem_share), 1),
+             seats = sum(s$dem_share > 50),
+             seat_pct = round(100 * mean(s$dem_share > 50), 1))
+}))
+st$eg <- round((st$seat_pct - 50) - 2 * (st$vote - 50), 1)
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+A gerrymander is visible in the *distribution* of district partisanship — a hole
+where the competitive districts should be — and you can find it without ever
+looking at a map, which is fortunate, because the shapes do not reliably tell you
+anything.
+
+***
+
+# The findings
+
+```{r headline}
+c(districts = nrow(cd), mean_dem = round(mean(cd$dem_share), 1),
+  dem_seats = sum(cd$dem_share > 50),
+  competitive = sum(abs(cd$dem_share - 50) <= 5))
+big <- st[st$n >= 6, ]
+rbind(head(big[order(big$eg), ], 4), head(big[order(-big$eg), ], 4))
+```
+
+- **49.9%** mean district Democratic share; Democrats carry **205 of 434**
+  (47.2%).
+- Only **91 districts (21%)** are within five points of even.
+- Worst Republican-favouring: **NC −25.6**, **WI −25.4**.
+- Worst Democratic-favouring: **MA +22.4**, **IL +19.0**.
+- **PA −1.7** — nearly unbiased.
+
+***
+
+# The idea to teach: the empty middle
+
+```{r empty-middle}
+for (ab in c("NC", "WI", "PA")) {
+  s <- sort(cd$dem_share[cd$state == ab], decreasing = TRUE)
+  cat(ab, ":", paste(sprintf("%.1f", s), collapse = "  "), "\n")
+}
+```
+
+North Carolina: three districts at **73.5, 73.0, 67.5**, then a cliff to **48.4**
+and eleven districts between 39.0 and 48.4. Wisconsin: **76.2, 70.4**, then
+nothing until **47.7**.
+
+Pennsylvania has districts at 52.8, 50.2, 48.4, 47.4, 45.7 — the middle is
+populated.
+
+**Packing** wastes the other side's surplus votes in a few overwhelming
+districts. **Cracking** wastes the rest in many narrow losses. The signature is
+bimodality with a gap, and students can see it in a printed row of numbers.
+
+This is the answer to the assigned NYT reading: compactness is not the test.
+North Carolina's districts are not notably ugly.
+
+***
+
+# Option A — Diagnose a state
+
+## Verified output for the default (Ohio)
+
+```{r a}
+s <- cd[cd$state == "OH", ]
+s <- s[order(-s$dem_share), ]
+s[, c("district", "dem_share", "house_rep_party")]
+c(vote = round(mean(s$dem_share), 1), seats = sum(s$dem_share > 50),
+  eg = round((100*mean(s$dem_share > 50) - 50) - 2*(mean(s$dem_share) - 50), 1))
+```
+
+Ohio: **44.9%** Democratic, **4 of 15** seats, **EG −13.1**. Three packed
+districts (OH-11 Cleveland, OH-03 Columbus, OH-09 Toledo) then a long
+Republican-leaning tail.
+
+## What a good answer says
+
+**3/4:** Identifies the packed districts, reports the efficiency gap, and says
+whether the distribution looks bimodal.
+
+**4/4:** Supplies a genuine alternative explanation and says what would
+distinguish it. The strongest candidates:
+
+- **Political geography.** Democratic voters cluster in cities at very high
+  densities. Any map that keeps cities whole produces packed Democratic
+  districts, with no intent required. This is the Chen–Rodden argument and it is
+  the serious objection to reading every negative efficiency gap as a
+  gerrymander.
+- **The Voting Rights Act.** Majority-minority districts are sometimes legally
+  required, and they are packed by construction. **Update the framing here.**
+  *Louisiana v. Callais*, 608 U.S. ___ (2026), decided 29 April 2026, narrowed
+  that requirement sharply — it updated rather than overruled *Gingles*, and
+  Section 2 now reaches far fewer maps. For a 2024 map the explanation still
+  holds: the districts in this file were drawn under the old rule. Going
+  forward it holds much less often, and a student who separates "why the
+  district exists" from "whether the law would require it today" is doing the
+  right thing.
+- **Court-ordered maps.** Several states' 2024 maps were drawn or redrawn by
+  courts.
+
+The evidence that distinguishes them is **simulation**: generate thousands of
+legal maps at random and ask where the enacted plan falls in that distribution.
+That is the Duchin & Walch chapter students read, and it is the method that has
+actually persuaded state courts. A student who arrives at "you need a baseline of
+possible maps, not just this map's numbers" has understood the state of the art.
+
+**Common stumble:** treating a large efficiency gap as proof of intent. Push
+back every time.
+
+***
+
+# Option B — How much does the threshold matter?
+
+## Verified output
+
+```{r b}
+for (band in c(2, 5, 10, 15)) {
+  cat("within", band, "points:", sum(abs(cd$dem_share - 50) <= band),
+      "districts =", round(100 * mean(abs(cd$dem_share - 50) <= band), 1), "%\n")
+}
+```
+
+| band | districts | share of House |
+|---|---|---|
+| ±2 | 35 | 8.1% |
+| ±5 | 91 | 21.0% |
+| ±10 | 176 | 40.6% |
+| ±15 | 269 | 62.0% |
+
+## What a good answer says
+
+**3/4:** Reports that the count rises with the band — and notices how much it
+matters where you draw the line. At ±2 only 8% of the House is competitive; at
+±15 a clear majority is. A student should say which band they think is the
+honest one and why.
+
+**4/4:** Connects it to campaign attention properly. The two facts are related but not
+identical: presidential campaign attention concentrates because of the Electoral
+College's winner-take-all rule at the *state* level, while House
+uncompetitiveness is produced by district lines plus residential sorting. Both
+produce the same experience for most voters — living somewhere the outcome is not
+in doubt — by different mechanisms.
+
+**4/4, best:** answers the primary question. If the general election is safe, the
+only threat to a member is a primary, and primaries are low-turnout contests
+dominated by the most committed partisans. That is a mechanism connecting
+districting to the elite polarization students measured with DW-NOMINATE in
+Session 12. The lines help produce the Congress.
+
+***
+
+# Option C — Who is packed?
+
+## Verified output
+
+```{r c}
+head(cd[order(-cd$dem_share), c("district", "dem_share")], 6)
+head(cd[order(cd$dem_share),  c("district", "dem_share")], 6)
+c(dem_over_70 = sum(cd$dem_share >= 70), rep_over_70 = sum(cd$dem_share <= 30))
+```
+
+**PA-03 (Philadelphia) is the most Democratic district in the country at 89.1%.**
+The most Republican is AL-04 at 16.1%.
+
+The asymmetry is the finding: far more districts are overwhelmingly Democratic
+than overwhelmingly Republican.
+
+## What a good answer says
+
+**3/4:** Notices that extreme Democratic districts are urban and that there are
+more of them.
+
+**4/4:** Draws the consequence. Democratic votes are *self-packed* by
+urbanisation: a party whose voters live at 90% density in cities wastes enormous
+numbers of votes before anybody draws a line. That inflates the efficiency gap
+against Democrats even under neutral maps, which is exactly why the measure is
+contested and why Massachusetts scores +22.4 despite nobody gerrymandering it.
+
+**4/4, best:** holds both things at once — self-packing is real *and* North
+Carolina and Wisconsin are still outliers beyond what geography explains. A
+student who says "geography explains some of it, and the empty middle in NC
+explains the rest" has the right answer.
+
+***
+
+# Option D — Dave's Redistricting
+
+Expect discrepancies. DRA uses actual votes rather than shares, averages several
+elections, and reports seat and vote bias separately from the efficiency gap.
+Reward students who can say *why* the numbers differ rather than assuming one is
+wrong.
+
+This option also preserves the hands-on DRA exercise from previous years; if you
+want the whole class in DRA, assign it to everyone and use the other options as
+the written component.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is distinguishing *bias* from *intent*. Every
+  number in this lab measures the first. None measures the second. Students who
+  slide from "EG is −25" to "they cheated" have skipped the step that matters,
+  and it is the step courts actually litigate.
+- **Reward the geography objection**, even when a student uses it to argue
+  against the lab's own framing. That is the argument working.
+
+## Anticipated questions
+
+- *"Is North Carolina's map illegal?"* — No. *Rucho v. Common Cause* (2019) held
+  partisan gerrymandering claims non-justiciable in federal court. State courts
+  can still act under state constitutions, which is where the fight now is —
+  including Pennsylvania in 2018.
+- *"Why is Massachusetts as biased as North Carolina?"* — It is not, in any
+  meaningful sense, and this is the lab's most important caveat. The measure
+  cannot separate a drawn advantage from a geographic one.
+- *"Why use presidential votes for House districts?"* — Because it isolates the
+  map. Say this more than once; it is the methodological core.
+- *"What about NY-21?"* — Genuinely missing from the source. 434 of 435.
+- *"Could a computer draw fair maps?"* — This is the Duchin & Walch chapter.
+  Simulation does not draw the map; it tells you whether the enacted one is
+  unusual. Worth distinguishing.
+
+## Connections back
+
+This is the last lab of the term, and it collects most of the course:
+
+- **The opening session (Aug 25)** — students computed proportional Electoral College allocation and
+  met the idea that a rule converts votes to seats. Same idea, different
+  institution.
+- **Session 1 (election returns)** — the wasted-vote question flagged forward from the first lab lands here.
+  Packing and cracking *are* wasted votes.
+- **Session 4 (returns over time)** — 13 competitive states in 2024; here, 91 competitive districts.
+  The same shrinking middle.
+- **`campaign-visits`** (retired, on disk) — campaign visits concentrate for the same structural reason.
+- **Session 2 (the decennial census)** — these districts are drawn from the PL 94-171 file students
+  parsed, group quarters and all. Ask what Forest County does to a Pennsylvania
+  district.
+- **Sessions 3 and 7** — §203 coverage and BISG are the evidentiary machinery of
+  the *racial* gerrymandering claims that remain justiciable after *Rucho*.
+  *Louisiana v. Callais* (29 April 2026) narrowed that route considerably: it
+  updated *Gingles* rather than overruling it, and Section 2 plaintiffs must now
+  offer race-neutral illustrative maps that meet all the State's stated goals
+  and show polarized voting net of party. The RPV lab carries the fuller note.
+
+If you want one closing question for the final session: *we have spent a semester
+measuring American democracy. Which of the numbers we computed would you actually
+put in front of a judge, and what would you say about it?*

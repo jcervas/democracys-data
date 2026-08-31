@@ -1,0 +1,148 @@
+---
+title: "When a Scatter Plot Has Too Many Points"
+subtitle: "Every populated census block in Georgia, and the 88% of them you cannot see"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("overplotting-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+A census block is the smallest thing the Census Bureau counts — a city block, a few houses, a stretch of road. Georgia has `r n(NBLK)` of them, and the redistricting file gives every one a population and a racial composition. Those two numbers are the raw material for almost everything in the second half of this book: racially polarised voting, surname inference, districting plans.
+
+Plotting one against the other is the obvious first move, and it produces a figure in which **`r p1(PHID)`% of the data is invisible.** Not missing, not filtered — drawn, and then drawn over.
+
+## One row, and the rows that cannot be drawn
+
+```{r one-row}
+```
+
+```{r counts}
+```
+
+The second line is the first decision. **`r n(NEMP)` Georgia blocks, `r p1(PEMP)`% of them, have nobody living in them**: lakes, interchanges, industrial parcels, the middle of a runway. A racial composition of nobody is not zero per cent, it is undefined, and every figure below drops those rows before it starts. That is the only defensible choice and it still removes almost a third of the file before a single dot is placed.
+
+What remains is `r n(NPT)` points. Population runs from 1 to a few thousand, and is drawn on a log scale. The median block holds `r n(MEDP)` people and the mean holds `r p1(MEANP)`, a gap wide enough that a straight axis would put four fifths of Georgia in the leftmost inch.
+
+> **Before you read on, commit to a view.** `r n(NPT)` dots on a figure about
+> seven inches wide. **How many of them do you expect to be sitting on top of
+> another dot?** Write the number down before you turn the page.
+
+## The scatter
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. `r n(NPT)` Georgia blocks: population against Black share.** Every populated block in the state is on this figure. The two controls change only how the ink is laid down — the opacity of each dot and its radius. No point is added or removed by either.
+
+At full opacity the middle of the figure is solid. **`r n(NHID)` of the `r n(NPT)` points, `r p1(PHID)`% of them, are drawn where another point has already been drawn**, and the most crowded single pixel has `r n(MAXP)` blocks under it. Turn the opacity down and structure appears out of what looked like a single mass. Turn it back up and the structure disappears again.
+
+**Neither setting is the honest one.** At high opacity the figure exaggerates the rare: a lone block in an empty region is as black as a pixel holding two thousand. At low opacity the dense regions read correctly and the isolated points vanish entirely. Opacity is a parameter with no right value, it changes what the figure asserts, and it is almost never reported.
+
+There is a second thing wrong, and it is worse because it survives every setting of the control. **The outline of a scatter plot is drawn by its rarest points.** How far the ink reaches on the page, left and up, is set by whichever handful of blocks happen to be extreme. The shape of the mass inside is set by hundreds of thousands. The eye reads the outline.
+
+## The arcs are real
+
+Turn the opacity down and look at the left-hand half of Figure 1. The points are not scattered there. They lie along **curved bands**, with clean empty space between them, and the bands fan out as the population falls.
+
+Those bands are not an artifact of the drawing. They are the arithmetic of a share. A block of seven people can be 0%, 14.3%, 28.6% and so on: eight values and nothing in between. The share is a fraction with seven as its bottom number, seven in the denominator. Each band in the figure is the locus of *k/n* for one small *n*, and the white space between the bands is **unreachable**: no block can land there, at any population, ever.
+
+```{r quant}
+```
+
+`r n(fn("n_le5"))` blocks hold five people or fewer, and between them they take **`r n(fn("shares_le5"))` distinct values** of the vertical axis. Half of all Georgia blocks hold `r n(MEDP)` people or fewer. The build script checks the claim rather than asserting it: for every block of ten or fewer, the recorded share is exactly *k/n*, and the check fails the build if it ever is not.
+
+So the vertical axis of Figure 1 is smooth for the right-hand quarter of the data and **steps for the rest**. A quarter of all blocks, `r p1(fn("pct_exact0"))`%, sit exactly on zero, with a further `r p1(fn("pct_exact100"))`% exactly on one hundred.
+
+A regression through this figure is a best line drawn through the scatter of points. That line, or a correlation computed from it, is being asked to treat those bands as though they were a cloud.
+
+This is the clearest case in the chapter for drawing the points at all. The next figure is better at almost everything, and it destroys this completely.
+
+## The same points, binned
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same `r n(NPT)` points, hex-binned.** Colour is the number of blocks in each cell on a square-root scale; hover any cell for its count. The control switches between three bin sizes, from `r n(NHC)` coarse hexagons to `r n(NHF)` fine ones. Each of the three accounts for every one of the `r n(NPT)` points, and the build script checks that the cell counts add to the total before it writes them.
+
+The binned figure answers the question the scatter could not: **where is the mass**. Two dense regions stand out, at the bottom of the composition axis and at the top, with the middle of the figure thin. That is not something the scatter concealed by accident. It is the thing the scatter's solid centre was made of.
+
+Notice what the binning costs, though. A hexagon holding one block and a hexagon holding four are nearly the same colour. So the isolated points, the ones the scatter drew loudest, are now almost invisible.
+
+And the arcs are gone. A hexagon spans several of the *k/n* bands and the empty lattice between them, so it reports the average of a band and a void as though the whole cell were uniformly occupied. **The binned figure shows a smooth density over a region where half the values cannot occur.** Nothing in it hints that the axis is discrete.
+
+**The two figures have opposite blind spots**, which is the argument for printing both rather than choosing. The scatter is honest about what values exist and dishonest about how many blocks hold them; the hexbin is the reverse.
+
+## What the mass turns out to be
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The composition axis on its own.** The dashed line is Georgia's actual Black share, `r p1(STATE)`%.
+
+`r n(LO5)` blocks, `r p1(PLO5)`% of them, are less than 5% Black. `r n(HI95)` are more than 95% Black. Only `r p1(PMID)`% sit between 40 and 60. **The state figure passes through one of the emptiest parts of the spread.** That is the same failure the [distributions chapter](../../03-elections/distributions/distributions-brief.html) finds in House districts, arriving here from a completely different direction. This is what residential segregation looks like when you stop adding it up.
+
+That matters beyond this figure. Several methods in this book assign a race to a place: the [RPV](../../06-putting-data-together/rpv/rpv-brief.html) estimates, the [BISG](../../06-putting-data-together/bisg-check/bisg-check-brief.html) model, every districting plan in [vote-dilution](../../06-putting-data-together/vote-dilution/vote-dilution-brief.html). All of them are working on blocks that sit mostly at one end or the other. The methods are easier than they would be in a evenly mixed state, and the ease is a fact about Georgia rather than about the methods.
+
+> **A second prediction.** Suppose you redrew Figure 1 with tracts instead of
+> blocks — about 2,800 of them rather than `r n(NPT)`. **Would the two humps in
+> Figure 3 get sharper or softer**, and what does your answer imply about which
+> unit an argument about segregation should be made on?
+
+## What this chapter cannot tell you
+
+**The empty blocks are gone and they are not nothing.** `r n(NEMP)` blocks with no residents were dropped before the first figure, because a share of zero people is undefined. They are `r p1(PEMP)`% of the file and they are not randomly placed — they are water, industry and infrastructure, and a map of where they are is a map of where nobody was counted.
+
+**Quantising is lossless for the picture and not for the data.** Figure 1 draws one dot per occupied pixel rather than one per block, which puts exactly the same ink in exactly the same places at the size it is printed. Enlarge it and that stops being true. The counts are preserved; the individual blocks are not recoverable from the figure, and were never visible in it anyway.
+
+**A hexagon is a choice of resolution, exactly like a histogram's bin width.** The three sizes in Figure 2 tell three slightly different stories about how sharp the two dense regions are, and there is no size that is correct. The build script writes all three rather than picking one.
+
+**None of this says anything about people.** A block that is 95% Black is a statement about a few dozen residents of a small piece of ground, not about a neighbourhood, a community or a district. Blocks are the smallest unit the Bureau publishes and they are also the noisiest: the median block here holds `r n(MEDP)` people, so a single household moving changes its composition by several points. The [areal-units chapter](../areal-units/areal-units-brief.html) is about what happens when you add them together, and it should be read as the other half of this one.
+
+## Sources
+
+- U.S. Census Bureau. *2020 Census Redistricting Data (P.L. 94-171) Summary
+  File*, Georgia, block level. Extracted and committed by this corpus's
+  [areal-units chapter](../areal-units/areal-units-brief.html), whose build
+  script documents the extraction; the figures here read that output.
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
+- Carr, D. B., R. J. Littlefield, W. L. Nicholson and J. S. Littlefield (1987).
+  "Scatterplot Matrix Techniques for Large N." *Journal of the American
+  Statistical Association* 82(398): 424–436. The paper that introduced
+  hexagonal binning, and for this reason.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`contour.csv`](data/derived/contour.csv), [`counts.csv`](data/derived/counts.csv), [`grid.csv`](data/derived/grid.csv), [`hex.csv`](data/derived/hex.csv), [`marginal.csv`](data/derived/marginal.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `counts.csv` says how many blocks are in the file and how many you can actually see once they are drawn. Work out the share that is hidden. Would you have trusted the scatter if nobody had told you?
+- `grid.csv` and `hex.csv` bin the same points two different ways, each with a count `n`. Find where the two disagree most about how crowded a place is. Which binning would you publish?
+- `marginal.csv` collapses the same points onto one axis. Compare it with the scatter. What does the flattened version show that the picture of every point hides?
+- Take the densest cell in `grid.csv` and work out how many blocks are stacked in it. Then decide what a single dot on a map of every block is really worth.
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

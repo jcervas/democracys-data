@@ -1,0 +1,475 @@
+---
+title: "Key: Which Way Did It Blow"
+subtitle: "84-355 Democracy's Data | The election wind map | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", dpi = 96, fig.retina = 1)
+options(scipen = 999)
+D  <- "data"
+us <- read.csv(file.path(D, "wind_us.csv"), colClasses = c(county_fips = "character"))
+us <- us[us$in_frame == "TRUE" | us$in_frame == TRUE, ]
+ga <- read.csv(file.path(D, "wind_ga.csv"), colClasses = c(fips = "character"))
+og <- read.csv(file.path(D, "office_gap.csv"))
+ff <- read.csv(file.path(D, "facts.csv"))
+FV <- setNames(ff$value, ff$key)
+F  <- function(k) { z <- FV[[k]]; n <- suppressWarnings(as.numeric(z))
+                    if (is.na(n)) z else n }
+c20 <- read.csv("../data-sources/data/pres2020_counties.csv",
+                colClasses = c(county_fips = "character"))
+c24 <- read.csv("../data-sources/data/pres2024_counties.csv",
+                colClasses = c(county_fips = "character"))
+agg <- function(d, g) 100 * (sum(g) - sum(d)) / (sum(g) + sum(d))
+V   <- us$votes_dem_24 + us$votes_gop_24
+O   <- order(-V)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`wind-map-brief.Rmd`) and the lab (`wind-map.Rmd`) run
+the same numbered steps — the brief in prose with three D3 figures, the lab with
+the code exposed. **Students should read the brief first.** Step numbers below
+refer to the lab.
+
+**This session has two halves and the second one has not happened yet.** The
+2020-to-2024 map is fully built. The 2026 map is a stub with the 2022 baseline
+already in it, waiting on an election that falls on **Tuesday 3 November 2026**,
+inside the semester. See "Running the 2026 map live" at the end.
+
+Every number below was run against the built files.
+
+***
+
+# The session in one sentence
+
+A wind map is the most persuasive picture of an election anyone draws, and every
+arrow rests on a join that reports its successes and never its meanings — so the
+lab draws the map, then audits the join, and finds an arrow pointing the wrong
+way in a place where nothing failed.
+
+***
+
+# The findings
+
+```{r headline}
+c(national_arrows      = nrow(us),
+  median_county_swing  = round(median(us$swing), 2),
+  national_vote_swing  = round(agg(us$votes_dem_24, us$votes_gop_24) -
+                               agg(us$votes_dem_20, us$votes_gop_20), 2),
+  dc_naive_swing       = round(F("naive_dc_swing"), 2),
+  dc_true_swing        = round(F("true_dc_swing"), 2),
+  rows_either_way      = as.integer(F("naive_matched")),
+  georgia_counties     = nrow(ga),
+  georgia_state_swing  = round(F("ga_state_swing"), 2),
+  office_gap_same_ballot = round(F("og_state_gap"), 2),
+  precinct_join_ceiling  = F("pj_best_pct"))
+```
+
+- **`r round(F("us_share_R"), 1)`% of counties moved toward Trump**, median
+  `r sprintf("%+.2f", F("us_swing_median"))`. The map is unambiguous and that is
+  part of the problem: it looks like it cannot be wrong.
+- **The District of Columbia's arrow reverses**, from
+  `r sprintf("%+.2f", F("naive_dc_swing"))` to
+  `r sprintf("%+.2f", F("true_dc_swing"))`, and **both joins return
+  `r format(F("naive_matched"), big.mark = ",")` rows.**
+- **The counties moved `r sprintf("%+.2f", F("us_swing_median"))`; the country
+  moved `r sprintf("%+.2f", F("us_agg_swing"))`.** One arrow per county is an
+  editorial position.
+- **Two offices on the same Georgia ballots differ by
+  `r round(F("og_state_gap"), 2)` points** — as large as Georgia's entire real
+  2020-to-2024 shift of `r round(F("ga_state_swing"), 2)`.
+- **The precinct-level join stalls at `r F("pj_best_pct")`%**, and
+  `r F("pj_worst_county")` County loses all `r F("pj_worst_total")` precincts.
+
+***
+
+# The three things to get said
+
+**1. The row count cannot warn you.** This is the session. Two joins of the same
+two files, `r format(F("naive_matched"), big.mark = ",")` rows either way, and
+one of them produces an arrow pointing the opposite direction. **Make somebody
+say out loud what check would have caught it**, and keep pushing until the answer
+is "read the `county_name` column, not the count." Every instinct students have
+about data quality — match rate, missingness, row counts — is silent here.
+
+**2. Loud failures are the safe ones.** Alaska and Connecticut break the join and
+the rows fall out; you can count what you lost and say so. The District of
+Columbia does not break anything. **The ranking students will get backwards is
+that the loud failure is worse.** Ask which of the three they would rather have
+in a dataset they were about to publish from.
+
+**3. One arrow per county is a choice about whose movement is visible.** The
+counties moved `r sprintf("%+.2f", F("us_swing_median"))` and the country moved
+`r sprintf("%+.2f", F("us_agg_swing"))`. Nothing is miscomputed. The map answers
+"what did the typical county do", which almost nobody reading it thinks is the
+question. **This is not a caveat; it is what the figure is.**
+
+**The line for the board:** a join reports whether it matched, never whether it
+meant anything.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** The encoding | Angle and length, declared as constants | 6 | Have someone read an arrow back off the legend. If they cannot, nothing later lands. |
+| **2** The national map | 3,100 arrows, 88.5% pointing right | 7 | Let them enjoy it first. The audit is more effective after they have believed it. |
+| **3** Who published this | No federal county-level source exists | 6 | **Most students assume the government publishes this.** It does not. Say the FEC line explicitly. |
+| **4** Audit the units | Alaska, DC, Connecticut | 9 | Only Connecticut is a real unit change. Do not let the CT story swallow the other two. |
+| **5** The silent failure | DC's arrow reverses; row counts identical | **12** | **The pivot.** Take a prediction before revealing the harmonised number. |
+| **6** What harmonising cost | Two of three repairs are deletions | 4 | A counted hole beats an invented arrow. |
+| **7** One arrow per county | 3.06 vs 6.04 | 9 | Not a caveat. The figure *is* the choice. |
+| **8** Georgia, officially sourced | Same encoding, defensible provenance | 6 | The only difference from Step 2 is the publisher. Say so plainly. |
+| **9** Why not precincts | The join stalls at 90.9% | 6 | Chatham loses **all** its precincts. The hole would look like quiet. |
+| **10** The office problem | 2.08 points, same ballots | 9 | This is what licenses using 2022 rather than 2024 as the 2026 baseline. |
+| **11** The 2026 slot | 159 tails, no heads | 6 | Show the stub file on screen. Two empty columns is the whole design. |
+
+**Step 5 deserves the prediction.** Put the two DC rows on the screen — same
+FIPS, "District of Columbia" and "Ward 1" — and ask: *the join will match this
+row. Will the resulting arrow be roughly right?* Most of the room says yes,
+reasoning that DC's wards are all overwhelmingly Democratic so the margin will be
+similar. **They are almost right, and that is the trap**: the naive margin is
+`r round(F("naive_dc_margin_24"), 1)` against a true
+`r round(F("true_dc_margin_24"), 1)`, close enough to look fine, and the *swing*
+built from it points the wrong way.
+
+**If you are short on time**, protect Steps 5, 7 and 10. The silent join, the
+editorial weighting, and the measured office effect are the argument. Steps 1
+and 2 can be compressed to a demonstration.
+
+***
+
+# The mistake this lab made, and how to teach it
+
+**Tell this, because it happened while building the lab.**
+
+The first plan was a Georgia **precinct** map — seventeen times the resolution,
+with a companion lab having already solved the boundary problem by crosswalking
+2020's votes onto 2024's precinct lines. All that remained was attaching the 2024
+returns by precinct name.
+
+```{r ladder}
+read.csv(file.path(D, "precinct_join_ladder.csv"))
+```
+
+Each rung is a reasonable repair. Together they reach `r F("pj_best_pct")`% and
+stop. And the residual is not scattered:
+
+```{r resid}
+head(read.csv(file.path(D, "precinct_join_residual.csv")), 5)
+```
+
+**`r F("pj_worst_county")` County — Savannah — loses every one of its
+`r F("pj_worst_total")` precincts**, because the state's returns identify
+precincts by codes like `1-05C` and the boundary file identifies them by the name
+of the polling place. There is no regex for that.
+
+The pedagogy: **ask what they would have tried next.** Fuzzy matching and a
+hand-built alias table are the usual answers, and both are more work in service
+of a map that would have had an invisible hole where a majority-Black city is.
+The decision was to drop to county level, where nothing is lost. **Resolution you
+cannot trust everywhere is not resolution**, and this is the same lesson
+`precinct-geography` reaches from the other direction.
+
+***
+
+# Handling the room
+
+The figure is genuinely beautiful and that is a teaching hazard.
+
+- **Let them like it.** Five minutes of just looking at Step 2 buys the audit.
+- **The audit is not debunking.** The map is basically right. The point is that
+  nothing in the process would have told you if it were not.
+- **Nobody writes code.** Say so at the top; the D3 in the brief makes some
+  students assume otherwise.
+- **The 2026 half makes this the one session with a sequel.** Flag on day one
+  that they will redraw this map with data that does not exist yet.
+
+***
+
+# Option A — Weight the map by votes
+
+## Verified output
+
+```{r a}
+big <- O[1:100]; sml <- O[(length(O) - 999):length(O)]
+data.frame(
+  group = c("largest 100 counties", "smallest 1,000 counties"),
+  share_of_votes = round(c(100*sum(V[big])/sum(V), 100*sum(V[sml])/sum(V)), 1),
+  median_swing = round(c(median(us$swing[big]), median(us$swing[sml])), 2),
+  arrows_on_the_map = c(100, 1000))
+round(agg(us$votes_dem_24[big], us$votes_gop_24[big]) -
+      agg(us$votes_dem_20[big], us$votes_gop_20[big]), 2)
+```
+
+**3/4:** Reports that big and small counties moved differently and that the map
+gives them equal weight.
+
+**4/4:** Puts numbers on it — the largest 100 counties cast about 40% of the vote
+and swung a median of +5.6, the smallest 1,000 cast 2.3% and swung +3.1, and the
+map draws ten times as many arrows for the second group. Concludes that the
+national swing of +6.0 is invisible on a map whose median arrow is +3.1.
+
+**4/4, best:** Notices that **there is no weighting that makes the map correct**,
+because a wind map's job is to show geography and a vote-weighted map is a
+cartogram that has stopped being a map. Says which question each version answers
+and picks one on purpose. A student who proposes drawing both and labelling them
+has understood the figure better than the figure does.
+
+***
+
+# Option B — Break the harmonisation on purpose
+
+## Verified output
+
+```{r b}
+t20 <- table(substr(c20$county_fips, 1, 2))
+t24 <- table(substr(c24$county_fips, 1, 2))
+k <- union(names(t20), names(t24))
+d <- data.frame(state_fips = k, rows_2020 = as.integer(t20[k]),
+                rows_2024 = as.integer(t24[k]))
+d[!is.na(d$rows_2020) & !is.na(d$rows_2024) & d$rows_2020 != d$rows_2024, ]
+# states whose row COUNT is unchanged but whose codes all changed
+same <- d$state_fips[d$rows_2020 == d$rows_2024]
+z <- sapply(same, function(s)
+  length(setdiff(c20$county_fips[substr(c20$county_fips,1,2) == s],
+                 c24$county_fips[substr(c24$county_fips,1,2) == s])))
+z[z > 0]
+```
+
+**3/4:** Finds the two states whose row counts differ — Connecticut and the
+District of Columbia — and describes them correctly.
+
+**4/4:** Notices that **Alaska has exactly 40 rows in both years and every single
+code is different**, so a row-count diff misses it completely. States the general
+rule: comparing counts detects changes in cardinality, not changes in identity.
+
+**4/4, best:** Turns it round and asks what a state that changed its units
+*without* changing its count would look like — which is Alaska — and then points
+out that a state which renamed its units while keeping both count and codes would
+be invisible to every check in this lab. **Recognising that the audit has a floor
+is the most sophisticated response available.**
+
+***
+
+# Option C — Audit Georgia against the national file
+
+## Verified output
+
+```{r c}
+n24 <- c24[substr(c24$county_fips, 1, 2) == "13", ]
+n20 <- c20[substr(c20$county_fips, 1, 2) == "13", ]
+m <- merge(ga[, c("fips","county","dem_20","gop_20","dem_24","gop_24","swing")],
+           n24[, c("county_fips","votes_dem","votes_gop")],
+           by.x = "fips", by.y = "county_fips")
+m <- merge(m, n20[, c("county_fips","votes_dem","votes_gop")],
+           by.x = "fips", by.y = "county_fips", suffixes = c("_n24", "_n20"))
+mg <- function(d, g) 100 * (g - d) / (g + d)
+m$nat_swing <- (mg(m$votes_dem_n24, m$votes_gop_n24) -
+                mg(m$votes_dem_n20, m$votes_gop_n20))
+c(counties            = nrow(m),
+  gop_2024_difference = sum(m$votes_gop_n24) - sum(m$gop_24),
+  dem_2024_difference = sum(m$votes_dem_n24) - sum(m$dem_24),
+  dem_2020_difference = sum(m$votes_dem_n20) - sum(m$dem_20),
+  max_swing_gap       = round(max(abs(m$nat_swing - m$swing)), 3),
+  median_swing_gap    = round(median(abs(m$nat_swing - m$swing)), 4),
+  arrows_that_flip    = sum(sign(m$nat_swing) != sign(m$swing)))
+```
+
+**3/4:** Reports that the two sources agree closely and concludes the national
+file is fine.
+
+**4/4:** Quantifies it — totals differ by a handful of votes out of five million,
+the median county's swing differs by six thousandths of a point, and **no arrow
+changes direction** — and then draws the right conclusion, which is *not* that
+the national file is fine. It is that the file is **accurate here**, and that
+this could only be established because Georgia happens to publish a check.
+
+**4/4, best:** States the actual problem: **for 49 other states there is no
+comparable check available at this cost**, so the correct summary is "verified in
+one state, unverifiable in the rest" rather than "verified." A student who
+observes that a single-state audit passing is weak evidence about the other
+fifty — and that the states most likely to be scraped badly are the ones least
+likely to publish conveniently — has the argument.
+
+***
+
+# Option D — Argue with the encoding
+
+## Verified output
+
+```{r d}
+ga$turnout_change <- round(100 * (ga$tot_24 - ga$tot_20) / ga$tot_20, 2)
+c(state_total_2020 = sum(ga$tot_20),
+  state_total_2024 = sum(ga$tot_24),
+  state_change_pct = round(100*(sum(ga$tot_24)-sum(ga$tot_20))/sum(ga$tot_20), 2),
+  median_county    = round(median(ga$turnout_change), 2),
+  counties_losing_votes = sum(ga$turnout_change < 0),
+  correlation_with_margin_swing = round(cor(ga$turnout_change, ga$swing), 3))
+ga[c(which.min(ga$turnout_change), which.max(ga$turnout_change)),
+   c("county", "turnout_change", "swing")]
+```
+
+**3/4:** Builds the turnout map and observes that it looks nothing like the
+margin map.
+
+**4/4:** Notes the negative correlation of about -0.44 — counties where turnout
+grew swung *less* toward Trump — and says what that implies: the margin map and
+the turnout map are telling two halves of one story and neither is complete
+alone.
+
+**4/4, best:** Confronts the identification problem head on. **A margin swing
+cannot distinguish persuasion from differential turnout**, and the two have
+completely different implications for what a campaign should do next. Says that a
+front page needs the margin map and a campaign needs both, and that the wind map
+is popular partly *because* it collapses a distinction its readers do not know
+is there.
+
+***
+
+# Option E — Your own question
+
+No verified output. Grade the question as much as the answer. **A 4 requires the
+question to be answerable from the files given and the student to say what would
+have changed their mind.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given.
+- **The move that earns a 4** is treating an encoding or a join as a decision
+  with consequences that can be measured, and then measuring it.
+- **A 2** is "the data has problems so the map is unreliable" — true, useless,
+  and precisely what the lab is built to move past. The map is mostly *right*;
+  the point is that nothing in the process would have said so.
+- **Also a 2**: reporting the national numbers as though a government published
+  them.
+- **Reward anyone who asks for an error bar on an arrow.** There isn't one, there
+  is no agreed way to draw one, and noticing the absence is the most
+  sophisticated available response.
+
+## Anticipated questions
+
+- *"Why is Alaska missing?"* — Because Alaska does not report presidential votes
+  by county, both files invent their own codes for State House Districts, and the
+  districts were redrawn in between. Three separate reasons, any one of which is
+  sufficient.
+- *"Couldn't we just fix Connecticut with a crosswalk?"* — In principle, with
+  town-level returns, which Connecticut does publish. It is a real project, not a
+  line of code, and it is a good final-paper topic.
+- *"Isn't the map basically right?"* — Yes. Say so. Then ask how they know, and
+  watch the answer turn out to be Option C, which covers one state.
+- *"Why not use the FEC data?"* — Because the FEC publishes by state and
+  congressional district. There is no county sheet. This surprises people every
+  time.
+- *"Who decides that up means no change?"* — Whoever draws it. There is no
+  standard. Some published wind maps put no-change at horizontal instead, which
+  changes what the map looks like without changing a number.
+
+## Connections
+
+- **`data-sources`** — the same two county files, and the lab that establishes
+  their provenance. **Run that one first if you can**; this lab depends on
+  students already distrusting the file.
+- **`precinct-geography`** — boundaries moving between elections. This lab is the
+  other failure mode: the boundary held and the *label* moved.
+- **`areal-units`** — the unit changes the answer. Step 7 is that lab's point
+  rendered as a picture.
+- **`migration`** — the other arrow map in the corpus, and the reason the length
+  scale here is a declared constant with a printed legend.
+- **`regional-shift`** — the aggregate version of the same question, and a useful
+  contrast: it cannot be wrong in this way because it has no join.
+
+***
+
+# Running the 2026 map live
+
+## What to have ready before class
+
+```{r stub}
+st <- read.csv(file.path(D, "wind_input_2026.csv"),
+               colClasses = c(unit_id = "character"))
+c(rows = nrow(st), filled = sum(!is.na(st$votes_dem_to)))
+names(st)
+```
+
+- **The baseline is already built.** `wind_ga_counties.csv` holds all 159
+  Georgia counties with their 2022 governor margins;
+  `r F("ga22_election")`, snapshot `r F("ga22_snapshot")`.
+- **One file changes**: `data/wind_input_2026.csv`, two empty columns.
+- **One command runs**:
+
+  ```
+  Rscript -e 'source("data/build-data.R"); build_2026()'
+  ```
+
+  It fetches `export-2026NovGen.json` from `results.sos.ga.gov`, fills the two
+  columns, recomputes every swing, and rewrites the baseline file. Re-knit and
+  the map appears.
+
+## The office decision, and why it is not negotiable
+
+The class map is **2022 governor against 2026 governor**, not 2024 president
+against 2026 governor. Step 10 measures why: two offices on the *same Georgia
+ballots* in November 2020 differed by `r round(F("og_state_gap"), 2)` points,
+which is the size of Georgia's entire real shift between two presidential
+elections — and that is with the electorate held exactly constant. A
+presidential-to-midterm arrow adds a turnout change of roughly a third on top of
+a floor that already exceeds the signal.
+
+**If a student proposes the 2024 comparison, do not just refuse it.** Have them
+compute what it would show, then put the two side by side. The version of this
+lesson that sticks is the one where they draw the bad arrow themselves.
+
+## What will break
+
+| Failure | Likelihood | What to do |
+|---|---|---|
+| `export-2026NovGen.json` 404s | **Moderate.** The URL pattern is inferred from 2022 and 2024, both of which return HTTP 200. The state may rename it. | Look at <https://results.sos.ga.gov/> in a browser, find the export link, pass it: `build_2026(url = "...")`. |
+| The export exists but has no `localResults` | Low | 2022 and 2024 both have it. If not, county totals are on the results page; fill the two columns by hand and call `build_2026(from_stub = TRUE)`. |
+| The contest is not called `Governor` | Moderate | 2022 called it exactly `Governor`. Pass `office = "^Governor"` or whatever the export uses. |
+| Counties still reporting | **Certain, if you run this early** | `build_2026()` prints how many of 159 counties have a result. Draw it anyway and label it. |
+| Nothing is posted at all | Low by December | Fall back to the 2022 baseline figure in Step 11 and run the session as a design exercise: *what would you need to see before you drew the arrow?* That is a legitimate 80 minutes. |
+
+## If the data is not out
+
+**Do not cancel the step.** Run it as a pre-registration exercise: have the room
+predict the 2026 map before it exists — direction of the statewide arrow, which
+counties move most, whether metro Atlanta and rural Georgia move together — and
+write the predictions down. Then redraw it when the data lands, in office hours
+or by email. **A prediction recorded before the data arrives is worth more than
+the map**, and it is the only exercise in this course that can do that, because
+it is the only one whose data has not happened yet.
+
+## A note on the figures
+
+The interactive (D3) and printed (base-R) versions of every map read the same
+`x`, `y`, `dx`, `dy` columns out of the same CSV. Neither one projects or
+rescales anything, so they cannot drift. Checked mechanically against the
+knitted HTML: the two renderers place arrow tips within **1.0 pixel** on the
+national map (the whole-pixel rounding floor of the D3 payload) and within
+**0.1 pixel** on the Georgia map, on figures 780 and 720 pixels wide.
+
+```{r parity}
+read.csv(file.path(D, "parity.csv"))
+```
+
+## The provisional label
+
+Whatever gets drawn in early December will be **unofficial**. Certification runs
+into December in many states, close races will still be open, and precinct-level
+returns will not exist. Put that on the figure, in words, on the slide. **Every
+wind map published on election night has this property and almost none of them
+say so**, which is itself the last thing this lab has to teach.

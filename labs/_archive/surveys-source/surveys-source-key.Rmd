@@ -1,0 +1,226 @@
+---
+title: "Data Session 8 Key, part 2: What People Say They Did"
+subtitle: "84-355 Democracy's Data | Session 8 — Surveys, two ways | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+cps <- read.csv("data/cps_turnout.csv", stringsAsFactors = FALSE)
+cps$gap_people <- cps$reported_voters - cps$actual_votes
+cps$gap_pct <- 100 * cps$gap_people / cps$actual_votes
+```
+
+All Part 5 code is given to students. Grade the interpretation.
+
+**Framing.** This is the **survey** lab among the four families of democracy
+data, and it is the afternoon's second half — pair it with `ces-class`,
+which takes one survey up close while this one follows one question over time.
+The lab opens by distinguishing a survey from two families students already
+have — returns (Session 1) and the census (Session 2) both try to count everyone
+and fall short; a survey declines to try, asks a few thousand, and multiplies —
+and ends with a table setting all three failures side by side.
+
+The point of that table is that **none of the three failed through carelessness.**
+Each failed in the way its method makes it liable to fail: returns by being
+stitched, the census by carrying invisible uncertainty, surveys by the people who
+answered differing from those who did not. Students who leave able to name the
+question that belongs to each family have got the point.
+
+The payoff line is in the closing: the fourth family, **administrative records**,
+students already have — campaign finance in Session 5 and voter files in Session
+6 — and its question is *what was this collected for?* Ask it backwards here.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+This is the one day all term when a survey can be graded against the truth, and
+it fails — by ten million people in 1972, by almost nothing in 2020, and the
+change between those two is more interesting than the failure.
+
+***
+
+# The findings
+
+```{r headline}
+era <- cut(cps$year, c(1963, 1979, 1999, 2030),
+           labels = c("1964-1976", "1980-1996", "2000-2024"))
+round(tapply(cps$gap_pct, era, mean), 1)
+c(worst_year = cps$year[which.max(cps$gap_pct)],
+  worst_pct  = round(max(cps$gap_pct), 1),
+  gap_2016   = round(cps$gap_people[cps$year == 2016]))
+```
+
+- **2016: 8,642,778 people** said they voted who do not appear in the count.
+- **1972 is the peak: the survey overstated the electorate by 13.4%.**
+- By era, over-report as a share of actual votes: **10.1% → 10.7% → 3.4%**.
+- On the rate measure (1980 on) the mean gap is **3.7 points**, and **2020 is
+  negative** — the survey slightly understated turnout.
+
+***
+
+# The idea to teach
+
+**Not "people lie."** That is where students will stop, and it is the least
+interesting reading. Three things are mixed together in the gap and the data
+cannot separate them:
+
+1. respondents misremembering or overclaiming,
+2. the Bureau's weights stretching respondents' answers to cover non-respondents,
+3. our own denominator and our use of presidential votes rather than all ballots.
+
+**The finding that earns the hour is the trend.** A 10% over-report became a 3%
+over-report without anyone setting out to fix it. Ask what else changed —
+actual turnout rose sharply, survey response rates collapsed, and the Bureau
+altered how it treats people who do not answer the voting question. Any of those
+could produce this, and students should feel the difficulty of telling which.
+
+**The transferable point** is in the closing section: voting is nearly the only
+survey question with a public record to check against. Every poll they read
+after today is asking for faith in exactly the thing they just watched miss.
+
+***
+
+# Option A — Go back further, and hit a wall
+
+## Verified output
+
+```{r a}
+head(cps[, c("year", "cps_rate", "actual_rate", "gap_pct")], 16)[13:16, ]
+```
+
+The rate columns are **`NA` for 1964–1976**. Not a bug: the Bureau did not
+publish a citizen-population basis before 1980, so no rate can be computed.
+The counts still work, and on counts the pre-1980 mean over-report is **10.1%**.
+
+## What a good answer says
+
+**3/4:** Notices the blanks, identifies the cause, and redoes the comparison on
+counts.
+
+**4/4:** Answers the second half of the prompt — what you would have concluded
+had you quietly dropped the blank years. You would have seen a series starting
+in 1980 at its historical peak and falling ever since, and you would probably
+have told a story about the 1980s as a turning point. **The pre-1980 data says
+the level was already high and roughly flat.** Dropping missing rows is not
+neutral; it silently chose a start date, which is the same error the midterm-loss
+lab (Tue Oct 20) flags from the other direction.
+
+**4/4, best:** notices that the missingness is *informative*. The Bureau began
+publishing a citizen basis when non-citizens became numerous enough that the
+distinction mattered. The gap in the data is itself a fact about the country.
+
+***
+
+# Option B — Midterms
+
+No output; graded on reasoning.
+
+**3/4:** Picks a direction and gives a reason.
+
+**4/4:** Argues from the mechanism rather than intuition. The strongest case is
+that over-reporting should be **larger** in midterms, because the social
+pressure to have voted does not fall as much as actual turnout does — so the
+same impulse operates over a smaller true base. A student who says that, and
+then notes we would need midterm ballot counts (which are messier, since there
+is no single national race), has done the work.
+
+**Do not accept** "it would be the same" without an argument.
+
+***
+
+# Option C — Break the denominator
+
+## Verified output
+
+```{r c}
+o <- cps[cps$year == 2024, ]
+c(citizen_basis = round(100 * o$actual_votes / o$citizen_vap, 1),
+  total_vap_basis = round(100 * o$actual_votes / (o$vap_thousands * 1000), 1))
+```
+
+**2024 turnout is 64.4% or 58.5%** depending on the denominator. Same ballots,
+same year, **5.9 points apart**.
+
+## What a good answer says
+
+**3/4:** Reports both and says the denominator matters.
+
+**4/4:** Says which is right *for what question*. Citizen VAP is right for "what
+share of eligible people voted." Total VAP answers "what share of adults
+voted," which includes people legally barred from voting and is therefore the
+wrong denominator for a claim about civic engagement — but the right one if you
+are asking how representative the electorate is of everyone living here.
+
+**4/4, best:** connects it to the lab's own caveat. Our citizen VAP is derived
+from the CPS, so the "actual" rate is a ballot count divided by a survey
+estimate. **Neither number in the comparison is fully independent of the
+survey.** That is uncomfortable and correct.
+
+**This is the same "per what?" lesson as the midterm-loss lab**, which ran two
+days ago on Tue Oct 20. Say so — the repetition two days apart is the point.
+
+***
+
+# Part 4 — turnout by race
+
+2024 reported turnout: **White non-Hispanic 70.5%, Black 59.6%, Asian 57.1%,
+Hispanic 50.6%.** Twenty points between the top and bottom.
+
+Two cautions worth making explicit in class. These are **reported** figures and
+carry the same over-report, which need not be equal across groups. And the
+Asian and Hispanic estimates rest on much smaller subsamples, so they are less
+precise — the table publishes no margin of error, which is exactly what the ACS
+handbook reading (Session 3) said to look for and not find.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing the easy story. "People lie" is a 2.
+  Naming three candidate mechanisms and saying the data cannot separate them
+  is a 4.
+- **Reward anybody who is disturbed by the closing point** — that this is the
+  only checkable survey question they will meet. That discomfort is the correct
+  response and should be validated, not resolved.
+
+## Anticipated questions
+
+- *"So are surveys useless?"* — No. The survey got the *level* roughly right and
+  the *trends between groups* very likely right. It was wrong by a few points on
+  a socially loaded question. That is a real limitation and not a fatal one.
+- *"Why does the Bureau publish a number that is wrong?"* — Because it is
+  publishing what people said, accurately. The error is in our reading, not in
+  their reporting. Worth five minutes; it is the difference between a bad
+  measurement and a measurement of something other than what you assumed.
+- *"Why not use total ballots instead of presidential votes?"* — Because there
+  is no clean national total ballots series. The lab says so. The effect is
+  small and makes our gap slightly too large.
+- *"Is 60,000 households enough?"* — Yes, for national estimates; that is a
+  much larger sample than any public poll. **Sample size is not the problem
+  here**, which is the point students should take into Session 9 next Thursday.
+
+## Connections
+
+- **Sessions 2 and 3 (the census and the ACS)** — same agency, same survey apparatus, different question.
+  The ACS margin-of-error reading pays off directly in Part 4.
+- **Session 9 (polls, models, and markets)** — that lab simulates a poll failing; this one shows a
+  real one failing. Run this first and refer back.
+- **The midterm-loss lab (Tue Oct 20)** — the "per what?" lesson, second appearance.
+- **Ch. 12 (participation), on the November Tuesdays** — the turnout gaps by race in Part 4 are
+  the chapter's subject, and students will already have met them here with the
+  caveat attached.

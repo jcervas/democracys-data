@@ -1,0 +1,309 @@
+---
+title: "Data Session 5 Key, part 1: Following the Money"
+subtitle: "84-355 Democracy's Data | Session 5 — Money, message, and attention | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+fec <- read.csv("data/fec_candidates_2024.csv", stringsAsFactors = FALSE)
+```
+
+```{r vals, include=FALSE}
+# Every figure quoted in this key is computed here and inserted inline, using
+# the same definitions as the brief, so the two cannot drift apart.
+.h   <- fec[fec$office == "House", ]
+.hs  <- .h[.h$ici %in% c("I", "C", "O"), ]
+.ser <- .hs[.hs$ttl_receipts > 50000, ]
+.ser$pac_share <- 100 * .ser$pac_contrib / .ser$ttl_receipts
+.sen <- fec[fec$office == "Senate" & fec$ici %in% c("I", "C", "O") &
+            fec$ttl_receipts > 50000, ]
+.sen$pac_share <- 100 * .sen$pac_contrib / .sen$ttl_receipts
+
+MEDH  <- median(.h$ttl_receipts)
+MNH   <- mean(.h$ttl_receipts)
+.r    <- sort(.h$ttl_receipts, decreasing = TRUE)
+TOP10 <- 100 * sum(.r[1:round(0.10 * length(.r))]) / sum(.r)
+BOT50 <- 100 * sum(.r[(round(0.5 * length(.r)) + 1):length(.r)]) / sum(.r)
+
+MED  <- function(k) median(.hs$ttl_receipts[.hs$ici == k])
+PACH <- function(k) median(.ser$pac_share[.ser$ici == k])
+PACS <- function(k) median(.sen$pac_share[.sen$ici == k])
+RATIO <- MED("I") / MED("C")
+
+SRC <- sapply(c("C", "O", "I"), function(k) {
+  x <- .ser[.ser$ici == k, ]
+  c(Individuals = sum(x$indiv_contrib), PACs = sum(x$pac_contrib),
+    Party = sum(x$party_contrib), Self = sum(x$self_funding)) /
+    sum(x$ttl_receipts) * 100
+})
+
+BH    <- fec$ttl_receipts[fec$cand_name == "HARRIS, KAMALA"][1]
+BROWN <- fec$ttl_receipts[grepl("BROWN, SHERROD", fec$cand_name)][1]
+MEDSI <- median(.ser$ttl_receipts[.ser$ici == "I"])
+
+# duplicate groups above the $1m floor used in Option C
+.dg  <- local({
+  b <- fec[fec$ttl_receipts > 1e6, ]
+  tb <- table(b$ttl_receipts); shv <- as.numeric(names(tb[tb > 1]))
+  sub <- b[b$ttl_receipts %in% shv, ]
+  split(sub, sub$ttl_receipts)
+})
+NDUP  <- length(.dg)
+NHS   <- sum(sapply(.dg, function(g) all(c("House", "Senate") %in% g$office)))
+NCOIN <- sum(sapply(.dg, function(g) length(unique(sub(",.*", "", g$cand_name))) > 1))
+GF    <- fec$ttl_receipts[fec$cand_name == "GOODLANDER, MAGGIE"][1]
+
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+dl <- function(x) paste0("$", nn(x))
+dm <- function(x) paste0("$", pc(x / 1e6), " million")
+```
+
+All Part 8 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Organised money in American politics is not distributed by competitiveness,
+ideology, or merit — it is distributed by **who currently holds the seat** — and
+the ledger that proves this is also incapable of telling you who won.
+
+***
+
+# The three findings
+
+```{r headline}
+h  <- fec[fec$office == "House", ]
+hs <- h[h$ici %in% c("I", "C", "O"), ]
+
+c(median = round(median(h$ttl_receipts)), mean = round(mean(h$ttl_receipts)))
+
+aggregate(ttl_receipts ~ ici, data = hs, FUN = median)
+
+ser <- hs[hs$ttl_receipts > 50000, ]
+ser$pac_share <- 100 * ser$pac_contrib / ser$ttl_receipts
+aggregate(pac_share ~ ici, data = ser, FUN = function(x) round(median(x), 1))
+```
+
+1. **Concentration.** Median House candidate raises **`r dl(MEDH)`**; mean is
+   **`r dl(MNH)`**, ~`r round(MNH / MEDH)`× higher. Top 10% of candidates raise
+   **`r pc(TOP10)`%** of all House money; bottom 50% raise **`r pc(BOT50)`%**.
+2. **Incumbency.** Median incumbent **`r dl(MED("I"))`**; median challenger
+   **`r dl(MED("C"))`**. A ratio of **`r round(RATIO)`:1**.
+3. **PAC money follows office, not contests.** Among serious House campaigns
+   (>$50k), PACs supply **`r pc(PACH("I"))`%** of the median incumbent's money,
+   **`r pc(PACH("C"))`%** of a challenger's, **`r pc(PACH("O"))`%** in an open seat.
+
+Finding 3 is the one to spend class time on. Finding 2 is ambiguous between "money
+makes incumbents" and "incumbents attract money." Finding 3 is not: an open-seat
+race is *maximally* competitive and PACs fund it at `r pc(PACH("O"))`%. They are
+not buying influence over outcomes; they are buying access to people who already
+have power.
+
+***
+
+# Option A — Does the Senate work the same way?
+
+## Verified output
+
+```{r a}
+o <- fec[fec$office == "Senate" & fec$ici %in% c("I","C","O") &
+         fec$ttl_receipts > 50000, ]
+o$pac_share <- 100 * o$pac_contrib / o$ttl_receipts
+aggregate(pac_share ~ ici, data = o, FUN = function(x) round(median(x), 1))
+aggregate(ttl_receipts ~ ici, data = o, FUN = function(x) round(median(x)))
+table(o$ici)
+```
+
+Senate PAC shares: incumbents **`r pc(PACS("I"))`%**, challengers
+**`r pc(PACS("C"))`%**, open seats **`r pc(PACS("O"))`%**. Same direction, much
+smaller magnitude. Sample is small — `r sum(.sen$ici == "I")` incumbents,
+`r sum(.sen$ici == "C")` challengers, `r sum(.sen$ici == "O")` open-seat
+candidates above the threshold.
+
+## What a good answer says
+
+**3/4:** Reports that the pattern holds but is weaker, and notices the small
+sample.
+
+**4/4:** Gets the mechanism. PAC contribution limits are *fixed per committee per
+election* while Senate campaigns are enormous. The same $10,000 that is a
+meaningful slice of the `r dm(MEDSI)` a typical serious House incumbent raises is
+a rounding error in Sherrod Brown's `r dm(BROWN)`. PAC money has not gone away in
+Senate races; it has been
+**diluted by individual money** flowing in at a scale House races never see. A
+student who reasons from "the denominator changed" rather than "PACs care less
+about senators" has understood it.
+
+**4/4 bonus:** notes that this makes the House the place where PAC money has the
+most *leverage*, which is the opposite of where most public attention goes.
+
+**Common stumble:** "PACs prefer the House." The absolute dollars say otherwise;
+it is the share that falls.
+
+***
+
+# Option B — Where does the money come from?
+
+## Verified output
+
+```{r b}
+s <- fec[fec$office == "House" & fec$ici %in% c("I","C","O") &
+         fec$ttl_receipts > 50000, ]
+src <- sapply(c("C","O","I"), function(k) {
+  x <- s[s$ici == k, ]
+  c(Individuals = sum(x$indiv_contrib), PACs = sum(x$pac_contrib),
+    Party = sum(x$party_contrib), Self = sum(x$self_funding)) /
+    sum(x$ttl_receipts) * 100
+})
+colnames(src) <- c("Challenger", "Open seat", "Incumbent")
+round(src, 1)
+```
+
+| source | Challenger | Open seat | Incumbent |
+|---|---|---|---|
+| Individuals | `r pc(SRC["Individuals","C"])` | `r pc(SRC["Individuals","O"])` | `r pc(SRC["Individuals","I"])` |
+| PACs | **`r pc(SRC["PACs","C"])`** | `r pc(SRC["PACs","O"])` | **`r pc(SRC["PACs","I"])`** |
+| Party | `r pc(SRC["Party","C"])` | `r pc(SRC["Party","O"])` | `r pc(SRC["Party","I"])` |
+| Self | **`r pc(SRC["Self","C"])`** | `r pc(SRC["Self","O"])` | **`r pc(SRC["Self","I"])`** |
+
+## What a good answer says
+
+**3/4:** Notices the aggregate PAC gap (`r pc(SRC["PACs","C"])` vs
+`r pc(SRC["PACs","I"])`) is much narrower than the median gap
+(`r pc(PACH("C"))` vs `r pc(PACH("I"))`), and can explain why: the aggregate is dominated by a
+handful of enormous challenger campaigns that *do* attract PAC money, while the
+typical challenger gets none at all.
+
+**4/4:** Identifies **self-funding as what fills the gap** —
+`r pc(SRC["Self","C"])`% for challengers and `r pc(SRC["Self","O"])`% in open
+seats, against `r pc(SRC["Self","I"])`% for incumbents. Then draws the
+conclusion that matters: if you want to challenge a sitting member of Congress
+and you are not independently wealthy, the organised money will not come, and
+the shortfall is made up out of the candidate's own pocket or not at all. That is
+a barrier to entry with a dollar figure attached.
+
+**4/4, best:** answers the "which summary is fairer" question honestly — neither;
+they answer different questions. The median describes the typical candidate's
+experience, the aggregate describes where the money in the system actually sits.
+A journalist wanting a dramatic number takes `r pc(PACH("C"))`% vs
+`r pc(PACH("I"))`%. A journalist wanting an accurate picture of the flow of funds
+takes both.
+
+**Common stumble:** treating the two sets of numbers as a contradiction, or
+assuming one must be an error. Address this directly — it is the most
+transferable statistical idea in the lab.
+
+***
+
+# Option C — How big is the double-counting problem?
+
+## Verified output
+
+```{r c}
+for (fl in c(1000000, 100000, 10000)) {
+  b <- fec[fec$ttl_receipts > fl, ]
+  d <- table(b$ttl_receipts); sh <- as.numeric(names(d[d > 1]))
+  cat("floor $", format(fl, big.mark = ","), ": ", nrow(b), " candidates, ",
+      sum(b$ttl_receipts %in% sh), " rows sharing a total\n", sep = "")
+}
+```
+
+At the $1,000,000 floor the chunk finds **`r NDUP`** shared totals, not a
+handful, and nearly all of them are genuine. Biden/Harris carry
+**`r dl(BH)`** on two records. **`r NHS`** of the groups pair a House filing with
+a Senate one — members who moved committee money across when they ran for the
+Senate in 2024, of whom **Gallego, Trone, Schiff** and **Rosen** are only the
+four largest — and **Hovde** appears under two Senate IDs in the same race.
+
+Only **`r NCOIN`** groups at this floor put two different surnames on the same
+total, and one of those is Biden/Harris. The other is worth knowing before a
+student finds it: **Goodlander** (NH-02) and the write-in presidential candidate
+**Fishback** share `r dl(GF)` — and, on inspection, *every other financial column
+in the row as well*. That is a defect in the source file rather than a
+coincidence, and it is the sharpest thing in this option.
+
+## What a good answer says
+
+**3/4:** Reports that lowering the floor finds more apparent duplicates, and
+suspects some are coincidences.
+
+**4/4:** Reasons about *why* coincidences appear — at low dollar values, round
+numbers cluster. Two candidates who each raised exactly $12,500, or exactly
+$15,000, are not the same person; both of those collisions are in the file at the
+$10,000 floor. The method is most trustworthy where the amounts are large and
+precise to the cent, which is where it was used in Part 6.
+
+**Full credit, and give it readily:** a student who finds the Goodlander/Fishback
+pair and concludes that *size and precision are not sufficient either* has beaten
+the key's own argument with the data. Do not mark that wrong.
+
+**4/4, best:** answers the "what would you actually need" question. The right
+key is not the dollar amount but the **candidate's committee ID or their name
+plus state** — and better still, the FEC's own linkage between candidate IDs and
+committee IDs, which exists in a different bulk file. A student who says "I would
+join on identity, not on a value that happens to be equal" has learned Session 1's
+lesson properly.
+
+***
+
+# Option D — Their own question
+
+Reward curiosity. Debt, cash-on-hand, and single-state comparisons all work.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The central intellectual move** is distinguishing "money causes winning" from
+  "winning attracts money." Part 4 is designed so that the open-seat column
+  settles it. Students who use that column in their argument have done the real
+  work; students who only compare incumbents to challengers have not.
+- **Reward students who notice a number is doing less than it appears to.** The
+  median-versus-aggregate split in Option B is the sharpest instance.
+
+## Anticipated questions
+
+- *"Doesn't this prove money buys elections?"* — No, and the lab is careful not
+  to claim it. It shows money *follows* office. Whether it also causes winning is
+  the question the FEC file cannot answer, which is Part 7.
+- *"Where is the super PAC money?"* — Not here. This file covers candidates'
+  own committees only. Independent expenditures are reported separately and are
+  enormous post-*Citizens United*. Worth saying out loud, because students will
+  otherwise conclude they have seen all the money. They have seen perhaps half.
+- *"Why does the FEC not record who won?"* — Because it regulates finance, not
+  elections. This is the same structural fact as Session 1: no national election
+  administrator exists. Connect the two explicitly.
+- *"Is `r dl(MED("C"))` really the median challenger?"* — Yes. Most challengers are not
+  serious candidates and raise almost nothing. This is itself a finding about how
+  few congressional races are genuinely contested — and it points straight back
+  at Session 4's **13 competitive states**.
+
+## Connections forward
+
+- **Session 4 (returns over time)** — the vanishing battleground and the `r round(RATIO)`:1 funding gap are the same
+  phenomenon measured two ways. Uncontested seats do not attract money.
+- **`campaign-visits`** (retired, on disk) — money and attention both concentrate on the same
+  small set of races. Ask whether the causation runs in a circle.
+- **`media-attention`, the demo in this same session** — most of this money is spent on advertising, which is where
+  the media unit picks the thread up.
+- **Session 1 (election returns)** — the FEC file is authoritative and *still* needs deduplication and
+  still lacks outcomes. Authority is not the same as completeness.
+- The assigned readings this week (the Trump donor op-ed and the Harris donors
+  interactive) both describe the **individual** side of the ledger. Part 4 is the
+  organised side. Ask on Tuesday which one the coverage over-weights, and why.

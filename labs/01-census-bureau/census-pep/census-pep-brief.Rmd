@@ -1,0 +1,132 @@
+---
+title: "The Population Estimates Program"
+subtitle: "The number you get when nobody counted, and the arithmetic that produces it"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("census-pep-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Almost every sentence that begins "the population of X is" is quoting neither of the two instruments in the last two chapters. The [decennial census](../census-decennial/census-decennial-brief.html) is ten years old the day after it is taken. The [American Community Survey](../census-acs/census-acs-brief.html) is a sample. Neither can tell you how many people live in a county *this year*.
+
+The Population Estimates Program can, and it does it without asking anybody anything. It takes the last census and carries it forward with arithmetic. That makes it the third instrument, and the one people quote most while knowing least about. As the last chapter found, that includes anyone looking up an ACS county population, which is forced to agree with this program's number.
+
+## The whole method is one line of arithmetic
+
+This year's population is last year's, plus the people born, minus the people who died, plus the people who moved in, minus the people who moved out.
+
+That is not a simplification of the method. That *is* the method, and every term in it is published. Which means the claim is checkable — so here it is, checked on every county in the country:
+
+```{r idntab}
+```
+
+**Zero violations in `r nn(NCTY)` counties.** Every published estimate is exactly the sum of the published components beneath it.
+
+That is worth doing rather than believing, because of what it establishes about the object. A census figure is the result of an attempt to find people. An ACS figure is the result of asking some of them. **A population estimate is the result of an addition** — and if any input to that addition is wrong, the total is wrong in a way no amount of staring at the total will reveal.
+
+## What arrives
+
+```{r raw, comment="", class.output="rawblock"}
+```
+
+> **Before you read on, commit to a number.** In 2024 the population of the
+> United States grew by about `r p1(TOTCH / 1e6)` million people. **What share
+> of that growth do you think came from births exceeding deaths, and what share
+> from migration?**
+
+## What the components said in 2024
+
+```{r cmptab}
+```
+
+Two rows deserve a second look.
+
+**Domestic migration is exactly zero.** Not approximately — exactly. That is not a finding about America, it is arithmetic: every person who leaves one county arrives in another, so internal movement nets to nothing nationally. Domestic migration redistributes the population and adds none of it. It is the single largest force reshaping individual counties and it is invisible at the national level.
+
+**International migration is `r nn(INTL)` of `r nn(TOTCH)`.** That is **`r p1(INTLP)`% of all United States population growth in 2024**, against `r nn(CP("Natural change"))` from births exceeding deaths. The country grew mostly because people arrived, not because more were born than died.
+
+## Two-thirds of counties had more deaths than births
+
+```{r nattab}
+```
+
+**`r nn(NA_("Counties with more deaths than births, 2024"))` counties recorded more deaths than births in 2024**, or `r p1(NA_("Share of all counties"))`% of them. Natural decrease is not a rare condition of a few dying places. It is the ordinary state of two-thirds of American counties.
+
+Those counties hold only `r p1(NA_("Share of the country living in them"))`% of the population, That is the other half of the same fact. The counties where deaths outnumber births are mostly small ones, and the country's people are concentrated in the minority that still has more births.
+
+```{r grwtab}
+```
+
+Read those together. `r nn(GR("Counties that grew in 2024"))` counties grew. **`r nn(GR("Counties that grew despite more deaths than births"))` of them grew while burying more people than they delivered** — migration made up the difference. And `r nn(GR("Of those, would have shrunk without international migration"))` of the counties that grew **would have shrunk without international migration specifically**.
+
+That last figure is subtraction, not modeling: a county's published total change, minus its published international migration. Nothing is re-estimated. It says what the file says.
+
+## The part that does not add up
+
+The identity above has a term this chapter has not yet explained. Alongside births, deaths and migration, the Bureau publishes a column called **residual** — what is left over, the part of the change the components do not account for.
+
+```{r restab}
+```
+
+`r nn(RS("Counties with a non-zero residual"))` of `r nn(NCTY)` counties carry one, and the largest is `r nn(RS("Largest residual, in people"))` people. But look at the total: **the residual sums to `r nn(RS("Total residual, all counties"))` across the whole country.** It is constrained to net out. It moves people between counties to make each county's arithmetic close, and adds none to the national total.
+
+That should sound familiar. It is the same shape as the disclosure-avoidance noise in the [source chapter](../census-source/census-source-brief.html): an adjustment that is real at the bottom of the hierarchy and vanishes at the top, held there by construction. The difference is that this one is printed in its own column, and you can read it.
+
+A residual is not a scandal. It is what an accounting identity does when the components come from different administrative systems that do not perfectly agree. It is published rather than absorbed silently into migration, which is the honest choice. But it is a plug, and it is worth knowing that the tidiest of the three instruments has one.
+
+## Why this chapter matters to the other two
+
+The estimates are not an alternative that careful people avoid. They are *inside* the data most people use.
+
+When you look up a county's population in the ACS, the number you get was controlled to this program. The survey was not allowed to disagree with it. That is why `r nn(ACSNOM)` of `r nn(ACSROW)` ACS county rows print no margin of error, no statement of how far off the estimate could be, as the [ACS chapter](../census-acs/census-acs-brief.html) found. The estimate is doing work in places that do not announce it.
+
+So the three instruments are not three independent readings you can average or choose between. The decennial anchors the estimates; the estimates control the survey. A problem in the census propagates forward into both.
+
+## What this chapter cannot tell you
+
+**One vintage, one year.** Everything here is the 2024 vintage, describing change in 2024. The Bureau reissues the whole series every year, and a reissued vintage revises earlier years — so a "2023 population" from this file and a "2023 population" from last year's file are different numbers. This chapter does not measure that drift; it is the most important thing about estimates that it leaves out.
+
+**The components are not measured here, only used.** Births and deaths come to the Bureau from vital-statistics systems, and migration from a mix of administrative records and survey data. This chapter checks that the published components sum to the published totals. It cannot check whether any component is right, and the identity holding tells you nothing about that — a sum of wrong numbers adds up perfectly well.
+
+**Counties are as far down as this goes.** The program publishes estimates for places below the county level too, and the smaller the place the more the estimate depends on assumptions rather than on records.
+
+**"Would have shrunk without international migration" is not a forecast.** It subtracts one published component from one published total for one year. It is not a claim about what people would have done had they not moved, or about any future year.
+
+## Sources
+
+- U.S. Census Bureau. *Population Estimates Program*, county totals with
+  components of change, vintage 2024 (`co-est2024-alldata.csv`).
+  <https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/counties/totals/>
+- The `-555555555` sentinel that marks a controlled estimate is in the
+  [ACS chapter](../census-acs/census-acs-brief.html). The control relationship
+  itself is measured in the
+  [access chapter](../census-access/census-access-brief.html), which finds a
+  county's one-year survey total to be this file's estimate exactly.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`components.csv`](data/derived/components.csv), [`growth.csv`](data/derived/growth.csv), [`identity.csv`](data/derived/identity.csv), [`natural.csv`](data/derived/natural.csv), [`residual.csv`](data/derived/residual.csv), [`controlled.csv`](../census-acs/data/derived/controlled.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `identity.csv` records that the accounting identity holds in every county, with no violations at all. A check that cannot fail teaches nothing. Work out what would have to go wrong in the world for that row to break.
+- `residual.csv` counts the counties whose residual is exactly zero. The residual is the part the arithmetic could not explain. Does a zero mean nothing was unexplained, or that nothing was measured?
+- `natural.csv` says most counties buried more people than they delivered. `growth.csv` counts the counties that grew anyway. Hold the two side by side and explain how both can be true.
+- `components.csv` gives the national totals going into the estimate. Which component is largest, and which one can the Bureau least afford to get wrong?
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

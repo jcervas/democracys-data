@@ -1,0 +1,375 @@
+---
+title: "Lab 13: A Threshold in the Law"
+subtitle: "84-355 Democracy's Data | Week 13"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Every lab so far has asked what data can tell us. Today the data *is* the
+decision.
+
+Section 203 of the Voting Rights Act says that if enough voters in a
+jurisdiction speak a language other than English and have limited English
+proficiency, that jurisdiction **must** print its ballots in that language. Not
+should — must. It is federal law, and the Director of the Census decides who is
+covered by running an arithmetic test on survey estimates.
+
+The statute sets sharp lines. A jurisdiction is covered for a language group if
+**either**:
+
+- more than **10,000** voting-age citizens in that group have limited English
+  proficiency, **or**
+- more than **5%** of the jurisdiction's voting-age citizens are in that group
+  and have limited English proficiency,
+
+**and** that group's illiteracy rate exceeds the national rate. Alaska Native and
+American Indian areas have additional provisions we will come to.
+
+Today you have the Census Bureau's own file — the actual arithmetic behind the
+2021 determinations. Everything is base R. Work in order.
+
+***
+
+# Part 1: Who is covered
+
+```{r read}
+det <- read.csv("data/sect203_determined.csv", stringsAsFactors = FALSE)
+dim(det)
+```
+
+Every jurisdiction the Bureau made a determination about in 2021.
+
+```{r covered}
+cov <- det[det$FLAG_COV == 1, ]
+nrow(cov)
+length(unique(cov$S203_GEOID))
+```
+
+**334 jurisdictions**, some covered for more than one language.
+
+```{r languages}
+sort(table(cov$LANGUAGE), decreasing = TRUE)[1:10]
+```
+
+Spanish — recorded here as "Hispanic" — dominates, at 235 of 391 coverage
+determinations. But look further down the list.
+
+```{r rare-languages}
+tail(sort(table(cov$LANGUAGE), decreasing = TRUE), 12)
+```
+
+> Choctaw. Navajo. Yup'ik. Ute. Apache. Inupiat. Hopi. Paiute. Aleut. Seminole.
+> Shoshone.
+>
+> Somewhere in America a county must print its ballots in Shoshone, because
+> enough Shoshone speakers live there and Congress decided in 1975 that this was
+> a right rather than a courtesy.
+
+***
+
+# Part 2: The line
+
+Now the file that makes the analysis possible: every county in the country,
+every language group with any limited-English population at all.
+
+```{r counties}
+cty <- read.csv("data/sect203_counties.csv", stringsAsFactors = FALSE)
+dim(cty)
+sum(cty$FLAG_COV == 1)
+```
+
+Twenty-three thousand county-language pairs. Two hundred and ninety-six covered.
+
+The columns that matter:
+
+- `VACLEP` — voting-age citizens in the group with limited English proficiency
+- `MVACLEP` — **the margin of error on that estimate**
+- `LEPPCT` — the same thing as a percentage of all voting-age citizens
+- `FLAG10`, `FLAG5`, `FLAG_EDU` — which statutory test the jurisdiction passed
+- `FLAG_COV` — covered or not
+
+Let us watch the 10,000 rule work:
+
+```{r rule-works}
+near <- cty[cty$VACLEP >= 9000 & cty$VACLEP <= 11500, ]
+near <- near[order(-near$VACLEP), ]
+near[, c("NAMELSAD", "LANGUAGE", "VACLEP", "FLAG10", "FLAG_COV")]
+```
+
+The rule does exactly what it says. Above 10,000, `FLAG10` is 1. Below, it is 0.
+
+***
+
+# Part 3: The line is not as sharp as the law thinks
+
+Every one of those numbers is an **estimate from a survey**, not a count. The
+American Community Survey asks a sample. The Census Bureau publishes, alongside
+each estimate, how uncertain it is — and that column has been sitting in the file
+the whole time.
+
+```{r moe}
+near[, c("NAMELSAD", "LANGUAGE", "VACLEP", "MVACLEP", "FLAG10", "FLAG_COV")]
+```
+
+Look at the margins. They are typically 300 to 500 — larger than the distance
+many of these counties sit from the threshold.
+
+```{r straddle}
+cty$lo <- cty$VACLEP - cty$MVACLEP
+cty$hi <- cty$VACLEP + cty$MVACLEP
+
+s10 <- cty[cty$lo < 10000 & cty$hi > 10000, ]
+nrow(s10)
+s10[order(-s10$VACLEP),
+    c("NAMELSAD", "LANGUAGE", "VACLEP", "MVACLEP", "FLAG10", "FLAG_COV")]
+```
+
+> **Eight counties sit close enough to the threshold that the survey cannot tell
+> which side of it they are on.** Four are covered, four are not — and one of the
+> four covered, Kings County, got there through the 5% test rather than this one.
+>
+> **Philadelphia County** is covered for Chinese: the estimate is 10,150, which
+> clears 10,000 by 150. The margin of error is **450**.
+>
+> **Solano County, California** is not covered for Spanish: the estimate is
+> 9,943, which misses by 57. The margin of error is **377**.
+>
+> On the evidence in this file, those two counties are statistically
+> indistinguishable. One must print Chinese ballots. The other need not print
+> Spanish ones. The law does not have a category for "we cannot tell."
+
+```{r straddle-plot, fig.width = 8, fig.height = 5.5}
+s <- s10[order(s10$VACLEP), ]
+lab <- paste0(sub(" County", "", s$NAMELSAD), " (",
+              substr(s$LANGUAGE, 1, 10), ")")
+
+par(mar = c(5, 12, 4, 2))
+plot(s$VACLEP, seq_len(nrow(s)), xlim = range(c(s$lo, s$hi)),
+     pch = 19, col = ifelse(s$FLAG_COV == 1, "#2166AC", "#B2182B"),
+     yaxt = "n", ylab = "", xlab = "Voting-age citizens with limited English",
+     main = "Eight counties the survey cannot place")
+axis(2, at = seq_len(nrow(s)), labels = lab, las = 1, cex.axis = 0.8)
+segments(s$lo, seq_len(nrow(s)), s$hi, seq_len(nrow(s)),
+         col = ifelse(s$FLAG_COV == 1, "#2166AC", "#B2182B"), lwd = 2)
+abline(v = 10000, lty = 2, lwd = 2)
+legend("topright", c("covered", "not covered"), col = c("#2166AC", "#B2182B"),
+       pch = 19, bty = "n", cex = 0.85)
+```
+
+Every horizontal bar crosses the dashed line. The colour — the legal
+consequence — is decided by where the dot happens to fall.
+
+***
+
+# Part 4: The percentage test is worse
+
+```{r pct-straddle}
+p5 <- cty[!is.na(cty$LEPPCT) &
+          cty$LEPPCT - cty$MLEPPCT < 5 &
+          cty$LEPPCT + cty$MLEPPCT > 5, ]
+nrow(p5)
+```
+
+**Fifty-one counties** cannot be placed on the 5% line by their own survey
+estimate.
+
+```{r pct-examples}
+head(p5[order(-p5$VACLEP),
+        c("NAMELSAD", "LANGUAGE", "VACIT", "VACLEP", "LEPPCT", "MLEPPCT",
+          "FLAG5", "FLAG_COV")], 8)
+```
+
+Small counties are the problem. A percentage estimated from a small sample is
+badly behaved, and the smaller the county the wider the margin — which means the
+rule is least reliable exactly where a handful of voters would notice a
+translated ballot most.
+
+***
+
+# Part 5: The exception that proves the rule
+
+Some jurisdictions are covered despite failing every numeric test:
+
+```{r exceptions}
+odd <- cty[cty$FLAG_COV == 1 &
+           cty$FLAG10 == 0 & cty$FLAG5 == 0, ]
+nrow(odd)
+head(odd[, c("NAMELSAD", "LANGUAGE", "VACLEP", "LEPPCT",
+             "FLAG10", "FLAG5", "FLAG_AIAN", "FLAG_ANRC", "FLAG_COV")], 8)
+```
+
+Bristol Bay Borough is covered for Yup'ik with an estimated **3** limited-English
+voting-age citizens. Kodiak Island Borough with **5**. Lake and Peninsula Borough
+with **9**.
+
+These are the Alaska Native and American Indian provisions. For Native areas the
+determination is made on the **reservation or Native village**, not on the county
+that contains it — and where the population is tiny, the statute stops trying to
+measure and simply covers.
+
+> Congress built an escape hatch into the arithmetic for exactly the places where
+> a sample survey cannot measure anything reliably. Whether the rest of the
+> statute should have one too is the question this lab leaves you with.
+
+***
+
+# Part 6: What this file does and does not settle
+
+**It does not tell you whether coverage works.** Nothing here measures turnout,
+registration, or whether a translated ballot changed anyone's vote.
+
+**It does not tell you what compliance looks like.** A covered jurisdiction is
+legally obliged to provide materials. Whether it does, and how well, is a
+separate question and a live subject of litigation.
+
+**It does tell you that a sharp legal line has been drawn across a fuzzy
+measurement**, and it lets you name the counties where that matters.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change, or nothing at all.
+
+Pick **one**.
+
+***
+
+### Option A — Move the threshold
+
+```{r opt-a}
+threshold <- 10000            # <- change this. Try 7500, 9000, 12500, 15000.
+
+elig <- cty[cty$VACLEP > threshold & cty$FLAG_EDU == 1, ]
+c(threshold = threshold, counties_qualifying = nrow(elig))
+
+# Who is added or dropped relative to the real 10,000 rule?
+real <- cty$VACLEP > 10000 & cty$FLAG_EDU == 1
+now  <- cty$VACLEP > threshold & cty$FLAG_EDU == 1
+added   <- cty[now & !real, c("NAMELSAD","LANGUAGE","VACLEP")]
+dropped <- cty[real & !now, c("NAMELSAD","LANGUAGE","VACLEP")]
+c(added = nrow(added), dropped = nrow(dropped))
+head(added[order(-added$VACLEP), ], 8)
+```
+
+**Write about:** how sensitive is the map of covered jurisdictions to a number
+Congress chose? Try a few thresholds and report how many counties change status.
+Then the harder question: 10,000 is a round number in a statute written in 1975
+and reauthorised since. Is there anything in this data that would justify 10,000
+rather than 9,000 or 12,000 — or is the number simply a decision that had to be
+made somehow? Does that make it a bad rule?
+
+***
+
+### Option B — Who is closest to the line?
+
+```{r opt-b, fig.width = 8, fig.height = 5.5}
+band <- 1500                  # <- change this window around 10,000
+
+b <- cty[abs(cty$VACLEP - 10000) <= band, ]
+b$dist <- b$VACLEP - 10000
+b <- b[order(b$dist), ]
+
+plot(b$dist, seq_len(nrow(b)), pch = 19,
+     col = ifelse(b$FLAG_COV == 1, "#2166AC", "#B2182B"),
+     xlab = "Distance from the 10,000 threshold", ylab = "",
+     yaxt = "n", main = paste("Counties within", band, "of the line"))
+abline(v = 0, lty = 2, lwd = 2)
+segments(b$dist - b$MVACLEP, seq_len(nrow(b)),
+         b$dist + b$MVACLEP, seq_len(nrow(b)),
+         col = ifelse(b$FLAG_COV == 1, "#2166AC88", "#B2182B88"))
+
+nrow(b)
+sum(b$FLAG_COV == 1)
+b[, c("NAMELSAD","LANGUAGE","VACLEP","MVACLEP","FLAG_COV")]
+```
+
+**Write about:** name the counties on each side and the languages at stake. How
+many of the error bars cross zero? Then think like a county clerk: you are 57
+people short, the margin of error is 377, and translating your ballots would cost
+real money. What would you do, and what would you want the law to say?
+
+***
+
+### Option C — Which languages sit closest to disappearing?
+
+```{r opt-c}
+langs <- aggregate(cbind(VACLEP, MVACLEP) ~ LANGUAGE,
+                   data = cty[cty$FLAG_COV == 1, ], FUN = median)
+counts <- as.data.frame(table(cty$LANGUAGE[cty$FLAG_COV == 1]))
+names(counts) <- c("LANGUAGE", "counties")
+lt <- merge(counts, langs, by = "LANGUAGE")
+lt$moe_pct <- round(100 * lt$MVACLEP / lt$VACLEP, 1)
+
+lt[order(lt$counties), c("LANGUAGE","counties","VACLEP","MVACLEP","moe_pct")]
+```
+
+**Write about:** the languages covered in only one or two counties are mostly
+Native American. Look at `moe_pct` — the margin of error as a share of the
+estimate itself. For which languages is the underlying measurement least
+precise, and why would that be? Then connect it to Part 5: if the ACS cannot
+measure small populations well, is the Alaska Native provision a special
+favour, or a correction for a known defect in the instrument?
+
+***
+
+### Option D — Ask your own question
+
+Look up your own county, or Allegheny County. Compare states. Find the largest
+limited-English population that is *not* covered and work out why.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a legal threshold applied to uncertain data and
+say something precise about what that costs and who it falls on.
+
+***
+
+## Where the data came from
+
+**U.S. Census Bureau**, Redistricting and Voting Rights Data Office, *2021
+Section 203 Determinations — Public Use File*
+(<https://www.census.gov/programs-surveys/decennial-census/about/voting-rights/voting-rights-determination-file.html>).
+Determinations published 8 December 2021 under 52 U.S.C. §10503, using American
+Community Survey estimates for 2015–2019 and Census 2020 population counts.
+
+This is the arithmetic itself, published by the agency that performed it. It is
+the most directly consequential dataset in this course: a `1` in the `FLAG_COV`
+column is a legal obligation on a county government.
+
+Three things to hold on to:
+
+- **The estimates are survey estimates.** The ACS samples about 3.5 million
+  addresses a year. Every number here carries the uncertainty of a sample, and
+  the Bureau publishes that uncertainty honestly in the `M`-prefixed columns.
+  Very few consequential datasets do.
+- **Determinations are made every five years.** The next is due in 2026. The
+  jurisdictions on the wrong side of a margin of error today may be on the other
+  side of it then, for reasons that have nothing to do with anybody moving.
+- **Coverage is not compliance.** This file records who is obliged, not who
+  complies.
+
+The script that downloaded, filtered and checked all of this is
+`data/build-data.R`. The full public use file is about 120 MB; the committed
+extracts are the county level and the determined jurisdictions.

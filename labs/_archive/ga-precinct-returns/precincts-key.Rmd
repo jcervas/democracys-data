@@ -1,0 +1,603 @@
+---
+title: "Key: The Finest Grain, Counted Twice"
+subtitle: "84-355 Democracy's Data | Georgia precinct returns | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+
+D   <- "data"
+p   <- read.csv(file.path(D, "precincts.csv"), check.names = FALSE, stringsAsFactors = FALSE)
+co  <- read.csv(file.path(D, "counties.csv"),  check.names = FALSE, stringsAsFactors = FALSE)
+rc  <- read.csv(file.path(D, "recount.csv"),   stringsAsFactors = FALSE)
+vm  <- read.csv(file.path(D, "ga2020_vote_methods.csv"), stringsAsFactors = FALSE)
+s20 <- read.csv(file.path(D, "ga2020_structure.csv"), stringsAsFactors = FALSE)
+s24 <- read.csv(file.path(D, "ga2024_structure.csv"), stringsAsFactors = FALSE)
+v24 <- read.csv(file.path(D, "ga2024_vote_methods.csv"), stringsAsFactors = FALSE)
+chk <- read.csv(file.path(D, "crosswalk_check.csv"), stringsAsFactors = FALSE)
+
+DEM <- "Joseph R. Biden"; REP <- "Donald J. Trump"; LIB <- "Jo Jorgensen"
+
+n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+
+TOTV   <- sum(p$total)
+MARGIN <- sum(p[[DEM]]) - sum(p[[REP]])
+np     <- p[p$total > 0, ]
+
+# vote method, 2020
+mm     <- tapply(vm$votes, list(vm$candidate, vm$method), sum)
+mtot   <- colSums(mm)
+mshare <- 100 * mm[DEM, ] / (mm[DEM, ] + mm[REP, ])
+ED <- grep("Election Day",     names(mtot), value = TRUE)
+MB <- grep("Absentee by Mail", names(mtot), value = TRUE)
+AV <- grep("Advanced",         names(mtot), value = TRUE)
+
+# recount
+tot      <- aggregate(cbind(original, recount) ~ candidate, rc, sum)
+tot$chg  <- tot$recount - tot$original
+RCMARGIN <- tot$recount[tot$candidate == DEM] - tot$recount[tot$candidate == REP]
+CHANGED  <- length(unique(rc$county[rc$change != 0]))
+NCTY     <- length(unique(rc$county))
+MOVED    <- sum(abs(rc$change))
+
+# does the precinct file aggregate to the county file, exactly?
+ag  <- aggregate(cbind(p[[DEM]], p[[REP]], p$total), list(county = p$county), sum)
+names(ag) <- c("county", "d", "r", "t")
+mg  <- merge(ag, co, by = "county")
+MAXRESID <- max(abs(mg$t - mg$total), abs(mg$d - mg[[DEM]]), abs(mg$r - mg[[REP]]))
+EXACT    <- sum(mg$t == mg$total)
+
+# where the biggest precincts actually are
+ONEPREC  <- co$county[co$precincts == 1]
+METRO    <- c("Fulton", "DeKalb", "Gwinnett", "Cobb", "Clayton")
+BIGROW   <- np[which.max(np$total), ]
+METROMAX <- max(np$total[np$county %in% METRO])
+METROMED <- median(np$total[np$county %in% METRO])
+RESTMED  <- median(np$total[!np$county %in% METRO])
+EMPTYCO  <- paste(unique(p$county[p$total == 0]), collapse = ", ")
+
+# quintile composition, recomputed here so the Option C prose is not typed
+qq    <- cut(np$total, quantile(np$total, 0:5 / 5), include.lowest = TRUE,
+             labels = paste0("Q", 1:5))
+Q5ONE <- 100 * mean(np$county[qq == "Q5"] %in% ONEPREC)
+Q1FUL <- 100 * mean(np$county[qq == "Q1"] == "Fulton")
+
+# 2024 vote-method coverage
+v24tot <- tapply(v24$votes, v24$method, sum)
+NOTREP <- v24tot[["(not reported)"]]
+
+getv <- function(s, k) s$value[s$item == k]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`precincts-brief.Rmd`) walks ten numbered steps in prose
+with a D3 figure; the lab (`precincts.Rmd`) runs the same material with the code
+exposed and ends in four options. **Students should read the brief first.** Step
+numbers below refer to the brief.
+
+**This lab is the data spine of the course.** Its parsed Georgia returns and the
+census-block shapefile in `data/` are read directly by `precinct-geography`,
+`levels-of-aggregation`, `areal-units` and `vote-dilution`, and `rpv` runs on the
+same county with the same registration logic. That changes how you should teach
+it: **an error here is not contained.** If a student mistrusts something in this
+session, they are entitled to mistrust four later ones, and the honest answer is
+that they are right to.
+
+Every number below was computed from the built files at knit time.
+
+***
+
+# The session in one sentence
+
+Georgia's precinct returns are the finest-grained public record of American
+voting and the primary source for it — and the same state counted the same
+ballots a second time, got a different answer in `r CHANGED` of `r NCTY`
+counties, and certified the second one, which means the finest data in the
+country is also the count that was superseded.
+
+***
+
+# The findings
+
+```{r headline}
+c(precincts            = nrow(p),
+  counties             = nrow(co),
+  presidential_votes   = TOTV,
+  margin_precinct_file = MARGIN,
+  margin_recount       = RCMARGIN,
+  counties_changed     = CHANGED,
+  votes_moved          = MOVED,
+  pct_election_day     = round(100 * mtot[[ED]] / sum(mtot), 1),
+  mail_minus_eday_pts  = round(mshare[[MB]] - mshare[[ED]], 1),
+  largest_precinct     = max(p$total),
+  empty_precincts      = sum(p$total == 0),
+  county_residual      = MAXRESID)
+```
+
+- **`r n(nrow(p))` precincts in `r nrow(co)` counties, `r n(TOTV)` presidential
+  votes.** The complete state, from the state's own publication.
+- **The precinct file says the margin was `r n(MARGIN)`. The recount says
+  `r n(RCMARGIN)`.** The second is Georgia's certified number.
+- **`r CHANGED` of `r NCTY` counties returned a different total the second time**
+  — `r pc(100 * CHANGED / NCTY)`% of them — moving `r n(MOVED)` votes in
+  absolute terms, `r pc(100 * MOVED / TOTV, 3)`% of the ballots cast.
+- **Only `r pc(100 * mtot[[ED]] / sum(mtot))`% of votes were cast in person on
+  election day.** Mail and election-day electorates differ by
+  `r pc(mshare[[MB]] - mshare[[ED]])` points of two-party share.
+- **Precincts aggregate to counties with a residual of exactly `r MAXRESID`** —
+  `r EXACT` of `r nrow(mg)` counties reproduced to the vote.
+
+***
+
+# The three things to get said
+
+**1. Precision and authority are different properties.** This is the most precise
+election data the United States produces, and it does not agree with the official
+result. Not because anyone erred — because "official" is a decision the state
+makes at a coarser resolution than the one it publishes. **Make somebody say the
+uncomfortable version out loud**: every racially polarized voting estimate in the
+second half of this course is built on the superseded count, because the recount
+was never published at precinct resolution. That is not a reason to distrust the
+analysis; it is a reason to know what it rests on.
+
+**2. A source that requires you to identify yourself is a source that can
+disappear.** This lab used to run on VEST via a Harvard Dataverse guestbook, and
+on MEDSL before that. It now reads the Secretary of State directly. **The course
+now has no guestbooked sources at all, down from three.** The point is not that
+guestbooks are wrong — VEST's work is careful and the form is reasonable. The
+point is that a dependency you cannot script is a dependency somebody else
+controls, and going upstream past it bought something VEST does not carry: the
+vote-method column that Steps 5 and 6 are entirely about.
+
+**3. Step 7 is the session.** Two counts, same ballots, same state, published as
+two archives. `r n(MOVED)` votes moved and the outcome held. **Ask the room what
+that proves before you tell them.** Half will say it proves the count was
+accurate; half will say it proves hand and machine counts differ. Both readings
+use the same table, and both are defensible. The honest statement is the boring
+one — recounts move small numbers, and the margin was much larger than the
+movement.
+
+**The line for the board:** the count is not a fact the data carries; it is a
+procedure the state performed, and Georgia performed two of them.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** What one record is | County, precinct, registration, ballots, votes | 5 | **The precinct is named, not coded.** First sign this file came from 159 offices. |
+| **2** What the file contains | `structure.csv`, and the vote-method column | 6 | The lab's Part 2 goes further here — same file, three labels for one office. |
+| **3** Not a standard size | 1 vote to `r n(max(p$total))` | **9** | The biggest precincts are **rural** — both documents now say so. Take the guess first. |
+| **4** The state total | `r n(MARGIN)`-vote margin; exact aggregation | 6 | The clean aggregation is the setup for Steps 7 and 9. Say "hold onto that." |
+| **5** The vote-method column | `r pc(100 * mtot[[ED]] / sum(mtot))`% cast on election day | 8 | Students expect election day to dominate. It is fifth of the total. |
+| **6** Two electorates | `r pc(mshare[[MB]] - mshare[[ED]])`-point gap between mail and election day | **12** | The "red mirage" is arithmetic here, not allegation. Do that slowly. |
+| — Predict, before Step 7 | Counties changed, and by how much | 3 | **Collect the guesses in writing.** The step does not land without them. |
+| **7** Counted twice | `r CHANGED` of `r NCTY` counties; margin `r n(MARGIN)` to `r n(RCMARGIN)` | **14** | The pivot. Nobody made a mistake; that is the hard part to convey. |
+| **8** Where the movement was | Fulton dominates the change | 6 | Largest movements in the largest counties is what *no* anomaly looks like. |
+| **9** The join that fails | Precincts and blocks do not nest | 7 | This is the bridge to `precinct-geography` and `rpv`. Name them. |
+| **10** What you can now say | Including what you cannot | 4 | End on the transferable finding, not on the recount. |
+
+That is 80 minutes with the prediction included.
+
+**Step 3 deserves the prediction too, and it is cheaper — ask before you show
+the table.** Both student documents now print this evidence themselves (the
+`size-truth` chunk in the lab, the top-six table in the brief), so collect the
+guess first or the surprise is spent.
+
+```{r size-truth}
+big <- head(np[order(-np$total), c("county", "precinct", "total")], 6)
+big$one_precinct_county <- big$county %in% ONEPREC
+print(big, row.names = FALSE)
+c(largest_in_metro_five = METROMAX,
+  one_precinct_counties = length(ONEPREC),
+  votes_in_them         = sum(co$total[co$precincts == 1]))
+```
+
+Ask where the largest precinct in Georgia is. The room will say Atlanta. It is
+**`r BIGROW$precinct`, in `r BIGROW$county` County, `r n(BIGROW$total)` votes** —
+and `r BIGROW$county` is one of the `r length(ONEPREC)` counties that report the
+entire county as a single precinct. **The largest precinct anywhere in the metro
+five (Fulton, DeKalb, Gwinnett, Cobb, Clayton) is `r n(METROMAX)`** — a third of
+the state record.
+
+Be precise about what that does and does not show, because the seductive version
+is wrong. Metro precincts are *not* small: their median is `r n(METROMED)` against
+`r n(RESTMED)` in the rest of the state. What metro counties do is **cap** them,
+because a county with `r n(max(co$precincts))` precincts is managing polling
+places. The extreme tail belongs to counties that never subdivided at all, so the
+maximum is a fact about administration and the median is a fact about population.
+**Two different things are being called "precinct size".** Option C depends on the
+class having heard this.
+
+**If you are short on time, protect Steps 3, 6 and 7.** The unit that is not a
+unit, the two electorates, and the count that was superseded are the argument.
+Steps 1, 8 and 10 can be read rather than worked.
+
+***
+
+# Where this data comes from, and the two histories worth telling
+
+## The source moved upstream, past a gated one
+
+**Told as a sequence, this is the course's provenance lesson in one lab.** The
+lab ran first on MEDSL, then on VEST through a Harvard Dataverse guestbook —
+which returns, to a script, `"You may not download this file without the required
+Guestbook response for guestbookID 458."` It now reads the Georgia Secretary of
+State directly: the XML county archives for 2020, and the 2024 JSON export at
+`results.sos.ga.gov/cdn/results/Georgia/export-2024NovGen.json`, parsed across all
+`r nrow(co)` counties by `data/parse-ga-sos.py`.
+
+**What forced the move was Cloudflare.** `sos.ga.gov` returns `403` to a script
+and `200` to a browser on the identical URL with identical headers — verified,
+not assumed, and recorded in `data/README.md`. The irony is worth stating: the
+bot check is why the outer ZIP is still a manual download, and it is also why
+going upstream was worth doing at all, because it exposed how much of the course
+depended on somebody else's willingness to keep serving a file.
+
+**Two things to be precise about in front of students**, because both are easy to
+overstate:
+
+- **Only the 2020 route is gated.** The 2024 JSON is on a CDN path that is *not*
+  behind the bot check and is script-fetchable (`--json-url` fetches it
+  unattended). So the lab's "everything is gated" framing is true of the archive
+  and false of the newer platform. Georgia is in the middle of fixing this
+  without saying so.
+- **The route does not generalise.** It exists because one state publishes
+  structured county exports. Forty-nine others do something else, which is why
+  VEST existed in the first place and why the volunteer project is not obsolete.
+
+## The parser had to be taught what the race is called
+
+```{r contest-names}
+data.frame(
+  source        = c("XML archives (2012 - June 2024)", "JSON export (Nov 2024)"),
+  contest_label = c(getv(s20, "contest"),   getv(s24, "contest")),
+  precincts     = c(getv(s20, "precincts"), getv(s24, "precincts")),
+  candidates    = c(getv(s20, "candidates"), getv(s24, "candidates")),
+  stringsAsFactors = FALSE)
+```
+
+```{r method-labels}
+cat(paste0("2020 vote-method labels: ", getv(s20, "vote methods"), "\n",
+           "2024 vote-method labels: ", getv(s24, "vote methods"), "\n"))
+```
+
+**The same state, the same race, two labels.** The XML calls it *President of the
+United States*; the 2024 JSON calls it *President of the US*. The vote-method
+labels drift too — `Election Day Votes` becomes `Election Day`. The parser's
+default contest pattern is the longest prefix common to both.
+
+**This is the best concrete argument in the course against joining on
+human-readable names**, and it is better than the abstract version because the
+failure it prevents is documented in the script. An earlier pattern matched the
+bare substring `President` and swept in
+`Co Commission Chair/Presidente de la Comisión del Condado` — County Commission
+Chair, in Spanish, from Georgia's bilingual counties — putting a Gwinnett
+commission candidate into the presidential totals with 233,110 votes. **A join
+key that is a sentence in a natural language is a join key that changes when
+somebody edits a label.**
+
+**One correction to make if you tell this story.** The parser handles a
+candidate string carrying more than one parenthetical tag by reading the *last*
+one, and strips `(I)` first because in this source `(I)` means **incumbent, not
+Independent**. That is a real repair and worth a sentence. But **the scripts in
+this folder do not contain fusion-voting handling or footnote repair** — Georgia
+does not permit fusion voting, and no footnote markers appear in these exports.
+If you have heard those two attached to this lab, they belong to a different
+state's parser. Do not repeat them; a key that oversells its own provenance story
+teaches the opposite of the lesson.
+
+***
+
+# The 489,876-vote join, and whether this lab would have caught it
+
+**Tell this story here, not only in `precinct-geography`.** The sibling lab's
+first crosswalk attached votes to the 2020 shapefile by matching precinct names.
+It reached 90.4% and lost **489,876 votes, 9.8% of Georgia**, concentrated in
+Chatham and DeKalb. Two rounds of name normalisation moved the loss from 11.1% to
+9.8% and then not at all. The shapefile already carried the vote totals in its own
+attribute table; there was never a join to make.
+
+*(That figure is history, recorded in the header of `data/build-crosswalk.R`. It
+is not recomputable from any current file, and it is the only number in this key
+that is typed rather than computed. Flag it as such if a student asks.)*
+
+**Would this lab's checks have caught it? Half yes, and the half matters.**
+
+- **The automated checks would not have.** They are internal to the parse:
+  `parse-ga-sos.py` reconciles each candidate's stated total against the sum of
+  their precinct-by-method rows, and `build-data.R` asserts `nrow(co) == 159`.
+  Both would pass while an entirely separate join to a shapefile threw away a
+  tenth of the state. **A check inside one file cannot see a mistake made
+  between two files**, and that is the general form of the lesson.
+- **The habit the lab teaches would have caught it instantly.** Step 4's whole
+  purpose is to sum the parts and compare against an independently published
+  total:
+
+```{r step4-check}
+c(counties_reproduced_exactly = EXACT, of = nrow(mg), worst_residual = MAXRESID)
+```
+
+  A residual of `r MAXRESID` across `r nrow(mg)` counties is what a correct
+  aggregation looks like. Nobody ran that comparison on the name join. Had they
+  totalled the joined file once and put it next to `r n(TOTV)`, the 489,876 would
+  have announced itself in one line.
+
+**So the answer to give the class is:** the check that would have caught it is
+the one this lab performs in Step 4 and the sibling lab did not perform until
+after the damage — and the reason it went unnoticed is that the joined file
+*looked fine*, which is what 90.4% always looks like.
+
+The carry that shipped loses `r chk$value[chk$check == "votes lost"]` votes of
+`r chk$value[chk$check == "votes before"]`, a share of
+`r chk$value[chk$check == "share lost (%)"]`%.
+
+***
+
+# Before you teach this: one defect, and two repairs
+
+**Written down so you are not surprised in the room.** Two of the three problems
+this section used to list are fixed in the student documents; the third is in a
+script and is still live.
+
+**Repair one: the lab's Part 2.** It used to filter
+`structure.csv` on a column named `kind` that a rebuild no longer produces. It
+did not error — it printed `vote_columns 0` and `<0 rows>` — and then taught
+VEST's `G20PRERTRU` convention, a file this lab has not read since the move to
+the Secretary of State. Part 2 now reads the real `structure.csv`
+(`r nrow(s20)` rows, columns `r paste(names(s20), collapse = ", ")`) and teaches
+**the contest-name and vote-method drift from the section above**, computed at
+knit time from `ga2020_structure.csv`, `ga2020_vote_methods.csv` and
+`ga2024_structure.csv`, with the Gwinnett trap printed straight out of the
+header of `data/parse-ga-sos.py`. `G20PRERTRU` survives in the lab as an
+explicitly labelled historical contrast: two designs, two failure modes.
+
+**So the lab and this key now overlap on purpose.** Students meet the label
+drift in Part 2; you have the same material here plus the parenthetical
+corrections. **Do not teach it twice** — in the room, go straight to the
+question the lab sets up and this key answers: a code cannot drift but cannot
+explain itself, a sentence explains itself but drifts, and *both* files are
+unusable by somebody who was not told.
+
+**Repair two: the largest-precinct sentence.** Both documents used to follow
+`r n(max(p$total))` with "the word means one thing in rural Georgia and something
+else in metropolitan Atlanta," which students hear as *metro precincts are big* —
+the opposite of what the tail shows. Both now lead with the rural tail and the
+metropolitan cap, computed at knit time, and land on the version this key has
+always given: **the word means one thing in a county with
+`r n(max(co$precincts))` precincts and another in a county with one.** The lab
+prints the top six and the metro comparison in its `size-truth` chunk; the brief
+prints the same six as a table before its county spread. **The correction is no
+longer yours to make in the room** — what is still yours is the prediction, and
+Option C still depends on the class having heard the distinction out loud.
+
+**The defect that is still live: the 2024 file is 18 votes short at precinct
+level, and the script says it is not.** The header of `data/parse-ga-sos.py` reports that 84 rows have precinct
+sums falling short of the candidate total and states "**No statewide contest is
+affected.**" That is wrong. Summing the 2024 JSON's presidential precinct rows
+gives Trump 2,663,110 and Harris 2,548,006 against county-level totals of
+2,663,117 and 2,548,017 — **7 and 11 votes, all in Fulton County.** It changes
+nothing substantive (18 votes in 5.25 million) and it matters anyway, because
+the claim in the script is exactly the kind of reassurance the lab teaches
+students not to accept unverified. **If you use the 2024 file, say the number.**
+
+***
+
+# Option A — The empty precincts
+
+## Verified output
+
+```{r a}
+p[p$total == 0, c("county", "precinct", "registered", "ballots_cast",
+                  "total", "dem_two_party_pct")]
+c(empty_precincts = sum(p$total == 0),
+  na_dem_share    = sum(is.na(p$dem_two_party_pct)),
+  mean_dem_share_naive = mean(p$dem_two_party_pct),
+  mean_dem_share_narm  = round(mean(p$dem_two_party_pct, na.rm = TRUE), 2),
+  statewide_two_party  = round(100 * sum(p[[DEM]]) / sum(p[[DEM]] + p[[REP]]), 2))
+```
+
+**3/4:** Finds all `r sum(p$total == 0)`, reports that they are in
+`r paste(unique(p$county[p$total == 0]), collapse = ", ")` County with almost no
+registered voters and no ballots cast, and concludes they are administrative
+rather than real.
+
+**4/4:** Notices they carry a registration count but zero ballots, works out that
+dropping them cannot change a single vote total, and identifies what they *do*
+change — `r EMPTYCO`'s precinct count and the state's, and therefore every
+per-precinct average.
+
+**4/4, best:** Uses them to catch a live bug in the file's own design. The naive
+`mean(dem_two_party_pct)` is **`r ifelse(is.na(mean(p$dem_two_party_pct)), "NA", "a number")`**
+because a zero-vote precinct has an undefined share; the `na.rm = TRUE` version is
+`r pc(mean(p$dem_two_party_pct, na.rm = TRUE), 2)`, and the statewide two-party
+share is `r pc(100 * sum(p[[DEM]]) / sum(p[[DEM]] + p[[REP]]), 2)`. **Three
+different answers to "how Democratic was Georgia", and the gap between the last
+two has nothing to do with the empty precincts** — it is the difference between
+averaging precincts and averaging voters, which is the same "per what?" problem
+Step 3 raised about size. A student who gets from three blank rows to that
+distinction has done the best available work on this option.
+
+***
+
+# Option B — Aggregate up
+
+## Verified output
+
+```{r b}
+mismatch <- mg[mg$t != mg$total, c("county", "t", "total")]
+c(counties           = nrow(mg),
+  reproduced_exactly = EXACT,
+  mismatched         = nrow(mismatch),
+  worst_residual     = MAXRESID,
+  precinct_counts_match = sum(as.vector(table(p$county)) ==
+                              co$precincts[order(co$county)]))
+head(mg[order(-mg$total), c("county", "precincts", "t", "total")], 5)
+```
+
+**3/4:** Confirms the aggregation is exact — `r EXACT` of `r nrow(mg)` counties,
+residual `r MAXRESID` — and says so.
+
+**4/4:** Answers the harder half. Precincts nest inside counties **because the
+county drew them inside its own border**; blocks and precincts do not nest
+because two different authorities drew them at two different times for two
+different purposes, and neither is required to respect the other. The
+distinction is authorship, not geometry.
+
+**4/4, best:** Notices that the exactness is weaker evidence than it looks.
+Both files were produced by the same parser from the same source, so the check
+verifies the arithmetic and nothing about the underlying count — it is
+**internal consistency, not validation.** The real external check in this lab is
+Step 7's recount, and it *fails*: the same election, independently recounted,
+disagrees. A student who says "Step 4 passing does not license trusting Step 4's
+totals, and Step 7 proves it" has understood something the brief only gestures
+at.
+
+***
+
+# Option C — Size and politics
+
+## Verified output
+
+```{r c}
+q  <- cut(np$total, quantile(np$total, 0:5 / 5), include.lowest = TRUE,
+          labels = paste0("Q", 1:5))
+wt <- tapply(seq_len(nrow(np)), q,
+             function(i) 100 * sum(np[[DEM]][i]) / sum(np[[DEM]][i] + np[[REP]][i]))
+data.frame(quintile          = levels(q),
+           precincts         = as.vector(table(q)),
+           median_size       = as.vector(round(tapply(np$total, q, median))),
+           mean_precinct_dem = round(as.vector(tapply(np$dem_two_party_pct, q, mean)), 1),
+           vote_weighted_dem = round(as.vector(wt), 1))
+c(correlation_size_vs_dem_share =
+    round(cor(np$total, np$dem_two_party_pct, use = "complete.obs"), 3))
+
+# who is actually in the two tails
+sapply(c("Q1", "Q5"), function(k) names(head(sort(table(np$county[q == k]),
+                                                  decreasing = TRUE), 4)))
+```
+
+**3/4:** Plots it, reports that the correlation is
+`r round(cor(np$total, np$dem_two_party_pct, use = "complete.obs"), 3)` — near
+zero — and concludes there is no relationship between precinct size and vote
+share.
+
+**4/4:** Notices that "no correlation" is the wrong summary because the pattern
+is not linear. The middle quintiles are the most Democratic and both tails are
+less so; a single correlation coefficient averages an arch down to nothing.
+Says what a scatterplot shows that `cor()` hides.
+
+**4/4, best:** Says what the variable is actually measuring. Sorting precincts by
+size mostly sorts **counties**: the smallest quintile is `r pc(Q1FUL)`% Fulton —
+the county that subdivides most finely — mixed with rural south Georgia, and the
+largest quintile is the metro ring, Gwinnett and Cobb and Cherokee. **Fulton
+appears in both tails**, which is the tell: a county with
+`r n(max(co$precincts))` precincts contains the whole range by itself, so the
+variable is not sorting places, it is sorting *within and across* counties at the
+same time. **The arch is a composition effect.** It runs from urban-plus-rural,
+through the Democratic inner suburbs, out to the less Democratic outer ones, and
+precinct size is the incidental variable that happens to order them that way.
+**The apparent finding is a fact about who lives where and how counties draw
+polling places, wearing the costume of a fact about precinct size.** Anyone who
+reaches that, and connects it to Step 3's warning that the unit is not comparable
+across counties, has the best answer available. Reward equally a student who
+declines to interpret it at all on those grounds.
+
+**One thing to correct if a student asserts it:** the *largest single precincts*
+are rural (Step 3), but the *largest quintile* is suburban. Only `r pc(Q5ONE)`%
+of precincts in Q5 sit in a one-precinct county. Both facts are in the data and
+they are about different parts of the distribution.
+
+***
+
+# Option D — Your own question
+
+No fully verified output; grade the reasoning.
+
+**3/4:** Asks a question the file can answer and answers it correctly.
+
+**4/4:** States in advance what the data would have to look like for the answer
+to be different, then checks. Any question about vote method, roll-off between
+ballots cast and presidential votes, or 2020-vs-2024 county movement is well
+served by these files.
+
+**4/4, best:** Picks a question the file *cannot* answer and demonstrates why
+from the file itself — no boundaries, no demographics, no individual ballots, one
+state, one election, and the count that was superseded. **Establishing a limit
+empirically is worth more than answering an easy question**, and this is the one
+option where a student can do that without leaving the folder.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code — it is given.** Every chunk in the lab runs as
+  distributed; a student who reports what came out has done the assigned work.
+- **The move that earns a 4** is treating a property of the data as a
+  consequence of who produced it and how. Precinct size is county practice; the
+  method split is administrative channel; the recount gap is procedure.
+- **A 2** is "the data is messy so we cannot trust it." True, useless, and the
+  thing the lab exists to move past.
+- **Also a 2**: quoting the `r n(MARGIN)` margin as *the* result after Step 7 has
+  explained that the certified figure is `r n(RCMARGIN)`.
+- **Reward anyone who asks which count the downstream labs use.** The answer is
+  the precinct file, because it is the only one published at that resolution, and
+  noticing the question is more sophisticated than most of the available answers.
+
+## Anticipated questions
+
+- *"So which count is right?"* — The recount is certified, so legally the
+  recount. Neither is "right" in the sense the question means. A recount is a
+  second performance of a procedure, not an appeal to a ground truth, and the
+  ballots are the only ground truth there is.
+- *"Why did `r pc(100 * CHANGED / NCTY, 0)`% of counties change?"* — Because
+  hand-counting five million ballots produces different handling errors than
+  machine-counting them. `r n(MOVED)` votes across `r n(TOTV)` is
+  `r pc(100 * MOVED / TOTV, 3)`%. That rate is the finding; the direction is not.
+- *"Isn't `r pc(100 * mtot[[ED]] / sum(mtot))`% on election day suspicious?"* —
+  No, and this is the question to prepare for. 2020 was a pandemic election with
+  three weeks of in-person early voting in Georgia. **Advanced Voting alone is
+  `r pc(100 * mtot[[AV]] / sum(mtot))`% of the total.** The file shows the split
+  without any claim attached to it, which is precisely why it is worth having.
+- *"Could we do this for another state?"* — Not this way. The route exists
+  because Georgia publishes structured county exports. That is the honest answer
+  and it is also the argument for why VEST existed.
+- *"Why does the state publish 159 files instead of one?"* — Because the counties
+  are the authority and the state is compiling, not counting. The same fact
+  drives `precinct-geography`'s Step 1.
+
+## Connections
+
+- **`precinct-geography`** — runs on this folder's shapefiles and crosswalks and
+  is the direct sequel. Teach this one first; that lab assumes the returns are
+  understood.
+- **`levels-of-aggregation`** — reads `ga2020_precincts.csv`,
+  `ga2020_vote_methods.csv` and the 2024 files directly. The same votes at four
+  resolutions.
+- **`rpv`** and **`vote-dilution`** — both need returns and demographics in the
+  same place, which is Step 9's unsolved join. `vote-dilution` reads the census
+  blocks that live in this folder.
+- **`areal-units`** — shares the block shapefile and generalises Step 9 into the
+  modifiable areal unit problem.
+- **`residual-votes`** — the roll-off visible here between ballots cast and
+  presidential votes (`r n(sum(p$ballots_cast) - TOTV)` ballots,
+  `r pc(100 * (sum(p$ballots_cast) - TOTV) / sum(p$ballots_cast), 2)`%) is that
+  lab's whole subject, measured at this lab's resolution.
+- **`data-sources`** — the provenance argument in miniature. This is the lab
+  where the course stopped depending on a form.
+- **`election-night`** — the red mirage in Step 6 is the arithmetic behind that
+  session's reporting sequence. They pair well in a single board post.

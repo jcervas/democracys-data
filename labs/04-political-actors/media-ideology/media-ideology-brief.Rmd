@@ -1,0 +1,163 @@
+---
+title: "Placing a News Outlet by Who Links to It"
+subtitle: "375,979 shared links, 184 news domains, and the one politician holding up the right-hand end of the scale"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("media-ideology-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+This book has counted what a country pays attention to. The [media attention chapter](../media-attention/media-attention-brief.html) reads a year of Wikipedia pageviews and asks what an audience looked up.
+
+It has never had **a news outlet as the thing being measured.** This chapter does, and the measure comes from an unexpected direction: not from reading the outlets, and not from asking anybody about them, but from watching who chooses to link to them.
+
+`r n(FN("n_actors"))` members of the 116th Congress and other political actors posted `r n(FN("n_shares"))` links to `r F("n_domains")` news domains between 2016 and 2021. Every one of those people also has a score from a completely different behaviour, and that is what makes the file worth having.
+
+## The file, and the file it is standing in for
+
+The source is `PolShares`, the demonstration dataset shipped with the R package `mediascores`, MIT licensed and sitting in a public GitHub repository. One row per politician, seven columns of who they are, and then `r F("n_domains")` columns counting how often each shared each outlet.
+
+The seventh column is the useful one. It carries each member's **DW-NOMINATE** score, the position recovered from their roll-call votes, which this book takes apart in its [own chapter](../dw-nominate/dw-nominate-brief.html). Sharing and voting are different acts. Having both for the same people means an estimate built from one can be held against the other.
+
+**This is not the paper's replication archive, and the difference matters.** The package implements a model published by Eady, Bonneau, Tucker and Nagler in *Political Analysis*, whose full data sits on Harvard Dataverse. Dataverse answers an automated request with HTTP 202 and an empty body. That is a success-shaped refusal, the same wall the [survey access chapter](../../02-surveys/survey-access/survey-access-brief.html) measures directly, and every endpoint was tried including with a browser's user-agent. A person with a browser gets the file in thirty seconds. A script never does.
+
+So what is here is the politician half of the object. **The paper's title names three groups and this file has two of them.** News media and politicians are present. The mass public is behind the wall, and nothing below is a claim about ordinary citizens.
+
+## Before you read on
+
+`r mnote("Two numbers. The second one is the chapter.")`
+
+The scale below runs from the outlets liberal politicians share to the outlets conservative politicians share, and its most conservative outlet is **`r F("right_most")`**.
+
+**How much of that outlet's `r n(K$shares[K$domain == F("right_most")])` shares do you think came from the single politician who shared it most?** Write down a percentage.
+
+## How an outlet gets a position
+
+The rule is one sentence. **An outlet's score is the average roll-call score of the politicians who shared it, weighted by how often each one shared it.**
+
+An outlet posted only by members who vote conservatively lands where those members sit. One posted by everybody lands in the middle. Nobody read a single article to produce the number.
+
+Two decisions are worth stating before any of it is believed.
+
+`r n(FN("n_without"))` of the `r n(FN("n_actors"))` actors have no roll-call score, because governors and non-legislators never cast one. They cannot enter the estimate, and taking them out removes `r n(FN("shares_lost"))` shares, `r p1(F("shares_lost_pct"))`% of the total.
+
+An outlet needs `r F("min_shares")` shares to be scored here. That keeps `r F("n_kept")` of `r F("n_domains")` domains, which between them carry `r p1(F("kept_share_pct"))`% of all the sharing. The other `r F("n_cut")` are drawn in gray below rather than dropped, so you can see what the cut removed.
+
+**And this is a simplification of the published method, not the method.** Eady and colleagues estimate outlet positions and politician positions *jointly*, in a Bayesian model, from the sharing alone. The rule above takes DW-NOMINATE as given and averages it. That is transparent and it is weaker, and the last section says what it costs.
+
+## The scale
+
+```{r scale-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r scale-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+*Figure 1. Each circle is one news domain, placed by the average roll-call score of the politicians who shared it and sized by how many shares it got. Outlines mark outlets where one politician contributed more than half the links. In the browser, hover any circle, and use the checkboxes to hide those outlets or to show the `r F("n_cut")` below the share cut.*
+
+The ends are where you would put them. `r F("left_most")` sits at `r r2(F("left_score"))` and `r F("right_most")` at `r r2(F("right_score"))`, a span of `r r2(F("scale_span"))`. The New York Times comes out at `r r2(F("score_nytimes"))` and Fox News at `r r2(F("score_foxnews"))`.
+
+Nobody coded a single article to produce that ordering. It came out of counting who posted what.
+
+## What holds up the right-hand end
+
+Now the number you wrote down.
+
+**`r F("worst_top_pct")`% of `r F("worst_domain")`'s shares came from one politician.** The typical outlet on this scale gets `r p1(F("median_top_pct"))`% of its links from its biggest sharer. The most extreme outlet on the scale gets more than four fifths of them from a single person's posting habits.
+
+That is not an error in the data and not a defect of the method. It is what a scale looks like at its edges. The middle of Figure 1 rests on hundreds of people sharing thousands of links. **The ends rest on the few outlets that only a few people ever post, and the fewer the people, the further out the outlet lands.**
+
+The [overplotting chapter](../../01-census-bureau/overplotting/overplotting-brief.html) makes the same point about a scatter plot. The outline of the ink is drawn by the rarest points, the shape of the mass by the common ones, and the eye reads the outline. Here the outline is a ranking, and a ranking invites you to read the top of it.
+
+Tick the first checkbox in Figure 1 and the right-hand end retracts.
+
+## Turning the estimator around
+
+An outlet's score came from the politicians who shared it. So run it backwards. Score each politician by the average score of the outlets *they* share, and set that against the roll-call score they already had.
+
+```{r check-static, fig.height=3.5}
+```
+
+*Figure 2. `r n(FN("n_pol_scored"))` politicians with at least twenty shares to scored outlets. Blue Democrats, red Republicans.*
+
+The correlation is **`r r2(F("cor_nominate_media"))`**. What people vote for and what they link to are close to the same thing, measured two entirely different ways.
+
+`r mnote("This is not an independent validation, and calling it one would be wrong. The outlet scores were built out of DW-NOMINATE, so some agreement is guaranteed by construction. What the figure bounds is how much of one behaviour the other reproduces once the numbers have been through two averagings.")`
+
+`r F("party_overlap")` politicians land inside the other party's range. The median Democrat scores `r r2(F("dem_median_media"))` and the median Republican `r r2(F("rep_median_media"))`, which is a smaller separation than the same people show on roll calls. Sharing is a noisier signal of position than voting, which is what you would expect and is worth having measured.
+
+## What this chapter cannot tell you
+
+**It has no members of the public in it.** The paper this method comes from places news media, politicians *and* ordinary citizens on one scale. The citizens are in the replication archive, and the archive is behind a wall that refuses scripts. Every number above is about what politicians share.
+
+**It is not the published model.** Eady and colleagues estimate outlet and politician positions jointly from the sharing itself. This chapter takes roll-call scores as fixed and averages them, which cannot discover that a politician's sharing disagrees with their voting, because the sharing was scored using the voting.
+
+**Sharing is not endorsement.** A member who posts a link to attack it counts here exactly like one who posts it approvingly. Nothing in a count of links distinguishes the two, and the sharpest outlets are the likeliest place for that to matter.
+
+**The `r F("n_domains")` domains are a list somebody wrote.** An outlet nobody thought to include cannot appear at any position, and the file does not say how the list was drawn.
+
+**DW-NOMINATE is itself an estimate**, with a scale defined by the votes that happened to be held, which is the subject of [its own chapter](../dw-nominate/dw-nominate-brief.html). This chapter inherits every one of those limits and adds averaging on top.
+
+**And it is one platform, one chamber, one stretch of years.** 2016 to 2021, the 116th Congress, one social network.
+
+## What it does establish
+
+`r F("n_kept")` news outlets can be placed on a single left-right scale using nothing but counts of who linked to them, and the ordering that falls out agrees with what anybody would guess at both ends.
+
+The same arithmetic, run backwards, recovers politicians' roll-call positions at `r r2(F("cor_nominate_media"))`.
+
+**And the most extreme outlet on that scale is one person's posting habits.** `r F("worst_top_pct")`% of `r F("worst_domain")`'s links came from a single politician, against `r p1(F("median_top_pct"))`% for the typical outlet. The scale is well measured in the middle, where nobody looks, and thinly measured at the ends, which is the part that gets quoted.
+
+## Sources
+
+- **Link-sharing counts.** `PolShares`, the demonstration dataset in the R
+  package `mediascores` (MIT licence), `r n(FN("n_actors"))` political actors
+  and `r F("n_domains")` news domains, 2016–2021.
+  <https://github.com/SMAPPNYU/mediascores>
+- **The method it demonstrates.** Gregory Eady, Richard Bonneau, Joshua A.
+  Tucker and Jonathan Nagler, "News Sharing on Social Media: Mapping the
+  Ideology of News Media, Politicians, and the Mass Public," *Political
+  Analysis* (2024), doi:10.1017/pan.2024.19. The chapter's estimator is a
+  simplification of the model in that paper, not the model.
+- **The replication archive**, doi:10.7910/DVN/1QMLOV, which holds the mass
+  public half and could not be fetched. Harvard Dataverse answers automated
+  requests with a success code and an empty body.
+- **DW-NOMINATE** arrives inside `PolShares`, sourced from voteview.com. This
+  book takes it apart in
+  [its own chapter](../dw-nominate/dw-nominate-brief.html).
+- **Build.** `data/build-data.R` preserves the complete source in `raw/` and
+  writes the four tables this chapter reads. Every number above is computed at
+  the moment this document was rendered.
+
+### Checks
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`outlets.csv`](data/derived/outlets.csv), [`politicians.csv`](data/derived/politicians.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `outlets.csv` has `score`, `shares`, `sharers` and a `kept` flag. Look at the outlets that were dropped. What do they have in common, and is dropping them defensible?
+- `outlets.csv` also has `top_sharer_pct`. Find the outlets whose position rests on one person. How much of this scale is a handful of prolific accounts?
+- `politicians.csv` has both `nominate` and `media_score`. Plot one against the other. Where do the two measures disagree, and which would you trust for those people?
+- Turn the estimator around: use the outlets to place the politicians instead. Pick a politician whose position looks wrong and work out why.
+
+```{r checks-table}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

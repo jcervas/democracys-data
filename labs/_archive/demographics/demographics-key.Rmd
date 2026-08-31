@@ -1,0 +1,521 @@
+---
+title: "Key: A Country Nobody Lives In"
+subtitle: "84-355 Democracy's Data | Demographics | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+D <- "data"
+rd <- function(f, ...) read.csv(file.path(D, f), stringsAsFactors = FALSE, ...)
+
+fc  <- rd("facts.csv")
+nat <- rd("nation.csv")
+sta <- rd("states.csv",   colClasses = c(st = "character", geoid = "character"))
+cou <- rd("counties.csv", colClasses = c(geoid = "character", st = "character"))
+lad <- rd("ladder.csv")
+reg <- rd("regions.csv")
+cts <- rd("categories.csv")
+std <- rd("standards.csv")
+tld <- rd("tract_largest.csv")
+wtr <- rd("wayne_tracts.csv", colClasses = c(geoid = "character"))
+pro <- rd("eightmile_profile.csv")
+
+FV <- function(k) { v <- fc$value[fc$name == k]
+                    if (!length(v)) stop("no such fact: ", k); v }
+FN <- function(k) as.numeric(FV(k))
+n  <- function(x) format(round(as.numeric(x)), big.mark = ",")
+pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
+mag <- function(k) sub("^[+-]", "", FV(k))
+
+CAT <- c("hispanic", "nh_white", "nh_black", "nh_asian", "nh_two",
+         "nh_aian", "nh_sor", "nh_nhpi")
+RACE6 <- c("white", "black", "aian", "asian", "nhpi", "sor")
+cou$div <- round(100 * cou$entropy / log(8), 1)
+reg$div <- round(100 * reg$entropy / log(8), 1)
+rg4 <- reg[reg$kind == "region", ]
+sta$div <- round(100 * sta$entropy / log(8), 1)
+WRANK <- as.integer(rank(-cou$entropy)[cou$geoid == "26163"])
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`demographics-brief.Rmd`) is a chapter, "A Country
+Nobody Lives In," organised under prose headings and carrying eight numbered
+figures: Figure 1, the eight categories in true proportion with the small tail
+magnified; Figure 2, which box you could be counted in by census year, with the
+two OMB revisions drawn as rules; Figure 3, the six races counted alone and
+alone-or-in-combination; Figure 4, 2010 against 2020 with the processing
+discontinuity shaded; Figure 5, six small-multiple maps of the states; Figure
+6, the diversity staircase with its random-shuffle null; Figure 7, Wayne County
+at three scales; Figure 8, the blocks along Eight Mile Road and the composition
+profile across it. The lab (`demographics.Rmd`) runs Steps 1–11 with the code
+exposed. **Students should read the brief first.** **Step numbers below refer
+to the lab.** The chapter covers the same ground in the same order, so each lab
+Step has a section facing it: Step 1 = "What the census counted" (Figure 1);
+Step 2 = "Nobody at the Census Bureau chose these boxes" (Figure 2); Step 3 =
+the prediction prompt and Figure 3; Step 4 = "A decade that mostly did not
+happen" (Figure 4); Steps 5 and 6 = "Where people are" (Figure 5); Steps 7 and
+8 = "The number that keeps moving" (Figure 6); Step 9 = "One county with no
+majority" (Figure 7); Step 10 = "One street" (Figure 8); Step 11 = "What this
+data can and cannot support."
+
+**What this lab is for, and what it deliberately is not.** Three labs in this
+course already own parts of this territory and this one stays out of all three.
+`census` owns *how the census defines race* — Questions 8 and 9, the write-in
+boxes, "Some Other Race." `areal-units` owns *the modifiable areal unit
+problem*. `census-geography` owns *the nesting spine*. This lab is the
+substantive one: what the country actually looks like, and how differently it
+looks at different scales. Where it touches those labs it says so and points at
+them; it does not re-teach them.
+
+Every number below is computed from the built files at knit time.
+
+***
+
+# The session in one sentence
+
+The United States scores `r FV("div_nation")` on this chapter's diversity scale
+and the average American's census tract scores `r FV("div_censustract")` — and
+neither number means anything until you know which of the Census Bureau's two
+correct counts of race it was built from, and which revision of an OMB
+directive created the categories it counts.
+
+***
+
+# The findings
+
+```{r headline}
+c(us_population        = FN("us_pop"),
+  diversity_nation     = FN("div_nation"),
+  diversity_state      = FN("div_state"),
+  diversity_county     = FN("div_county"),
+  diversity_tract      = FN("div_censustract"),
+  diversity_block      = FN("div_censusblock"),
+  H_tract              = FN("H_censustract"),
+  H_tract_null         = FN("H0_censustract"),
+  pct_in_tract_80plus  = FN("pop_tract_80plus"))
+
+c(white_alone          = FN("us_white_alone"),
+  white_any            = FN("us_white_any"),
+  aian_alone           = FN("us_aian_alone"),
+  aian_any             = FN("us_aian_any"),
+  aian_ratio           = FN("us_aian_ratio"),
+  white_ratio          = FN("us_white_ratio"))
+
+c(chg_white_alone_2010_2020 = FV("chg_white_alone"),
+  chg_white_any_2010_2020   = FV("chg_white_any"),
+  chg_two_plus              = FV("chg_two_plus"),
+  chg_sor_any               = FV("chg_sor_any"))
+```
+
+- **The White population both fell and rose over the decade.** Alone:
+  `r FV("chg_white_alone")`%. Alone or in any combination:
+  `r FV("chg_white_any")`%. Same censuses, same forms, same answers. This is
+  the chapter's cold open and the single best thing in the session.
+- **American Indian and Alaska Native goes from `r n(FV("us_aian_alone"))` to
+  `r n(FV("us_aian_any"))` — a factor of `r FV("us_aian_ratio")`.** White moves
+  by `r n(FN("us_white_gap"))` people and a factor of only
+  `r FV("us_white_ratio")`. Largest absolute mover and largest proportional
+  mover are different categories; both answers to "which is most affected" are
+  right.
+- **The staircase: `r FV("div_nation")` → `r FV("div_state")` →
+  `r FV("div_county")` → `r FV("div_censustract")`.** The random-shuffle null
+  stays at `r pc(100 * lad$ebar0[lad$level == "Census tract"] / log(8))`
+  through the tract rung, so this is sorting, not small-unit arithmetic.
+- **`r FV("pop_tract_80plus")`% of Americans live in a tract that is at least
+  80% one category**; `r FV("pop_tract_90plus")`% in one at least 90%.
+- **Wayne County, Michigan is in the most diverse
+  `r pc(100 * WRANK / nrow(cou))`% of `r n(nrow(cou))` counties
+  (rank `r n(WRANK)`), and `r FV("wayne_pop_80_pct")`% of its residents live in
+  a tract that is at least 80% one group.** Both sentences are true.
+- **Across Eight Mile Road the Black share falls `r FV("prof_jump_black")`
+  points** — `r FV("prof_in500_black")`% in the last 500 m inside Detroit,
+  `r FV("prof_out500_black")`% in the first 500 m outside. Flat, step, flat.
+
+## Wayne County, the inventory
+
+```{r wayne-inventory}
+table(largest_group_in_tract = wtr$largest)
+
+c(tracts               = nrow(wtr),
+  tracts_with_people   = FN("wayne_tracts_pop"),
+  median_pct_one_group = FN("wayne_tract_median_largest"),
+  at_least_80_black    = FN("wayne_tracts_80_black"),
+  at_least_80_white    = FN("wayne_tracts_80_white"),
+  people_in_those_pct  = FN("wayne_pop_80_pct"),
+  at_least_90_any      = FN("wayne_tracts_90"),
+  people_in_those_pct  = FN("wayne_pop_90_pct"))
+```
+
+**`r n(FV("wayne_tracts_white_largest"))` tracts where the largest group is
+White, `r n(FV("wayne_tracts_black_largest"))` where it is Black, and almost
+nothing that is genuinely mixed.** That near-tie at the county level is exactly
+why the county looks integrated and exactly why it is not. Say the two numbers
+out loud together; the room usually hears the tie before it hears the split.
+
+***
+
+# The three things to get said
+
+**1. Every count of race has at least two correct values, and the reason is
+dated.** Step 3 is where this lands. Make somebody say *why* it is worse than
+either number alone: if the two counts differed only occasionally you would
+call it rounding, but the gap is systematically largest for the smallest
+categories — `r FV("us_aian_ratio")`× for American Indian and Alaska Native,
+`r FV("us_white_ratio")`× for White — which means the choice of definition
+moves the groups that civil-rights enforcement is written about, and barely
+touches the group it is not. Then give the date: the ambiguity did not exist
+before the 1997 revision of OMB Directive 15, because the form allowed one
+mark.
+
+**2. A decade of demographic change that mostly was not one.** Step 4. The
+Bureau's own analysts attribute the jump in Some Other Race "largely" to the
+improved form, processing and coding. Push the class past "so the data is
+unreliable," which is the failure mode, and onto the harder point: **2010 and
+2020 were the easy pair.** Same standard, same categories, same file layout,
+same field order. Everything that could be held constant was, and the
+comparison still fails. Ask what that implies for any series crossing 1997, or
+any series that will cross the 2024 revision.
+
+**3. Step 8 is the session.** Two lines on one chart. The observed staircase
+falls from `r FV("div_nation")` to `r FV("div_censustract")`; the
+random-shuffle null does not move. **The lesson is not that America is
+segregated** — students arrive believing that. The lesson is that a national
+statistic and a neighbourhood statistic are answers to different questions, and
+that the gap between them is measurable, is `r FV("H_censustract")` on Theil's
+index, and survives the obvious objection.
+
+**The line for the board:** the country is not a place anybody lives.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** The eight categories | `r n(FV("us_pop"))` people, 8 boxes, no remainder | 4 | Somebody will ask why Hispanic is not a race. That is `census`'s lab; give the one-sentence answer and move on. |
+| **2** Who chose the boxes | Three issues of OMB Directive 15 | **8** | **Do not skip.** The "Two or More Races" row being empty before 2000 is the whole point of the figure. |
+| **3** Alone or in combination | `r FV("us_aian_ratio")`× against `r FV("us_white_ratio")`× | **12** | **The prediction.** Take the vote before revealing. |
+| **4** Two censuses | `r FV("chg_white_alone")`% and `r FV("chg_white_any")`% | **10** | The trap is "so the data is unreliable." Push to "the easy pair still failed." |
+| **5** Regions | `r rg4$name[which.max(rg4$div)]` `r pc(max(rg4$div))`, `r rg4$name[which.min(rg4$div)]` `r pc(min(rg4$div))` | 4 | Regions are too big to be interesting. Say so and keep moving. |
+| **6** States | Hawaii `r pc(max(sta$div))`, Maine `r pc(min(sta$div))` | 4 | Only `r sum(sta$largest != "White")` states have a largest group that is not White. |
+| **7** The measure | Why entropy, not dissimilarity | **8** | The null is introduced here, not in Step 8. Make sure they know what it controls for before they see it. |
+| **8** The ladder | `r FV("div_nation")` → `r FV("div_censustract")` | **12** | **The pivot.** Ask what the dashed line would look like if the fall were an artefact. |
+| **9** One county | Wayne: no majority, and `r FV("wayne_pop_80_pct")`% in a lopsided tract | **10** | Both facts, in the same breath. The tie between `r n(FV("wayne_tracts_white_largest"))` and `r n(FV("wayne_tracts_black_largest"))` tracts is the moment. |
+| **10** One street | `r FV("prof_jump_black")` points across one road | 5 | The *shape* — flat, step, flat — not the levels. |
+| **11** What you can say | Including what you cannot | 3 | Make them say the definitional caveat unprompted. |
+
+Total **80 minutes**.
+
+**Step 3 deserves the prediction, and it is the best one in the course.** Ask
+the room: *when you let people mark more than one race, which category grows
+most in proportion?* Almost everyone says Black or White, because those are the
+two categories the first two steps put in their heads. It is **American Indian
+and Alaska Native**, which nearly triples, and the mechanism — the smaller the
+group, the larger the share of its identifying population that is also
+something else — is obvious in hindsight and essentially never guessed.
+
+**If you are short on time**, protect 3, 4 and 8. The two-definitions reveal,
+the decade that did not happen, and the staircase with its null are the
+argument. Steps 5 and 6 can be read aloud from the tables in ninety seconds.
+
+***
+
+# Two things that will come up, and the honest answers
+
+**"Isn't this just the modifiable areal unit problem again?"** Yes and no, and
+the distinction is worth eight minutes because a sharp student will raise it.
+`areal-units` shows that the *statistic* changes with the unit — variance
+collapses, extremes vanish, a correlation flips sign — and concludes that the
+unit is a choice with consequences. That is a fact about the instrument. Step 8
+runs the same shape of ladder and then **subtracts the instrument**: shuffle the
+same people at random into units of the identical sizes and the staircase
+disappears.
+
+```{r maup-control}
+lad[, c("level", "units", "diversity", "H", "H0")]
+```
+
+Look at `H0`. It is essentially zero at every rung down to block groups
+(`r pc(FN("H0_blockgroup"), 4)`), and only at the block rung does it reach
+`r FV("H0_censusblock")`, against an observed `r FV("H_censusblock")`. **So
+roughly `r pc(100 * (1 - FN("H0_censusblock") / FN("H_censusblock")))`% of even
+the block-level figure is real.** MAUP is a genuine problem and this is what it
+looks like when you measure how much of it you have.
+
+**"Isn't the block level ruined by differential privacy?"** Partly, and the
+answer should be precise rather than hand-waving. The 2020 disclosure-avoidance
+system held **state** total populations invariant and did not alter them; it
+did **not** hold block totals invariant. Block counts carry the most noise of
+any level, and this is a second reason — beyond small-unit arithmetic — to
+treat the last rung of Figure 6 as indicative rather than exact. The tract rung
+is the one to quote. If a student notices that the null in Step 8 does not
+separate DP noise from small-N noise, that is a genuinely sophisticated
+observation and should be rewarded: it does not, and the two are confounded at
+the block level.
+
+***
+
+# Option A — A different county
+
+**Scope: all `r n(nrow(cou))` counties, in `data/counties.csv`.**
+
+## Verified output
+
+```{r a}
+big <- cou[cou$total >= 250000, ]
+head(big[order(-big$div), c("name", "st", "total", "div", "largest")], 6)
+head(big[order(big$div),  c("name", "st", "total", "div", "largest")], 5)
+```
+
+**3/4:** Picks a high-scoring county and a low-scoring one, reports both
+scores, and says the county score does not tell you whether people live
+together.
+
+**4/4:** Names what would settle it — the tract-level distribution inside the
+county, or the same staircase computed within it — and notices that the lab
+already did this for Wayne and that Wayne's county score
+(`r pc(cou$div[cou$geoid == "26163"])`) is high.
+
+**4/4, best:** Notices the **Webb County trap**, which is the reason this option
+exists. The least diverse large county in the United States is
+`r big$name[which.min(big$div)]` County, Texas, at
+`r pc(min(big$div))` — and its largest group is
+`r tolower(big$largest[which.min(big$div)])`, not White. **A low diversity score
+does not mean "white."** It means "one group," and the entropy index is
+deliberately blind to which. A student who spots that has understood what the
+measure does and does not encode, and has independently rediscovered why the
+chapter refused to use a two-group dissimilarity index.
+
+**Watch for:** a student reading the diversity score as a moral scale, so that
+Webb County comes out "worse" than a county that is 60% White. Correct it on
+the spot: the index measures evenness across eight administrative categories
+and nothing else.
+
+***
+
+# Option B — A different definition
+
+**Scope: the state table from Step 6, recomputed with `black_any` in place of
+`nh_black`.**
+
+## Verified output
+
+```{r b}
+sta$pb_nh  <- round(100 * sta$nh_black  / sta$total, 2)
+sta$pb_any <- round(100 * sta$black_any / sta$total, 2)
+sta$gap    <- round(sta$pb_any - sta$pb_nh, 2)
+sta$ratio  <- round(sta$black_any / sta$nh_black, 2)
+
+head(sta[order(-sta$gap),   c("name", "pb_nh", "pb_any", "gap", "ratio")], 5)
+head(sta[order(-sta$ratio), c("name", "pb_nh", "pb_any", "gap", "ratio")], 5)
+```
+
+**The two orderings have almost nothing in common, and that is the finding.**
+By percentage points the biggest mover is
+`r sta$name[which.max(sta$gap)]` (`r pc(max(sta$gap), 2)` points). By ratio it
+is `r sta$name[which.max(sta$ratio)]` (`r pc(max(sta$ratio), 2)`×), where the
+Black share is small enough that a modest number of second marks nearly
+triples it.
+
+**3/4:** Recomputes, reports that the numbers rise everywhere, and names a few
+states that move.
+
+**4/4:** Distinguishes the two orderings and explains why they differ —
+absolute change tracks where Black populations are large, proportional change
+tracks where they are small. This is the same structure as Step 3's national
+result, applied one level down, and saying so is the transfer worth rewarding.
+
+**4/4, best:** Takes a position on the legal question and defends it. Voting
+rights litigation under Section 2 generally uses **any-part Black**, and there
+is a real argument for it: the question is who could form a politically
+cohesive group, not who ticked exactly one box. There is also a real argument
+against, since the any-part definition double-counts people across groups and
+the shares no longer sum to 100. A student who notices **that the any-part
+columns do not sum to the population** — and that this is a feature of the
+definition rather than a bug in the file — has read the table properly.
+
+**Watch for:** adding `black_any` and `nh_white` together and being surprised
+that they exceed the total. Also watch for a student comparing `black_any`
+against `nh_black`, which mixes the multiple-race axis with the ethnicity axis;
+the clean comparison is `black_alone` against `black_any`, and `nh_black` is a
+third thing again. That confusion is worth ten minutes if it appears, because
+it is precisely the seam the `census` lab is about meeting the seam this lab is
+about.
+
+***
+
+# Option C — A different threshold
+
+**Scope: `data/tract_largest.csv`, the whole distribution.**
+
+## Verified output
+
+```{r c}
+o <- tld
+o$pct <- round(100 * o$people / sum(o$people), 1)
+o$at_or_above <- round(100 * rev(cumsum(rev(o$people))) / sum(o$people), 1)
+o
+```
+
+Reading down the last column: **`r pc(o$at_or_above[o$bin == "(40,50]"])`% of
+Americans live in a tract whose largest group is over 40%,
+`r pc(o$at_or_above[o$bin == "(70,80]"])`% over 70%,
+`r pc(o$at_or_above[o$bin == "(80,90]"])`% over 80%, and
+`r pc(o$at_or_above[o$bin == "(90,100]"])`% over 90%.**
+
+**3/4:** Reports the distribution and picks a threshold.
+
+**4/4:** Notices that the answer can be made to sound like almost anything —
+"a third of Americans live in a near-segregated neighbourhood" and "two thirds
+of Americans live in a tract with no dominant group" are both defensible from
+this one column — and says which they would use and why.
+
+**4/4, best:** Sees that this is why the chapter leads with an index rather
+than a threshold. The entropy score has no threshold in it; it is a single
+number per unit with no cut point to shop for. Then notices the cost of that
+choice: the index is harder to explain, and "`r FV("pop_tract_80plus")`% of
+Americans" is the sentence that will actually be quoted. **The best answers
+treat the trade-off between a defensible measure and a repeatable sentence as
+the real problem, not as a rhetorical flourish.**
+
+***
+
+# Option D — The 2024 categories
+
+**Conceptual; no verified output. Grade the reasoning.**
+
+```{r d}
+std[, c("key", "issued", "citation", "categories", "question_form")]
+cts[cts$c2030 == 1 | cts$c2020 == 1, c("category", "dimension", "c2020", "c2030")]
+```
+
+**3/4:** Lists what changes — a combined question,
+`r std$categories[std$key == "2024"]` categories, MENA added — and says the
+numbers would be different.
+
+**4/4:** Sorts the lab's numbers into three piles correctly. **Unchanged:** the
+total population; the ladder's *structure*, since it depends on geography
+rather than categories. **Changed and predictable in direction:** the diversity
+score, because it is computed over the number of categories — more categories
+mechanically raise the ceiling, so `r FV("E_max")` becomes
+$\ln `r std$categories[std$key == "2024"]`$ and every score is rescaled.
+**Unpredictable:** everything about White and MENA, because nobody knows how
+people who were counted as White in 2020 will answer a form that offers them a
+different box.
+
+**4/4, best:** Sees that the last pile is the interesting one and states the
+consequence: **a change in the count of the White population between 2020 and
+2030 will be uninterpretable in exactly the way Step 4's 2010-to-2020 change
+already was, only more so.** The strongest answers connect this to Step 9 and
+notice that Wayne County contains Dearborn, home to the largest Arab-American
+concentration in the United States, whose residents the 2020 form counted as
+White — so the county the lab zooms into is one whose *2030* numbers will move
+for purely definitional reasons.
+
+**Watch for:** a student assuming the 2024 standard is already in the data. It
+is not. It was issued in 2024, agencies' action plans are now due in 2027 after
+two extensions, full compliance is due in 2029, and the Census Bureau has said
+it is *preparing* to implement it in the 2027 American Community Survey and the
+2030 Census. Nothing in this lab's data uses it.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given.
+- **The move that earns a 4** is treating a definitional choice as a
+  substantive decision with consequences, not as a technical footnote.
+- **Also a 4**: quoting a number *with its universe attached* — "White alone,"
+  "any-part Black," "total population, not voting-age." The documents model
+  this everywhere; using it unprompted is the habit the lab exists to build.
+- **Also a 4**: noticing that the random-shuffle null in Step 8 is what
+  licenses the whole argument, and saying what the figure would look like
+  without it.
+- **A 2** is "race data is socially constructed so the numbers do not mean
+  anything." True in its first clause, false in its second, and the lab is
+  built to move past it: the numbers mean something quite precise, and what
+  they mean is a joint fact about people and about a directive.
+- **Also a 2**: reporting the national composition as though it described
+  anywhere.
+- **Also a 2**: quoting Wayne County as a national finding, or the national
+  staircase as a fact about Detroit. The documents make the scope explicit;
+  ignoring it is the failure mode this lab introduces.
+- **Reward anyone who asks what the numbers would be under the 2024
+  categories.** They cannot be computed, and knowing that is the right answer.
+
+## Anticipated questions
+
+- *"Why is Hispanic not a race?"* — Because OMB said so in 1977 and again in
+  1997, and the Bureau implements OMB's standard. As of the 2024 revision it is
+  a category in the same list. The full answer is the `census` lab; the
+  one-sentence answer is that this was an administrative decision with a date
+  on it.
+- *"Why Wayne County?"* — Because its county-level number is misleading in an
+  instructive direction: no majority group, top `r pc(100 * WRANK / nrow(cou))`%
+  of counties for diversity, and most residents in a tract that is at least
+  four-fifths one group. Then say what the national staircase is for: if the
+  county were doing the work, Figure 6 would not be there.
+- *"Is Wayne County typical?"* — On diversity, no: it is unusually high, which
+  is the point. On the gap between its county score and its tract scores, it is
+  a strong case rather than a unique one. The honest answer is that the lab
+  does not compute the within-county gap for all `r n(nrow(cou))` counties, and
+  that doing so would be a good final project.
+- *"Couldn't you just use the dissimilarity index?"* — Yes, for two groups. The
+  chapter says why it did not: with eight categories, choosing one contrast is
+  a substantive claim. If a student wants Black-White dissimilarity for a
+  particular metro, that is a legitimate extension, not a correction.
+- *"Do the block numbers mean anything at all?"* — Individually, no. In
+  aggregate, yes: the null in Step 8 shows most of the block-level effect
+  survives. Say both halves.
+- *"Has anything changed since 2020?"* — The categories have, on paper. The
+  data has not. That gap — a standard in force and no data collected under it —
+  is itself worth a minute.
+- *"Why does the White population show up as both falling and rising?"* — Step
+  3 and Step 4 together. If a student can answer this question to the room, the
+  session has worked.
+
+## Rebuilding the data
+
+`data/build-data.R` downloads the 2020 national roll-up and all 51 state P.L.
+94-171 files (about 1.3 GB, processed and discarded), the 2010 national file,
+and the TIGER layers not already cached elsewhere in this course. It reuses
+`../redlining/data/tiger/26/` for Michigan tracts and
+`../residual-votes/data/tiger/st/` for state outlines rather than
+re-downloading them. It writes about 1.7 MB of CSVs, records its source URLs
+and fetch date, and **stops** if the eight categories fail to partition the
+population at any level of any state, or if a state's blocks do not sum to the
+state. Set `DEMOG_CACHE` to a directory of already-downloaded zips to skip the
+downloads. Rerun it and reknit all three documents; every number in them is
+computed at knit time, so a stale build is the only way they can go out of
+date.
+
+## Connections
+
+- **`census`** — the two questions on the 2020 form, the write-in boxes, and
+  "Some Other Race." That lab explains where this lab's Table P2 comes from.
+  Run it first if you can; Step 1 assumes it.
+- **`areal-units`** — the modifiable areal unit problem, on Fulton County. Step
+  8's null is the control that lab's ladder does not have, and the contrast is
+  worth teaching explicitly.
+- **`census-geography`** — the nesting spine. It is why Step 8's ladder is
+  assumption-free: a county's population *is* the sum of its tracts, by
+  construction, so nothing in Figure 6 required a crosswalk.
+- **`redlining`** — one mechanism that could produce the step in Step 10, and
+  the only lab in the course that puts a named document behind a boundary.
+- **`surnames` and `bisg-check`** — what happens when race must be *inferred*
+  because nobody recorded it. This lab is the case where somebody did.
+- **`section-203`** — a federal formula that turns counts of specific language
+  and ancestry groups into legal obligations, and therefore a place where the
+  definitional choices in Steps 2 and 3 have direct consequences.

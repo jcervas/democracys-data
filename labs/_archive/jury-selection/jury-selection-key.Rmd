@@ -1,0 +1,262 @@
+---
+title: "Key: A Reason You Are Not Required to Give"
+subtitle: "84-355 Democracy's Data | Jury selection | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+s <- read.csv("data/strikes.csv", stringsAsFactors = FALSE)
+t <- read.csv("data/trials.csv",  stringsAsFactors = FALSE)
+t$ns <- t$black_struck + t$white_struck
+t$N  <- t$black_eligible + t$white_eligible
+t$p  <- mapply(function(bs, be, n, N)
+                 if (be > 0 && n > 0 && n < N)
+                   phyper(bs - 1, be, N - be, n, lower.tail = FALSE) else NA,
+               t$black_struck, t$black_eligible, t$ns, t$N)
+k <- !is.na(t$p) & t$black_eligible >= 3
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`jury-selection-brief.Rmd`) is now
+a chapter rather than a parallel copy of the lab: prose organised by argument,
+under idea headings, with four numbered figures and no numbered steps. The lab
+(`jury-selection.Rmd`) still runs Steps 1–10 with the code exposed. **Students
+should read the brief first.** **Step numbers below refer to the lab**; the
+chapter is cited by figure number or section title.
+
+
+**One of three labs in the discrimination unit**, alongside redlining and
+policing. Run in parallel and have the groups compare inferences.
+
+**This is the strongest inference of the three**, because the control group is
+inside the file, and it is worth telling students that once they have found it.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+Prosecutors struck half the Black jurors they could and a ninth of the white
+ones; the defense did the mirror image; and no court found a violation until
+journalists assembled 225 trials in one place.
+
+***
+
+# The findings
+
+```{r headline}
+s
+c(state_ratio = round(s$pct[1] / s$pct[2], 1),
+  trials_above_the_diagonal = sum(t$black_struck[k] / t$black_eligible[k] >
+                                  t$white_struck[k] / pmax(t$white_eligible[k], 1)),
+  trials_tested = sum(k))
+```
+
+- State struck **49.8%** of eligible Black jurors, **11.2%** of white — **4.4×**.
+- Defense struck **47.3%** of white, **15.0%** of Black — the mirror.
+- **188 of 202 trials (93%)** above the diagonal.
+- 11 trials where the state struck *every* eligible Black juror; 59 where it
+  struck *none* of the white ones.
+
+***
+
+# The three things to get said
+
+**1. Peremptory means "no reason required."** Students will not know this and it
+is the hinge of the whole lab. A prosecutor may strike almost anyone for almost
+anything. *Batson* forbids only race, and only if you can show it — and a
+race-neutral explanation is easy to produce. **Say plainly: in the thirty years
+after *Batson*, the North Carolina Supreme Court never once found a
+discriminatory strike.**
+
+**2. The mirror is the finding, not the disparity.** Make the room construct the
+objection at Step 4 first — *maybe the Black jurors differed*. Then reveal the
+defense column. **The objection now has to hold that white jurors were equally
+different in the opposite direction to the opposite side.** One variable explains
+both; the objection needs two coincidences.
+
+**3. Aggregate evidence, individual law.** *Batson* operates inside one trial,
+where numbers are small and each strike gets an individual explanation. The
+pattern is only visible from above. **This mismatch is the lab's real subject**,
+and Option A demonstrates it arithmetically rather than rhetorically.
+
+**The line for the board:** the pattern is illegal, and no single strike in it
+is.
+
+***
+
+# Handling the room
+
+Charged material, and the case has a name and a person attached. Two things:
+
+- **Curtis Flowers was released in 2019 and the charges dropped in 2020.** Say
+  so. Students otherwise leave assuming the story ends badly, and the actual
+  ending is relevant: the remedy came from journalism and the Supreme Court, not
+  from the trial-level process that was supposed to catch it.
+- **Do not let it become a discussion of whether he was guilty.** This lab is
+  about who was allowed to sit on the jury. That question is independent of
+  guilt, and keeping them separate is itself worth teaching.
+
+***
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** One trial | The four counts on one row | 4 | Make them read a single row before any total. |
+| **2** Scope | 211 trials, one prosecutor, 26 years | 3 | The narrowness is the point — this is about a decision-maker. |
+| **3** The disparity | 49.8% vs 11.2%, a 4.4× ratio | 5 | Students think this is the finding. It is not. |
+| **4** Why it is not an answer | The "jurors differed" reply | **7** | **Give the reply its full force.** Do not let anyone wave it away. |
+| **5** The control group | The defense strikes the same pools | 5 | **Take a show of hands on the prediction before Step 6.** |
+| **6** The mirror | 47.3% white / 15.0% Black | **6** | The pivot. Let the reversal sit before explaining it. |
+| **7** One trial's probability | `phyper`, p = 0.044 | **7** | **It must feel weak.** That is the point about how *Batson* is litigated. |
+| **8** All 211 | 99 significant where the simulated null gives 3.5 | 6 | About 28x the chance rate. **The shortcut 0.05x211=10.6 is wrong**: discrete tests on small counts are conservative, so being careful makes the disparity look larger, not smaller. |
+| **9** Trial by trial, and Flowers III | 15 of 15 struck, 0 of 21 | 5 | One chance in five billion. |
+| **10** What you can say | Pattern, and the law's blind spot | 6 | The aggregate/individual gap is the transferable lesson. |
+
+**Steps 5–7 are the spine of the session.** Ask the room to predict the
+defense's numbers before Step 6 — the mirror is far more persuasive to somebody
+who has just committed to a wrong guess. Then Step 7 has to *disappoint*: a 4.4%
+probability is what a real *Batson* motion works with, and it loses.
+
+**If you are short on time**, protect Steps 4, 6 and 7. The objection, the
+mirror that answers it, and the single trial that cannot carry the evidence are
+the argument; the rest is detail.
+
+
+# Option A — What are the odds?
+
+## Verified output
+
+```{r a}
+c(testable_trials = sum(k),
+  p_below_05 = sum(t$p[k] < 0.05),
+  pct        = round(100 * mean(t$p[k] < 0.05)),
+  p_below_01 = sum(t$p[k] < 0.01),
+  median_p   = round(median(t$p[k]), 3))
+```
+
+```{r a2}
+o <- t[k, ][order(t$p[k]), ][1:4, ]
+o[, c("trial", "black_eligible", "black_struck",
+      "white_eligible", "white_struck", "p")]
+```
+
+**Ninety-eight of 199 testable trials — 49% — are individually significant at
+p < 0.05, and the median trial sits at p = 0.051.**
+
+**And look at the top row.** The single most extreme trial in twenty-six years
+is ***Curtis Flowers III*: 15 eligible Black jurors, all 15 struck; 21 eligible
+white jurors, none struck. p = 1.8 × 10⁻¹⁰.**
+
+**3/4:** Computes `phyper()` for a few trials and reports that some are extreme.
+
+**4/4:** Answers the question actually asked — *is any single trial damning on
+its own?* — and finds that the median one is not, at p = 0.051. Half the trials
+individually clear the conventional bar and half do not, which is exactly the
+position a defendant is in.
+
+**4/4, best:** Notices that Flowers' own trial is the most extreme in the
+dataset, and draws the right conclusion: **it took a case that extreme, tried six
+times, plus a year of journalism, to get relief.** A pattern that is obvious in
+aggregate produced no remedy for the 98 other trials that were individually
+significant.
+
+***
+
+# Option B — The pooled test
+
+## Verified output
+
+```{r b}
+prop.test(c(902, 372), c(1811, 3318))$p.value
+```
+
+**p = 7.7 × 10⁻²⁰⁵.**
+
+**3/4:** Runs it and observes the number is absurdly small.
+
+**4/4:** Says what the contrast with Option A means. The evidence exists and is
+overwhelming — but it only exists at a level no court considers. **Batson asks
+about one trial; the answer lives in 225.** A student who says the law is
+looking through the wrong end of the telescope has it.
+
+**4/4, best:** Notices that a vanishingly small p-value is not the interesting
+part, because with 5,129 jurors almost any real disparity would clear
+significance. **The effect size is what matters — 49.8 against 11.2** — and a
+student who says so has absorbed the lesson from the prediction-market lab about
+not confusing significance with importance.
+
+***
+
+# Option C — Missing race
+
+No verified output; grade the reasoning.
+
+**4,752 of 14,873 jurors — 32% — have race Unknown.**
+
+**3/4:** Gives one scenario each way.
+
+**4/4:** Makes the scenarios specific. *Inflating*: if race was easier to
+determine for jurors who were struck (more courtroom discussion, more record),
+and if struck jurors were disproportionately Black, the observed pool
+over-represents exactly the cases that show the pattern. *Hiding*: if race went
+unrecorded more often in the rural, whiter counties of the district, those
+trials drop out and with them a set of low-disparity trials.
+
+**4/4, best:** Notices that the direction is testable from the file itself —
+compare the Unknown share across trials with high and low measured disparity —
+and says that a third of the data missing non-randomly is a bigger threat than
+anything in Options A or B. **Being able to rank the threats to your own finding
+is the 4/4 skill across this whole unit.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is explaining why the defense column changes the
+  strength of the inference — not merely noticing it is there.
+- **A 2** is reporting 49.8 vs 11.2 as the finding and stopping.
+- **Also a 2**: "the p-value proves it." See Option B, best answer.
+- **Reward anyone who separates the pattern claim from the guilt question**
+  without being told to.
+
+## Anticipated questions
+
+- *"Isn't the defense doing the same thing?"* — Yes, and say so plainly. Both
+  sides used race. *Batson* applies to both in principle and is enforced almost
+  entirely against the defense's opponent in practice. Students find this
+  genuinely surprising and it is a good place to end.
+- *"What happened to Flowers?"* — Conviction vacated in 2019, charges dropped in
+  2020 after 23 years, most of it on death row.
+- *"What happened to Doug Evans?"* — He remained District Attorney. Worth
+  stating without comment.
+- *"Could you use this in court?"* — This kind of statistical evidence has been
+  offered and largely rejected at the trial level; the Supreme Court in
+  *Flowers* used the history of one prosecutor against one defendant. **That
+  distinction is the lab.**
+
+## Connections
+
+- **The other two labs in this unit** — policing (no control group, so it needs
+  the outcome test) and redlining (intent documented, effect contested).
+  **Ask which of the three inferences the room would most want to take to
+  court.**
+- **Session 12 (SCOTUS)** — *Flowers* is in the database students used there.
+- **RPV** — statistical evidence of discrimination, and what courts do with it.

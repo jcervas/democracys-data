@@ -1,0 +1,187 @@
+---
+title: "Opening Session Key: The 2024 Electoral Map"
+subtitle: "84-355 Democracy's Data | Intro: the three layers (Tue Aug 25) | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+elec <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+pal <- colorRampPalette(c("#2166AC", "#F7F7F7", "#B2182B"))(101)
+```
+
+**All code in Part 6 is given to students and runs as-is.** They are not writing
+it. What you are grading is the two-to-three paragraphs of interpretation
+underneath. These notes are therefore about *what a good answer says*, not about
+whether the code worked.
+
+Every number below has been run against the actual data.
+
+***
+
+# Option A — Colour by share instead of margin
+
+## What they will see
+
+Both maps use the same data and the same palette, but very different scales:
+
+- **Margin** runs from $-83.8$ (DC) to $+45.8$ (Wyoming) — a spread of ~130
+  points.
+- **Harris's share** runs from 25.8% (Wyoming) to 90.3% (DC) — a spread of ~65.
+
+Halving the spread halves the visual drama. The share map is noticeably paler and
+the blowout states stop screaming.
+
+## What a good answer says
+
+**3/4:** Notices the share map looks less polarised, and identifies that the
+lopsided states (Wyoming, West Virginia, Idaho, Vermont, Maryland, DC) are where
+the two maps differ most, while the battlegrounds barely move.
+
+**4/4:** Gets to the real point — **neither map is lying, and the choice of scale
+is an argument.** Margin exaggerates: a 70–30 state and a 60–40 state sit 20
+points apart on a margin scale but only 10 apart on a share scale, so the margin
+map draws the same gap twice as wide. (Both maps in the lab now use the identical
+ramp — 30 points either side of a tie — so the paleness of the share map is a
+real comparison and not an artefact of two different scales.) A student who says "I would use the margin map for
+a story about polarisation and the share map for a story about a divided but
+overlapping country, and I should tell my reader which I chose" has understood
+the entire lab.
+
+**Push in discussion:** ask which map a cable news channel would use, and why.
+
+***
+
+# Option B — Where the electoral votes are
+
+## Verified output
+
+```{r optb-check}
+o <- elec[order(-elec$ev), ]
+cum <- cumsum(o$ev)
+k <- which(cum >= 270)[1]
+k                                    # states needed to reach 270
+data.frame(state = o$state[1:k], ev = o$ev[1:k], running = cum[1:k])
+```
+
+At the default `n <- 10`: those ten hold **254** electoral votes, or **47%** of
+538. Trump carried seven of them (153 EV) and Harris three (101 EV).
+
+**The headline finding is that just 12 states reach 270** — California, Texas,
+Florida, New York, Illinois, Pennsylvania, Ohio, Georgia, North Carolina,
+Michigan, New Jersey, Virginia. Twelve of fifty-one.
+
+```{r optb-split}
+tapply(o$ev[1:k], o$winner[1:k], sum)
+```
+
+## What a good answer says
+
+**3/4:** Reports the number (12), registers surprise, and connects it to campaign
+resource allocation.
+
+**4/4:** Sees the catch. Those twelve states are *not* the campaign's target list,
+because most of them were never competitive — California, New York, Illinois,
+Texas, Ohio were all decided by double digits. The states that decide elections
+are the intersection of *large* and *close*, which in 2024 meant Pennsylvania,
+Georgia, North Carolina, and Michigan. A student who separates "where the votes
+are" from "where the votes are in play" has found the distinction that Chapter 5
+is built on.
+
+**Common stumble:** some will change `n` to 51 and report that all states hold
+100% of the electoral votes. Treat this generously and redirect — they ran the
+code correctly and asked a trivial question. That is a 2, and a conversation.
+
+***
+
+# Option C — Proportional allocation
+
+## Verified output
+
+```{r optc}
+h_share <- elec$harris / (elec$harris + elec$trump)
+h_prop  <- round(h_share * elec$ev)
+t_prop  <- elec$ev - h_prop
+
+c(Harris = sum(h_prop), Trump = sum(t_prop))
+tapply(elec$ev, elec$winner, sum)
+sum(h_prop) + sum(t_prop)
+```
+
+Proportional: **Harris 264, Trump 274**. Winner-take-all: **Harris 226, Trump
+312**. The margin collapses from 86 to 10. Trump still wins.
+
+## What a good answer says
+
+**3/4:** Reports both numbers and observes that proportional allocation tracks
+the national vote far more closely.
+
+**4/4:** Interrogates "fairer." Proportional allocation is fairer to *voters in
+landslide states* — a Republican in California and a Democrat in Wyoming would
+finally count for something. It is emphatically **not** fairer to small states,
+which keep their two-senator bonus under either rule. And it does not touch the
+malapportionment at the heart of the system. A student who notices that the
+reform changes *which* inequity you get, rather than removing inequity, is
+thinking like a political scientist.
+
+**The bonus question** (`sum(h_prop) + sum(t_prop)`) comes to 538 here. It need
+not in general — each state is rounded independently. Anyone who spots this has
+independently discovered the **apportionment problem** and should be told so by
+name, and pointed at Session 2 (the decennial census).
+
+***
+
+# Option D — Their own question
+
+Grade on the quality of the question, not its ambition. "Why does DC have three
+electoral votes when it has no senators?" answered with one line of code is a 4.
+An elaborate unmotivated chart is a 2.
+
+***
+
+# Grading
+
+The four-point scale from the syllabus. On this first submission specifically:
+
+- **Do not penalise anything code-related.** The code is yours. If a chunk failed
+  to run, that is a setup problem to fix in office hours, not a grade.
+- **Do penalise description-without-a-point.** "The chart shows California is the
+  biggest state" is a 2 no matter how clean the output.
+- Expect a wide spread on this first one and grade generously; the point is to establish
+  that the *writing* is what counts. Several students will submit code-heavy,
+  interpretation-light work out of habit from other courses. Say so in the
+  feedback and the following week's submissions will improve.
+
+## Anticipated questions
+
+- *"Why are there 51 rows?"* — DC has had three electoral votes since the 23rd
+  Amendment (1961), while having no voting representation in Congress. Good
+  Option D material.
+- *"Why is `other` zero almost everywhere?"* — **Only 9 of 51 states report a
+  nonzero third-party vote in this dataset.** That is a reporting artifact, not
+  reality: zero means "not separately tabulated," not "nobody voted third party."
+  Worth raising with the whole class, because it is the first live example of the
+  provenance problem that Session 1 is entirely about.
+- *"Can I use ggplot2 / the tidyverse?"* — yes if they already know it, but make
+  clear it earns nothing extra. The labs are base R so that nobody has to install
+  anything.
+- *"Is this a coding class?"* — no. Say it early and often; the syllabus says it
+  too. Some students will arrive braced for a programming course and need to hear
+  that they are not behind.
+
+## Connections forward
+
+- The **two maps** (equal-size vs. EV-sized) set up malapportionment in **Session 2**.
+- The **`other` column** sets up data provenance in **Session 1**.
+- **Rounding in Option C** sets up apportionment in **Session 2**.
+- The **ME/NE cancellation** in Part 5 is the course's first instance of a model
+  that is right for the wrong reason — a theme worth naming again in **Session 9**
+  (polls, models, and markets).

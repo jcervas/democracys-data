@@ -1,0 +1,346 @@
+---
+title: "Section 203 Language Coverage Determinations"
+subtitle: "Section 203 of the Voting Rights Act, and the survey that decides who gets a ballot they can read"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("section-203-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+On the eighth of December 2021 the Census Bureau published a number for Solano County, California. It said that `r n(sol$VACLEP)` of the county's voting-age citizens were of Hispanic origin and spoke English less than very well. In the next column of the same file, on the same row, the Bureau published the margin of error on that number — how far off it could be: plus or minus `r n(sol$MVACLEP)`.
+
+The Voting Rights Act names a threshold of ten thousand. Solano County came in `r n(10000 - sol$VACLEP)` people short, so Solano County is under no obligation to print anything in Spanish. A few rows away in the same file sits `r sub(" County", "", phl$NAMELSAD)` County, whose estimate for its Chinese-speaking citizens is `r n(phl$VACLEP)`, over the line by `r n(phl$VACLEP - 10000)`, published with a margin of error of plus or minus `r n(phl$MVACLEP)`. Philadelphia must translate its ballots, its instructions, its notices and its polling-place assistance into Chinese, and can be sued in federal court if it does not.
+
+> **Before you read on, commit to an answer.** You have both counties' numbers
+> now: an estimate of `r n(sol$VACLEP)` give or take `r n(sol$MVACLEP)` in
+> Solano, an estimate of `r n(phl$VACLEP)` give or take `r n(phl$MVACLEP)` in
+> Philadelphia. Turn each into a range and write down two things: whether the
+> two ranges miss each other, touch at the edges, or overlap over most of their
+> length; and how many of them contain ten thousand — neither, one, or both.
+> Then read on.
+
+Most readers write down that the ranges clear each other, or at worst brush at the edges. One county is over the line and the other is under it, the law treats them as different in kind, and the margins look small beside the gap. Set the two intervals side by side and they overlap almost entirely. Solano's runs from `r n(sol$lo)` to `r n(sol$hi)`; Philadelphia's runs from `r n(phl$lo)` to `r n(phl$hi)`. Both contain ten thousand.
+
+On the evidence the federal government itself published, these two counties cannot be told apart. One of them owes its Spanish-speaking citizens nothing. The other owes its Chinese-speaking citizens a translated ballot for the next five years.
+
+**This is a law that draws a bright line, measured by an instrument that cannot draw one.** What follows is an attempt to find out how much of American language access rests on that mismatch.
+
+## A right that switches on at a number
+
+Section 203 of the Voting Rights Act says that where enough voters in a jurisdiction belong to a language minority and have limited English proficiency, that jurisdiction **must** provide election materials in that language. Not should — must, under 52 U.S.C. §10503. A jurisdiction is covered for a language group if **either**
+
+- more than **10,000** voting-age citizens in that group have limited English
+  proficiency, **or**
+- more than **5%** of the jurisdiction's voting-age citizens are in that group
+  and have limited English proficiency,
+
+**and** that group's illiteracy rate exceeds the national rate. American Indian areas and Alaska Native regions have separate provisions, which will matter a great deal later.
+
+The Director of the Census applies the test and publishes the result. There is no hearing, no comment period and no appeal. A jurisdiction learns its obligations by reading the *Federal Register*.
+
+### Four groups, named in 1975
+
+Before any threshold is applied, the statute decides who is eligible to be counted at all. A **language minority group** means, at 52 U.S.C. §10310(c)(3), persons who are "American Indian, Asian American, Alaskan Native or of Spanish heritage." Four groups, listed in 1975, unchanged since.
+
+That list, not the arithmetic, is the first and largest filter. The Bureau reports this determination across `r N_LANG` language categories, and every one of them sits inside those four. There is no row in this file for Arabic, Haitian Creole, Russian, Somali, Portuguese or Amharic, because there is nowhere in the statute to put one.
+
+**So a county with fifty thousand limited-English Arabic speakers is not covered, and cannot become covered.** No amount of population growth changes it. The threshold decides which *jurisdictions* are covered; the definition decides which *people* can be, and only Congress can revise it.
+
+Section 2 of the Act is no help on this point either. It protects language minority groups too, and it takes its definition from the same subsection. A group outside the four is outside both provisions.
+
+This complicates the sentence above rather than contradicting it. A statistical procedure allocates the right, county by county. But a legislature made the larger decision first, in 1975, by naming who the procedure would be run for.
+
+Coverage is not symbolic. It commits a county to translating ballots, instructions, notices and assistance, at real cost, and non-compliance is enforceable in federal court. Congress in 1975 decided that a ballot a citizen cannot read is a barrier of the same kind as a literacy test, and treated translation as a right rather than a courtesy. Which means the arithmetic described above allocates a civil right. **A statistical procedure is doing the work of a legislature**, county by county, every five years.
+
+The obvious objection to a rule like this is that the numbers in it are arbitrary. That is the weakest objection available, and it is worth setting aside early. Every bright-line rule is arbitrary at the margin. The alternative, case-by-case judgment about who deserves a translated ballot, has worse failure modes and hands the decision to whoever is least accountable for it.
+
+The narrower objection is the one that survives. **The statute is written as though its input were a count. It is an estimate.** The American Community Survey reaches roughly 3.5 million addresses a year, and the Bureau publishes, honestly and prominently, how uncertain each resulting figure is. The rule then proceeds as though that column were not there.
+
+## One row, one obligation
+
+The file the determination is made from has one row per county, per language group. Here is the largest such row in the country.
+
+```{r one-row}
+```
+
+Six columns carry the whole determination, and the last of them is the only one with legal force: a `1` under *covered* is an obligation on a county government. `VACLEP` is the estimate the statute turns on. **`MVACLEP` is the margin of error the Bureau publishes next to it**, in the same file, computed by the same office, and it is the column nothing in the law consults.
+
+Two extracts of that file are used here. One is every county and every language group with any limited-English population at all. The other is every jurisdiction the Bureau actually issued a determination about, at whatever level of geography that determination was made.
+
+```{r files}
+```
+
+```{r determinations}
+```
+
+That is `r n_juris` jurisdictions carrying `r nrow(cv)` determinations, since some places are covered for more than one language, and `r n_spanish` of the determinations are for Spanish. The counts match the Bureau's own announcement of `r lev[["County"]] + lev[["MCD"]]` counties and minor civil divisions plus `r lev[["State"]]` states, which is the least a reproduction of a published determination can be asked to do.
+
+## This file is the decision, and the decision is a survey
+
+**The source is the office that made the determination.** The Census Bureau's Redistricting and Voting Rights Data Office issued the 2021 determinations on the eighth of December that year. Alongside the notice in the *Federal Register*, it published the public use file the notice was computed from. Nobody reconstructed this. The Director of the Census is required to make the determinations, and this is the arithmetic that was actually run, with the flags the Bureau set and the estimates it set them from.
+
+**That is why it is the right file, and it is a rarer thing than it sounds.** Most chapters in this book study a government decision through something the decision left behind: a return, a filing, a registration record. They spend their effort on the distance between the trace and the act. Here there is no distance.
+
+Better still, the file carries its own uncertainty. The `M`-prefixed columns are the Bureau's published margins of error, in the same row as the estimates the statute consults and the flags it produces. Asking whether a legal line falls inside its own measurement error takes a source that publishes both, and most do not.
+
+What would have improved on it is history rather than detail. These are the determinations of a single cycle. The margins raise a question: does a county on the wrong side of a line change sides at the next determination without anybody moving? Answering that needs the earlier cycles laid beside this one, which the public use files do not offer in a matched form.
+
+**The challenges divide into the file's and the world's, and the second half is the heavier one.** The file's difficulty is stated plainly by its producer. Every figure in it is an American Community Survey estimate pooled over five years, so it describes a stretch of time rather than a date. The smallest populations in the smallest places are the ones it estimates worst, which is unfortunate, because those are exactly the jurisdictions the statute is aimed at.
+
+The world's difficulty is that the quantity the law depends on was never observable. Nobody has ever tested whether an American can read a ballot. What exists is a survey question asking how well a person speaks English, on a four-point scale, with the statute's line drawn under *very well*. It is answered for every member of a household by whichever member fills in the form. A right switches on at ten thousand people, and the ten thousand are a count of somebody's assessment of somebody else's English.
+
+**It needed cleaning, and one cleaning decision is worth naming.** The published archive is a small download that expands to roughly 120 MB spanning nine levels of geography. The build script keeps `r length(read.csv("data/derived/sect203_counties.csv", nrows = 1))` of its columns, takes the county level, and drops county-language pairs with no limited-English population at all, leaving the `r n(nrow(cty))` rows read above across `r n(length(unique(cty$S203_GEOID)))` counties and `r length(unique(cty$LANGUAGE))` language groups. Every value arrives as text and is coerced; blank coverage flags are read as zeros. That last step is correct here and is still a decision made on the reader's behalf, of the kind this book keeps finding at the bottom of a disagreement. Anyone rebuilding this would have to fetch the archive again, and would find one thing unrecoverable from the extract: how many rows the drop removed is not a fact the shipped file still contains.
+
+## Every value arrives as text, including the ones that are laws
+
+Here is the top of the archive's all-areas file, as it comes out of the zip:
+
+```{r raws203}
+```
+
+`r NRAW` columns arrive and `r length(read.csv("data/derived/sect203_counties.csv", nrows = 1))` are kept. But the first data row is the one to look at, because almost all of it is empty. It is the **Nation**, and it carries exactly one number: `ILLRAT`, `1.3200`.
+
+That single cell is a statutory threshold. The third condition of Section 203 is that a jurisdiction's illiteracy rate among the covered group must exceed *the national illiteracy rate*. That national rate is not a constant written into the law. It is a survey estimate, recomputed each cycle, sitting here in one field of an otherwise blank row. **Every education test in this chapter is a comparison against that number.** Nothing in the file marks it as special.
+
+The rest of the row structure is the ordinary archaeology of a government extract. `MCD` reads `NNNNN`, a five-character string standing for "not applicable" in a column of identifiers. `LANCOUNT` is `01`, `02` — a numeric language code carried beside the `LANGUAGE` text that names it, so the same fact is in the file twice, once for machines and once for people. And Alabama's Hispanic row has `FLAG10` blank, `FLAG5` `0`, `FLAG_EDU` `1`, `FLAG_COV` `0`.
+
+**Blank and zero are both in that row, in adjacent columns, and they are not distinguished anywhere.** The build reads a blank flag as a zero, which is almost certainly what the Bureau means and is still a decision the reader did not make. Read them as missing instead and every count of covered jurisdictions in this chapter changes, not because any fact changed but because a convention did.
+
+Here is what two of Los Angeles County's rows become (the language labels are shortened here; the file spells out "alone or in combination"):
+
+```{r cleans203}
+```
+
+The text is numbers now, the flags are integers, and the columns that carry no weight in this argument are gone. What survives is the pairing that the whole chapter turns on: an estimate, `VACLEP`, and its margin of error, `MVACLEP`, side by side in the same row. **Almost no administrative file publishes both.** This one does, and that is the only reason the next several sections can ask what a sharp legal threshold does to a number that was never sharp.
+
+## Ballots in Shoshone
+
+Spanish is what most people picture when they picture a bilingual ballot, and Spanish is indeed most of the list. It is not all of it.
+
+```{r languages}
+```
+
+Aleut. Hmong. Seminole. Shoshone. **Somewhere in America a county must print its ballots in Shoshone**, because enough Shoshone speakers live there and Congress decided in 1975 that this was a right and not a gesture. The full list has to be drawn on a log scale, because Spanish is so far ahead of everything else that on a linear axis every other group disappears.
+
+```{r langs-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r langs-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Every language group that triggers coverage anywhere in the United States.** The horizontal scale is logarithmic. Spanish accounts for `r n_spanish` of the `r nrow(cv)` determinations, while `r sum(lang$determinations == 1)` of the `r nrow(lang)` groups are covered in a single jurisdiction each. `r n_native` of the groups are covered somewhere under the American Indian or Alaska Native provisions rather than by the ordinary numeric tests.
+
+## The arithmetic is honest
+
+Before any complaint about the rule, it is worth establishing that the rule is being followed. The file carries a flag for each of the statutory tests, and the flag can be checked against the estimate it is supposed to summarize.
+
+```{r rule}
+```
+
+No discretion, no smoothing, no rounding to a convenient number, no thumb anywhere near the scale. Above ten thousand the flag is on; below it, off, in all `r n(nrow(cty))` rows.
+
+**That is the reassuring finding, and it is also the reason everything after it is a problem.** Nothing has gone wrong at the Bureau. The determination is faithful to the statute in every row. Whatever difficulty exists is in the relationship between a rule that demands an exact answer and a survey that produces a range.
+
+## The counties the survey cannot place
+
+Take the counties whose published interval contains the statutory line, meaning the estimate is close enough to ten thousand that the margin of error reaches across it. Look first at how the law treated them.
+
+```{r near}
+```
+
+Read down the *covered* column and the law is perfectly decisive. Each of these `r nrow(s10)` counties is either obliged or not obliged, with nothing in between. Now add the two columns the statute does not consult.
+
+```{r moe}
+```
+
+Every low end is below ten thousand and every high end is above it. The same eight rows that the law sorts cleanly into two groups, the survey declines to sort at all.
+
+```{r straddle-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r straddle-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Every county whose published interval contains the statutory line.** The dot is the Bureau's estimate, the bar is the margin of error it published alongside, and the dashed line is the number in the statute. Every bar crosses it. The color is the legal consequence, and it is decided by where the dot happens to fall: `r sum(s10$FLAG_COV == 1)` of these `r nrow(s10)` counties are covered and `r sum(s10$FLAG_COV == 0)` are not.
+
+Philadelphia's margin of error is `r n(phl$MVACLEP)`, which is `r pc(phl$MVACLEP / (phl$VACLEP - 10000))` times the distance by which it clears the line. Solano's is `r n(sol$MVACLEP)`, some `r pc(sol$MVACLEP / (10000 - sol$VACLEP))` times the distance by which it misses. One county must provide Chinese-language materials for five years. The other need not provide Spanish-language ones. **The law has no category for "we cannot tell."**
+
+One further wrinkle sits inside that figure and is worth pulling out, because it shows how little the eight-county band can be read at a glance. One of the covered counties, `r s10$NAMELSAD[s10$FLAG5 == 1 & s10$FLAG_COV == 1][1]`, is covered through the percentage test rather than this one — which is the difference between *covered* and *covered by the rule under discussion*.
+
+## A percentage is a worse instrument than a count
+
+The count test is the one that produces a memorable picture. It is not the one that produces most of the trouble.
+
+```{r pct}
+```
+
+```{r pct-ex}
+```
+
+**There are `r nrow(p5)` counties that cannot be placed on the 5% line by their own survey estimate** — about `r pc(nrow(p5) / nrow(s10))` times as many as on the count rule.
+
+The reason is arithmetic rather than politics. A percentage has an estimate on top and an estimate underneath: one in its numerator, the top number of the fraction, and one in its denominator, the bottom number. Both are measured from a sample of the county. The smaller the county, the smaller the sample, and the wider the margin on both. So the rule is least able to say what it means exactly where the jurisdictions are smallest — **least reliable, that is, precisely where a handful of voters would notice a translated ballot most.**
+
+```{r funnel-static, eval=!knitr::is_html_output(), fig.height=4.8, dev="png", dpi=200}
+```
+
+```{r funnel-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The smaller the jurisdiction, the wider the margin of error as a share of the estimate it qualifies.** One dot per county-language row, both axes logarithmic. Among the smallest jurisdictions in the file, those of roughly `r n(round(fmed$mid[1]))` voting-age citizens, the published margin runs to a median `r pc(fmed$med[1])`% of the estimate itself. Among the largest, near `r n(round(fmed$mid[nrow(fmed)]))` citizens, it is down to `r pc(fmed$med[nrow(fmed)])`%. Highlighted are the `r sum(fun$str)` rows visible here whose interval straddles the 5% line, out of `r nrow(p5)` in the file, and they sit on the wide side of the funnel rather than the narrow one.
+
+## A condition that has never excluded anyone
+
+The statute presents its third requirement as equal to the numeric tests: the group's illiteracy rate must exceed the national rate. It reads like a second gate. It is worth asking how many jurisdictions it has ever stopped.
+
+```{r edu}
+```
+
+**A great many rows fail the illiteracy test, `r n(n_edu_fail)` of `r n(nrow(cty))`, and it excludes nobody.** Not one of the `r sum(pass10)` rows clearing the count bar, and not one of the `r sum(pass5)` clearing the percentage bar, is stopped by it. The condition is real on paper and inert in practice, because a language group large enough to clear either numeric bar essentially always has an illiteracy rate above the national one.
+
+So the three-part test is really one test with two branches, plus a clause that has never mattered in this determination. That is not a scandal, but it is a useful warning about reading a statute as though the number of conditions in it told you how selective it is.
+
+## Congress has already conceded the point
+
+The most interesting rows in the file are the ones that are covered while failing every numeric test the statute lays down.
+
+```{r odd}
+```
+
+There are `r nrow(odd)` rows covered on this basis, and the smallest estimate among them is **`r min(odd$VACLEP)`**. For American Indian areas and Alaska Native regions the determination is made on the reservation or the Native village, rather than on the county that happens to contain it. Where the population is very small, the statute stops trying to measure and simply covers.
+
+That is not a favor, and it is not an exception carved out for sentimental reasons. **It is a correction for a known defect in the instrument.** Congress understood that the survey could not resolve a village of four hundred people, so it stopped asking the survey to. The evidence that this was the right call is in the file, in the margins attached to exactly those groups.
+
+```{r moepct}
+```
+
+The languages covered in one or two counties are overwhelmingly Native American, and their margins run to a large fraction of the estimate itself. **The groups whose language rights are most precarious are the ones the survey can least reliably detect.** That is the whole argument of this chapter, stated by Congress, in the statute, about one set of communities and no others.
+
+## Nothing in the distribution marks ten thousand
+
+If the threshold captured some real feature of American language communities, it should be possible to see it. Moving the line ought to be disruptive in one direction and not the other, or to run into some natural break. It does neither.
+
+```{r thresholds}
+```
+
+Moving the line down to nine thousand adds `r thtab$added[thtab$threshold==9000]` county-language pairs. Moving it up to twelve and a half thousand drops `r thtab$dropped[thtab$threshold==12500]`. **A round number chosen in 1975 decides coverage for dozens of jurisdictions**, and the distribution it is drawn across offers no reason to prefer it to its neighbors.
+
+```{r hist-static, eval=!knitr::is_html_output(), fig.height=3.9}
+```
+
+```{r hist-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. There is no cliff at ten thousand.** County-language rows in the range around the threshold, in bins of a thousand. The distribution decays smoothly straight through the statutory line: the bin immediately below it holds `r hbar$n[hbar$lo == 9000]` rows and the bin immediately above it holds `r hbar$n[hbar$lo == 10000]`. Nothing in the shape of this distribution marks that value as different from its neighbors. The color changes where the statute says so and the data does not.
+
+## Two counties, and the whole of the difference between them
+
+Which returns the argument to where it started, and to a picture of it.
+
+```{r duo-static, eval=!knitr::is_html_output(), fig.height=3.2}
+```
+
+```{r duo-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. Two counties, `r n(duo$VACLEP[1] - duo$VACLEP[2])` people apart, on opposite sides of a federal obligation.** The county on top clears the statutory line by `r n(duo$VACLEP[1] - 10000)` with a margin of plus or minus `r n(duo$MVACLEP[1])`; the county below misses it by `r n(10000 - duo$VACLEP[2])` with a margin of plus or minus `r n(duo$MVACLEP[2])`. The bars overlap along almost their whole length. The legal obligations do not overlap at all.
+
+What that supports, stated carefully, is this. Section 203 coverage is decided mechanically from survey estimates; `r n_juris` jurisdictions are covered for `r nrow(cv)` language determinations; the Bureau publishes the uncertainty on every input to the decision. More sharply: `r nrow(s10)` counties straddle the count line and `r nrow(p5)` straddle the percentage line, so `r nrow(s10) + nrow(p5)` legal determinations turn on which side of a threshold a survey estimate happened to land.
+
+What it does not support is the accusation it invites. None of this shows that any county was misclassified, because a margin of error is not an error. The estimates may all be very close to the truth; the point is that the file cannot say so, and the statute proceeds as though it could. Nor does anything here speak to whether coverage works: not one column measures registration, turnout, or whether a translated ballot ever changed a vote. And nothing here records compliance. A `1` in that last column is an obligation, not a ballot.
+
+## Bright lines and the direction of the error
+
+The strongest defense of §203 is that any alternative is worse, and it should be stated at its strongest. A discretionary standard, with coverage wherever a court thinks translation is warranted, invites exactly the litigation and delay the 1975 Congress was legislating against. It also hands the decision to the least accountable actor in the system. Arbitrariness at the margin is the price of a rule that administers itself without anyone having to be persuaded. Tucker (2009), in a history of the provision, argues that this self-administering quality is why it has survived reauthorization while other parts of the Act have not.
+
+The narrower criticism survives that defense intact, because it is not a complaint about where the line sits. It is that **the statute treats an estimate as a count.** That is a fixable defect, and the fix has a direction that has to be chosen out loud. Cover every jurisdiction whose interval crosses the threshold and coverage expands, costs rise, and the error falls toward access. Cover only those whose lower bound clears it and coverage contracts and the error falls toward cost. Naming which way one prefers to be wrong is the whole of the argument, and the present rule makes that choice silently, by using the point estimate and looking away from the column beside it.
+
+There is a reason not to treat this as a merely technical grievance, and it comes from the fate of the Act's other coverage formula. Section 4(b) determined which jurisdictions needed federal preclearance before changing their election rules. It was struck down in *Shelby County v. Holder* in 2013, because it rested on data from the 1960s and 1970s and had never been updated. **Section 203 is the formula that *is* updated**, on a five-year cycle, from the most current survey available. That is precisely the property *Shelby County* demanded — and the cost of it is the instability documented above. A county in the straddle band can change legal status between cycles for reasons that have nothing to do with anybody moving anywhere.
+
+The next determination is due in 2026. This is live, not historical.
+
+## What the file can testify to
+
+The evidence assembled here is unusually direct in one respect and narrowly bounded in several others, and both halves deserve stating without hedging.
+
+It is direct because it is the arithmetic itself, published by the agency that performed it, with the uncertainty attached. Very few consequential datasets in American government publish their own margins of error next to the figures a law acts on. This one does, in the next column, for every row.
+
+The file is also complete rather than a sample of itself: every county and every language group with any limited-English population at all. Every flag in it can be checked against the estimate it summarises, which is what the count-test check above does, row for row, across all `r n(nrow(cty))` of them.
+
+The limits begin with the obvious one: these are estimates and not counts, everywhere, without exception. The American Community Survey reaches roughly 3.5 million addresses a year, and small groups in small places are the ones it measures worst. That is the funnel in Figure 3, not an incidental qualification.
+
+The extract used here is also the county level only. `r n(nrow(det) - sum(det$SUMLVL == 50))` of the `r n(nrow(det))` rows in the determinations file sit at other levels: minor civil divisions, whole states, American Indian areas and Alaska Native regions. A county extract cannot show the geography those determinations were actually made on, which is precisely the geography where the survey struggles most.
+
+It is a single determination cycle. So nothing here can show whether the straddle counties actually flip between cycles, which is the question the margins raise and the one that would settle how much practical difference any of this makes. And it records coverage rather than compliance: a `1` is a legal obligation on a county government, not a translated ballot in anybody's hand.
+
+One oddity in the statute itself is worth naming rather than smoothing over. The determinations are made for "Hispanic" people, not for Spanish speakers. The Act defines language-minority groups by heritage category rather than by language spoken, so the trigger is a demographic classification and the obligation it produces is to provide materials in Spanish. The two are close enough in practice that the mismatch rarely bites, and far enough apart that a careful reader should know it is there.
+
+Three questions are left genuinely open, and none of them will be settled by more rows of this file. The first is what a rule of this kind should do with an interval. No jurisdiction currently has any way of finding out whether it is obliged when its estimate sits inside the margin. So the uncertainty itself imposes a cost, either legal exposure or translation done just in case, entirely separate from the cost of translating anything.
+
+The second is whether the special provisions should be extended. If the American Indian and Alaska Native carve-outs correct for a measurement defect rather than making a political accommodation, then the defect they correct for is not confined to Alaska. Figure 3 says where else it lives. The third is simply what happens in 2026, when newer survey data meets the same unchanged thresholds.
+
+Solano County will be measured again on that cycle, by the same instrument, against the same number. It may cross the line without a single person moving into the county or learning a word of English. That is a strange way to acquire a civil right, and it is the reason it is worth reading the column the statute does not.
+
+## Sources
+
+**Data**
+
+- U.S. Census Bureau, Redistricting and Voting Rights Data Office, *2021 Section
+  203 Determinations — Public Use File*.
+  <https://www.census.gov/programs-surveys/decennial-census/about/voting-rights/voting-rights-determination-file.html>
+  Determinations published 8 December 2021, using American Community Survey
+  estimates for 2015–2019 and 2020 Census population counts. The committed
+  extracts are the county level and the determined jurisdictions. Every figure
+  and number above is computed from those two files at the moment this document
+  is rendered.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`sect203_counties.csv`](data/derived/sect203_counties.csv), [`sect203_determined.csv`](data/derived/sect203_determined.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `sect203_counties.csv` has `LEPPCT` and `ILLRAT` alongside the coverage flags. Find the places that sit just under a threshold and just over it. What separates two counties on opposite sides of the line?
+- Every numeric column arrives with a margin beside it — `MLEPPCT` next to `LEPPCT`, and so on. Find determinations where the margin is large next to the number. Would you switch a right on or off with that in front of you?
+- `sect203_determined.csv` holds the places that are covered. Group by `LANGUAGE`. Which languages carry the most obligations, and which appear only once or twice?
+- Look up whether your own county is in `sect203_counties.csv`, and for which languages. Then work out what would have to change for that to change.
+
+**Law and literature**
+
+- Voting Rights Act §203, 52 U.S.C. §10503.
+- Voting Rights Act §14(c)(3), 52 U.S.C. §10310(c)(3), defining a "language
+  minority group" as persons "American Indian, Asian American, Alaskan Native
+  or of Spanish heritage" — the four-group list every determination in this
+  file is bounded by, and which §2 uses as well.
+- National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
+  NCSL, October 2019), ch. 3, for that definition and for how the language
+  minority provisions sit alongside the rest of the Act.
+- "Voting Rights Act Amendments of 2006, Determinations Under Section 203,"
+  *Federal Register* 86: 69611 (8 December 2021).
+- *Shelby County v. Holder*, 570 U.S. 529 (2013).
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986).
+- Tucker, J. T. (2009). *The Battle Over Bilingual Ballots: Language Minorities
+  and Political Access Under the Voting Rights Act.* Farnham: Ashgate.
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

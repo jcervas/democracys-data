@@ -1,0 +1,429 @@
+---
+title: "Lab 6: Where Candidates Actually Go"
+subtitle: "84-355 Democracy's Data | Week 6"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Chapter 5 is about campaign strategy — targeting, messaging, the allocation of a
+scarce resource. The scarcest resource a presidential campaign has is not money.
+It is **the candidate's time**. There are only so many days, and a candidate can
+be in exactly one place at a time.
+
+So watch where they choose to stand. Every campaign stop is a decision, made
+under pressure, by people with the best polling in the country. Two hundred
+million Americans live somewhere the candidates never went.
+
+Two weeks ago you found that only **8 states** were within five points in 2024 —
+13 within ten. (`margin` in this file is **signed**: negative means Harris won.
+Test `abs(margin) < 5`, not `margin < 5`, or you will silently count every
+Democratic state as competitive and get 26.)
+Last week you found that PAC money goes almost entirely to people who already
+hold office. Today those two facts collect their consequence.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: Three hundred and seventy-seven days out
+
+```{r read}
+v  <- read.csv("data/campaign_visits_2024.csv", stringsAsFactors = FALSE)
+st <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+dim(v)
+```
+
+Every public campaign stop the Associated Press logged in 2024.
+
+```{r glimpse}
+head(v[, c("date", "city", "state", "candidate", "event_type")], 5)
+table(v$candidate)
+```
+
+Five people: Biden until he withdrew in July, then Harris, plus the two running
+mates and Trump throughout.
+
+```{r dates}
+v$date <- as.Date(v$date)
+range(v$date)
+```
+
+March to the fourth of November — the day before the election.
+
+***
+
+# Part 2: Where they went
+
+```{r by-state}
+visits <- as.data.frame(table(v$state))
+names(visits) <- c("state", "visits")
+visits$state <- as.character(visits$state)
+
+head(visits[order(-visits$visits), ], 8)
+```
+
+```{r state-plot, fig.width = 7.5, fig.height = 5.5}
+top <- head(visits[order(-visits$visits), ], 10)
+top <- top[order(top$visits), ]
+
+par(mar = c(5, 11, 4, 2))
+barplot(top$visits, names.arg = top$state, horiz = TRUE, las = 1,
+        col = "#54278F", border = NA, xlab = "Campaign stops, 2024",
+        main = "Where the candidates spent their days")
+```
+
+```{r top7}
+tot <- sum(visits$visits)
+top7 <- sum(head(sort(visits$visits, decreasing = TRUE), 7))
+round(100 * top7 / tot, 1)
+```
+
+> **Seven states absorbed 83.8% of the entire 2024 campaign.** Pennsylvania alone
+> took 80 stops — one every three days for eight months.
+
+***
+
+# Part 3: Where they did not go
+
+Join the visits onto the results file, keeping every state:
+
+```{r join}
+m <- merge(st, visits, by = "state", all.x = TRUE)
+m$visits[is.na(m$visits)] <- 0
+nrow(m)
+sum(m$visits == 0)
+```
+
+**Twenty-five states and territories — half the country — received not one
+visit.** Not one, in eight months, from any of the five people on the two
+tickets.
+
+Look at who was ignored:
+
+```{r ignored}
+m$absmargin <- abs(m$margin)
+big_ignored <- m[m$ev >= 10 & m$visits <= 2, c("state", "ev", "absmargin", "visits")]
+big_ignored[order(-big_ignored$ev), ]
+```
+
+```{r ca-nv}
+m[m$state %in% c("California", "Texas", "Nevada"),
+  c("state", "ev", "absmargin", "visits")]
+```
+
+> **California has 54 electoral votes and got 2 visits. Nevada has 6 and got
+> 25.** Nevada has roughly one-ninth of California's electoral weight and
+> received more than twelve times the attention.
+>
+> Per electoral vote, Nevada got about **a hundred and thirteen times** what
+> California did.
+
+Those are two states. Now put a number on the whole distribution.
+
+> **Before you run the next chunk, write a percentage down.** Line all
+> `r nrow(m)` jurisdictions up from least-visited to most-visited *per electoral
+> vote*, then walk down that list — the ones that got nothing first, then the
+> barely-visited ones — until the electoral votes you have collected add up to
+> half the country. **What share of the `r nrow(v)` campaign stops did that half
+> receive?** Commit to a number now, while the tables above are all you have to
+> go on.
+
+```{r bottom-half}
+o   <- m[order(m$visits / m$ev, m$visits), ]  # least attention per electoral vote first
+ec  <- cumsum(o$ev)     / sum(o$ev)           # running share of the electoral college
+vis <- cumsum(o$visits) / sum(o$visits)       # running share of all campaign stops
+
+half <- approx(c(0, ec), c(0, vis), 0.5)$y
+round(100 * half, 1)
+```
+
+> **`r round(100 * half, 1)`% — about `r round(half * nrow(v))` stops out of
+> `r nrow(v)`.** Most people write down something in the teens, and the
+> reasoning is sound as far as it goes: the `r sum(m$visits == 0)` jurisdictions
+> with no stops at all are only `r round(100 * ec[sum(m$visits == 0)], 1)`% of
+> the electoral college, so the states sitting just above them ought to have
+> picked up a respectable remainder. They did not. Half the country, weighted
+> the way the Constitution weights it, was worth
+> `r round(half * nrow(v))` stops in eight months.
+
+***
+
+# Part 4: Is it about size?
+
+The obvious hypothesis is that candidates go where the votes are. Test it:
+
+```{r size-cor}
+round(cor(m$visits, m$ev), 3)
+```
+
+```{r size-plot, fig.width = 7, fig.height = 5.5}
+plot(m$ev, m$visits, pch = 19, col = "#99999988", cex = 1.3,
+     xlab = "Electoral votes", ylab = "Campaign stops",
+     main = "Size barely predicts attention")
+big <- m[m$ev >= 28 | m$visits >= 20, ]
+text(big$ev, big$visits, big$state, pos = 4, cex = 0.7, col = "grey20")
+```
+
+A correlation of **0.21**. Essentially nothing. The largest states in the country
+sit along the bottom of that plot with almost no visits, and a cluster of
+medium-sized states sits far above them.
+
+Size is not the answer.
+
+***
+
+# Part 5: Is it about closeness?
+
+```{r close-cor}
+round(cor(m$visits, m$absmargin), 3)
+```
+
+```{r close-plot, fig.width = 7, fig.height = 5.5}
+plot(m$absmargin, m$visits, pch = 19, col = "#99999988", cex = 1.3,
+     xlab = "Margin of victory (percentage points)", ylab = "Campaign stops",
+     main = "Closeness predicts attention better — but not perfectly")
+lab <- m[m$visits >= 20 | (m$absmargin < 6 & m$visits < 10), ]
+text(lab$absmargin, lab$visits, lab$state, pos = 4, cex = 0.7, col = "grey20")
+```
+
+**−0.41.** Better, and in the right direction: the closer the state, the more
+visits. But it is not overwhelming either, and the plot shows why — New
+Hampshire and Minnesota were both close and were both largely left alone.
+
+So neither explains it. Now put them together.
+
+```{r interaction}
+close <- m[m$absmargin < 5, ]
+round(cor(close$visits, close$ev), 3)          # among close states, does size matter?
+
+large <- m[m$ev >= 15, ]
+round(cor(large$visits, large$absmargin), 3)   # among large states, does closeness matter?
+```
+
+> **There it is.** Among the eight states decided by under five points, the
+> correlation between size and visits is **+0.74** — strong. Among the ten
+> largest states, the correlation between margin and visits is **−0.83** —
+> very strong.
+>
+> Neither size nor closeness works on its own. **Both work, conditionally.** A
+> campaign is not asking "where are the voters?" or "where is it close?" It is
+> asking a single question that multiplies the two: *where might my time change
+> who wins?* A big safe state fails that test. A tiny close state passes it
+> barely. A big close state is worth eighty visits.
+
+This is the whole logic of the Electoral College expressed as a travel schedule.
+
+***
+
+# Part 6: Three things to notice before you trust any of this
+
+**The tracker stops on 4 November — the day before the election.**
+
+```{r truncated}
+max(v$date)
+sum(v$date >= as.Date("2024-10-25"))
+```
+
+That is one day short, not four: the final weekend is here, and 100 of the 377
+stops fall in the last eleven days. Every number is still a **floor**, but a
+close one.
+
+It was not always. **The source kept moving after we first read it.**
+
+```{r snapshots}
+ap <- read.csv("data/ap_snapshots.csv", stringsAsFactors = FALSE)
+ap
+```
+
+The AP tracker lives at a URL carrying a **version number**, and AP kept
+publishing new versions after the election. This lab was first built against
+version 50, which ended on 1 November with 324 stops. It is now built against
+version 54. Two things changed, and only one is obvious.
+
+The tracker **gained the ending** — 38 stops on 2–4 November that version 50
+could not show. But it also **rewrote a period it had already covered**: for the
+window both versions claim, up to 1 November, version 50 has 324 stops and
+version 54 has 339. Fifteen events were added to a stretch the file already
+claimed to describe, and one of them put a new state on the map — New Mexico
+went from zero visits to 1, changing the count in Part 3 by a whole state.
+
+A public dataset with no statutory deadline has no moment at which it is
+finished. The census closes; an FEC filing has a due date. This has neither: it
+is complete when a newsroom stops updating it, and nothing announces that day.
+**A citation to this source without a version number does not identify what was
+read.**
+
+**The candidate changed mid-dataset.**
+
+```{r switch}
+tapply(v$date, v$candidate, range)
+```
+
+Biden's last logged stop and Harris's first are three weeks apart in July. If you
+were comparing "the Democratic candidate" to "the Republican candidate" over
+time, you would be comparing a continuous campaign against a broken one. As
+whole tickets, though, the two sides are almost perfectly matched:
+
+```{r tickets}
+c(Democratic = sum(v$candidate %in% c("Biden", "Harris", "Walz")),
+  Republican = sum(v$candidate %in% c("Trump", "Vance")))
+```
+
+**One state defies the entire pattern.**
+
+```{r dc}
+m[m$state == "District of Columbia", c("state", "ev", "absmargin", "visits")]
+```
+
+The District of Columbia was decided by **84 points** and still logged 8 visits.
+Nobody was campaigning there for votes. It is where the candidates already were —
+where the fundraisers, the television studios, and in one case the office are.
+A row can satisfy your filter and mean something entirely different from the rest.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change, or nothing at all.
+
+Pick **one**.
+
+***
+
+### Option A — Inside one state
+
+```{r opt-a, fig.width = 7.5, fig.height = 5}
+this_state <- "Pennsylvania"        # <- change to any state in the data
+
+s <- v[v$state == this_state, ]
+cities <- sort(table(s$city), decreasing = TRUE)
+head(cities, 10)
+
+top_c <- head(cities, 10)
+par(mar = c(5, 10, 4, 2))
+barplot(rev(as.numeric(top_c)), names.arg = rev(names(top_c)), horiz = TRUE,
+        las = 1, col = "#54278F", border = NA, xlab = "Stops",
+        main = paste("Campaign stops in", this_state))
+
+nrow(s)
+length(unique(s$city))
+```
+
+**Write about:** Pennsylvania's 80 stops are spread across 36 towns, not
+concentrated in Philadelphia. Why would a campaign go to Erie or Johnstown rather
+than hold more events in the largest city? Think about who is already going to
+vote and who might be persuaded — and about the fact that a campaign stop
+generates *local* news coverage. Then try a smaller battleground like Nevada and
+say whether the same logic is visible.
+
+***
+
+### Option B — Attention per voter
+
+```{r opt-b, fig.width = 7.5, fig.height = 5.5}
+m$per_ev <- round(m$visits / m$ev, 2)
+
+top_pe <- head(m[order(-m$per_ev), c("state", "ev", "absmargin", "visits", "per_ev")], 12)
+top_pe
+
+seen <- m[m$visits > 0, ]
+par(mar = c(5, 11, 4, 2))
+sel <- head(seen[order(-seen$per_ev), ], 12)
+sel <- sel[order(sel$per_ev), ]
+barplot(sel$per_ev, names.arg = sel$state, horiz = TRUE, las = 1,
+        col = "#B2182B", border = NA, xlab = "Campaign stops per electoral vote",
+        main = "Attention per unit of electoral weight")
+```
+
+**Write about:** which states are most over-attended relative to their actual
+electoral weight, and which of the fifty are most under-attended? Wisconsin and
+Nevada should be near the top. Then the question worth arguing about: the
+Electoral College is often defended on the grounds that it forces candidates to
+pay attention to small states. Does this table support that defence, undercut it,
+or split the difference? Be specific about *which* small states.
+
+***
+
+### Option C — The shape of the calendar
+
+```{r opt-c, fig.width = 8, fig.height = 5}
+v$month <- format(v$date, "%Y-%m")
+by_month <- table(v$month)
+by_month
+
+barplot(as.numeric(by_month), names.arg = names(by_month), las = 2,
+        col = "#54278F", border = NA, ylab = "Campaign stops",
+        main = "When the campaign happened")
+
+# How concentrated is the whole thing in the final stretch?
+round(100 * sum(v$date >= as.Date("2024-09-01")) / nrow(v), 1)
+```
+
+**Write about:** describe the shape. What share of an eight-month campaign
+happened in the last two months? Then account for two distortions before you draw
+any conclusion: the tracker stops on 4 November, the day before the election, and
+the Democratic candidate changed in late July. The first now shaves off one day
+rather than a whole final weekend — does it still matter, and how much? The
+second is larger than it looks. A good answer separates what the campaign did
+from what the dataset can see, and says which distortion is actually doing work.
+
+***
+
+### Option D — Ask your own question
+
+Compare the two tickets' maps. Look at what `event_type` and `notes` contain.
+Find the states one side visited and the other did not. Follow whatever nags.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a travel schedule and explain what it reveals
+about how American elections are actually decided.
+
+***
+
+## Where the data came from
+
+**Associated Press**, "Tracking the 2024 presidential campaign trail," **version
+54** (<https://interactives.ap.org/embeds/ziEfd/54/>). AP logged public campaign
+appearances by both tickets from March 2024 to 4 November 2024.
+
+Four limits, all of which shape what you can say:
+
+- **It ends one day early.** Election day itself is absent.
+- **It is versioned, and the version moved.** This lab was built against version
+  50 (324 stops, ending 1 November) before version 54 replaced it; 15 of the
+  extra stops were backfilled into a window version 50 already claimed to cover.
+  See `data/ap_snapshots.csv`, and note that nothing guarantees 54 is the last.
+- **It counts events, not effort.** A stadium rally and a stop at a diner are
+  both one row. Nothing here measures crowd size, time spent, or money spent.
+- **It is a news organisation's log, not a record of a legal filing.** Unlike
+  last week's FEC data, nobody was required to report any of this. AP built it by
+  watching. Coverage of the running mates is likely less complete than of the
+  principals.
+
+**State results** are the same file used in Weeks 1 and 2.
+
+The script that downloaded, checked and trimmed all of this is
+`data/build-data.R`. It verifies the state-name join before the lab depends on
+it — a habit you should now expect to see.

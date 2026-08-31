@@ -1,0 +1,257 @@
+---
+title: "Data Session 12 Key: Measuring Ideology Without Reading a Single Bill"
+subtitle: "84-355 Democracy's Data | Session 12 — Roll calls and the bench | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+nom <- read.csv("data/nominate_members.csv", stringsAsFactors = FALSE)
+h   <- nom[nom$chamber == "House", ]
+now <- max(h$congress)
+med <- function(cg, p, x = h) median(x$dim1[x$congress == cg & x$party == p])
+cgs <- sort(unique(h$congress))
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+DW-NOMINATE recovers a left–right scale from nothing but roll-call patterns —
+nobody read a bill — and that scale shows the two parties separating until, in
+2003, the last member standing between them disappeared.
+
+***
+
+# The findings
+
+```{r headline}
+gap <- sapply(cgs, function(c_) med(c_, "Republican") - med(c_, "Democrat"))
+names(gap) <- cgs
+round(c(gap_1967 = gap["90"], gap_now = gap[as.character(now)],
+        widest = max(gap), narrowest = min(gap)), 3)
+c(widest_year = 1789 + 2*(as.integer(names(which.max(gap))) - 1),
+  narrowest_year = 1789 + 2*(as.integer(names(which.min(gap))) - 1))
+```
+
+- Party gap **0.584** in 1967 → **0.925** today: the **widest in the whole series
+  back to 1879**.
+- The **narrowest is 0.498, in 1947.** The shape is a U, and the mid-century is
+  the outlier — not the present.
+- **Asymmetry:** Democrats moved 0.053 left since 1967, Republicans 0.289 right —
+  **5.5× further**.
+- **The 107th Congress (2001–02) was the last with any overlap.** Two
+  Republicans. Zero in every Congress since.
+
+***
+
+# The idea to teach
+
+Students arrive believing polarization is new. The plot says otherwise: the
+1890s reached 0.852, not far below today. What is genuinely unprecedented is not
+the *distance* between the parties but the **emptiness between them** — zero
+overlap has happened before (1879–1921) but never before alongside a gap this
+wide.
+
+Push on the difference between those two measures. The medians moving apart is
+compatible with a populated middle; the middle emptying is a different fact and
+arguably the one that matters for whether anything passes.
+
+***
+
+# Option A — The Senate, or another era
+
+## Verified output
+
+```{r a}
+for (ch in c("House", "Senate")) {
+  x <- nom[nom$chamber == ch, ]; cg <- sort(unique(x$congress))
+  g <- sapply(cg, function(c_) med(c_, "Republican", x) - med(c_, "Democrat", x))
+  names(g) <- cg
+  cat(sprintf("  %-7s 1967 %.3f | now %.3f | change %+.3f\n",
+              ch, g["90"], g[as.character(max(cg))], g[as.character(max(cg))] - g["90"]))
+}
+```
+
+| | 1967 | now | change |
+|---|---|---|---|
+| House | 0.584 | 0.925 | +0.342 |
+| **Senate** | **0.587** | **0.917** | **+0.331** |
+
+**They are nearly identical.**
+
+## What a good answer says
+
+**3/4:** Reports both chambers and notices the similarity.
+
+**4/4:** Draws the inference the prompt sets up. **Senators represent whole
+states. Nobody draws state lines.** If gerrymandering were the main engine of
+polarization, the Senate should have polarized markedly less than the House. It
+did not — the two chambers moved in near-lockstep. That is real evidence against
+the districting explanation, and it is worth a student's discomfort, because the
+gerrymandering story is the one they arrive with.
+
+**4/4, best:** does not overclaim in the other direction either. This shows
+districting is not *sufficient* to explain polarization; it does not show
+districting has no effect. Both chambers face primaries, both face the same
+national donors and media, and those are shared causes that would produce this
+pattern. A student who says "this rules out one story, and does not establish
+another" has it right.
+
+**Set up for the Dec 3 wrap**, where students will find the House map's efficiency gaps.
+Having met this result first makes them careful about what those gaps prove.
+
+***
+
+# Option B — Has this happened before?
+
+## Verified output
+
+```{r b}
+g <- data.frame(congress = cgs, year = 1789 + 2*(cgs-1), gap = round(gap, 3))
+rbind(head(g[order(-g$gap), ], 4), head(g[order(g$gap), ], 4))
+```
+
+Top four are all recent (2025, 2023, 2017, 2015). The bottom four are all
+mid-century. The 1890s peak was **0.852** — close to, but below, today.
+
+## What a good answer says
+
+**3/4:** Notices that starting in 1980 gives a rising line and starting in 1879
+gives a U, and says the U is the honest picture.
+
+**4/4:** Takes the consequence seriously. If the mid-twentieth century was the
+anomaly, then "returning to normal" is not a coherent goal — the normal to which
+we would return is the 1890s. And the bipartisan era that produced most of our
+institutional expectations (committee power, cross-party coalitions, the idea
+that the Senate works by unanimous consent) rested on a party system that
+included conservative Southern Democrats, which the civil-rights realignment
+ended. You cannot want the comity without the coalition that produced it.
+
+**4/4, best:** notices that **zero overlap is not new** — it occurred repeatedly
+between 1879 and 1921 — but that the *combination* of zero overlap with a
+record gap is. Two measures, two different stories, and the student separates
+them.
+
+**Common stumble:** treating the choice of start year as a trick or a gotcha.
+It is a real analytical decision and both plots are honest; what is dishonest is
+choosing one without saying why.
+
+***
+
+# Option C — Who is in the middle?
+
+## Verified output
+
+```{r c}
+for (cg in c(90, 107)) {
+  x <- h[h$congress == cg, ]
+  dmax <- max(x$dim1[x$party == "Democrat"]); dmin <- min(x$dim1[x$party == "Republican"])
+  mid <- x[x$dim1 > dmin & x$dim1 < dmax, ]
+  cat("\n", cg, "th Congress: ", nrow(mid), " members in the overlap\n", sep = "")
+  if (nrow(mid)) {
+    cat("  Democrats from: ",
+        paste(names(head(sort(table(mid$state[mid$party=="Democrat"]), decreasing=TRUE), 6)), collapse=" "), "\n")
+    cat("  Republicans from: ",
+        paste(names(head(sort(table(mid$state[mid$party=="Republican"]), decreasing=TRUE), 6)), collapse=" "), "\n")
+  }
+}
+```
+
+**90th Congress: 204 members in the overlap.**
+
+- Democrats in the middle: **TX, GA, NC, FL, MS, SC** — the Solid South.
+- Republicans in the middle: **NY, CA, MI, PA, OH, IL** — the industrial North.
+
+**107th Congress: 2 members.** One Texas Democrat, one New York Republican — the
+last survivors of exactly those two species.
+
+## What a good answer says
+
+**3/4:** Notices the overlap shrinks and that the states are not random.
+
+**4/4:** Names the two groups — conservative Southern Democrats and liberal
+Northeastern Republicans — and connects to **Session 4**. The middle of Congress in
+1967 was made of the two regional exceptions to the national party alignment. As
+the South realigned (the 1964 crossover students measured in Session 4), both
+species went extinct: Southern Democrats were replaced by Republicans, Northern
+Republicans by Democrats.
+
+**4/4, best:** answers the "changed their minds or replaced?" question and gets
+it mostly right — **replacement**, not conversion. Individual members rarely
+move much on DW-NOMINATE; the party medians move because different people arrive.
+That is a genuinely important mechanism and it means polarization is a story
+about *elections*, not about incumbents becoming more extreme in office.
+
+**Be precise about this if a student pushes.** In `nominate_members.csv` a member
+does not "rarely" move — a member *cannot* move. The file carries Voteview's
+career-constant DW-NOMINATE estimate, so each member has one `dim1` for their
+whole career; of the 6,936 House members in the file, 8 have more than one value,
+and every one of those left Congress and later came back. Replacement therefore
+accounts for **100%** of the movement in any party median computed from this
+file, by construction, not as a finding. Voteview also publishes the
+Nokken-Poole variant, which re-estimates each member in each Congress and does
+let positions drift; a student who wants to test conversion needs that file, and
+the brief says so at Step 9.
+
+***
+
+# Option D — Their own question
+
+Looking up a familiar member works well. Warn against over-reading small
+differences: the coordinates are model estimates and two members half a point
+apart are not meaningfully distinguishable.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating DW-NOMINATE as a *measurement* with
+  properties rather than a fact — noticing that it is relative to the agenda,
+  that it captures voting rather than belief, and that it describes 535 people
+  and not the country.
+- **Reward the Senate result being taken seriously**, especially by students who
+  came in confident that gerrymandering explains polarization.
+
+## Anticipated questions
+
+- *"How can a computer know what's liberal?"* — It cannot, and it does not try.
+  It finds the arrangement of members that best predicts the votes. That the
+  first dimension looks like left–right is a *finding*, not an assumption. This
+  is the most important thing in the lab and is worth five minutes.
+- *"Why does the current Congress look slightly off?"* — It is still voting.
+  Scores are estimated from roll calls so far and will shift.
+- *"Did Republicans really move 5.5× further?"* — On this measure, yes. Whether
+  that means what it appears to is Part 6: if the agenda moved, a party that
+  never changed can appear to move. Do not let students report the ratio without
+  the caveat, and do not let them dismiss it because of the caveat either.
+- *"Where are independents?"* — Dropped. Only party codes 100 and 200 are kept,
+  so Sanders and King are not here. Worth mentioning; a student may notice.
+- *"Are presidents in this?"* — Not in our file. They are in the source, scored
+  on announced positions rather than roll calls, and mixing them into a chamber
+  median would compare unlike things.
+
+## Connections
+
+- **Session 4 (returns over time)** — the Solid South realignment is what emptied the middle. Option C
+  makes that concrete with state names.
+- **The Dec 3 wrap (redistricting)** — the Senate result here should make students cautious about
+  reading efficiency gaps as proof that districting causes polarization.
+- **Tuesday's debate** (*Elite-Driven vs. Mass-Driven Polarization*) — this lab
+  measures the elite side only, and says so. The mass side needs survey data,
+  which is what Sessions 8 and 9 supply. Ask which one the causal claim requires.

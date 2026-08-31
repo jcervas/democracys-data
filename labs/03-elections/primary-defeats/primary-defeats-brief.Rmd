@@ -1,0 +1,303 @@
+---
+title: "Primary Defeats of House Incumbents"
+subtitle: "The election that is supposed to substitute for the one nobody contests"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("primary-defeats-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+On the tenth of June 2014, the Majority Leader of the United States House of Representatives lost a primary election. It was in Virginia's seventh district, to an economics professor who had spent about two hundred thousand dollars. Eric Cantor was the second-ranking Republican in the House and, by most accounts, the next Speaker. No sitting Majority Leader had ever been denied renomination since the office was created in 1899.
+
+The reason that is remembered is the reason it is worth a chapter. Between `r Y1` and `r Y2`, `r n(NRAN)` sitting members of the House stood on a primary ballot. `r NDEN` of them were refused. That is `r pc(RATE, 2)` percent, and Cantor is one of the `r NDEN`.
+
+The number matters because of a specific argument it is supposed to answer. The [`house-competition`](../house-competition/house-competition-brief.html) chapter of this book finds that about one House race in seven has a single name on the ballot, and that in the overwhelming majority of those the sitting member is the name. The standard reply to that finding is **the primary**: a safe seat has not removed accountability, it has moved it upstream, and the meaningful contest happens in the summer rather than in November. This chapter is a test of that reply, conducted on the only federal record of primary elections that exists.
+
+## The record that exists, and the one that does not
+
+The obvious place to look for congressional primary results is the Clerk of the House. The Clerk publishes *Statistics of the Congressional Election* after every general election, it is the authoritative federal compilation of House returns, and [`house-competition`](../house-competition/house-competition-brief.html) is built out of it. **It does not contain primary results and never has.** Its own title page says what it is: the vote cast for each *nominee*.
+
+Every edition from 1946 to 2024 was checked; the word "primary" appears in a handful of them and every occurrence is a footnote about Louisiana, whose nonpartisan blanket primary is that state's general election. The pre-2000 editions are photographic scans with no text layer, and were examined by eye. There is no primary appendix in any of them.
+
+What does exist is a different federal publication with a different remit. The **Federal Election Commission** issues a compilation every two years called *Federal Elections*. For every federal candidate it reports the primary vote, the runoff vote and the general-election vote, assembled from the official counts of the state election officials. It has carried congressional primaries since the 1994 edition. The machine-readable workbooks begin in 2002, and the 2002 edition uses merged cells with no usable header row, so this chapter starts at `r Y1`.
+
+```{r scope}
+```
+
+It also stops, and the way it stops is worth showing. The FEC has published no 2024 edition. Ask its document server for one and you get a success code, eight megabytes, and the 2022 report as a PDF. That server addresses files by a numeric identifier and pays no attention to the filename. Every one of the ten identifiers used here is pinned and every download is checked against a byte count, for exactly that reason.
+
+**Three properties make this the right source and one makes it awkward.** It is a federal agency's compilation of the states' own canvasses, so it is one step from the authoritative record rather than three. It is candidate-level, so a losing primary candidate appears with their votes rather than being summarized away. And it marks incumbents, which is the fact the whole question turns on. The awkwardness is that it covers ten elections, and ten elections containing `r NDEN` events of interest is not a lot of events.
+
+So a second series is carried alongside it. **Brookings'** *Vital Statistics on Congress*, Table 2-7, counts House retirements, primary defeats and general defeats for every election from 1946 to 2024. It is not derived from returns; it is assembled from the *Biographical Directory*, *CQ Almanac* and the *National Journal*, and it is a compilation of other people's counting. It is here because it is four times longer than anything the FEC workbooks can support, and because it gives the derivation below something independent to be checked against.
+
+A third source is used only as a check, and it is the most human of the three. **Greg Giroux**, a congressional reporter, keeps a public spreadsheet called *Members of Congress Defeated For Renomination, 1966–2026*. It holds `r ck("Giroux tracker rows")` rows in `r ck("Giroux year-blocks parsed")` year-blocks, one line per member, naming who beat them, the date, and the year they were first elected.
+
+It is not machine-readable and it is not a primary source. It records things no vote-total file does. That a particular defeat was two sitting members paired against each other by redistricting. That a particular winner went on to lose in November. And it covers the current cycle, which the FEC will not report for another two years.
+
+It is cited here for what it is: a reporter's list, kept by hand, that turns out to agree with Brookings to the unit.
+
+How it was obtained is part of what it is.
+
+The FEC workbooks are documents. An edition is issued, given an identifier, and never changes again. So the copy read here and the copy read in ten years are the same object. The tracker is a live spreadsheet, exported as a CSV. Its `r ck("Giroux tracker rows")` rows are not a table. They are `r ck("Giroux year-blocks parsed")` year-blocks stacked in one column with headings between them, which the build has to find and unstack.
+
+That format can change without notice, because it belongs to one person using it to keep notes rather than to feed a script. So can the contents, and there is no fixed version of it to point at.
+
+**What this chapter cites is what that sheet said on the day it was fetched.** The agreement with Brookings is therefore doing double duty. It is a real check on the count, and it is the only evidence available that the parse read the sheet correctly.
+
+Underneath all three sits a fourth file that decides who counts as an incumbent in the first place, and it belongs to none of these categories.
+
+Voteview's membership record is not a government publication. It is a research project's compilation, built at UCLA over decades out of roll calls. Names were reconciled, identifiers assigned and parties coded by people making judgment calls before anyone downstream sees the file. Those calls have consequences here.
+
+Voteview gives a member who switches party mid-Congress a *second* identifier rather than amending the first, so he appears as two members. `r ck("party switchers with two Voteview rows in one Congress")` such cases fall inside this chapter's window. Keyed on that identifier, each of those men leaves the House on the day he changed party and a stranger takes his seat. That is precisely the event these chapters exist to count.
+
+The build keys on the Biographical Directory's identifier instead, which stays the same across a switch, and drops the duplicate row. Nothing in the file announces the convention. It is discoverable only by finding a count that came out wrong.
+
+## Ten workbooks, and no column called "denied"
+
+Here is the event this chapter opens with, as it exists in the record: two rows of a spreadsheet. This is the 2014 FEC workbook's House sheet, Virginia's seventh district, printed sideways so a whole row fits on the page.
+
+```{r rawfec}
+```
+
+Everything the chapter needs is in there and none of it is labelled. There is no `denied` column, no `incumbent lost` flag, not even a `primary winner` column — that one arrives only in the 2020 edition. What there is: a marker in a field named `(I)`, two vote totals, and the fact that one man has a general-election figure and the other does not. **Cantor's defeat is not recorded anywhere. It is inferred, from an absence.**
+
+Four features of those ten fields decide how the inference has to be built.
+
+**`D` is not a district number.** It reads `07 - FULL TERM`. The regular election and a special election to finish somebody's unexpired term are held the same November in the same district, and both appear in this sheet. Brat has a third row in the file, identical but for `07 - UNEXPIRED TERM`, whose primary vote cell contains the single character `#`. The build takes the leading digits as the district and drops the unexpired-term rows, because they are a different election.
+
+**The incumbent marker is a string, not a flag.** It reads `(I)`, sometimes `(I)*`. In three rows of the 2010 file the words `SPECIAL PRIMARY` sit in that same column. That is why the test matches those two exact strings rather than searching for the letter I. Searching for the letter put three Ohio challengers into the incumbent table.
+
+**A percentage is a fraction with seventeen digits.** `0.44468369810972513` is Cantor's share, stored as a double, not the 44.5 anyone would write. It is also redundant. The build recomputes shares from the vote totals, so that the denominator, the bottom number being divided by, is one it can state.
+
+**And `NA` is doing two different jobs.** Cantor's blank `GENERAL VOTES` means he was not on the November ballot. Elsewhere in the same column a blank means the FEC wrote the word `Unopposed` instead of a number — a string in a numeric column, which `as.numeric` turns into `NA` without a warning. Reading those as missing would have deleted `r n(sum(IN$unopposed))` incumbent candidacies from this chapter's denominator, almost all of them members who faced nobody. The build tests for the words before it tests for the number.
+
+That is one workbook.
+
+There are ten, and they do not agree with each other. The 2004 sheet has 20 columns, 2012 has 23, and 2022 has 30 after ranked-choice rounds were added. `PRIMARY` becomes `PRIMARY VOTES`. `INCUMBENT INDICATOR` becomes `(I)`, then `(I) INCUMBENT INDICATOR`. `DISTRICT` becomes `D` and back again. The sheet holding the House is called five different things across the ten files, one of them containing the FEC's own typo, `Resuts`.
+
+So the build finds every column by its header text rather than by position. It separates House rows from Senate rows by whether the FEC identifier starts with `H`. **A positional read would have run clean and silently returned the wrong column.**
+
+Here is what those two rows become. This is `incumbents.csv`, Cantor's six cycles, one row per incumbent per election:
+
+```{r cleaninc}
+```
+
+The unit of analysis changed twice on the way.
+
+The workbook's unit is a *ballot line*. Cantor, Brat and the write-ins are each a row, and a candidate on two party lines is two rows. The clean file's unit is an *incumbent-cycle*: one row per sitting member per election, whether or not anybody ran against them.
+
+Getting from one to the other meant three things. Group the ballot lines by state, district, party and election. Decide which group is the contest that was actually at stake. Then ask of that group whether the incumbent came first.
+
+Read across the `unopposed` column and the whole chapter is visible in one member's career. Four cycles where the cell says nobody filed against him and the vote column is therefore empty; one cycle with a challenger he beat four to one; and `r max(IN$year[IN$last == "Cantor" & IN$denied])`. `denied` is the column this book is about, and it exists in no source file — it is `ran_prim & !won_nom`, computed here, out of an absence in a spreadsheet.
+
+## Deciding what "denied renomination" means
+
+The FEC file does not have a column for it. What it has is a row per candidate per ballot line, with a primary vote, a runoff vote and a general vote, and the rule has to be built.
+
+```{r rule}
+```
+
+The third row is the one that can go wrong, and it is checked rather than asserted. From 2020 the FEC prints a primary-election winner indicator, so for two cycles the answer is in the file.
+
+The rule used for the eight earlier cycles is run on those two as well, and compared. That is `r ck("nominee derivation vs the FEC's own flag, 2020-2022: candidacies compared")` candidacies, of which `r ck("of those, candidacies where the two disagree")` disagree. Restricted to incumbents it is `r ck("same test restricted to incumbents: candidacies compared")` candidacies and `r ck("of those, incumbent candidacies where the two disagree")` disagreements. The three are John Lewis, who won his 2020 primary and died in July. John Ratcliffe, who won his and resigned to become Director of National Intelligence. And Van Taylor, who led the 2022 Texas primary without a majority and withdrew before the runoff.
+
+Four things in the file will silently produce a wrong answer, and all four were found by a number coming out wrong rather than by reading documentation.
+
+**A ballot line is not a candidacy.** Joe Crowley lost the 2018 Democratic primary in New York's 14th district to Alexandria Ocasio-Cortez. He was still on the Working Families line in November, where he was unopposed. Asking "was this member nominated?" of all his rows at once answers yes and deletes him from the count. The question has to be asked of the nomination that was actually at stake.
+
+**A write-in is not a candidacy either.** In 2016 both New Hampshire Democrats picked up a few dozen write-in votes in the Republican primary. Folded into the Republican contest, both of them appear to have been refused renomination in a year when both were renominated and re-elected.
+
+**A party label can contain a character that is not a space.** Several party cells end in U+00A0, a non-breaking space, which ordinary trimming does not remove. In the 2016 Kansas file, Roger Marshall's party is `R` followed by one of those, and Tim Huelskamp's is `R/W`. So after cleaning, the two men sit in two separate Republican primaries in the same district, each unopposed. Huelskamp lost that primary by fourteen thousand votes.
+
+**Louisiana is not Louisiana every year.** Through 2006 the state ran a nonpartisan blanket primary in November with a December runoff. So its "primary" *was* its general election, and the FEC file carries no primary votes for it at all. In 2008 and 2010 it held ordinary closed party primaries, which the file does carry, and then from 2012 it went back to the blanket system. Treating Louisiana as nonpartisan in every year pools the 2008 Democratic and Republican primaries in the 2nd district into one contest. It then records William Jefferson as denied renomination — in a year when he won his runoff by fifty-seven points and lost in November.
+
+The incumbent marker itself needs checking against something. It is matched here against the Voteview membership record, and it fails in both directions. The 2022 file marks a Colorado candidate who had never held the seat. The 2006 file leaves the marker blank for every candidate in Michigan's 7th district, including the sitting member, who lost his primary. Of `r ck("incumbent-cycles in the FEC files")` marked candidacies, `r ck("incumbent-cycles matched to a Voteview member")` were confirmed against the membership record and `r ck("not matched at all, and dropped")` were dropped. A further `r ck("incumbents the FEC did not mark, recovered by id")` sitting members the file failed to mark were recovered.
+
+## How rare is rare
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=3.9}
+```
+
+**Figure 1. Every House member-cycle from `r Y1` to `r Y2`, narrowed one condition at a time.** Widths are proportional to the square root of each count, so the last band is visible at all. Of the members who held a seat, `r pc(100 * NINC / NHELD)` percent sought re-election to the House. Of those, `r pc(100 * NRAN / NINC)` percent appeared on a primary ballot. Of those, `r pc(100 * NCON / NRAN)` percent had at least one rival on it. And of those, `r pc(100 * NDEN / NCON)` percent were refused the nomination.
+
+`r NDEN` in `r n(NRAN)` is `r pc(RATE, 2)` percent. The Brookings series, over forty elections rather than ten, gives `r sum(VS$lost_primary)` primary defeats against `r n(sum(VS$seeking))` members seeking re-election. That is `r pc(VSR, 2)` percent — the same number, arrived at by different people counting different years from different documents.
+
+**A sitting member of the House who seeks renomination gets it about ninety-eight and a half times in a hundred.** That is the fact the accountability argument has to be made against.
+
+## The challenge and the outcome are two different series
+
+It would be easy to conclude that nobody bothers, and that would be wrong. The share of incumbents who face a primary rival at all has moved a great deal inside these ten elections, and it has moved in the direction the accountability argument predicts.
+
+> **Before you read on, write a number down.** In `r Y2`, `r by(Y2, "ran_primary")`
+> House incumbents stood on a primary ballot. **How many of them had even one
+> opponent on that ballot?** Not a serious opponent, not a funded one -- any
+> name at all besides their own. Commit to a count, or to a share of
+> `r by(Y2, "ran_primary")`, before you look at Figure 2.
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+**Figure 2. Every contested incumbent primary from `r Y1` to `r Y2`, one tick per member.** A tick appears only for incumbents who had a rival on the ballot, at the share of the primary vote they took. The right-hand labels give how many of that cycle's incumbents that was.
+
+The count rose from `r by(Y1, "contested")` of `r by(Y1, "ran_primary")` in `r Y1`, or `r pc(by(Y1, "pct_contested"), 0)` percent, to `r by(Y2, "contested")` of `r by(Y2, "ran_primary")` in `r Y2`, or `r pc(by(Y2, "pct_contested"), 0)` percent. The median contested incumbent took `r pc(by(Y1, "median_share"))` percent in `r Y1` and `r pc(by(Y2, "median_share"))` percent in `r Y2`. Red ticks are the `r NDEN` members refused renomination.
+
+Most readers put the `r Y2` figure somewhere near a quarter, because the visible fact about primaries is how seldom anyone loses one. It is `r by(Y2, "contested")` of `r by(Y2, "ran_primary")` -- `r pc(by(Y2, "pct_contested"), 0)` percent, nearly two and a half times the `r pc(by(Y1, "pct_contested"), 0)` percent of `r Y1`.
+
+**Being challenged and being beaten have come apart.** Challenges roughly doubled; the denial rate did not. The number of incumbents held under sixty percent of their own primary went from `r by(Y1, "under60")` to `r by(Y2, "under60")`, and the number held under fifty-five from `r by(Y1, "under55")` to `r by(Y2, "under55")`, so the pressure is real and measurable. It simply almost never finishes the job.
+
+One caution about that trend, since it is the least secure claim in this chapter. The FEC's earlier workbooks are thinner overall. The number of incumbent candidacies is steady across cycles, but the total House candidate rows rise from about eighteen hundred in `r Y1` to about twenty-six hundred in `r Y2`. So some of the apparent increase in challenges could be more complete reporting of candidates who got few votes, rather than more candidates. The states covered are the same throughout, which argues against a large distortion. But the direction of the trend is better supported than its size.
+
+## When they do lose
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```
+
+**Figure 3. House incumbents denied renomination at every election from `r min(VS$year)` to `r max(VS$year)`.** Counts are from the Brookings series, which is compiled rather than derived from returns. The eight columns in the accent color are the first election held on each decade's new districting map. Those eight average `r pc(RD$lost_primary[RD$redist])` denials; the other `r sum(!VS$redist)` elections average `r pc(RD$lost_primary[!RD$redist])`. The tallest column is `r VS$year[which.max(VS$lost_primary)]` at `r max(VS$lost_primary)`.
+
+**The clustering is almost entirely a redistricting effect, and its mechanism is not what the word "primary" suggests.** A new map does not usually abolish a member's district. It puts two members into one. Two sitting members in one district produce one primary that one of them must lose. The count doubles without anything having changed about how voters feel.
+
+Of the `r NDEN` denials in the FEC years, the largest single cycle is `r max(BY$denied)` in `r BY$year[which.max(BY$denied)]`. The two redistricting years in the window, 2012 and 2022, account for `r by(2012, "denied") + by(2022, "denied")` between them.
+
+Strip the redistricting years out and the series is flat and low. There is no long rise in members being turned out by their own voters, which is what a theory of primaries as the new site of accountability would predict, and which is often asserted.
+
+## Three people counting the same thing
+
+Every number above rests on a rule this chapter built out of a spreadsheet. The useful test of such a rule is whether people who never saw it get the same answer.
+
+```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=3.9}
+```
+
+**Figure 4. The same `r nrow(CM)` elections counted three ways.** The horizontal axis is the Brookings count, which matches the Giroux tracker's House count in every one of these years. The vertical axis is the count worked out here from the FEC workbooks. `r sum(CM$gap_brookings == 0)` of `r nrow(CM)` fall exactly on the diagonal, and the largest disagreement anywhere is `r max(abs(CM$gap_brookings))`. Totals over the ten elections are `r sum(CM$fec_derived)` here against `r sum(CM$brookings)` there.
+
+That two independent hand-built counts agree with each other to the unit is worth as much as the agreement with this build. And the `r sum(CM$gap_brookings != 0)` disagreements are all in the same direction -- this chapter is short -- and every one has a name.
+
+```{r resid}
+```
+
+Two of those three are not errors at all. **A convention is not a primary, and Louisiana's November blanket ballot is not a primary either.** The compilers count both as denials of renomination, because the underlying event is the same. A count built from primary vote totals cannot, because there are no primary vote totals. Only the first is a defect in the source, and it is a defect of omission that this chapter recovers by a different route.
+
+## What a primary is doing, if not this
+
+The rate is one and a half percent. That does not settle whether primaries discipline members, and the literature is clear that it does not.
+
+**Boatright (2013)** examined the claim that "getting primaried" had become a routine threat and found that serious primary challenges to incumbents were neither as frequent nor as ideologically motivated as the commentary supposed. Much of what looks like an ideological purge is redistricting, scandal, or a long-serving member losing touch with a changed district.
+
+**Hall (2019)** argues that the more consequential effect operates on *who runs in the first place* rather than on who wins. Suppose the plausible candidates in a safe district are only the ones a primary electorate would accept. Then the primary has already chosen the field before anybody votes, and the general election between an extreme nominee and a hopeless opponent registers none of it. On that account a one and a half percent denial rate is compatible with primaries mattering enormously.
+
+**Brady, Han and Pope (2007)** show two things. Primary electorates are smaller, more partisan and more ideologically extreme than general electorates. And members who drift toward the centre of their district pay a price in primary vote share. Figure 2 is consistent with that: the price is paid in share, and share is not the same as a seat.
+
+There is also a mechanical answer, and it is the one this chapter can actually support. **Anticipation.** A member who expects a serious primary can retire instead. A retirement and a defeat look nothing alike in the numbers, and may feel identical to the member. The [`retirements`](../retirements/retirements-brief.html) chapter finds that `r pc(100 * sum(RE$not_running) / sum(RE$left), 0)` percent of House departures are members who did not seek re-election at all. No file separates the ones who left because they wanted to from the ones who left because they counted the votes. **A primary that removes members by frightening them leaves exactly the same trace as no primary at all.**
+
+## What this evidence will bear
+
+The strengths are specific. The source is a federal agency's compilation of the states' own counts, read here from the published workbooks rather than inherited from anyone else's version. It is also candidate by candidate, so losing primary candidates are counted rather than summarised away.
+
+The rule for "nominated" was checked against the FEC's own winner marker in the two cycles that carry one. The two disagree on `r ck("of those, incumbent candidacies where the two disagree")` of `r ck("same test restricted to incumbents: candidacies compared")` incumbent candidacies. The incumbent set was confirmed against a separate membership record, which removed rows the FEC marked wrongly and recovered rows it failed to mark.
+
+And the result agrees with two hand-built counts that agree with each other.
+
+The weaknesses are equally specific.
+
+**Ten elections is a small window for a rare event.** `r NDEN` denials is enough to establish a rate and not enough to model one. The Brookings column extends the rate to forty elections and is not built from returns.
+
+**Three kinds of nomination are invisible here.** Three systems make "denied renomination" either impossible or something else: a convention, Louisiana's blanket ballot, and the top-two primaries of California, Washington and Alaska. `r sum(DN$nonpartisan)` of the `r NDEN` denials counted here happened under a top-two system, and are flagged in the data. Conventions and Louisiana produce the two known undercounts named above.
+
+**A share of the primary vote is not a measure of danger.** In Figure 2, an incumbent held to sixty percent by a strong challenger looks the same as one held there by three unknowns.
+
+The file has no candidate quality, no spending and no endorsements.
+
+**Turnout is missing entirely, and it is not a detail.** These are shares of whoever voted, and primary electorates are a small and unrepresentative slice of a district. A member renominated with ninety percent of a primary in which four percent of the district participated has been endorsed by something, but not by the district.
+
+**And the counterfactual is unobservable.** The central question is whether the primary has replaced the general election as the thing that holds members to account. That turns on what members do because they fear one, and fear is not a column. This chapter can say how often the mechanism fires. It cannot say how often the threat of it was enough.
+
+So a sitting member of the House who seeks renomination is refused about `r pc(RATE, 1)` percent of the time. That figure has been roughly stable since 1946. The one exception is a doubling in the first election on each new map, and that is two members being put in one district rather than voters changing their minds. Over the same twenty years the share of incumbents facing any primary opponent at all has more than doubled. **Challenge has become ordinary and defeat has not.**
+
+Is the primary an empty threat, or a threat so effective that it is settled before the ballots are printed? These files cannot answer that. It is the question worth asking.
+
+## Sources
+
+**Data**
+
+- Federal Election Commission, *Federal Elections*, biennial compilations for
+  2004 through 2022.
+  <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>
+  — retrieved 2026-08-11, `r ck("FEC cycles read")` workbooks,
+  `r ck("FEC House candidate rows, 2004-2022")` House candidate rows. **The
+  primary, runoff and general vote totals in this chapter are the Commission's,
+  compiled from the official canvasses of the state election officials.**
+- Lewis, J. B., Poole, K., Rosenthal, H., Boche, A., Rudkin, A. and Sonnet, L.
+  *Voteview: Congressional Roll-Call Votes Database*, member file
+  `HSall_members.csv`. <https://voteview.com/> — retrieved 2026-08-11,
+  `r ck("Voteview rows")` rows. Used to decide who was an incumbent.
+- Brookings Institution, *Vital Statistics on Congress*, Chapter 2, Table 2-7,
+  edition of April 2026.
+  <https://www.brookings.edu/articles/vital-statistics-on-congress/>
+  — 1946 to 2024, compiled from the *Biographical Directory of the United States
+  Congress*, *CQ Almanac*, *CQ Weekly Report* and *National Journal*.
+- Giroux, G. *Members of Congress Defeated For Renomination, 1966–2026.*
+  <https://docs.google.com/spreadsheets/d/1X97S6hUby6PPHAMoEwvAxkAUo8EUwLk8xMosx4hVd8c/>
+  — retrieved 2026-08-11, `r ck("Giroux tracker rows")` rows in
+  `r ck("Giroux year-blocks parsed")` year-blocks. A hand-kept tracker, cited
+  here as an independent check and as the only series covering the current
+  cycle. Its own stated sources are the compiler's research, *Vital Statistics
+  on American Politics* and the *Almanac of American Politics*.
+- Office of the Clerk, U.S. House of Representatives, *Statistics of the
+  Congressional Election*, 1946 to 2024.
+  <https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>
+  — checked and **not** used: it contains no primary results in any edition.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`by_year.csv`](data/derived/by_year.csv), [`compare.csv`](data/derived/compare.csv), [`denied.csv`](data/derived/denied.csv), [`giroux.csv`](data/derived/giroux.csv), [`incumbents.csv`](data/derived/incumbents.csv), [`vsoc.csv`](data/derived/vsoc.csv), [`exits_by_year.csv`](../retirements/data/derived/exits_by_year.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `compare.csv` puts three independent counts of the same thing side by side, with the gaps. Find the years they disagree. Whose count would you use?
+- `by_year.csv` has `pct_unopposed` and `pct_contested`. Follow them. If the general election is uncontested and the primary is unopposed too, who chose the member?
+- `denied.csv` lists the incumbents who lost renomination, with `prim_share`. Sort by it. How badly do incumbents lose when they lose?
+- `vsoc.csv` splits every year into retired, lost primary, lost general and re-elected. Compute the share leaving for each reason. Which route out of Congress is most common?
+
+**Academic literature**
+
+- Boatright, R. G. (2013). *Getting Primaried: The Changing Politics of
+  Congressional Primary Challenges.* University of Michigan Press.
+- Hall, A. B. (2019). *Who Wants to Run? How the Devaluing of Political Office
+  Drives Polarization.* University of Chicago Press.
+- Brady, D. W., Han, H. and Pope, J. C. (2007). "Primary Elections and
+  Candidate Ideology: Out of Step with the Primary Electorate?" *Legislative
+  Studies Quarterly* 32(1): 79–105.
+
+**Further reading**
+
+- Mayhew, D. R. (1974). *Congress: The Electoral Connection.* Yale University
+  Press.
+
+**How the figures were made**
+
+The assembly is shared with the retirements chapter, which draws on the same sources. Every URL is recorded with the date it was retrieved, the byte counts that came back, and the validation results reproduced in `checks.csv`. Every number printed above is computed from the files it wrote, at the moment this document was rendered.

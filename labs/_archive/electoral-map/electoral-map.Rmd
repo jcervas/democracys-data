@@ -1,0 +1,411 @@
+---
+title: "Lab 1: The 2024 Electoral Map"
+subtitle: "84-355 Democracy's Data | Week 1"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+You do not need to know any R. Every block of code below already works. Your job
+today is to **run it, read it, and then change it**.
+
+Two things to know about this document:
+
+- The grey blocks are **code chunks**. Click the little green ▶ arrow at the
+  top-right of a chunk to run it. Or put your cursor in the chunk and press
+  **Cmd+Shift+Enter** (Mac) / **Ctrl+Shift+Enter** (Windows).
+- Text outside the chunks is just writing. This whole file is *R Markdown*: code
+  and prose in one document. When you press **Knit**, R runs every chunk in order
+  and produces a finished report.
+
+Nothing here needs any add-on packages. It is all base R.
+
+**Work in order.** Later chunks depend on objects created earlier.
+
+***
+
+# Part 1: Read the data, and look at it
+
+Our dataset is the 2024 presidential election, one row per state (plus the
+District of Columbia). Read it in:
+
+```{r read}
+elec <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+```
+
+That line did something quiet but important: it took a file on disk and made it
+an object in R called `elec`. Nothing printed, because we didn't ask it to.
+
+Let's ask. `head()` shows the first few rows:
+
+```{r head}
+head(elec)
+```
+
+How big is it?
+
+```{r dim}
+dim(elec)
+nrow(elec)
+```
+
+51 rows — 50 states and DC. And nine columns:
+
+```{r names}
+names(elec)
+```
+
+Here is what they mean:
+
+| Column | Meaning |
+|---|---|
+| `state`, `abbrev` | State name and two-letter abbreviation |
+| `ev` | Electoral votes (based on the 2020 Census) |
+| `harris`, `trump`, `other` | Percent of the vote for each |
+| `winner` | Who carried the state |
+| `col`, `row` | Position on a grid — we'll use this in Part 4 |
+| `margin` | `trump` minus `harris`. Positive = Trump won it. |
+
+`summary()` gives a quick numerical portrait of every column:
+
+```{r summary}
+summary(elec[, c("ev", "harris", "trump", "margin")])
+```
+
+> **Pause and read that output.** The `margin` column runs from about $-80$ to
+> about $+45$. What kind of place do you suppose is at $-80$? Check your guess in
+> the next section.
+
+***
+
+# Part 2: Asking the data questions
+
+## Pulling out one column
+
+A dollar sign gets you a single column:
+
+```{r column}
+elec$ev
+```
+
+And square brackets get you specific rows. The pattern is
+`data[rows, columns]`:
+
+```{r subset-one}
+elec[elec$abbrev == "PA", ]
+```
+
+Read that literally: "give me the rows of `elec` where the `abbrev` column equals
+`PA`, and all columns."
+
+## Sorting
+
+`order()` returns the positions that would sort a column. Feed that back in as
+the row index and you get a sorted table. Which states were closest?
+
+```{r closest}
+closest <- elec[order(abs(elec$margin)), ]
+head(closest[, c("state", "harris", "trump", "margin", "ev")], 10)
+```
+
+Those are the states the campaigns actually fought over. Compare against where
+the candidates spent their time — we'll do exactly that in Week 6.
+
+And the least competitive:
+
+```{r furthest}
+furthest <- elec[order(-abs(elec$margin)), ]
+head(furthest[, c("state", "harris", "trump", "margin", "ev")], 5)
+```
+
+There is your $-80$: the District of Columbia.
+
+## Filtering on a condition
+
+Which states did Harris win?
+
+```{r harris-states}
+harris_states <- elec[elec$winner == "Harris", ]
+nrow(harris_states)
+harris_states$state
+```
+
+Twenty jurisdictions — 19 states plus DC.
+
+***
+
+# Part 3: A first picture
+
+A table of 51 rows is hard to see. Let's draw the ten closest states.
+
+```{r barplot-close, fig.width = 7, fig.height = 5}
+top10 <- head(elec[order(abs(elec$margin)), ], 10)
+top10 <- top10[order(top10$margin), ]
+
+barplot(top10$margin,
+        names.arg = top10$abbrev,
+        col = ifelse(top10$margin > 0, "#B2182B", "#2166AC"),
+        border = NA,
+        ylim = c(-6, 6),
+        ylab = "Margin (Trump % - Harris %)",
+        main = "The ten closest states, 2024")
+abline(h = 0)
+```
+
+Every bar is under six points. Seven of these are the states that decided the
+election.
+
+***
+
+# Part 4: Building a map out of rectangles
+
+Now the main event. We are going to draw a map — but not a geographic one.
+
+A normal map of the United States draws states at their true size. That is
+honest about *land* and misleading about *votes*: Wyoming is enormous on the page
+and worth 3 electoral votes; Rhode Island is invisible and worth 4. Land does not
+vote.
+
+So we'll draw every state as an **equal-sized square**, laid out roughly where it
+belongs geographically. This is called a tile grid. The `col` and `row` columns
+in our data give each state a position.
+
+First, a colour for each state. We build a ramp from blue through white to red,
+then pick a colour based on the margin:
+
+```{r colours}
+pal <- colorRampPalette(c("#2166AC", "#F7F7F7", "#B2182B"))(101)
+
+# Squash margins bigger than +/- 30 points so one blowout doesn't wash out
+# the scale, then convert to a position from 1 to 101 along the ramp.
+m <- pmax(pmin(elec$margin, 30), -30)
+elec$fill <- pal[round((m + 30) / 60 * 100) + 1]
+```
+
+Now draw it. `plot(NULL, ...)` opens an empty canvas; `rect()` adds the squares;
+`text()` labels them.
+
+```{r tilemap, fig.width = 8, fig.height = 6}
+plot(NULL,
+     xlim = c(0.4, 11.6), ylim = c(8.6, 0.4),   # y reversed: row 1 at the top
+     asp = 1, axes = FALSE, xlab = "", ylab = "",
+     main = "2024 presidential election: every state the same size")
+
+rect(elec$col - 0.46, elec$row - 0.46,
+     elec$col + 0.46, elec$row + 0.46,
+     col = elec$fill, border = "white", lwd = 2)
+
+text(elec$col, elec$row, elec$abbrev, cex = 0.75)
+```
+
+That is a map of the *election*, not of the land.
+
+## Now size the squares by electoral votes
+
+One more version. Instead of equal squares, make each state's square proportional
+to its electoral votes — its actual weight in choosing a president:
+
+Because *area* is what the eye reads, the side of each square is proportional to
+the **square root** of the electoral votes. That way a state with four times the
+votes gets four times the area, not sixteen.
+
+```{r tilemap-ev, fig.width = 8, fig.height = 6}
+s <- 0.46 * sqrt(elec$ev / max(elec$ev))
+
+plot(NULL,
+     xlim = c(0.4, 11.6), ylim = c(8.6, 0.4),
+     asp = 1, axes = FALSE, xlab = "", ylab = "",
+     main = "Same map, sized by electoral votes")
+
+rect(elec$col - s, elec$row - s,
+     elec$col + s, elec$row + s,
+     col = elec$fill, border = "white", lwd = 2)
+
+# Shrink the labels along with the squares, and drop them where they won't fit.
+text(elec$col, elec$row,
+     ifelse(s > 0.14, elec$abbrev, ""),
+     cex = pmin(1.7 * s, 0.8))
+```
+
+> **Compare the two maps.** Which states grew? Which shrank?
+>
+> Notice that most of the labels disappeared. Roughly half the states are too
+> small to name. It is tempting to conclude that those states barely matter — and
+> for the *outcome*, largely true. But hold that thought, because the opposite is
+> also true: measured **per person**, a voter in one of those tiny squares has
+> more say in choosing a president than a voter in California. Both statements
+> come from the same data.
+>
+> In Week 3 we will compute exactly how much more a Wyoming voter is worth.
+
+***
+
+# Part 5: Counting to 270
+
+The map shows who won where. It does not show who won. For that we add up
+electoral votes:
+
+```{r ev-total}
+tapply(elec$ev, elec$winner, sum)
+```
+
+Trump 312, Harris 226. That is the certified result, and 538 in total.
+
+But look closely at what we just did. We assigned **every** one of a state's
+electoral votes to whoever carried that state. That rule is called
+*winner-take-all*, and it is how 48 states do it.
+
+**Maine and Nebraska are different.** They give two electoral votes to the
+statewide winner and one to the winner of each congressional district. In 2024
+both of them split:
+
+- **Maine** went to Harris statewide, but Trump carried Maine's 2nd district.
+- **Nebraska** went to Trump statewide, but Harris carried Nebraska's 2nd
+  district — the "blue dot" around Omaha.
+
+So our winner-take-all arithmetic *should* be wrong. Why did it give the right
+answer?
+
+```{r me-ne}
+elec[elec$abbrev %in% c("ME", "NE"), c("state", "winner", "ev")]
+```
+
+Work it through. Winner-take-all hands Harris all 4 of Maine's votes and none of
+Nebraska's. Reality gave her 3 from Maine and 1 from Nebraska. Four either way.
+**The two errors cancelled.**
+
+That is luck, not a rule. In 2020 the same calculation would have been off, and
+in a close election it could flip the outcome — Nebraska's single district vote
+was one of the reasons the 2024 race was watched so carefully in Omaha.
+
+> **The lesson, and it is the lesson of this whole course:** a model that
+> produces the right number is not necessarily a model that is right. Always ask
+> *why* it worked before you trust it on the next case.
+
+***
+
+# Part 6: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option below is a working chunk with one thing to change. Run it, look at what
+comes out, and tell me what it means.
+
+Pick **one**.
+
+***
+
+### Option A — Colour the map by vote share instead of margin
+
+Everything above coloured states by the *margin*. This colours by Harris's
+**share**. Run it, then compare against the map in Part 4.
+
+```{r opt-a, fig.width = 8, fig.height = 5.5}
+# The map in Part 4 coloured the margin on a ramp 30 points wide either side of
+# a tie. To compare the two maps you must hold the ramp fixed, so this one uses
+# the same +/- 30 points -- but measured as Harris's distance from 50 instead.
+dev_a  <- pmax(pmin(50 - elec$harris, 30), -30)
+fill_a <- pal[round((dev_a + 30) / 60 * 100) + 1]
+
+plot(NULL, xlim = c(0.4, 11.6), ylim = c(8.6, 0.4),
+     asp = 1, axes = FALSE, xlab = "", ylab = "",
+     main = "Harris share of the vote, 2024")
+rect(elec$col - 0.46, elec$row - 0.46, elec$col + 0.46, elec$row + 0.46,
+     col = fill_a, border = "white", lwd = 2)
+text(elec$col, elec$row, elec$abbrev, cex = 0.75)
+```
+
+**Write about:** the country looks less divided on this map than on the margin
+map. Which states changed the most between the two? Which map would you use if
+you wanted to argue America is deeply polarised — and which if you wanted to
+argue the opposite? Is either map lying?
+
+***
+
+### Option B — Where the electoral votes actually are
+
+Change the `10` below to any number you like and re-run.
+
+```{r opt-b, fig.width = 7, fig.height = 5}
+n <- 10                                    # <- change this number
+
+top_n <- head(elec[order(-elec$ev), ], n)
+top_n <- top_n[order(top_n$ev), ]
+
+par(mar = c(5, 8, 4, 2))
+barplot(top_n$ev, names.arg = top_n$state, horiz = TRUE, las = 1,
+        col = ifelse(top_n$winner == "Trump", "#B2182B", "#2166AC"),
+        border = NA, xlab = "Electoral votes",
+        main = paste("The", n, "largest states"))
+
+sum(top_n$ev)                              # their combined electoral votes
+round(100 * sum(top_n$ev) / 538)           # as a percent of 538
+```
+
+**Write about:** how few states does it take to reach 270? Does that number
+surprise you? What does it imply about where a campaign should spend its money —
+and is that the same as where it *should* spend its attention?
+
+***
+
+### Option C — What if we abolished winner-take-all?
+
+This splits each state's electoral votes in proportion to its vote instead of
+giving them all to the winner.
+
+```{r opt-c}
+h_share  <- elec$harris / (elec$harris + elec$trump)
+h_prop   <- round(h_share * elec$ev)
+t_prop   <- elec$ev - h_prop
+
+c(Harris = sum(h_prop), Trump = sum(t_prop))   # proportional allocation
+tapply(elec$ev, elec$winner, sum)              # actual, winner-take-all
+```
+
+**Write about:** who wins under each rule, and by how much? Proportional
+allocation is often proposed as a fairer system. Looking at these two numbers,
+what does "fairer" actually mean here — and fairer to whom? (If you are feeling
+sharp: add up `sum(h_prop) + sum(t_prop)` and check it still comes to 538. Should
+it always? That question is the subject of the Week 3 lab.)
+
+***
+
+### Option D — Ask your own question
+
+If something in this lab made you curious, follow it. Change whatever you like,
+or just interrogate a table we already made. A clear question answered with a
+plot you barely modified beats an elaborate chart with nothing to say.
+
+***
+
+**What to submit.** Knit this document to HTML or PDF and upload it to Canvas,
+with your chosen chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a result and say something true and interesting
+about American democracy.
+
+***
+
+## Where the data came from
+
+State-level returns are from the `PresElectionResults` dataset
+(<https://github.com/jaytimm/PresElectionResults>), which compiles certified
+state results. Electoral vote counts reflect the 2020 Census apportionment. The
+tile-grid coordinates are a standard layout. The script that assembled
+`pres2024_states.csv` is in `data/build-data.R`, so you can see exactly how it
+was made — you should always be able to ask that question of any dataset.

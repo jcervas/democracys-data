@@ -1,0 +1,253 @@
+---
+title: "Data Session 6: The File With Your Name On It"
+subtitle: "84-355 Democracy's Data | Voter registration files"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number came from?
+
+> *"Turnout among registered Black voters was up six points."*
+
+You have read a sentence like that. Today you meet the file it came from.
+
+Every state maintains a list of everyone registered to vote. **It is a public
+record**, it has your name on it if you are registered, and it is the single
+most consequential dataset in American campaigning — every targeting operation
+in Session 5 was aimed at rows in a file like this one.
+
+**But it was not built for research.** It was built so that a poll worker can
+find you in a book and hand you the right ballot. Almost everything odd about it
+follows from that.
+
+We are using **Houston County, Georgia**: 127,560 registered voters. Georgia
+because it is one of a handful of states that records **race** on the
+registration form — collected for Voting Rights Act compliance, not for anybody's
+convenience. That makes this file unusually revealing, and it is why Sessions 7
+and 14 both come back to it.
+
+# Part 1 — What one row is
+
+```{r schema}
+s <- read.csv("data/schema.csv", stringsAsFactors = FALSE)
+nrow(s)
+table(s$purpose)
+```
+
+Fifty-three columns per person. Look at what they are for:
+
+```{r schema-ballot}
+s$column[s$purpose == "Which ballot you get"]
+```
+
+**Twenty-one of the fifty-three columns exist to place you in a district.**
+Congressional, state senate, state house, judicial, county commission, school
+board, city council, municipal school board, water board, fire — plus two kinds
+of precinct, and a "Combo" field that bundles the whole stack into one code.
+
+That is the file telling you what it is for. It is not a description of the
+electorate. **It is a routing table.** Everything a researcher wants from it —
+who registered when, who turned out, who lives where — is a by-product of the
+county's need to hand you the correct piece of paper.
+
+```{r schema-rest}
+s[s$purpose %in% c("Who you are", "Demographics", "When things happened"),
+  c("column", "purpose")]
+```
+
+Note what is here: your **birth year**, your **race**, your **gender**, the date
+you registered, and the date you last voted. Note what is *not* here: how you
+voted, ever, in anything.
+
+# Part 2 — The party column that isn't
+
+```{r party}
+rp <- read.csv("data/race_party.csv", stringsAsFactors = FALSE, check.names = FALSE)
+rp
+```
+
+The column is called **"Last Party Voted"** and it is the one people misread most.
+
+**Georgia has no party registration.** You cannot register as a Democrat there.
+What this column records is the last party's *primary ballot* you happened to
+request — which is why **40,663 voters have nothing in it at all**, and another
+48,603 are marked non-partisan.
+
+```{r party-share}
+tot   <- rowSums(rp[, -1])
+blank <- rp[, "no primary ballot on record"] + rp[, "NON-PARTISAN"]
+data.frame(race = rp$race, voters = tot,
+           pct_no_party_signal = round(100 * blank / tot, 1))
+
+cat(sprintf("\nwhole file: %.1f%% carries no party signal\n", 100 * sum(blank) / sum(tot)))
+```
+
+**So seventy percent of this file carries no usable party signal**, and it is
+worst for the groups with fewest voters.
+Anybody who tells you how many registered Democrats there are in Georgia is
+either using a different state's data or making it up.
+
+Now look at the voters who *do* have a signal:
+
+```{r party-ratio}
+d <- rp$DEMOCRAT; r <- rp$REPUBLICAN
+data.frame(race = rp$race, dem = d, rep = r,
+           ratio = ifelse(r > 0, round(d / r, 1), NA))
+```
+
+Among voters who ever took a partisan primary ballot, Black voters here broke
+Democratic over Republican by more than **thirty to one**; white voters broke
+Republican by nearly five to one. Hold on to that — **Session 14 will try to
+recover exactly these numbers without being allowed to see them.**
+
+# Part 3 — Who counts as registered
+
+```{r status}
+st <- read.csv("data/status.csv", stringsAsFactors = FALSE)
+st
+```
+
+**9,386 people on this list are marked INACTIVE**, and the file records why.
+"NCOA" is the Postal Service's National Change of Address database. "CROSS
+STATE" means another state reported registering them. "RETURNED MAIL" means a
+letter came back.
+
+None of those people did anything. They are being removed from a list because a
+piece of mail failed, and the reasons are a record of an administrative process
+rather than of anybody's intentions.
+
+**This is the column that decides whether "registered voters" means 127,560 or
+118,174** — a difference of 7.4% — and every turnout rate you will ever read
+depends on which one somebody used, usually without saying.
+
+# Part 4 — The file has no memory
+
+Here is the thing that makes voter files genuinely dangerous to use casually.
+
+```{r lost}
+lost <- read.csv("data/lost.csv", stringsAsFactors = FALSE)
+lost
+```
+
+```{r lost-plot}
+barplot(lost$voters_no_longer_in_file, names.arg = lost$election,
+        col = "#C41230", ylab = "voters who voted, and are not in the 2026 file")
+```
+
+We took the current file and matched it against the state's record of who
+actually voted. **13,803 people voted in the 2020 general election and are not in
+the 2026 file at all.** For 2022 it is 5,677; for 2024, 3,798.
+
+They died, moved away, or were purged. **A voter file is a snapshot of a live
+system, not an archive.** It tells you about *now*, and the further back you
+reach with it, the more people have quietly vanished from your denominator —
+and they are not a random sample of anybody.
+
+# Part 5 — Turnout by race, and why it is not quite right
+
+```{r turnout}
+to <- read.csv("data/turnout.csv", stringsAsFactors = FALSE, check.names = FALSE)
+to$rate_2024 <- round(100 * to$`2024 general` / to$in_file_2026, 1)
+to[, c("race", "in_file_2026", "2024 general", "rate_2024")]
+```
+
+```{r turnout-plot}
+k <- to$race %in% c("WHITE","BLACK","HISPANIC/LATINO","ASIAN/PACIFIC ISLANDER")
+barplot(to$rate_2024[k], names.arg = c("White","Black","Hispanic","Asian/PI"),
+        col = "#2c7fb8", ylim = c(0, 80), ylab = "2024 turnout (%)")
+```
+
+White **69.2%**, Black **55.1%**, Asian **55.2%**, Hispanic **47.7%** — a
+twenty-one-point gap between the top and the bottom.
+
+**Every one of those numbers is slightly wrong, and you now know why.** The
+numerator is 2024 votes; the denominator is who is on the list in 2026. Anyone
+who voted in 2024 and has since moved away is in neither. Anyone who registered
+in 2025 is in the denominator and could not possibly have voted.
+
+The right denominator is *the file as it stood in November 2024*, which nobody
+kept. This is the ordinary situation. **Published turnout-by-race figures from
+voter files almost always have this problem**, and almost none of them say so.
+
+Compare it against Session 8, where the Census Bureau will *ask* people whether
+they voted and get a different answer again.
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Use active voters only.** Recompute Part 5's rates against 118,174
+active registrants instead of all 127,560 (`status.csv` has the counts). Which
+group's turnout rate moves most, and what does that tell you about who ends up
+marked inactive?
+
+**Option B — The midterm drop.** Compare 2022 to 2024 by race. Turnout falls for
+everybody, but not equally. Which group falls furthest, and what would you need
+to know before calling that a fact about those voters rather than about the
+file?
+
+**Option C — The categories.** 7,748 people are "OTHER" and 2,175 are "UNKNOWN" —
+nearly 10,000 who fit no box, more than the Hispanic and Asian counts combined.
+Their recorded turnout is the lowest of any group. Give two explanations, one
+about voters and one about the form, and say how you would tell them apart.
+
+**Option D — Your own question.** 53 columns, 127,560 people, three elections.
+
+# What this lab cannot tell you
+
+- **How anybody voted.** The ballot is secret. This file knows *that* you voted
+  and *which primary ballot you asked for*; it will never know who you chose.
+  Session 14 is entirely about what people do with that gap.
+- **One county in one state.** Most states record no race, and many record party
+  registration that Georgia does not. The *shape* of the file generalises; the
+  columns do not.
+- **Race here is self-reported on a form**, one box, at the moment of
+  registration, possibly decades ago — with all the flattening Session 2 showed
+  in the census.
+- **We used the public file.** Commercial vendors — L2, Catalist, TargetSmart —
+  sell versions with hundreds of appended columns: modeled party, modeled
+  turnout, consumer data, estimated income. Campaigns use those. The modeling
+  in Session 7 is the cheapest of them.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough, so long as it shows you
+engaged with what we did.
+
+Three that would make good posts:
+
+- Twenty-one of fifty-three columns exist to route you to a ballot. What does
+  that tell you about what this file is, and about what researchers are doing
+  when they use it?
+- 13,803 people voted in 2020 and are gone from the current file. Does that
+  change how much you trust a turnout statistic?
+- Your name is in a file like this, and it is public. Should it be?
+
+***
+
+### Where the data came from
+
+Houston County, Georgia registration extract 71754, and the state's voter-history
+files for the 2020, 2022 and 2024 general elections. Both are public records in
+Georgia. Working data for the 2026 Houston County redistricting matter.
+
+**Nothing individual-level is in this folder.** 127,560 records were collapsed to
+a schema listing and four small tables before anything was saved — the column
+names and the margins are all this lab needs. The build is in
+`data/build-data.R`.

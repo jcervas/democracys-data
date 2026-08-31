@@ -1,0 +1,320 @@
+---
+title: "Proving a Threshold You Cannot See"
+subtitle: "84-355 Democracy's Data | Traffic stops and searches, San Francisco"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `policing-brief.Rmd` first.** This lab runs the same ten steps with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+> **One of several labs in this unit.** They ask the same question of different
+> data: **can you show discrimination when nobody wrote down a reason?** The
+> others are redlining and jury selection. Whichever you did, you will be asked
+> to explain your inference to somebody who did a different one.
+
+***
+
+# Where did that number come from?
+
+> *"Black drivers are pulled over more often."*
+
+Easy to say, hard to prove — and the reason is worth being precise about. To
+know whether drivers of one race are stopped *more than they should be*, you
+would need to know how many were driving, and how many were doing something
+stop-worthy. **Nobody records that.** The denominator does not exist.
+
+So the honest version of the question has to be built differently. There is a
+way, and it does not need the denominator at all. Ten steps.
+
+***
+
+# Step 1 — What one record is
+
+The source file has one row per stop. We work from a collapsed version, but the
+fields it was collapsed from decide everything below:
+
+```{r schema}
+data.frame(
+  field = c("date, time", "location", "subject_race", "reason_for_stop",
+            "search_conducted", "contraband_found", "outcome"),
+  holds = c("when", "district or intersection",
+            "the OFFICER'S PERCEPTION, entered on a form",
+            "the violation cited", "TRUE / FALSE",
+            "TRUE / FALSE — recorded only if a search happened",
+            "warning, citation, arrest"))
+```
+
+Two of those matter enormously.
+
+**`subject_race` is what the officer believed**, not self-report. For a question
+about the officer's behaviour that is arguably the right variable — but it is not
+the census's variable, and the two must never be mixed.
+
+**`contraband_found` exists only when a search happened.** You never learn what
+an unsearched driver was carrying. That absence is the whole problem.
+
+# Step 2 — How many, and over what
+
+```{r load}
+d <- read.csv("data/by_race.csv", stringsAsFactors = FALSE)
+y <- read.csv("data/by_year.csv", stringsAsFactors = FALSE)
+c(stops = sum(d$stops), searches = sum(d$searched),
+  contraband = sum(d$contraband_found),
+  years = length(unique(y$year)))
+round(100 * sum(d$searched) / sum(d$stops), 2)
+```
+
+**905,070 stops over ten years in one city**, and searches happen in about 1.6%
+of them. Everything interesting is inside that small slice.
+
+# Step 3 — The first table anybody makes
+
+```{r stops}
+d$share <- round(100 * d$stops / sum(d$stops), 1)
+d[order(-d$stops), c("race", "stops", "share")]
+```
+
+Black drivers were **16.8% of stops**. San Francisco's Black population over
+this period was roughly 5–6% of residents.
+
+It is very tempting to put those two numbers next to each other.
+
+# Step 4 — Why that comparison does not work
+
+Do not put them next to each other. **The residential population is not the
+population at risk of being stopped.**
+
+San Francisco is a commuter city — a large share of weekday cars belong to
+people who live elsewhere. Driving is not distributed like residence: it varies
+with car ownership, work schedules, and which roads run through which
+neighbourhoods.
+
+And even a perfect count of drivers would not be enough. You would also need to
+know **how many drivers of each group were doing something that warranted a
+stop**. Nobody records that. Nobody could.
+
+```{r denominator}
+data.frame(
+  you_would_need = c("Who was driving", "Where and when",
+                     "Who committed a violation", "Who was carrying contraband"),
+  does_it_exist  = c("No", "No", "No", "Only for those searched"))
+```
+
+**This is not a funding problem.** There is no census of who was on the road.
+The disparity in Step 3 — real as the counts are — proves nothing on its own,
+and most public arguments about policing data stop right here, with both sides
+asserting a denominator neither can produce.
+
+# Step 5 — Condition on the stop
+
+Change the question. Take the stop as given, and ask what happened next.
+
+```{r rates}
+d$search_rate <- round(100 * d$searched / d$stops, 2)
+d[order(-d$search_rate), c("race", "stops", "searched", "search_rate")]
+```
+
+**Black drivers were searched in 15.52% of stops. White drivers, 3.14%** —
+nearly five times the rate.
+
+Better than Step 3, because the comparison is now *within* a population the
+officer had already selected. **Still not enough**, and the objection is the
+standard one: perhaps the stopped groups genuinely differed. If officers were
+encountering more grounds for suspicion in one group, a higher search rate would
+follow from correct policing rather than a lower bar.
+
+You cannot answer that with search rates. You would have to know how suspicious
+each driver actually was — the unobservable thing.
+
+# Step 6 — The move that gets around it
+
+In 2001 three economists — **Knowles, Persico and Todd** — proposed a way out
+that needs no denominator at all. Condition one step further. **Take the search
+as given, and ask what the officer found.**
+
+> An officer searches when suspicion crosses some internal threshold. If the
+> same threshold applies to everyone, the searches it authorises should succeed
+> at roughly equal rates. A *lower* threshold means more searches on weaker
+> evidence, and weaker evidence means a lower success rate. **So unequal hit
+> rates imply unequal thresholds.**
+
+The comparison is now between searches, not populations.
+
+**Before running the next chunk, predict.** Given a search rate five times
+higher for Black drivers, should the share of searches finding contraband be
+higher, lower, or about the same?
+
+# Step 7 — What the searches found
+
+```{r hit}
+d$hit_rate <- round(100 * d$contraband_found / d$searched, 1)
+d[order(-d$search_rate), c("race", "searched", "contraband_found", "hit_rate")]
+```
+
+**Contraband was found in 9.2% of searches of Black drivers and 24.2% of
+searches of white drivers.**
+
+Searched **4.9 times as often**, and found with something **2.6 times less
+often**. Under the outcome test, that is evidence of a lower evidentiary bar.
+
+# Step 8 — Both numbers at once
+
+One group could be a coincidence. Put every group on the same picture.
+
+```{r hit-plot}
+plot(d$search_rate, d$hit_rate, pch = 19, col = "#C41230", cex = 1.6,
+     xlim = c(0, 17), ylim = c(0, 40),
+     xlab = "% of stops that led to a search",
+     ylab = "% of searches that found contraband")
+text(d$search_rate, d$hit_rate, d$race, pos = 4, cex = 0.75)
+abline(h = weighted.mean(d$hit_rate, d$searched), lty = 3, col = "grey50")
+```
+
+The relationship is **monotone across all five groups**: the more often a group
+was searched, the less often those searches found anything. Asian and Pacific
+Islander drivers were searched least — 1.81% — and had the *highest* hit rate at
+36.1%.
+
+That ordering is what makes an innocent explanation hard. It would have to cover
+the Black and Hispanic results **and** the reverse pattern for Asian drivers,
+simultaneously, across 905,070 stops.
+
+Notice what this argument never needed: **who was driving.**
+
+# Step 9 — Is it just one bad year?
+
+Ten years are stacked into every number above. A pattern that comes from one
+unusual year is a different finding from one that repeats.
+
+```{r trend}
+y$hit <- round(100 * y$contraband_found / pmax(y$searched, 1), 1)
+w <- y[y$race == "white", c("year", "hit")]
+b <- y[y$race == "black", c("year", "hit")]
+m <- merge(w, b, by = "year", suffixes = c("_white", "_black"))
+m$white_higher <- m$hit_white > m$hit_black
+m
+```
+
+```{r trend-plot}
+ks <- c("white", "black", "hispanic", "asian/pacific islander")
+cl <- c("#2c7fb8", "#C41230", "#e08214", "#4d9221")
+plot(NA, xlim = range(y$year), ylim = c(0, 50), las = 1, xlab = "",
+     ylab = "% of searches finding contraband")
+for (i in seq_along(ks)) {
+  s <- y[y$race == ks[i], ]; s <- s[order(s$year), ]
+  lines(s$year, s$hit, col = cl[i], lwd = 2.2)
+}
+legend("topright", ks, col = cl, lwd = 2.2, bty = "n", cex = 0.8)
+```
+
+**In all ten years, searches of white drivers found contraband more often than
+searches of Black drivers.** The levels move around a great deal — everyone's
+hit rate falls through 2012 and rises after — but the ordering never flips.
+
+# Step 10 — What you can now say
+
+**You can say:** within this department, over these ten years, searches of Black
+and Hispanic drivers were authorised on weaker evidence than searches of white
+drivers. That is a claim about the bar an officer applied, reached without ever
+knowing who was driving.
+
+**You cannot say** how much of the gap is individual animus, how much is
+departmental policy, and how much is where officers were deployed. The data
+cannot separate them, and the distinction matters enormously for what anyone
+would do about it.
+
+## The objection that survives
+
+The outcome test has one real weakness and you should be able to state it.
+
+It compares **average** hit rates, and the theory is about the **marginal**
+search — the last, weakest one an officer decides to make. If the distribution
+of actual suspiciousness differs between groups, average hit rates can differ
+even when the bar is identical. Economists call this **infra-marginality**, and
+it is why the test is strong evidence rather than proof.
+
+```{r arrests}
+d$arrest_rate <- round(100 * d$arrests / d$stops, 2)
+d[order(-d$search_rate), c("race", "search_rate", "hit_rate", "arrest_rate")]
+```
+
+**Take the objection seriously, then notice how much it has to do.** To explain
+this table innocently you need a story in which Black drivers are searched five
+times as often for good reasons, *and* those reasons turn out wrong far more
+often, *and* the same holds for Hispanic drivers, *and* the reverse holds for
+Asian drivers. Each piece is possible. Together they are a lot to carry.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Did it change?** Step 9 shows the ordering never flips. Plot the
+*gap* between the Black and white hit rates over time instead of the levels. Is
+the disparity shrinking, and would a policy change show up in the search rate,
+the hit rate, or both?
+
+**Option B — Equalise the bar.** If Black drivers had been searched at the white
+rate (3.14%), how many fewer searches would that be? Compute it. Then ask what
+the department loses — how much contraband goes unfound — and say whether that
+is a trade you would make.
+
+**Option C — The other direction.** Asian and Pacific Islander drivers are
+searched least and have the highest hit rate. Under the outcome test, what does
+that imply, and is it a claim you are comfortable making from this data?
+
+**Option D — Your own question.** Five rows, 905,070 stops behind them.
+
+# What this lab cannot tell you
+
+- **Who was driving.** The denominator problem never went away; we routed around
+  it. Nothing here supports a claim about stop rates *per driver*.
+- **Whether any individual officer discriminated.** This is an aggregate
+  pattern — it says something about a department and nothing about a person, the
+  same gap between group and individual that runs through the RPV lab.
+- **One city, and a decade old.** San Francisco, through 2016. Do not
+  generalise the numbers. The *method* generalises; Stanford has comparable
+  files for dozens of jurisdictions.
+- **Race as recorded** — the officer's perception, not self-report.
+- **Whether "contraband found" is itself neutral.** What counts, and whether a
+  find gets recorded, are decisions by the same officer whose behaviour is being
+  measured.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+- Step 3 proves nothing and Step 7 proves quite a lot. What is the difference
+  between them?
+- Infra-marginality is a real objection. Does it change your reading of the
+  table, or just your confidence in it?
+- If you did one of the other labs in this unit, which inference did you find
+  more convincing, and why?
+
+***
+
+### Where the data came from
+
+**Stanford Open Policing Project**, San Francisco, CA — 905,070 traffic stops,
+2020-04-01 release. <https://openpolicing.stanford.edu/data/>
+
+The source is a 177 MB file with one row per stop. Nothing individual-level is
+committed here: it is collapsed to five rows by race, plus a small year-by-race
+table, before anything is saved. The build is in `data/build-data.py`.

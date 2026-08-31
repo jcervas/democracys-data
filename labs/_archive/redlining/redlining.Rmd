@@ -1,0 +1,282 @@
+---
+title: "Lines Drawn in 1937"
+subtitle: "84-355 Democracy's Data | HOLC grades against the 2020 census"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6,
+                      dpi = 96, fig.retina = 1)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **One of three labs in this unit.** All three ask the same question of
+> different data: **can you show discrimination when nobody wrote down a
+> reason?** The others are policing and jury selection. Whichever you did, you
+> will be asked to explain your inference to somebody who did a different one.
+
+> **Read `redlining-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"You can still see the redlining maps in the census data."*
+
+In the late 1930s the **Home Owners' Loan Corporation** — a federal agency —
+graded neighbourhoods in 200-odd American cities for mortgage risk. **A** was
+"Best", green on the map. **D** was "Hazardous", red. The written appraisals
+name the presence of Black residents as a reason for a low grade, in so many
+words.
+
+The maps were drawn ninety years ago. The claim above says they are still
+visible. **That is a testable claim**, and unlike the other two labs in this
+unit, here the discriminatory intent is not hidden at all — it is written on the
+document. What has to be shown is that it *still matters*.
+
+# Steps 1-3 — Two sources, the join that has to be built, and one record
+
+Two datasets, drawn eighty years apart, that were never meant to meet:
+
+- **HOLC grades**, digitised by the University of Richmond: 10,154 areas drawn
+  on the 1930s security maps, 9,324 of them carrying a grade from A to D.
+- **The 2020 census**, by tract.
+
+Neither carries the other's identifier. To connect them you have to decide **when
+a tract counts as being in a graded area** — and we did the simplest thing:
+take the tract's centre point and ask which polygon it falls inside.
+
+```{r load}
+# GEOID is text, never a number. A tract identifier is 11 digits and a third of
+# the ones here start with a zero (California is state 06). Read as a number
+# they come back 10 digits long and match nothing.
+tr <- read.csv("data/tracts.csv", stringsAsFactors = FALSE,
+               colClasses = c(GEOID = "character"))
+ci <- read.csv("data/cities.csv", stringsAsFactors = FALSE)
+
+c(tracts_matched = nrow(tr), cities = length(unique(tr$city)))
+table(tr$grade)
+```
+
+## The map the grades came off
+
+Before any of that, look at the thing itself. These are the 1939 HOLC areas for
+Cleveland, in the four colours the HOLC printed them in — the colour of each
+area is read out of the source file, not chosen by us.
+
+```{r holc-map, fig.height=4.4}
+rings <- read.csv("data/fig_holc_rings.csv", stringsAsFactors = FALSE)
+areas <- read.csv("data/fig_holc_attr.csv", stringsAsFactors = FALSE)
+cols  <- setNames(areas$fill[match(c("A", "B", "C", "D"), areas$grade)],
+                  c("A", "B", "C", "D"))
+
+par(mar = c(0.1, 0.1, 0.1, 0.1))
+plot(NA, xlim = range(rings$x), ylim = range(rings$y), asp = 1,
+     axes = FALSE, ann = FALSE)
+for (i in areas$id) {
+  d <- rings[rings$id == i, ]
+  for (q in unique(d$part))
+    polygon(d$x[d$part == q], d$y[d$part == q],
+            col = cols[[areas$grade[areas$id == i]]], border = "white", lwd = 0.4)
+}
+legend("topleft", sprintf("%s  %s (%d areas)", names(cols),
+       c("Best", "Still Desirable", "Definitely Declining", "Hazardous"),
+       as.vector(table(areas$grade)[names(cols)])),
+       fill = cols, border = "#999999", bty = "n", cex = 0.7,
+       title = "HOLC grade, Cleveland 1939", title.adj = 0)
+```
+
+**Red in the middle, green at the edge.** Every number in this lab is a
+comparison between the red parts of maps like this one and the green parts,
+eighty years later. The polygons come from Mapping Inequality; the brief draws
+the same map with the 2020 tract boundaries laid over it, which is where you can
+see how badly the two geographies fit.
+
+The crosswalk matches **11,274 tracts across 215 cities** to a HOLC grade
+nationally. **4,489 of them, in 56 cities, also have census data here**, because
+we pulled the 2020 tract file for six states — PA, IL, MI, OH, MO and CA.
+
+Every one of those matches is a judgement call: a tract whose centre falls just
+outside a graded area gets nothing, and a tract straddling an A and a D gets
+whichever polygon contains its centre.
+
+**Hold on to that.** It is the same allocation problem as precincts and census
+blocks, and there is no correct answer here either.
+
+# Steps 4-5 — The first comparison, and what is wrong with it
+
+```{r national}
+g <- aggregate(cbind(total, black) ~ grade, data = tr, sum)
+g$pct_black <- round(100 * g$black / g$total, 1)
+g
+```
+
+```{r nat-plot}
+barplot(g$pct_black, names.arg = g$grade, col = c("#2c7fb8","#7fcdbb","#fec44f","#C41230"),
+        ylab = "% Black, 2020", xlab = "1937 HOLC grade", ylim = c(0, 30))
+```
+
+Tracts graded **D** in 1937 are **25.6%** Black today. Tracts graded **A** are
+**16.7%**.
+
+**That is a real gap and a disappointing one** — a ratio of about 1.5. If you
+expected the redlining maps to leap out of the census, this looks like weak
+evidence. Plenty of published claims stop here, in one direction or the other.
+
+**They should not.** The number is wrong, and it is wrong for a reason this
+course has met before.
+
+# Steps 6-7 — Compare within cities, and every city at once
+
+> **Before running this, work out what was wrong with the last comparison.**
+> It put A-graded areas in one city beside D-graded areas in another. Cities
+> differ enormously in overall Black population for reasons that have nothing to
+> do with the HOLC. **What is the comparison that holds the city constant?**
+
+That table adds up cities. Chicago and Detroit and Los Angeles have very
+different racial compositions **overall**, for reasons that have nothing to do
+with which tracts got which grade. Pooling them compares a D-graded tract in one
+city against an A-graded tract in another.
+
+**The comparison has to happen inside a city.**
+
+```{r cities}
+head(ci[, c("city", "a_pct_black", "d_pct_black", "gap")], 8)
+tail(ci[, c("city", "a_pct_black", "d_pct_black", "gap")], 5)
+```
+
+```{r city-plot}
+k <- head(ci[order(-abs(ci$gap)), ], 14)
+k <- k[order(k$gap), ]
+barplot(k$gap, horiz = TRUE, names.arg = k$city, las = 1, cex.names = 0.7,
+        col = ifelse(k$gap > 0, "#C41230", "#2c7fb8"),
+        xlab = "percentage-point difference, D-graded minus A-graded (% Black, 2020)")
+abline(v = 0)
+```
+
+Now it is visible, and it is enormous.
+
+- **Cleveland:** A-graded tracts are 21.3% Black. D-graded, **68.1%**.
+- **Pittsburgh:** 4.2% against **34.1%** — eight times.
+- **Chicago:** 3.2% against **36.6%** — eleven times.
+
+**The national number said 1.5×. Within cities it reaches ten.** Pooling
+did not weaken the finding slightly; it nearly erased it.
+
+# Steps 8-9 — Take the reversals seriously
+
+```{r reversed}
+ci[ci$gap < 0, c("city", "a_pct_black", "d_pct_black", "gap")]
+```
+
+In some cities the relationship runs **backwards**. Philadelphia's A-graded
+tracts are **40.7%** Black and its D-graded tracts **34.3%**.
+
+**Do not explain this away.** It is the most interesting row in the lab, and the
+explanation is history rather than error: in cities that lost enormous
+white population after 1950, the neighbourhoods graded "Best" in 1937 — leafy,
+desirable, close in — are exactly the ones that later became majority Black. The
+1937 grade stopped predicting because the city around it changed completely.
+
+**A finding that holds in most places and reverses in some is not a broken
+finding.** It is a finding with a mechanism, and the reversals are where you can
+see the mechanism working.
+
+# Step 10 — What you can now say
+
+**You can say** that within cities, neighbourhoods the federal government
+graded "Hazardous" in the 1930s are on average **14.5 points more Black today**
+than neighbourhoods it graded "Best" — visible eighty years and several complete
+rebuildings of American cities later.
+
+**You can say the pooled national comparison is misleading**, and that the
+correct unit of comparison is the city.
+
+**You cannot say the grades caused it.** You cannot say the relationship is
+uniform — six cities reverse, and Philadelphia reverses because North
+Philadelphia gentrified. And you cannot generalise beyond the cities in this
+file.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Weight by population.** The city table treats each city's A-graded
+and D-graded tracts as blocks. Recompute the national figure as the *average of
+the within-city gaps* instead of the pooled ratio from Step 4. How different is
+it, and which number should a newspaper print?
+
+**Option B — B and C.** Parts 3 and 4 use only A and D — the extremes. Bring in
+the middle grades and see whether the gradient is smooth. If B and C sit neatly
+between, that is evidence the grade itself mattered; if they do not, say what
+else might be going on.
+
+**Option C — Attack the join.** Every result here depends on centroid-in-polygon.
+Name two ways that choice could produce the Step 6 result even if HOLC grades
+had no lasting effect at all. Then say what data you would need to rule them out.
+
+**Option D — Your own question.** 11,274 tracts, 215 cities, one 1937 map.
+
+# What this lab cannot tell you
+
+- **That redlining caused any of this.** The maps recorded segregation that
+  already existed as well as entrenching it. Separating the two needs a research
+  design this lab does not have — and it is the central difficulty of the whole
+  literature.
+- **Anything about people.** Tract composition is not any individual's
+  experience, and inferring one from the other is the ecological fallacy the
+  RPV lab is about.
+- **The full country.** Census data here covers six states, chosen for their
+  HOLC cities. The crosswalk covers 215 cities; the join covers fewer.
+- **What "A" meant.** The grades bundled housing age, construction quality,
+  income and race together. The written appraisals separate them; the letter
+  does not.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- The pooled number said 1.5×; within Chicago it is eleven. What does that do to
+  your trust in national averages?
+- In Philadelphia the pattern reverses. Is that evidence against the redlining
+  story, or evidence for a more specific version of it?
+- If you did one of the other two labs in this unit, which inference did you
+  find more convincing, and why?
+
+***
+
+### Where the data came from
+
+**Mapping Inequality**, Digital Scholarship Lab, University of Richmond — the
+digitised HOLC residential security maps, 10,154 areas of which 9,324 carry a
+grade, published CC BY-NC-SA.
+<https://dsl.richmond.edu/panorama/redlining/>
+The polygons drawn above, the four grade colours, and the appraisal text quoted
+in the brief are all theirs, retrieved **2026-08-10** from
+`static/mappinginequality.json`. The maps and the appraisal forms underneath are
+1930s US federal government records. `data/build-brief-figures.R` is the script
+that fetched them and measured them against the tract boundaries.
+
+**2020 Census PL 94-171**, tract level, for six states (PA, IL, MI, OH, MO, CA).
+
+**The crosswalk between them is ours.** A published tract-level redlining score
+exists — Meier & Mitchell, openICPSR 141121 — but it is behind a login. So
+`data/build-data.py` builds the join directly: tract centre points from the
+Census Gazetteer, tested against each HOLC polygon by ray casting, in about
+fifteen lines. You can read exactly what the join assumes, which is the point.

@@ -1,0 +1,297 @@
+---
+title: "Data Session 4 Key, part 2: Where the Votes Have to Come From"
+subtitle: "84-355 Democracy's Data | Session 4 — Returns over time (self-study) | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+nc <- read.csv("data/nc_gov_county.csv", stringsAsFactors = FALSE)
+tr <- tapply(nc$rep, nc$year, sum); td <- tapply(nc$dem, nc$year, sum)
+nc$rs <- nc$rep / tr[as.character(nc$year)]
+nc$ds <- nc$dem / td[as.character(nc$year)]
+ar <- sort(tapply(nc$rs, nc$county, mean), decreasing = TRUE)
+ad <- sort(tapply(nc$ds, nc$county, mean), decreasing = TRUE)
+```
+
+```{r vals, include=FALSE}
+# Every figure quoted in this key is computed here and inserted inline, using
+# the same definitions as the brief, so the two cannot drift apart.
+SW <- aggregate(cbind(dem, rep, oth, total) ~ year, nc, sum)
+SW$rep_pct <- 100 * SW$rep / SW$total
+SW$oth_pct <- 100 * SW$oth / SW$total
+
+CUM   <- function(v, i) 100 * sum(v[i])
+HALF  <- function(v) unname(which(cumsum(v) >= .5)[1])
+YR    <- function(y, k) SW[[k]][SW$year == y]
+
+BEST   <- max(SW$rep)
+BESTYR <- SW$year[which.max(SW$rep)]
+REP24  <- YR(2024, "rep")
+DEM24  <- YR(2024, "dem")
+OTHX   <- YR(2024, "oth") / YR(2020, "oth")
+
+# TARGET is the textbook's 2028 goal (Ch. 5), not a figure from data/.
+TARGET <- 3200000
+
+TG   <- function(T, cty) unname((ar * T)[cty])
+A24  <- function(cty) nc$rep[nc$county == cty & nc$year == 2024]
+SHORT <- function(cty) TG(TARGET, cty) - A24(cty)
+
+nc$pct <- nc$rep / nc$total
+bp <- sort(tapply(nc$pct, nc$county, mean), decreasing = TRUE)
+OVER <- length(intersect(names(ar)[1:5], names(bp)[1:5]))
+
+TT <- function(x) {                    # WAKE -> Wake, NEW HANOVER -> New Hanover
+  s <- tolower(x)
+  gsub("(^|[ -])(\\w)", "\\1\\U\\2", s, perl = TRUE)
+}
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+```
+
+All Part 5 code is given to students. Grade the interpretation.
+
+**Note the timing.** This lab runs in **Session 4**, the self-study week (Sep
+15/17), before Chapter 5 explains vote targeting. That is deliberate — Ch. 3 is
+about campaigns becoming professional, and this is what professional means — but
+it does mean students meet the method before the book's account of it. Expect
+some to say so; that is a fair observation and worth a point, not a deduction.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Vote targeting turns one statewide number into a hundred county numbers by
+assuming the past distribution of your vote still holds — and 2024 is sitting
+in the data to show you what happens when it does not.
+
+***
+
+# The findings
+
+```{r headline}
+st <- aggregate(cbind(dem, rep, oth) ~ year, nc, sum); st
+round(c(top10 = 100*sum(ar[1:10]), top25 = 100*sum(ar[1:25]),
+        bottom50 = 100*sum(ar[51:100])), 1)
+```
+
+- **Republican votes are concentrated but not extremely so**: the top 10 counties
+  supply `r pc(CUM(ar, 1:10))`%, the top 25 supply `r pc(CUM(ar, 1:25))`%, and it
+  takes **`r HALF(ar)` counties** to reach half the party's vote.
+- **The book's 3.20M target is unreachable on this evidence.** The best
+  Republican performance in the data is **`r nn(BEST)` (`r BESTYR`)**. The target
+  is **`r nn(TARGET - BEST)` above that**, and `r nn(TARGET - REP24)` above 2024.
+- **2024 is a candidate-specific collapse, not a trend.** The Republican share
+  falls to `r pc(SW$rep_pct[SW$year == 2024])`% and the "other" column runs at
+  `r pc(OTHX)`× its 2020 level.
+
+***
+
+# The idea to teach
+
+The arithmetic is trivial and completely correct. What makes it a lab is that
+**every step is an assumption wearing a number's clothing**. Averaging four
+elections assumes they are exchangeable. Using share-of-party-vote assumes the
+county's *relative* contribution is the stable thing. Picking 3.20M assumes a
+performance nobody has achieved.
+
+Students who say "the method is fine, the inputs are guesses" have it.
+
+***
+
+# Option A — A different statewide goal
+
+## Verified output
+
+```{r a}
+# the three targets the lab offers: the book's 2028 goal, the winning
+# Democratic total in 2024, and the best Republican total in the data
+for (T in c(TARGET, DEM24, BEST)) {
+  t <- ar * T
+  cat(sprintf("target %9s | Wake %6.0f  Meck %6.0f  Durham %5.0f | top-5 order same: %s\n",
+      format(T, big.mark=","), t["WAKE"], t["MECKLENBURG"], t["DURHAM"],
+      identical(names(sort(t, decreasing=TRUE))[1:5], names(ar)[1:5])))
+}
+```
+
+| target | Wake | Mecklenburg | Durham |
+|---|---|---|---|
+| `r nn(TARGET)` (book's 2028 goal) | `r nn(TG(TARGET, "WAKE"))` | `r nn(TG(TARGET, "MECKLENBURG"))` | `r nn(TG(TARGET, "DURHAM"))` |
+| `r nn(DEM24)` (2024 Democratic total) | `r nn(TG(DEM24, "WAKE"))` | `r nn(TG(DEM24, "MECKLENBURG"))` | `r nn(TG(DEM24, "DURHAM"))` |
+| `r nn(BEST)` (best Republican total, `r BESTYR`) | `r nn(TG(BEST, "WAKE"))` | `r nn(TG(BEST, "MECKLENBURG"))` | `r nn(TG(BEST, "DURHAM"))` |
+
+**The ranking never changes.** Only the magnitudes scale.
+
+## What a good answer says
+
+**3/4:** Reports the new targets and notices every county moves proportionally.
+
+**4/4:** Draws the conclusion the prompt is fishing for — **changing the target
+does not change where the campaign goes, only how hard it has to work
+everywhere.** The target sets ambition; the *shares* set geography, and the
+shares are computed from history. A campaign that wants a different map of
+priorities has to change the shares, which means arguing the past is not a good
+guide — and that is a political judgment, not an arithmetic one.
+
+**4/4, best:** compares the target to 2024 actuals and sees how large the gap
+is per county — Wake short by `r nn(SHORT("WAKE"))`, Mecklenburg by
+`r nn(SHORT("MECKLENBURG"))`. Asking a county organiser to find
+`r nn(round(SHORT("WAKE"), -3))` additional votes is not a plan, it is a wish. A
+student who notices that the method produces *numbers* rather than *strategies*
+has understood something real about how campaigns talk to themselves.
+
+***
+
+# Option B — Target the other party
+
+## Verified output
+
+```{r b}
+rbind(REP = round(100*c(top10=sum(ar[1:10]), top25=sum(ar[1:25]), bottom50=sum(ar[51:100])),1),
+      DEM = round(100*c(top10=sum(ad[1:10]), top25=sum(ad[1:25]), bottom50=sum(ad[51:100])),1))
+c(counties_to_half_REP = which(cumsum(ar) >= .5)[1],
+  counties_to_half_DEM = which(cumsum(ad) >= .5)[1])
+```
+
+| | top 10 | top 25 | bottom 50 | counties to reach half |
+|---|---|---|---|---|
+| Republican | `r pc(CUM(ar, 1:10))`% | `r pc(CUM(ar, 1:25))`% | `r pc(CUM(ar, 51:100))`% | **`r HALF(ar)`** |
+| Democratic | `r pc(CUM(ad, 1:10))`% | `r pc(CUM(ad, 1:25))`% | `r pc(CUM(ad, 51:100))`% | **`r HALF(ad)`** |
+
+Democratic top six: `r paste(TT(names(ad)[1:6]), collapse = ", ")`.
+Republican top six: `r paste(TT(names(ar)[1:4]), collapse = ", ")`,
+**`r paste(TT(names(ar)[5:6]), collapse = ", ")`**.
+
+## What a good answer says
+
+**3/4:** Notices the Democratic vote is more concentrated.
+
+**4/4:** Says what that implies operationally. **`r HALF(ad)` counties versus
+`r HALF(ar)` is a different campaign**, not a different emphasis: fewer field offices, denser
+media buys, a smaller travel radius, and far more exposure to one bad night in
+one metro. The Republican coalition is more spread out, which is more expensive
+to organise and more robust to a local collapse.
+
+**4/4, best:** notices the top three counties are *the same for both parties*,
+because big counties are big. The lists diverge at positions 4–6, where
+Democrats add Durham and Buncombe and Republicans add Union and Gaston. Then
+asks the right question: is a county worth visiting because it has many of your
+voters, or because it has many *persuadable* voters? This method cannot tell
+you, and that is Option C.
+
+***
+
+# Option C — Share of votes cast, not share of party votes
+
+## Verified output
+
+```{r c}
+nc$pct <- nc$rep / nc$total
+bp <- sort(tapply(nc$pct, nc$county, mean), decreasing = TRUE)
+data.frame(by_contribution = names(ar)[1:5], by_percentage = names(bp)[1:5])
+length(intersect(names(ar)[1:5], names(bp)[1:5]))
+```
+
+| by contribution | by Republican percentage |
+|---|---|
+| `r TT(names(ar)[1])` | `r TT(names(bp)[1])` |
+| `r TT(names(ar)[2])` | `r TT(names(bp)[2])` |
+| `r TT(names(ar)[3])` | `r TT(names(bp)[3])` |
+| `r TT(names(ar)[4])` | `r TT(names(bp)[4])` |
+| `r TT(names(ar)[5])` | `r TT(names(bp)[5])` |
+
+**`r c("Zero","One","Two","Three","Four","Five")[OVER + 1]` overlap.** Not "a
+different order" — a disjoint list.
+
+## What a good answer says
+
+**3/4:** Notices the lists are completely different and says the two measures
+answer different questions.
+
+**4/4:** Assigns each ranking to a decision. **Contribution tells you where the
+votes are; percentage tells you where you are liked.** If the job is to bank
+raw votes, go to `r TT(names(ar)[1])`. If the job is to find a friendly
+audience, go to `r TT(names(bp)[1])` — which is `r pc(100 * bp[1])`% Republican
+and casts `r pc(100 * mean(nc$total[nc$county == names(bp)[1]]) / mean(nc$total[nc$county == names(ar)[1]]), 1)`%
+as many votes as `r TT(names(ar)[1])`. A rural county at
+`r pc(100 * bp[1])`% Republican may deliver fewer additional votes than a
+`r pc(100 * mean(nc$pct[nc$county == names(ar)[1]]))`% share of a metro.
+
+**4/4, best:** connects this to the campaign-visits material. Campaigns visit big
+competitive states, not the states that like them most, and this is the same
+logic one level down. Also notices that neither ranking mentions **margin** or
+**persuadability** — both are about where your existing voters live, so both
+implicitly treat the election as a turnout problem rather than a persuasion
+problem. That is a real strategic assumption, and Chapter 5 makes it mostly
+without argument.
+
+***
+
+# Option D — Their own question
+
+Good versions: which counties moved most between 2020 and 2024 (the Robinson
+collapse is not uniform); whether third-party voting in 2024 is concentrated
+where Robinson underperformed; whether county rank order is stable across all
+four elections.
+
+Warn against comparing raw vote counts across counties of wildly different size
+without normalising.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating the target as an *assumption* rather
+  than a goal. Students who audit the inputs beat students who extend the
+  arithmetic.
+- **Reward anybody who checks the book.** The lab closes on two errors in
+  Table 5.3; a student who verifies rather than takes my word for it is doing
+  exactly what the course is for.
+
+## Anticipated questions
+
+- *"Why average across four elections instead of using the most recent?"* —
+  Because one election is noisy. But averaging assumes exchangeability, and
+  2024 was not exchangeable. There is no clean answer; there is a defensible
+  choice you have to state. Good discussion, five minutes.
+- *"Is the book wrong?"* — Table 5.3's 2016 statewide figure is wrong
+  (transposed digits), and 2020 is off by one. The five printed counties are
+  right. Nothing in the chapter's argument depends on either. Say all three of
+  those things — the point is the habit of checking, not scoring on a textbook.
+- *"Why the governor's race rather than president?"* — Because the chapter uses
+  it, and because a state race isolates state-level strategy from presidential
+  coattails. Also because 2024 gives us a natural experiment in candidate
+  collapse.
+- *"Where is turnout?"* — Table 5.1 is registration and turnout; we work in
+  votes because targeting works in votes. A student who asks for turnout as a
+  denominator is thinking well — that is the ratio that tells you whether a
+  county is maxed out.
+
+## Connections
+
+- **`campaign-visits`** (currently retired for lack of a slot) — same
+  strategic question at the state level. Run them together if you reinstate it.
+- **Session 2 (apportionment)** — both are about converting a total into parts by
+  a rule. There the rule is law; here it is a campaign's own choice.
+- **Session 10 (live returns)** — this is a baseline-versus-actual exercise done
+  in advance; that one does it after the fact with real returns.
+- **This week's Tuesday debate** (deliberation, across two centuries) — Ch. 3 asks whether
+  the transformation of campaigns raised the volume of information while lowering
+  its quality. Targeting is the mechanism: it decides who hears anything at all.
+- **Session 5 (money, message, and attention)** — when Ch. 5 arrives, students will already have done its worked
+  example. Refer back to it explicitly; the chapter reads differently once the
+  arithmetic is in your hands.

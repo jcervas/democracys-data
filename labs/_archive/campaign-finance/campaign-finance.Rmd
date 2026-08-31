@@ -1,0 +1,422 @@
+---
+title: "Lab 5: Following the Money"
+subtitle: "84-355 Democracy's Data | Week 5"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Chapter 4 asks who pays for campaigns and what they get for it. Today we open the
+actual ledger.
+
+Every federal candidate must report to the Federal Election Commission: what came
+in, what went out, and — crucially — **who it came from**. That last column is
+where this lab lives. It is easy to ask how much money is in politics. It is much
+more interesting to ask *whose* money goes to *whom*, and today you can answer
+that precisely.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: The ledger
+
+```{r read}
+fec <- read.csv("data/fec_candidates_2024.csv", stringsAsFactors = FALSE)
+dim(fec)
+```
+
+Nearly four thousand candidates for federal office in the 2023–24 cycle. One row
+each.
+
+```{r glimpse}
+head(fec[, c("cand_name", "office", "office_st", "ici", "party",
+             "ttl_receipts", "indiv_contrib", "pac_contrib")], 4)
+```
+
+The columns that matter today:
+
+- `ttl_receipts` — everything the campaign took in
+- `indiv_contrib` — money from individual people
+- `pac_contrib` — money from political action committees
+- `party_contrib` — money from the party
+- `self_funding` — money the candidate gave or lent their own campaign
+- `ici` — **I**ncumbent, **C**hallenger, or **O**pen seat
+
+That last one is the most important variable in the file, and you will see why
+shortly.
+
+```{r offices}
+table(fec$office)
+table(fec$ici)
+```
+
+***
+
+# Part 2: The shape of the money
+
+Start with the House, because there are enough candidates for the pattern to be
+clear.
+
+```{r house}
+h <- fec[fec$office == "House", ]
+nrow(h)
+```
+
+What does a typical House candidate raise?
+
+```{r typical}
+round(median(h$ttl_receipts))
+round(mean(h$ttl_receipts))
+```
+
+> **Stop and look at those two numbers.** The median House candidate raised about
+> $22,600. The average House candidate raised about $782,000 — **nearly
+> thirty-five times more**. Whenever a mean is that far above a median, a small
+> number of cases are carrying almost everything.
+
+How far does it go?
+
+```{r concentration}
+r <- sort(h$ttl_receipts, decreasing = TRUE)
+top10 <- round(0.10 * length(r))
+
+round(100 * sum(r[1:top10]) / sum(r), 1)                     # top 10% of candidates
+round(100 * sum(r[(round(0.5 * length(r)) + 1):length(r)]) / sum(r), 1)   # bottom 50%
+```
+
+The best-funded tenth of House candidates raised **72.7%** of all House money.
+The bottom half raised **0.2%** — two tenths of one percent, split between more
+than fifteen hundred people.
+
+```{r skew-plot, fig.width = 7.5, fig.height = 5}
+plot(seq_along(r) / length(r) * 100, cumsum(r) / sum(r) * 100, type = "l",
+     lwd = 2.5, col = "#2166AC",
+     xlab = "Candidates, best-funded first (%)",
+     ylab = "Share of all House money raised (%)",
+     main = "Almost all the money is with almost none of the candidates")
+abline(0, 1, lty = 2, col = "grey60")
+abline(v = 10, lty = 3, col = "grey40")
+```
+
+The dashed diagonal is what perfect equality would look like. We are nowhere near
+it.
+
+***
+
+# Part 3: Incumbents and everyone else
+
+Now split by whether the candidate already holds the seat.
+
+```{r by-ici}
+hs <- h[h$ici %in% c("I", "C", "O"), ]
+aggregate(ttl_receipts ~ ici, data = hs, FUN = median)
+```
+
+```{r by-ici-plot, fig.width = 7, fig.height = 5}
+meds <- aggregate(ttl_receipts ~ ici, data = hs, FUN = median)
+meds <- meds[match(c("C", "O", "I"), meds$ici), ]
+
+bp <- barplot(meds$ttl_receipts / 1000,
+        names.arg = c("Challenger", "Open seat", "Incumbent"),
+        col = c("#B2182B", "#999999", "#2166AC"), border = NA,
+        ylab = "Median receipts ($ thousands)",
+        main = "What a typical House candidate raises")
+text(bp, meds$ttl_receipts / 1000, labels = paste0("$", round(meds$ttl_receipts / 1000)),
+     pos = 3, xpd = TRUE, cex = 0.9)
+```
+
+> The median incumbent raised **$1,537,105**. The median challenger raised
+> **$9,107**. That is a ratio of about **169 to 1**.
+
+Before concluding anything, note what this cannot distinguish. Incumbents might
+raise more *because* incumbency attracts money, or the people who attract money
+might be the ones who become incumbents. Both stories fit this chart.
+
+The next part separates them.
+
+***
+
+# Part 4: Whose money?
+
+Here is the question the ledger can actually settle. Take every serious House
+campaign — say, everyone who raised more than $50,000 — and ask what **share** of
+their money came from PACs rather than individuals.
+
+```{r pac-share}
+ser <- hs[hs$ttl_receipts > 50000, ]
+ser$pac_share <- 100 * ser$pac_contrib / ser$ttl_receipts
+
+aggregate(pac_share ~ ici, data = ser, FUN = function(x) round(median(x), 1))
+```
+
+```{r pac-plot, fig.width = 7, fig.height = 5}
+ps <- aggregate(pac_share ~ ici, data = ser, FUN = median)
+ps <- ps[match(c("C", "O", "I"), ps$ici), ]
+
+bp <- barplot(ps$pac_share, names.arg = c("Challenger", "Open seat", "Incumbent"),
+        col = c("#B2182B", "#999999", "#2166AC"), border = NA, ylim = c(0, 45),
+        ylab = "PAC share of receipts (%), median",
+        main = "Where PAC money goes")
+text(bp, ps$pac_share, labels = paste0(round(ps$pac_share, 1), "%"),
+     pos = 3, xpd = TRUE, cex = 0.95)
+```
+
+> **This is the finding of the lab.** For a typical serious House incumbent,
+> **37.6%** of all money raised came from PACs. For a challenger running just as
+> serious a campaign, the figure is **1.1%**. For an open seat, **1.4%**.
+>
+> Individuals give to candidates they like. PACs give to people who already hold
+> power — and they are not subtle about it. An open-seat candidate has just as
+> much chance of winning as an incumbent's challenger does of losing, and PACs
+> fund neither.
+
+This is why the incumbency gap in Part 3 is not simply "good candidates attract
+money." Organised money is choosing by *office held*, not by quality, competitive­
+ness, or ideology.
+
+***
+
+# Part 5: Buying your own campaign
+
+Some candidates skip donors entirely.
+
+```{r self-fund}
+big <- fec[fec$ttl_receipts > 100000, ]
+big$self_pct <- 100 * big$self_funding / big$ttl_receipts
+
+sum(big$self_pct > 50)
+nrow(big)
+
+head(fec[order(-fec$self_funding),
+         c("cand_name", "office", "party", "ttl_receipts", "self_funding")], 6)
+```
+
+Of the 1,421 candidates who raised over $100,000, **225 — about one in six —**
+put up more than half of it themselves.
+
+***
+
+# Part 6: The trap in this file
+
+Look at the two best-funded candidates in the entire dataset:
+
+```{r biden-harris}
+fec[grepl("HARRIS, KAMALA|BIDEN, JOSEPH", fec$cand_name),
+    c("cand_id", "cand_name", "ttl_receipts", "indiv_contrib")]
+```
+
+**Those are the same dollars.** Biden's presidential committee became Harris's
+when he withdrew in July 2024. The FEC carries two candidate records — different
+IDs, different names, one pile of money — and reports the full
+**$1,175,189,365** against each.
+
+It is not only the presidential race:
+
+```{r dup-hunt}
+b <- fec[fec$ttl_receipts > 1e6, ]
+d <- table(b$ttl_receipts)
+shared <- as.numeric(names(d[d > 1]))
+
+head(b[b$ttl_receipts %in% shared,
+       c("cand_id", "cand_name", "office", "office_st", "ttl_receipts")], 10)
+```
+
+Ruben Gallego, David Trone, Adam Schiff and Jacky Rosen each appear **twice** —
+once as a House candidate and once as a Senate candidate — because each ran for
+the Senate in 2024 and moved their committee money across. Eric Hovde appears
+twice under two candidate IDs for the same Senate race.
+
+How much does this matter?
+
+```{r dup-cost}
+round(sum(fec$ttl_receipts) / 1e6)
+
+nodup <- fec[!duplicated(fec$ttl_receipts) | fec$ttl_receipts == 0, ]
+round(sum(nodup$ttl_receipts) / 1e6)
+```
+
+> Add up the column naively and you get **$6.85 billion** raised in the 2024
+> cycle. Strip out the repeated totals and you get about **$5.27 billion**. The
+> difference — roughly **$1.6 billion** — is money that does not exist. It is the
+> same money, counted twice.
+>
+> Note that the second number is a rough correction, not a right answer: dropping
+> every repeated value would also drop two genuinely different candidates who
+> happened to raise exactly the same amount. It is good enough to show you the
+> *size* of the problem, and not good enough to publish. Knowing the difference
+> between those two standards is most of what this course is about.
+
+***
+
+# Part 7: What this file cannot tell you
+
+The FEC's file layout has a column for whether the candidate won the general
+election. Here is how much of it is filled in:
+
+```{r no-outcomes}
+"gen_election" %in% names(fec)
+```
+
+The column is not in our file **because it is empty in the source** — all 3,856
+rows of it. The FEC collects money, not results. It is a regulator of finance,
+not an election administrator, and as you learned in Week 2, the United States
+does not have one of those.
+
+> So the most obvious question in this whole subject — **does the candidate who
+> raises more money win?** — cannot be answered with campaign finance data alone.
+> You would have to go and find election results from fifty-one separate
+> authorities and join them on, and then you would be doing Week 2's lab again,
+> with all of Week 2's problems.
+>
+> This is not a gap in our dataset. It is a fact about how the American state
+> keeps its books.
+
+What you *can* say from this file is nonetheless substantial: the money is
+extraordinarily concentrated, it flows overwhelmingly to people who already hold
+office, and the organised part of it flows almost nowhere else.
+
+***
+
+# Part 8: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change, or nothing at all.
+
+Pick **one**.
+
+***
+
+### Option A — Does the Senate work the same way?
+
+Everything above used the House. Change one word and find out.
+
+```{r opt-a}
+which_office <- "Senate"          # <- change to "House" or "President"
+
+o <- fec[fec$office == which_office & fec$ici %in% c("I", "C", "O"), ]
+o <- o[o$ttl_receipts > 50000, ]
+o$pac_share <- 100 * o$pac_contrib / o$ttl_receipts
+
+aggregate(pac_share ~ ici, data = o, FUN = function(x) round(median(x), 1))
+aggregate(ttl_receipts ~ ici, data = o, FUN = function(x) round(median(x)))
+table(o$ici)
+```
+
+**Write about:** the same pattern appears, but the PAC gap is much smaller in the
+Senate — around 15% for incumbents against under 1% for challengers, rather than
+37.6% against 1.1%. Suggest why. Senate races are far more expensive and far more
+often competitive; does either fact help explain a *smaller* PAC share? Think
+about what a PAC's maximum contribution is worth as a fraction of a $90 million
+campaign versus a $2 million one.
+
+***
+
+### Option B — Where does the money come from?
+
+```{r opt-b, fig.width = 7.5, fig.height = 5}
+min_raised <- 50000               # <- change this threshold
+
+s <- fec[fec$office == "House" & fec$ici %in% c("I","C","O") &
+         fec$ttl_receipts > min_raised, ]
+
+src <- sapply(c("C","O","I"), function(k) {
+  x <- s[s$ici == k, ]
+  c(Individuals = sum(x$indiv_contrib), PACs = sum(x$pac_contrib),
+    Party = sum(x$party_contrib), Self = sum(x$self_funding)) / sum(x$ttl_receipts) * 100
+})
+colnames(src) <- c("Challenger", "Open seat", "Incumbent")
+round(src, 1)
+
+barplot(src, beside = FALSE, col = c("#2166AC", "#B2182B", "#999999", "#F4A582"),
+        ylab = "% of all money raised", main = "Sources of House campaign money",
+        legend.text = TRUE, args.legend = list(x = "topright", bty = "n", cex = 0.8))
+```
+
+**Write about:** these are shares of the *total* raised by each group, which is a
+different question from Part 4's median candidate. Do the two tell the same
+story? Which is the fairer summary, and why might a journalist prefer one? Note
+what fills the gap for challengers where PAC money is absent — and what that
+implies about who can afford to run against a sitting member.
+
+***
+
+### Option C — How big is the double-counting problem?
+
+```{r opt-c}
+floor_amt <- 1000000              # <- change this
+
+b <- fec[fec$ttl_receipts > floor_amt, ]
+d <- table(b$ttl_receipts)
+shared <- as.numeric(names(d[d > 1]))
+
+c(candidates_above_floor = nrow(b),
+  rows_sharing_a_total   = sum(b$ttl_receipts %in% shared),
+  dollars_double_counted = round(sum(shared) / 1e6))
+
+b[b$ttl_receipts %in% shared, c("cand_name", "office", "office_st", "ttl_receipts")]
+```
+
+**Write about:** lower the floor to $100,000 and then to $10,000. Does the number
+of apparent duplicates rise faster than you would expect? At some point matching
+on dollar amount stops finding real duplicates and starts finding coincidences —
+two candidates who each raised exactly $250,000, say. Where do you think that
+point is, and how would you tell? What would you actually need in order to find
+duplicates *properly*?
+
+***
+
+### Option D — Ask your own question
+
+Pick a state and look at everyone who ran in it. Compare the parties. Find the
+candidate with the most debt, or the most cash left over. Follow whatever nags.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a ledger and say something true about who
+finances American politics.
+
+***
+
+## Where the data came from
+
+**Federal Election Commission**, bulk download, "All Candidates" file for the
+2023–24 cycle
+(<https://www.fec.gov/files/bulk-downloads/2024/weball24.zip>), covering every
+candidate committee's activity through 31 December 2024.
+
+This is as close to an official source as anything in this course. It is a
+mandatory legal filing to a federal regulator, not a scrape or a compilation.
+That is worth registering after Week 2 — and it is also worth registering how
+much this authoritative file still cannot do. It does not say who won. It does
+not deduplicate candidates who change office mid-cycle. It does not distinguish
+money spent *for* a candidate by outside groups, which since *Citizens United*
+(2010) has become a very large share of what is actually spent on a race and
+appears nowhere in these rows.
+
+Independent expenditures, super PACs and so-called dark money are all real, all
+enormous, and all outside this file. What you are looking at is the money that
+passed through the candidates' own hands.
+
+The script that downloaded, checked and trimmed this file is `data/build-data.R`.
+It prints its own sanity checks, including a count of the duplicate records that
+Part 6 is about — those are left in deliberately.

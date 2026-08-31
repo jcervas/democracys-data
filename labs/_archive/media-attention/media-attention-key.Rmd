@@ -1,0 +1,253 @@
+---
+title: "Data Session 5 Key, part 3: What the Country Was Looking At"
+subtitle: "84-355 Democracy's Data | Session 5 — Media attention (demo) | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+w <- read.csv("data/wiki_attention_2024.csv", stringsAsFactors = FALSE)
+w$date <- as.Date(w$date)
+g <- function(a) w[w$article == a, ]
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Public attention to politics is compressed into a handful of days, arrives in
+response to events rather than accumulating steadily, responds to false claims
+exactly as readily as true ones — and bears no reliable relationship to who wins.
+
+***
+
+# The findings
+
+```{r headline}
+for (a in c("2024_United_States_presidential_election", "Kamala_Harris",
+            "JD_Vance", "Tim_Walz", "Springfield,_Ohio")) {
+  s <- g(a)
+  cat(sprintf("%-42s median %7.0f  peak %9.0f  (%s)  ratio %5.0f\n",
+              a, median(s$views), max(s$views),
+              format(s$date[which.max(s$views)]),
+              max(s$views) / median(s$views)))
+}
+```
+
+- **Election article:** median 43,122, peak **4,260,085** — a **99×** ratio.
+- **Harris:** median 12,417; **2,532,334** on 22 July, the day after Biden
+  withdrew. **204×**.
+- **Vance:** median **23 views a day** as a sitting US senator.
+- **Walz:** **3,811,244** on 6 August — the largest single-day figure for any
+  person in the dataset.
+- **Springfield, Ohio:** median 242, peak **57,339** on 11 September. **237×**.
+
+***
+
+# The three ideas to teach
+
+**1. Attention is event-driven and extremely concentrated.** Nothing accumulates.
+There is a flat baseline and a few enormous spikes.
+
+**2. Misinformation and truth are indistinguishable in the attention data.** The
+Springfield claim was false and produced a 237-fold surge, plus a spillover to
+`Haitian_Americans` (median 174, peak 3,984 on 13 September). Agenda-setting
+does not require accuracy. This is the strongest illustration of Chapter 8's
+central mechanism you will get from any dataset students can hold.
+
+**3. Attention is not support.**
+
+```{r peaks}
+pk <- aggregate(views ~ article, data = w[w$article %in%
+  c("Donald_Trump","Kamala_Harris","JD_Vance","Tim_Walz"), ], FUN = max)
+pk[order(-pk$views), ]
+```
+
+Walz's peak exceeds Trump's. His ticket lost. If attention converted to votes,
+that ordering would be a forecast; it is a record of what surprised people.
+
+The lab has students write this ranking down before the table prints; expect most
+to lead with Trump and finish with a running mate, and use the wrong guess rather
+than the table as the way into the discussion.
+
+***
+
+# Option A — Pick an article and date its spikes
+
+## Verified output
+
+```{r a}
+for (a in c("Project_2025", "Swing_state")) {
+  s <- g(a); top <- s[order(-s$views), ][1:4, ]
+  cat("\n", a, " (median ", median(s$views), ")\n", sep = "")
+  print(top[order(top$date), ])
+}
+```
+
+**Project 2025** peaks at 722,256 on 6 November, but its earlier spikes —
+**482,218 on 5 July** and 478,842 on 6 July — do *not* correspond to any event in
+`campaign_events_2024.csv`. That is the point of the option. Those days follow a
+deliberate Democratic campaign to publicise a Republican-aligned policy document,
+amplified heavily online.
+
+**Swing_state** (median 1,346, peak 252,647) rises only very late.
+
+## What a good answer says
+
+**3/4:** Names the spike dates and checks them against `ev`, noticing that some
+line up and some do not.
+
+**4/4:** Reasons about the July spikes having no corresponding set-piece event,
+and identifies that a campaign can *manufacture* attention to something the
+other side would rather nobody read. That is a different mechanism from a debate
+or a withdrawal — it is agenda-setting as strategy rather than as by-product.
+
+**4/4, best:** notices that `Swing_state` stays flat until the final weeks and
+draws the implication — ordinary people engage with the *mechanics* of elections
+only at the very end, long after the campaigns have made their decisions about
+where to compete and where the money went (the campaign-finance lab, this same
+session).
+
+**Common stumble:** assuming every spike must match a listed event. The events
+file is deliberately incomplete; unexplained spikes are findings, not errors.
+
+***
+
+# Option B — How concentrated is attention?
+
+## Verified output
+
+```{r b}
+for (a in c("Donald_Trump", "Kamala_Harris", "Opinion_poll",
+            "Electoral_College_(United_States)")) {
+  s <- g(a); s <- s[order(-s$views), ]; s$cum <- cumsum(s$views)/sum(s$views)*100
+  cat(sprintf("%-40s top10 %5.1f%%  top30 %5.1f%%  days to half %3d\n",
+              a, s$cum[10], s$cum[30], which(s$cum >= 50)[1]))
+}
+```
+
+| article | top 10 days | top 30 days | days to reach half |
+|---|---|---|---|
+| Donald Trump | 27.0% | 41.5% | **53** |
+| Kamala Harris | 39.3% | 60.1% | **18** |
+| Opinion poll | 6.9% | 16.0% | 132 |
+| Electoral College | 22.3% | 35.1% | 74 |
+
+*(Three of these four rows were transcribed wrongly in an earlier version of
+this key — Harris, Opinion poll and Electoral College. The chunk above was
+always right; the markdown under it was not. Run the chunk, do not trust a
+table.)*
+
+## What a good answer says
+
+**3/4:** Reports the numbers and observes that people are spikier than topics.
+
+**4/4:** Explains *why* Harris is nearly three times as concentrated as Trump —
+18 days versus 53 to reach half her attention. Trump was continuously famous
+throughout 2024; Harris became the nominee overnight in July. Concentration here
+is measuring **novelty**, not importance. A student who says "this statistic is
+really about how recently someone became interesting" has read it correctly.
+
+**4/4, best:** takes the strategic question seriously. If half a candidate's
+annual attention lands in 18 days, then manufacturing such a day is worth more
+than months of steady campaigning — which is an argument for exactly the kind of
+event-driven, spectacle-oriented campaigning Chapter 8 describes, and a reason to
+expect more of it.
+
+***
+
+# Option C — Two candidates side by side
+
+## Verified output
+
+```{r c}
+h <- g("Kamala_Harris"); t <- g("Donald_Trump")
+mg <- merge(h[, c("date","views")], t[, c("date","views")], by = "date",
+            suffixes = c("_h","_t"))
+mg$phase <- ifelse(mg$date < as.Date("2024-07-21"), "before Jul 21", "after Jul 21")
+table(mg$phase, ifelse(mg$views_h > mg$views_t, "Harris", "Trump"))
+```
+
+Before 21 July: Trump leads **194 days to 8**. After: Harris leads **107 to 57**.
+
+## What a good answer says
+
+**3/4:** Reports the reversal and dates it to the withdrawal.
+
+**4/4:** Refuses the word "won." Harris led attention on roughly two-thirds of
+the days after July and lost the election by 1.5 points nationally. The honest
+conclusion is that leading in pageviews indicates salience, not preference — and
+that a candidate can dominate attention precisely *because* people do not yet
+know who she is.
+
+**4/4, best:** connects to Part 6 and to Session 9's polling material — attention
+is a measure with no theory of the electorate behind it, whereas a poll at least
+attempts to represent one. Asks what a campaign should actually want: attention,
+or something else?
+
+***
+
+# Option D — Their own question
+
+`Opinion_poll` and `Electoral_College_(United_States)` reward comparison against
+the personalities. Unexplained spikes are legitimate findings.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing to let a measure mean more than it
+  does. This lab is built so that the most striking numbers (Walz's peak, Harris
+  leading after July) point *away* from the conclusion a careless reader would
+  draw. Students who notice that tension are doing the course's central skill.
+- **Reward "I cannot tell from this."** Pageviews genuinely cannot separate
+  curiosity from approval, or belief from disbelief.
+
+## Anticipated questions
+
+- *"Isn't Wikipedia a weird proxy?"* — It is a narrow one, and that is a virtue
+  for teaching: it is publicly measured, consistently defined, and unarguably
+  behavioural. Compare it to a survey question about media consumption, where the
+  respondent has to remember and report accurately.
+- *"Aren't a lot of these bots?"* — The file uses Wikimedia's `user` filter,
+  which excludes known automated traffic. Worth saying, because it is the first
+  objection a sharp student raises.
+- *"Why is Vance's baseline 23 and Walz's 1,242?"* — Walz was a sitting governor
+  of a state with a large media market; Vance was a first-term senator. Both are
+  astonishingly small. The real lesson is how little attention national political
+  figures command before they are elevated.
+- *"Did the Springfield claim change any votes?"* — Unknown, and this data cannot
+  say. It can say that it moved a great many people to go and read about
+  Springfield. Distinguishing those two is the whole difficulty of media-effects
+  research, and it is worth being explicit that political science has struggled
+  with it for eighty years.
+
+## Connections forward
+
+- **Session 9 (polls, models, and markets)** picks up directly: attention is not
+  preference, and polls are the instrument built to measure preference. Ask what
+  each one can do that the other cannot.
+- **Session 10 (live returns)** — students can pull the equivalent 2026
+  series live from the same API; `data/build-data.R` needs only its date range
+  changed. That is a good in-class demonstration on 5 November.
+- **`campaign-finance`, this same session** — Project 2025's July spike is money and organisation converted into
+  attention. The two labs describe the same machine from different ends.
+- The assigned readings this week (Eady et al. on the ideology of news sharing,
+  and the MSNBC ratings piece) are both about **supply** — who publishes what.
+  This lab is about **demand**. Ask on Tuesday which one is easier to measure,
+  and which one Chapter 8's argument actually needs.

@@ -1,0 +1,395 @@
+---
+title: "Key: Older Than They Used to Be"
+subtitle: "84-355 Democracy's Data | Officeholder age | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE)
+options(scipen = 999)
+D  <- "data"
+m  <- read.csv(file.path(D, "members.csv"),         stringsAsFactors = FALSE)
+ac <- read.csv(file.path(D, "age_by_congress.csv"), stringsAsFactors = FALSE)
+le <- read.csv(file.path(D, "life_expectancy.csv"), stringsAsFactors = FALSE)
+et <- read.csv(file.path(D, "entry_tenure.csv"),    stringsAsFactors = FALSE)
+pr <- read.csv(file.path(D, "presidents.csv"),      stringsAsFactors = FALSE)
+ck <- read.csv(file.path(D, "checks.csv"),          stringsAsFactors = FALSE)
+
+f0 <- function(x) formatC(x, format = "f", digits = 0)
+f1 <- function(x) formatC(x, format = "f", digits = 1)
+n  <- function(x) format(round(x), big.mark = ",")
+
+sitting <- function(y) floor((y - 1787) / 2)
+val <- function(ch, y, col = "median_age")
+  ac[[col]][ac$chamber == ch & ac$congress == sitting(y)]
+BY <- 1950; EY <- 2018; NOW <- 2025
+A0 <- val("Congress", BY); A1 <- val("Congress", EY)
+E0a <- le$e0_hus[le$year == BY]; E0b <- le$e0_hus[le$year == EY]
+E6a <- le$e65[le$year == BY];    E6b <- le$e65[le$year == EY]
+dec <- function(ch, y1, y2) {
+  a <- ac[ac$chamber == ch & ac$congress == sitting(y1), ]
+  b <- ac[ac$chamber == ch & ac$congress == sitting(y2), ]
+  c(total = b$mean_age - a$mean_age,
+    entry = b$mean_entry_age - a$mean_entry_age,
+    stay  = b$mean_years_since_entry - a$mean_years_since_entry)
+}
+DC <- dec("Congress", BY, EY); DH <- dec("House", BY, EY); DS <- dec("Senate", BY, EY)
+C  <- ac[ac$chamber == "Congress", ]
+hs <- m[m$chamber %in% c("House", "Senate") & !is.na(m$age), ]
+DIO <- !is.na(hs$died) & hs$died >= hs$year & hs$died <= hs$year + 1
+dio <- function(a, b) 100 * mean(DIO[hs$year >= a & hs$year <= b])
+TR <- C[C$year >= 1965 & C$year <= 1995, ]; TR <- TR[which.min(TR$median_age), ]
+PRIOR <- max(C$year[C$year < TR$year & C$median_age <= TR$median_age])
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`officeholder-age-brief.Rmd`) is now a chapter, "Older
+Than They Used to Be": it is organised by argument under prose headings and
+carries five numbered figures rather than numbered steps — Figure 1, two and a
+third centuries of congressional age; Figure 2, the same 68 years against two rows
+of one government table; Figure 3, the mean age split into its two components;
+Figure 4, the full age distribution by era; Figure 5, age on arrival against
+length of career. The lab (`officeholder-age.Rmd`) is unchanged and still runs
+Steps 1–9 with the code exposed. **Students should read the brief first.**
+**Step numbers below refer to the lab.** The two cover the same ground in the same
+order, so each lab Step has a chapter heading facing it: Step 1 = "One column, and
+what a birth year buys you"; Step 2 = "When it happened" (Figure 1); Step 3 =
+"Everyone lives longer now"; Step 4 = "The row further down the same page"
+(Figure 2); Step 5 = "Arriving older, or staying longer" (Figure 3); Step 6 = "The
+median hides the tail" (Figure 4); Step 7 = "The careers you cannot see"
+(Figure 5); Step 8 = "Who leaves the data before you can count them"; Step 9 =
+"What this evidence will bear".
+
+**This is the course's cleanest example of a denominator flipping a
+conclusion.** Everything else in the session is context for Step 4. If the room
+leaves with one thing, it should be that a comparison is only as good as what
+you compared to, and that the wrong choice here is the one everybody makes.
+
+Every number below was recomputed from the built files when this was knitted.
+
+***
+
+# The session in one sentence
+
+Congress is at or near its oldest ever, the popular rebuttal — *people live
+longer now* — collapses the moment you use remaining life expectancy at 65
+instead of life expectancy at birth, and most of the increase turns out to come
+from members arriving older rather than from incumbents staying.
+
+***
+
+# The findings
+
+```{r headline}
+data.frame(
+  quantity = c("median age, Congress, now", "median age, Senate, now",
+               "Congress median age gain, 1950-2018",
+               "life expectancy at birth, gain", "remaining life at 65, gain",
+               "% of the headline gain that is life after 65",
+               "% of the House rise from arriving older",
+               "% of the Senate rise from arriving older",
+               "% of Congress over 70 now"),
+  value = c(val("Congress", NOW), val("Senate", NOW), A1 - A0,
+            E0b - E0a, E6b - E6a,
+            round(100 * (E6b - E6a) / (E0b - E0a)),
+            round(100 * unname(DH["entry"] / DH["total"])),
+            round(100 * unname(DS["entry"] / DS["total"])),
+            round(val("Congress", NOW, "pct_70plus"), 1)),
+  row.names = NULL)
+```
+
+- **Median member `r f0(val("Congress", NOW))`, median senator
+  `r f0(val("Senate", NOW))`.** The three oldest Congresses on record are
+  `r paste(C$year[C$median_age == max(C$median_age)], collapse = ", ")`.
+- **The rise is recent.** The median member was `r f0(TR$median_age)` in
+  `r TR$year`, a figure Congress had not touched since `r PRIOR`.
+- **Congress aged `r f0(A1 - A0)` years, 1950 to 2018. Life expectancy at birth
+  rose `r f1(E0b - E0a)`; remaining life expectancy at 65 rose
+  `r f1(E6b - E6a)`.** The first comparison says Congress aged slower than the
+  country, the second says faster.
+- **At most `r f0(100 * (E6b - E6a) / (E0b - E0a))`% of the famous life
+  expectancy gain is about people who have already reached 65.**
+- **`r f0(100 * DC["entry"] / DC["total"])`% of Congress's rise in mean age is
+  arrival age**, not tenure — and it splits
+  `r f0(100 * DH["entry"] / DH["total"])`% House against
+  `r f0(100 * DS["entry"] / DS["total"])`% Senate.
+- **`r f1(val("Congress", NOW, "pct_70plus"))`% of Congress is over 70**, and
+  `r f1(val("Senate", NOW, "pct_70plus"))`% of the Senate.
+
+***
+
+# The three things to get said
+
+**1. Step 4 is the session.** Two numbers from the same NCHS table, one section
+apart, give opposite answers to the same question. **Take a vote before you show
+the second one.** Ask the room: life expectancy rose `r f1(E0b - E0a)` years
+since 1950 and Congress aged `r f0(A1 - A0)` — has Congress aged more or less
+than the country? Almost everyone says less, correctly, using the wrong number.
+Then show `r f1(E6b - E6a)`.
+
+The reason it works is that **nobody is being dishonest in the wrong version**.
+Life expectancy at birth is the number everyone means by "life expectancy". It
+is published, official, correct, and irrelevant, and the only way to know that
+is to ask what population it describes.
+
+**2. The decomposition is the surprise.** Ask before revealing: *is Congress
+older because incumbents stay longer, or because new members arrive older?* The
+room will say incumbency, essentially unanimously. It is
+`r f0(100 * DC["entry"] / DC["total"])`% arrival age. **And press on the chamber
+split** — the House is `r f0(100 * DH["entry"] / DH["total"])`% arrival age and
+the Senate only `r f0(100 * DS["entry"] / DS["total"])`%. One mechanism, two
+institutions, two different answers, which is a good argument against explaining
+"Congress" as a single thing.
+
+**3. The rise is recent, and it reverses.** Congress got *younger* through the
+1960s and 1970s (Step 5's era table: mean age
+`r f1(dec("Congress", 1950, 1980)["total"])` years over 1950-1980) and then rose
+sharply. A story about slow institutional decay does not fit. Whatever changed,
+changed around 1980, and this data does not say what.
+
+**The line for the board:** *the comparison is where the argument is hiding.*
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** One file, one column | `born` is a year; +/- 1 on every age | 6 | **Show the Biden row.** 78 in life, `r pr$age_at_term_start[pr$bioname == "BIDEN, Joseph Robinette (Joe), Jr."]` by arithmetic. Then Cleveland, half-missing. |
+| **2** How old is Congress | Median `r f0(TR$median_age)` in `r TR$year`, `r f0(max(C$median_age))` at peak | 7 | Students read the long-run chart as a steady climb. It is not; make them find the trough. |
+| **3** The rebuttal | Life expectancy up `r f1(E0b - E0a)`, Congress up `r f0(A1 - A0)` | **5** | **Let the wrong answer win here.** Do not signpost. |
+| **4** The right denominator | e(65) up `r f1(E6b - E6a)` | **14** | **The pivot.** Vote first. Then the sparse-series and two-sources caveats. |
+| **5** Entering vs staying | `r f0(100 * DC["entry"] / DC["total"])`% arrival age | **10** | Predict before revealing. The chamber split is the follow-up. |
+| **6** The tail | `r f1(val("Congress", NOW, "pct_70plus"))`% over 70 | 6 | Why is the median the wrong summary here? |
+| **7** Careers and censoring | Right-censoring, and the House-to-Senate pipeline | 8 | The pipeline result runs the wrong way; students assume it explains the Senate. |
+| **8** Deaths in office | Rate fell from `r f1(dio(1900, 1949))`% to `r f1(dio(2000, 2025))`% | 5 | This one cuts *against* the lab's own headline. Say so. |
+| **9** What you can say | Including what you cannot | 5 | "Why" and "does it matter" are both outside this data. |
+
+**If you are short on time**, protect Steps 3, 4 and 5. Steps 3 and 4 are one
+move and must not be split across a break. Step 5 is what stops the session
+being a single trick.
+
+***
+
+# The thing that makes Step 4 work, and how not to spoil it
+
+Step 3 is written to be persuasive. Read it aloud in the voice of somebody who
+thinks they have won the argument, because that is the voice students will meet
+it in outside the classroom.
+
+The mechanism, if somebody asks for it in more detail than the lab gives:
+life expectancy at birth is an average over a whole synthetic cohort, and in
+1900 that average was dragged down by an enormous number of deaths before age 5.
+Removing those deaths raises the average by a lot without changing anybody's
+prospects at 60. **The quantity that changed least across the twentieth century
+is exactly the quantity that describes a senator.**
+
+**Anticipate the good objection**, because a sharp student will make it: e(65)
+is conditional on reaching 65, and members of Congress are not a random draw
+from the population — they are richer, better educated and better insured, so
+their own remaining life expectancy is higher than the national e(65) and
+probably rose faster. That is correct. It makes the lab's comparison
+*conservative* in one direction and unmeasurable in another, and the honest
+answer is that the data here cannot settle it. **A student who raises this
+unprompted has understood the step better than the step does.**
+
+***
+
+# What to do about the numbers that cut the other way
+
+Two results in this lab work against its own headline, and leaving them in is
+deliberate. Do not skip them.
+
+- **Step 8, deaths in office.** Members used to die in office much more often:
+  `r f1(dio(1900, 1949))`% of member-terms between 1900 and 1949 ended in a
+  death, against `r f1(dio(2000, 2025))`% since 2000.
+  Every such death removes an old member from every later Congress, so part of
+  the apparent youth of historical Congresses is survival, not preference. This
+  is the one place where "people live longer now" genuinely does explain
+  something.
+- **Step 7, the pipeline.** Senators who came up through the House arrive
+  *younger* (`r f1(mean(et$entry_age[et$chamber == "Senate" & et$entry_year >= 1981 & et$prior_house], na.rm = TRUE))`)
+  than those who did not
+  (`r f1(mean(et$entry_age[et$chamber == "Senate" & et$entry_year >= 1981 & !et$prior_house], na.rm = TRUE))`).
+  The obvious explanation for an older Senate is wrong.
+
+**Model the behaviour you want.** A lab that only reports the results supporting
+its thesis teaches the wrong thing regardless of how good the thesis is.
+
+***
+
+# Option A — Use the wrong denominator on purpose
+
+## Verified output
+
+```{r a}
+E7a <- le$e75[le$year == 1980]; E7b <- le$e75[le$year == EY]
+data.frame(
+  yardstick = c("life expectancy at birth", "remaining life at 65",
+                "remaining life at 75 (1980-2018 only)"),
+  gain = c(E0b - E0a, E6b - E6a, E7b - E7a),
+  congress_gain = c(A1 - A0, A1 - A0,
+                    A1 - val("Congress", 1980)),
+  congress_faster = c((A1 - A0) > (E0b - E0a), (A1 - A0) > (E6b - E6a),
+                      (A1 - val("Congress", 1980)) > (E7b - E7a)))
+```
+
+**3/4:** Runs all three, reports that the answer changes, picks one.
+
+**4/4:** Argues for e(65) on the grounds that it matches the age of the
+population being described, and notices that e(75) is even more conservative but
+covers a shorter window, so the two are not interchangeable.
+
+**4/4, best:** Says that no single yardstick is right, because the question
+"has Congress aged relative to longevity" is really several questions, and picks
+the one that matches the claim being tested — then writes a sentence that
+carries both numbers so the reader can check. **The sophisticated answer is that
+the choice should follow the claim, not the other way round.**
+
+***
+
+# Option B — Pick a different window
+
+## Verified output
+
+```{r b}
+w <- function(y1, y2) {
+  a <- val("Congress", y1); b <- val("Congress", y2)
+  c(congress = b - a,
+    e0  = le$e0_hus[le$year == y2] - le$e0_hus[le$year == y1],
+    e65 = le$e65[le$year == y2]    - le$e65[le$year == y1])
+}
+rbind(`1950-1980` = w(1950, 1980), `1980-2018` = w(1980, EY),
+      `1950-2018` = w(1950, EY))
+```
+
+**This one has a sharp answer and you should know it before you assign it.** The
+two halves do not merely differ, they point opposite ways: over 1950-1980
+Congress's median age **fell** while both life-expectancy series rose, and over
+1980-2018 Congress's median age rose `r f0(val("Congress", EY) - val("Congress", 1980))`
+years against `r f1(le$e0_hus[le$year == EY] - le$e0_hus[le$year == 1980])` at
+birth and `r f1(le$e65[le$year == EY] - le$e65[le$year == 1980])` at 65.
+
+**3/4:** Reports the two halves and notices they differ.
+
+**4/4:** Sees that the entire story is post-1980, and that in the first half
+Congress aged more slowly than longevity on *either* yardstick.
+
+**4/4, best:** Notices the sting — **after 1980 Congress outpaces life
+expectancy at birth as well**, so on the modern window you do not need the
+careful denominator to win the argument, and the careful denominator is what
+lets you make the claim about the *whole* period. Then observes that the choice
+of window is itself a denominator-like choice which the lab made for a
+data-availability reason rather than a substantive one. That is the best
+available answer and it is a criticism of the lab.
+
+***
+
+# Option C — One state, or one party
+
+## Verified output
+
+```{r c}
+hs <- m[m$chamber %in% c("House", "Senate") & !is.na(m$age) &
+        m$party_code %in% c(100, 200), ]
+hs$party <- ifelse(hs$party_code == 100, "Democrat", "Republican")
+py <- tapply(hs$age, list(hs$congress, hs$party), median)
+py <- py[rownames(py) %in% as.character(c(sitting(1950), sitting(1980),
+                                          sitting(2000), sitting(EY),
+                                          sitting(NOW))), ]
+round(py, 1)
+```
+
+**3/4:** Computes a party or state series and reports a gap.
+
+**4/4:** Reports the gap *and* its size relative to year-to-year wobble, and
+notices that a state delegation of two senators and a handful of
+representatives cannot support a median at all.
+
+**4/4, best:** Recognises that party age differences move with which party is
+winning open seats — a party that just had a good year is younger because it has
+more freshmen — so **the party gap is partly a measure of recent electoral
+success, not of anything about the parties.** Anyone who says that has
+transferred the composition lesson from `regional-shift` without being told to.
+
+***
+
+# Option D — The decomposition, one chamber at a time
+
+No fully verified output; grade the reasoning.
+
+**3/4:** Runs the decomposition separately and reports that the chambers differ.
+
+**4/4:** Locates roughly when they diverged and offers a mechanism tied to
+institutional differences — six-year terms, statewide constituencies, the cost
+of a Senate race — rather than to a single event.
+
+**4/4, best:** Notices that "entry age" for the Senate is measured from Senate
+entry, so a House veteran's earlier career is invisible to it, and asks what the
+decomposition would look like measured from first federal office. **That is a
+real limitation of the built data and the student found it in the code.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given.
+- **The move that earns a 4** is treating the choice of comparison as the
+  substantive act it is, rather than as a preliminary to the analysis.
+- **A 2** is "Congress is old and that's bad." The lab is explicitly not an
+  argument for term limits or an age cap, and an essay that turns it into one has
+  skipped the entire method.
+- **Also a 2**: reporting the `r f0(A1 - A0)`-year rise without the denominator
+  discussion at all.
+- **Reward anyone who notices what is missing**: candidates who lost, any
+  measure of performance, and remaining life expectancy for people like members
+  of Congress rather than for the country. All three are named in the lab and
+  the good answers go further than the naming.
+- **Reward anyone who reports a number that cuts against them** — Step 8 is
+  sitting there for exactly this.
+
+## Anticipated questions
+
+- *"Isn't age 65 arbitrary?"* — Yes. It is what NCHS publishes, and 75 is the
+  other option, and the lab shows both. The defensible principle is to condition
+  on an age the population in question has reached; 65 is close to the median
+  member and 75 is not, which is a reason to prefer it here.
+- *"Why not compare to the median age of the country?"* — Better question than it
+  sounds, and it is a different comparison: the country's median age moves with
+  the birth rate, so it would be measuring demography rather than longevity. The
+  lab does not have that series, and saying so is the honest answer.
+- *"Shouldn't we just use members' own life expectancy?"* — Yes, and nobody
+  publishes it. See the objection in the Step 4 section above.
+- *"Isn't this an argument for an age limit?"* — Not from this data. The lab
+  establishes what is true about officeholder age and explicitly cannot speak to
+  performance. **Say that plainly once and do not relitigate it**; the question
+  will come up in every section.
+- *"Why is `born` only a year?"* — Because the file was built for roll-call
+  analysis, where a birth date is not needed. **A dataset's precision follows
+  its original purpose, and you are almost always using it for something else.**
+
+## Connections
+
+- **`dw-nominate`** — the same Voteview file, a completely different derived
+  quantity. Worth saying out loud: **one carefully built file answers many
+  unrelated questions**, and most of the work in this lab was choosing what to
+  compute, not finding data.
+- **`scdb`** — the Supreme Court, where life tenure makes this question sharper
+  and the sample size makes it harder. Run after this one.
+- **`house-competition`** — uncontested races and incumbency advantage, which is
+  the plausible mechanism behind the "staying longer" half of Step 5. Students
+  who did that lab will reach for it; the decomposition tells them how much of
+  the effect it could possibly explain.
+- **`apportionment`** — the other lab where a technical choice nobody argues
+  about turns out to determine something people care about.

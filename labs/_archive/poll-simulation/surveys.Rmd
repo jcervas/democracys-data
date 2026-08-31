@@ -1,0 +1,406 @@
+---
+title: "Lab 10: A Poll That Is Precise and Wrong"
+subtitle: "84-355 Democracy's Data | Week 10"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+set.seed(2026)
+```
+
+# Before we start
+
+The country votes on Tuesday. Between now and then you will see a great many
+numbers with a **±3** attached to them, and it is worth knowing exactly what that
+number promises — and, more importantly, what it does not.
+
+Every other lab this term handed you real data and asked what it showed. Today
+we do the opposite. We are going to **build a population where we already know
+the answer**, and then poll it. That is the only way to watch a poll miss,
+because in real life the truth arrives after the poll and nobody can go back.
+
+The truth we will use is the real one. In 2024, of everyone who voted for one of
+the two major candidates:
+
+- **Trump 50.75%**
+- **Harris 49.25%**
+
+A margin of 1.5 points. Remember that number; everything today is measured
+against it.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: A country we can see all of
+
+```{r population}
+truth <- 0.4925                      # Harris share of the two-party vote
+N     <- 1000000                     # a million voters
+
+population <- c(rep("Harris", round(N * truth)),
+                rep("Trump",  N - round(N * truth)))
+
+table(population)
+round(100 * mean(population == "Harris"), 2)
+```
+
+We know the answer. No pollster ever does. That is the only thing that is
+unrealistic here, and it is the point.
+
+***
+
+# Part 2: One poll
+
+```{r one-poll}
+poll <- sample(population, 1000)
+table(poll)
+round(100 * mean(poll == "Harris"), 2)
+```
+
+Not exactly 49.25, but close. Run it again and you get a different answer:
+
+```{r three-polls}
+for (i in 1:3) {
+  p <- sample(population, 1000)
+  cat("poll", i, ":", round(100 * mean(p == "Harris"), 2), "\n")
+}
+```
+
+That wobble is **sampling error** — the only kind of error the ±3 describes.
+
+***
+
+# Part 3: What the margin of error actually promises
+
+Run a thousand polls and look at the spread.
+
+```{r many-polls, fig.width = 8, fig.height = 5}
+estimates <- replicate(1000, 100 * mean(sample(population, 1000) == "Harris"))
+
+hist(estimates, breaks = 30, col = "#BBBBBB", border = "white",
+     xlab = "Poll estimate of Harris's share (%)", ylab = "Polls",
+     main = "One thousand honest polls of 1,000 people each")
+abline(v = 100 * truth, lwd = 3, col = "#B2182B")
+```
+
+```{r moe-check}
+moe <- 1.96 * sqrt(0.25 / 1000) * 100
+c(margin_of_error = round(moe, 2),
+  within_moe = round(100 * mean(abs(estimates - 100*truth) <= moe), 1))
+```
+
+> The margin of error is **±3.1 points**, and about **95%** of the polls land
+> inside it. The promise is kept exactly.
+>
+> But read the promise carefully. It says: *if my only problem is that I asked
+> 1,000 people instead of all of them, I will usually be within 3 points.* It
+> says nothing whatever about any other problem.
+
+***
+
+# Part 4: More people, less error
+
+```{r moe-curve, fig.width = 8, fig.height = 5}
+n <- seq(200, 20000, by = 100)
+plot(n, 1.96 * sqrt(0.25 / n) * 100, type = "l", lwd = 2.5, col = "#54278F",
+     xlab = "People polled", ylab = "Margin of error (points)",
+     main = "Bigger polls are more precise")
+abline(h = 3, lty = 3, col = "grey50")
+```
+
+```{r moe-table}
+for (k in c(500, 1000, 5000, 100000)) {
+  cat(sprintf("n = %6d   margin of error = %.2f points\n",
+              k, 1.96 * sqrt(0.25 / k) * 100))
+}
+```
+
+Familiar, and true. Now we break it.
+
+***
+
+# Part 5: The problem that is not sample size
+
+Everything above assumed that when you call somebody, they answer. In 2024 the
+response rate to a typical telephone poll was **under 1%**.
+
+That would be survivable if the 1% who answer were a random 1%. They are not.
+Suppose Harris voters are somewhat likelier to pick up the phone — 20% likelier.
+
+```{r biased-poll}
+answers <- ifelse(population == "Harris", 1.20, 1.00)   # who picks up
+
+biased <- sample(population, 1000, prob = answers, replace = TRUE)
+round(100 * mean(biased == "Harris"), 2)
+```
+
+That is not sampling noise. Do it a thousand times:
+
+```{r biased-many, fig.width = 8, fig.height = 5}
+biased_est <- replicate(1000,
+  100 * mean(sample(population, 1000, prob = answers, replace = TRUE) == "Harris"))
+
+hist(biased_est, breaks = 30, col = "#F4A58255", border = "white",
+     xlim = c(45, 60),
+     xlab = "Poll estimate of Harris's share (%)", ylab = "Polls",
+     main = "One thousand polls, when Harris voters answer more often")
+abline(v = 100 * truth, lwd = 3, col = "#B2182B")
+abline(v = mean(biased_est), lwd = 3, lty = 2, col = "#2166AC")
+legend("topright", c("the truth", "average poll"), col = c("#B2182B","#2166AC"),
+       lwd = 3, lty = c(1, 2), bty = "n")
+```
+
+```{r biased-summary}
+c(truth = 100 * truth,
+  average_poll = round(mean(biased_est), 2),
+  bias = round(mean(biased_est) - 100 * truth, 2))
+```
+
+> The polls are still tightly clustered. They are just clustered **around the
+> wrong number**. Averaging them together — which is what a polling average
+> does — does not help at all, because they are all wrong in the same direction.
+
+***
+
+# Part 6: The bit that should worry you
+
+Bias does not care how many people you ask.
+
+```{r the-demonstration}
+for (k in c(1000, 10000, 100000)) {
+  s <- sample(population, k, prob = answers, replace = TRUE)
+  est <- 100 * mean(s == "Harris")
+  cat(sprintf("n = %6d   estimate %.2f   reported +/- %.2f   actually wrong by %+.2f\n",
+              k, est, 1.96 * sqrt(0.25/k) * 100, est - 100 * truth))
+}
+```
+
+> Look at the last line. A poll of **100,000 people** reports a margin of error
+> of **±0.31** and is wrong by about **4.5 points** — roughly **fifteen times**
+> its own stated precision.
+>
+> And it does not drift toward the truth as $n$ grows. It converges — on
+> **53.8%**, which is not the answer. More data makes you more confident about
+> the wrong number.
+
+This is the argument in Bailey's *Polling at a Crossroads*, and it is why the
+polling industry's problem in the last three presidential elections has not been
+one that a bigger sample could fix.
+
+***
+
+# Part 7: Weighting, and why it is not a cure
+
+Pollsters know this, and they correct for it. If you know Harris voters are
+over-represented, you can count their answers for less. The catch is that you
+have to **know which variable is doing the damage**, and be able to see it.
+
+```{r weighting-setup}
+# A population with two attributes: how you vote, and something else about you
+# — call it trust in institutions — that we will let drive who responds.
+N2 <- 200000
+harris <- rbinom(N2, 1, truth)
+trust  <- rbinom(N2, 1, ifelse(harris == 1, 0.75, 0.45))
+true_share <- 100 * mean(harris)
+
+responds <- ifelse(trust == 1, 1.00, 0.35)   # low-trust people rarely answer
+i <- sample(N2, 5000, prob = responds, replace = TRUE)
+s <- data.frame(harris = harris[i], trust = trust[i])
+
+round(c(truth = true_share, raw_poll = 100 * mean(s$harris)), 2)
+```
+
+Weight on **trust** — the thing actually driving non-response:
+
+```{r weight-right}
+target <- mean(trust)                            # the true share, if you knew it
+w <- ifelse(s$trust == 1, target / mean(s$trust),
+                          (1 - target) / (1 - mean(s$trust)))
+round(c(weighted = 100 * weighted.mean(s$harris, w),
+        error    = 100 * weighted.mean(s$harris, w) - true_share), 2)
+```
+
+Now weight on something real, measurable, and **unrelated** to who answers:
+
+```{r weight-wrong}
+irrelevant <- rbinom(nrow(s), 1, 0.5)
+w2 <- ifelse(irrelevant == 1, 0.5 / mean(irrelevant), 0.5 / (1 - mean(irrelevant)))
+round(c(weighted = 100 * weighted.mean(s$harris, w2),
+        error    = 100 * weighted.mean(s$harris, w2) - true_share), 2)
+```
+
+> Weighting on the right variable takes the error from about **+5.5 points to
+> under one**. Weighting on the wrong variable changes **nothing** — the estimate
+> does not move.
+>
+> So weighting works, exactly and only when you already know what is wrong. In
+> 2016 the industry discovered it had not been weighting by education, and fixed
+> it. In 2020 it missed again, in the same direction. The variable you have not
+> thought of is invisible by construction, and no amount of arithmetic finds it.
+
+***
+
+# Part 8: What to carry into Tuesday
+
+**A margin of error is a statement about sample size and nothing else.** It is
+honest and it is narrow. It does not cover bias, and bias is the thing that has
+been going wrong.
+
+**Polling averages do not fix a shared error.** If every poll is wrong in the
+same direction, so is the average of them.
+
+**And the errors have been correlated across states.** When the polls miss, they
+tend to miss the same way everywhere at once, which is why the states you care
+about most are the ones where being wrong matters most.
+
+On Thursday next week we will have the answers, and you can check the forecast
+you read against what actually happened.
+
+***
+
+# Part 9: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — How big does the bias have to be?
+
+```{r opt-a, fig.width = 8, fig.height = 5}
+gap <- 0.20                # <- change this. Try 0.05, 0.10, 0.40.
+
+ans <- ifelse(population == "Harris", 1 + gap, 1)
+est <- replicate(300, 100 * mean(sample(population, 1000, prob = ans,
+                                        replace = TRUE) == "Harris"))
+
+hist(est, breaks = 25, col = "#F4A58255", border = "white", xlim = c(44, 62),
+     xlab = "Poll estimate (%)", ylab = "Polls",
+     main = paste0("Harris voters ", round(100*gap), "% likelier to respond"))
+abline(v = 100 * truth, lwd = 3, col = "#B2182B")
+
+c(response_gap = gap, average_poll = round(mean(est), 2),
+  bias = round(mean(est) - 100 * truth, 2),
+  moe_claimed = 3.1)
+```
+
+**Write about:** how small a response gap does it take to matter? Start at 0.05
+— a 5% difference in willingness to answer, which sounds like nothing — and
+report the bias it produces. Compare that to the ±3.1 the poll would advertise.
+Then say what this implies for reading a poll that shows a 1.5-point race, which
+is what 2024 actually was.
+
+***
+
+### Option B — Does averaging help?
+
+```{r opt-b}
+n_polls <- 20              # <- change this. Try 5, 20, 200.
+
+ans <- ifelse(population == "Harris", 1.20, 1)
+
+honest <- replicate(n_polls, 100 * mean(sample(population, 1000) == "Harris"))
+skewed <- replicate(n_polls, 100 * mean(sample(population, 1000, prob = ans,
+                                               replace = TRUE) == "Harris"))
+
+round(c(truth          = 100 * truth,
+        avg_of_honest  = mean(honest),
+        avg_of_skewed  = mean(skewed),
+        spread_honest  = sd(honest),
+        spread_skewed  = sd(skewed)), 2)
+```
+
+**Write about:** averaging many honest polls works — the average closes in on the
+truth as you add more. Averaging many biased polls does not, however many you
+add. Report both. Then the question that matters this week: polling *aggregators*
+average dozens of polls and report a very tight interval. What is that interval
+actually measuring, and what would have to be true for it to mean what readers
+take it to mean?
+
+***
+
+### Option C — Weighting on the wrong thing
+
+```{r opt-c}
+strength <- 0.35           # <- how strongly trust drives response. Try 0.1, 0.35, 0.8.
+
+resp <- ifelse(trust == 1, 1.00, strength)
+j <- sample(N2, 5000, prob = resp, replace = TRUE)
+ss <- data.frame(harris = harris[j], trust = trust[j])
+
+tgt <- mean(trust)
+wr <- ifelse(ss$trust == 1, tgt/mean(ss$trust), (1-tgt)/(1-mean(ss$trust)))
+
+round(c(truth       = true_share,
+        raw         = 100 * mean(ss$harris),
+        weighted    = 100 * weighted.mean(ss$harris, wr),
+        raw_error   = 100 * mean(ss$harris) - true_share,
+        wtd_error   = 100 * weighted.mean(ss$harris, wr) - true_share), 2)
+```
+
+**Write about:** as `strength` falls toward 1, non-response stops mattering and
+the raw poll is fine. As it falls toward 0.1, almost nobody low-trust answers and
+the raw poll is badly wrong — but weighting still rescues it, *because we can see
+the variable*. State plainly what would happen if the variable driving
+non-response were something the pollster does not measure. Then connect it to
+Week 9: attention and response are both behaviours we can observe, and belief is
+not.
+
+***
+
+### Option D — Ask your own question
+
+Change the truth to a landslide instead of a 1.5-point race and see whether bias
+still matters. Or find out how large a poll would have to be for its margin of
+error to shrink below the bias — a trick question worth answering.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can read a number with a ± after it and say what that symbol
+does and does not cover.
+
+***
+
+## Where the data came from
+
+Mostly, it did not. **This lab is a simulation**, and that is the design rather
+than a compromise: you cannot watch a poll fail unless you know the true answer,
+and with real polling data you never do until afterwards.
+
+The truth the simulation is built around is real — the 2024 national two-party
+vote, **Trump 50.75% to Harris 49.25%**, from the compilation used in Week 4.
+`data/pres2024_states.csv` is the state-level file from Weeks 1, 2 and 6, copied
+here so the lab stands alone and so Option D can use it.
+
+Two honest limits on what a simulation can show:
+
+- **The response gaps here are invented.** Twenty percent is a plausible-looking
+  number, not a measured one. The *shape* of the argument is what transfers, not
+  the size of any particular bias.
+- **Real non-response is not one variable.** It is many, correlated, and shifting
+  between elections. Part 7 uses a single tidy variable so the mechanism is
+  visible; reality gives pollsters no such favour.
+
+If you want the real thing, the **Cooperative Election Study**
+(<https://doi.org/10.7910/DVN/X11EP6>) publishes tens of thousands of interviews
+per cycle with its weights attached, and its documentation of how those weights
+were built is worth reading alongside Bailey.

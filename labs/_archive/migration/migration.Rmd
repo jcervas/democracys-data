@@ -1,0 +1,588 @@
+---
+title: "Who Moved, and Who Never Left"
+subtitle: "84-355 Democracy's Data | Migration between the states, ACS 2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+# fig.retina = 1 with the default 96 dpi renders every figure at exactly the
+# size it is displayed at. The two arc maps are full-bleed dark rasters and at
+# the usual 2x they alone were 766 kB of base64 inside the self-contained HTML.
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.6,
+                      dpi = 96, fig.retina = 1)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `migration-brief.Rmd` first.** This lab works through the same material
+> with the code exposed. The brief tells you what the question is and why it is
+> hard; this shows you where each number came from.
+
+***
+
+# Migration is apportionment
+
+> *"People are voting with their feet."*
+
+Every ten years the House is redistributed among the states according to where
+people live. **Nobody votes on that redistribution.** It is the accumulated
+result of millions of private decisions about jobs, rent and family, and it moves
+seats and electoral votes without an election.
+
+So: who moves, from where, to where — and **how much of what we think we know
+about it can the data actually support?**
+
+# Steps 1–2 — What a migration statistic is, and one state
+
+```{r load}
+D  <- "data"
+fl <- read.csv(file.path(D, "flows.csv"))        # one row per ordered state pair
+st <- read.csv(file.path(D, "states.csv"))       # one row per state, plus DC and PR
+ar <- read.csv(file.path(D, "arcs.csv"))         # precomputed arc geometry
+mo <- read.csv(file.path(D, "mobility.csv"))     # CPS back-series, one row per year
+cy <- read.csv(file.path(D, "county_focus.csv")) # one county, close up
+mp <- read.csv(file.path(D, "map_states.csv"))   # state outlines, delta-encoded
+ins <- read.csv(file.path(D, "map_insets.csv"))  # Alaska / Hawaii / Puerto Rico boxes
+mm <- read.csv(file.path(D, "meta.csv"))         # what the build script counted
+
+S <- st[st$is_state, ]        # Puerto Rico is in the flows but is not a state
+
+# Every number in the prose below is pulled out with these four helpers, so
+# nothing in this document is typed in by hand. If the data changes, the
+# sentences change with it.
+mv <- function(k) mm$value[mm$key == k]             # one value from meta.csv
+mn <- function(k) as.numeric(mv(k))
+n  <- function(x) format(round(x), big.mark = ",")  # 254332 -> "254,332"
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+
+# the build script chose all three FROM THE DATA, not from a list
+FOCUS    <- mv("focus_state")      # largest net interstate flow, either sign
+CONTRAST <- mv("contrast_state")   # fewest inflows that clear their own margin
+CTY      <- mv("focus_county")     # most movement of any county in FOCUS
+NOR      <- nrow(st) - 1           # origins available to any one state
+
+c(state_pairs = nrow(fl), states_and_dc = nrow(S), possible_origins = NOR)
+```
+
+Every number here comes from one survey question: **"Where did you live one year
+ago?"** Cross the answer against where the household lives now and you get a
+`r nrow(st)` × `r nrow(st)` table — `r n(nrow(fl))` ordered pairs once the
+diagonal is dropped.
+
+```{r focus}
+F1 <- S[S$state == FOCUS, ]
+F1[, c("state", "in_est", "in_moe", "out_est", "out_moe", "net", "net_moe")]
+
+# how many margins of error away from zero is that net figure?
+round(abs(F1$net) / F1$net_moe, 1)
+```
+
+**`r FOCUS` lost `r n(-F1$net)` more people to other states than it gained from
+them** — the largest net domestic outflow in the country, and
+`r pc(abs(F1$net) / F1$net_moe, 1)` times its own margin of error.
+
+# Step 3 — The arc map
+
+Each arc runs between two states' **population-weighted centres**: the point
+around which a state's residents actually are, not the middle of its outline.
+
+**Width is the number of people, and nothing else is.** Colour says something
+different: whether the flow is big enough that the survey can tell it apart
+from zero, which is what Steps 5 and 6 are about.
+
+```{r arcmap, fig.width=7.2, fig.height=6.6}
+MW <- mn("frame_w")     # the drawing frame the build script laid the map out in
+MH <- mn("frame_h")
+
+# "x0 y0 dx dy ..." -> absolute coordinates
+mdec <- function(p) {
+  v <- as.integer(strsplit(p, " ", fixed = TRUE)[[1]])
+  list(x = cumsum(v[c(TRUE, FALSE)]), y = cumsum(v[c(FALSE, TRUE)]))
+}
+
+# ---- WIDTH: the only channel carrying the number of people ---------------
+# The scale is ABSOLUTE, not per-panel: WLWD line units at WREF people, so the
+# same thickness means the same number of movers in every map below and the key
+# in the corner can be read off. The transform is a square root, because these
+# flows span roughly 300 to 1 -- drawn linearly the small arcs vanish and the
+# big ones become blobs.
+WREF <- 50000     # a flow of this many people ...
+WLWD <- 5.0       # ... is drawn this thick
+WMIN <- 0.40      # and nothing thinner than this, or it disappears
+awid <- function(e) pmax(WMIN, WLWD * sqrt(e / WREF))
+WKEY <- c(1000, 10000, 50000)      # the reference arcs in the corner key
+
+# ---- COLOUR: a different variable, not a second copy of the width --------
+ARC <- "#5fb0e5"      # the survey can tell this flow apart from zero
+DIM <- "#999999"      # it cannot
+
+arckey <- function(cex = 0.72) {           # drawn with the map's own function
+  x2 <- MW - 22; x1 <- x2 - 78; xt <- x1 - 12
+  yy <- c(34, 84, 142)
+  text(x2, 186, "migrants per arc", col = "#9fb3c8", cex = cex, adj = 1)
+  for (i in seq_along(WKEY)) {
+    lines(c(x1, x2), rep(yy[i], 2), col = adjustcolor(ARC, 0.85),
+          lwd = awid(WKEY[i]))
+    text(xt, yy[i], format(WKEY[i], big.mark = ","), col = "#9fb3c8",
+         cex = cex, adj = 1)
+  }
+}
+
+arcpanel <- function(hub, dir, title, grey_insig = FALSE) {
+  d <- ar[ar$hub == hub & ar$dir == dir, ]
+  d <- d[order(d$est), ]                       # small first, big drawn on top
+  par(bg = "#12161c", mar = c(0.2, 0.2, 1.4, 0.2))
+  plot(NA, xlim = c(0, MW), ylim = c(0, MH), asp = 1, axes = FALSE, ann = FALSE)
+  for (i in seq_len(nrow(mp))) {
+    z <- mdec(mp$pts[i])
+    polygon(z$x, z$y, col = "#1e2732", border = "#2f3d4d", lwd = 0.4)
+  }
+  rect(ins$x0, ins$y0, ins$x1, ins$y1, border = "#2f3d4d", lwd = 0.5)
+  lw <- awid(d$est)
+  tt <- seq(0, 1, length.out = 40)
+  for (i in seq_len(nrow(d))) {
+    # quadratic Bezier: start, control point, end
+    x <- (1-tt)^2 * d$x0[i] + 2*(1-tt)*tt * d$cx[i] + tt^2 * d$x1[i]
+    y <- (1-tt)^2 * d$y0[i] + 2*(1-tt)*tt * d$cy[i] + tt^2 * d$y1[i]
+    if (!d$sig[i] && grey_insig)     # Step 6 demotes these to dotted hairlines
+      lines(x, y, col = adjustcolor(DIM, 0.55), lwd = 0.7, lty = 3)
+    else if (!d$sig[i])              # elsewhere they keep their true width
+      lines(x, y, col = adjustcolor(DIM, 0.70), lwd = lw[i])
+    else
+      lines(x, y, col = adjustcolor(ARC, 0.85), lwd = lw[i])
+  }
+  arckey()
+  points(st$mx, st$my, pch = 19, cex = 0.3, col = "#7f93a8")
+  h <- st[st$state == hub, ]
+  points(h$mx, h$my, pch = 21, cex = 1.1, col = "#ffffff", bg = "#C41230", lwd = 1)
+  mtext(title, side = 3, line = 0.1, col = "#dbe4ee", cex = 0.8, adj = 0.02)
+}
+
+par(mfrow = c(2, 1))
+arcpanel(FOCUS, "in",  paste("Arriving in", FOCUS))
+arcpanel(FOCUS, "out", paste("Leaving", FOCUS))
+```
+
+```{r arcmap-width}
+# what the square root actually delivers: the spread of the flows arriving in
+# FOCUS, and the spread of the widths they are drawn at
+aw <- ar[ar$hub == FOCUS & ar$dir == "in", ]
+c(people_widest_over_narrowest = round(max(aw$est) / min(aw$est)),
+  width_widest_over_narrowest  = round(max(awid(aw$est)) / min(awid(aw$est)), 1))
+```
+
+A `r pc(max(aw$est) / min(aw$est), 0)`-to-one spread in people becomes a
+`r pc(max(awid(aw$est)) / min(awid(aw$est)), 1)`-to-one spread in width. That is
+the compromise: not proportional, but wide enough that the heaviest arcs are
+unmistakable and the lightest are still on the page.
+
+```{r biggest-pair}
+head(fl[order(-fl$est), c("from_state", "to_state", "est", "moe")], 4)
+
+# which two states exchange the most people, counting both directions?
+key   <- paste(pmin(fl$from_state, fl$to_state), pmax(fl$from_state, fl$to_state))
+gross <- tapply(fl$est, key, sum, na.rm = TRUE)
+head(sort(gross, decreasing = TRUE), 3)
+
+# that pair, one direction at a time, heavier direction first
+both <- fl[key == names(which.max(gross)), c("from_state", "to_state", "est", "moe")]
+both <- both[order(-both$est), ]
+both
+```
+
+**The heaviest arc runs in both directions and it is the same one.**
+`r both$from_state[1]` and `r both$to_state[1]` exchange more people than any
+other pair of states — `r n(both$est[1])` from `r both$from_state[1]` to
+`r both$to_state[1]`, and `r n(both$est[2])` back the other way. Net migration is
+a small difference between two very large numbers.
+
+# Step 4 — Every state at once
+
+There are two ways to rank states on one chart and they do not agree: **net per
+1,000 residents**, which puts Wyoming and Texas on the same scale, and the
+**raw net count**, which is what moves House seats. Both are drawn below, with
+the Bureau's 90 percent interval laid over each bar.
+
+```{r rate-moe}
+# the margin of error on a rate is the margin on the count, divided by the same
+# population the rate was divided by
+S$rate_moe <- 1000 * S$net_moe / S$pop1
+S$rate_lo  <- S$net_per1k - S$rate_moe
+S$rate_hi  <- S$net_per1k + S$rate_moe
+h <- head(S[order(-S$net_per1k), c("state", "net", "net_moe", "net_per1k",
+                                   "rate_lo", "rate_hi", "net_sig")], 5)
+h[, 3:6] <- round(h[, 3:6], 1)
+h
+```
+
+```{r diverge, fig.height=6.6}
+divpanel <- function(v, m, ttl, xlab) {
+  o <- order(v); vv <- v[o]; mm <- m[o]
+  par(mar = c(4.2, 5.0, 1.8, 1.2))
+  bp <- barplot(vv, horiz = TRUE, border = NA, names.arg = rep("", length(vv)),
+                col = ifelse(!S$net_sig[o], "#999999",
+                             ifelse(vv > 0, "#4d9221", "#C41230")),
+                xlim = range(c(vv - mm, vv + mm)) * 1.04, xlab = xlab)
+  axis(2, at = bp, labels = S$state[o], las = 1, cex.axis = 0.38,
+       tick = FALSE, line = -0.7)
+  segments(vv - mm, bp, vv + mm, bp, col = "#00000099", lwd = 0.6)  # the interval
+  segments(0, min(bp) - 0.5, 0, max(bp) + 0.5, col = "#333", lwd = 1)
+  mtext(ttl, side = 3, line = 0.4, cex = 0.7, adj = 0)
+}
+par(mfrow = c(1, 2))
+divpanel(S$net_per1k, S$rate_moe, "per 1,000 residents",
+         "net per 1,000 residents")
+divpanel(S$net / 1000, S$net_moe / 1000, "raw net people",
+         "net people (thousands)")
+legend("topleft", bty = "n", cex = 0.55, border = NA,
+       fill = c("#4d9221", "#C41230", "#999999"),
+       legend = c("net gain", "net loss", "not distinguishable from zero"))
+```
+
+```{r net-extremes}
+rbind(head(S[order(-S$net_per1k), c("state", "net", "net_moe", "net_per1k", "net_sig")], 3),
+      head(S[order( S$net_per1k), c("state", "net", "net_moe", "net_per1k", "net_sig")], 3))
+```
+
+The familiar pattern: the Northeast, the industrial Midwest and `r FOCUS`
+losing; the South and interior West gaining. **But the two panels disagree about
+who is on top**, and the disagreement is the point:
+
+```{r rank-clash}
+TOPR <- which.max(S$net_per1k)     # highest rate
+TOPN <- which.max(S$net)           # highest raw count
+RKN  <- rank(-S$net); RKR <- rank(-S$net_per1k)
+
+# every OTHER jurisdiction whose rate interval reaches into the leader's
+OVL <- which(S$rate_hi >= S$rate_lo[TOPR] & seq_len(nrow(S)) != TOPR)
+
+c(rate_leader_rank_on_raw = RKN[TOPR],
+  raw_leader_rank_on_rate = RKR[TOPN],
+  overlapping_the_leader  = length(OVL),
+  spearman = round(cor(S$net, S$net_per1k, method = "spearman"), 2))
+```
+
+**`r S$state[TOPR]` has the highest rate** — `r pc(S$net_per1k[TOPR])` per
+1,000 — but that is only `r n(S$net[TOPR])` people, and it ranks
+`r RKN[TOPR]` of `r nrow(S)` on the raw count. **`r S$state[TOPN]` has the
+highest raw count**, `r n(S$net[TOPN])` people, and ranks `r RKR[TOPN]` of
+`r nrow(S)` per resident.
+
+And the per-capita ranking does not survive its own margin of error.
+`r S$state[TOPR]`'s rate interval runs from `r pc(S$rate_lo[TOPR])` to
+`r pc(S$rate_hi[TOPR])` per 1,000, and **`r length(OVL)` other jurisdictions
+have intervals reaching into it**. The estimate is real; the position is not.
+Per-capita tables are dominated by small states, where the same absolute
+uncertainty becomes a much larger relative one.
+
+**And look at the grey bars.** For `r sum(!S$net_sig)` of the `r nrow(S)`
+jurisdictions ranked here — 50 states and the District of Columbia — the net
+migration figure cannot be told apart from zero.
+
+# Steps 5–6 — None of these are counts
+
+> **Before you run this section, look again at the columns you have been
+> ignoring.** Every estimate in this file is printed beside a `moe` — a 90
+> percent margin of error, published by the Census Bureau itself. There are
+> `r n(nrow(fl))` ordered pairs of states.
+>
+> **Predict: how many describe a flow the survey can actually distinguish from
+> zero?** Write your number down before running the next chunk.
+
+A residual vote cannot be negative; a migration flow cannot be *known* when the
+estimate is smaller than its own margin of error. That is the test:
+
+```{r moe-test}
+# a flow clears zero when the low end of its interval is above zero,
+# i.e. when the estimate exceeds its own margin of error
+c(pairs        = nrow(fl),
+  suppressed_N = sum(is.na(fl$est)),          # "insufficient sample cases"
+  exactly_zero = sum(fl$est == 0, na.rm = TRUE),
+  distinguishable_from_zero = sum(fl$sig),
+  pct_surviving = round(100 * sum(fl$sig) / nrow(fl), 1))
+
+# and the share of actual movers sitting in the pairs that fail
+round(100 * sum(fl$est[!fl$sig], na.rm = TRUE) / sum(fl$est, na.rm = TRUE), 2)
+```
+
+**`r n(sum(!fl$sig))` of `r n(nrow(fl))` state pairs —
+`r pc(100 * sum(!fl$sig) / nrow(fl), 0)`% — do not survive. Those
+`r n(sum(!fl$sig))` contain
+`r pc(100 * sum(fl$est[!fl$sig], na.rm = TRUE) / sum(fl$est, na.rm = TRUE), 2)`%
+of the people.**
+
+The margin of error does not fall evenly. **It destroys the thin connections and
+leaves the thick ones untouched** — the median surviving flow is
+`r n(median(fl$est[fl$sig]))` people, the median failed flow
+`r n(median(fl$est[!fl$sig], na.rm = TRUE))` — which means the arcs that make a
+flow map *interesting* are exactly the arcs that are not there.
+
+```{r caterpillar, fig.height=4.0}
+ex  <- fl[!is.na(fl$est), ]; ex <- ex[order(-ex$est), ]
+sel <- rbind(head(ex, 4), head(ex[!ex$sig, ], 8))
+sel$lab <- paste(abbreviate(sel$from_state, 12), "->", abbreviate(sel$to_state, 12))
+sel <- sel[order(sel$est), ]
+par(mar = c(3.6, 9.4, 1.0, 1.4))
+yy <- seq_len(nrow(sel))
+plot(NA, xlim = c(min(0, min(sel$est - sel$moe)), max(sel$est + sel$moe) * 1.04),
+     ylim = c(0.4, nrow(sel) + 0.6), axes = FALSE, ann = FALSE)
+abline(v = 0, col = "#333", lwd = 1.2)
+cl <- ifelse(sel$sig, "#2c7fb8", "#C41230")
+segments(sel$est - sel$moe, yy, sel$est + sel$moe, yy, col = cl, lwd = 3)
+points(sel$est, yy, pch = 19, cex = 0.8, col = cl)
+axis(1, cex.axis = 0.7)
+axis(2, at = yy, labels = sel$lab, las = 1, cex.axis = 0.62, tick = FALSE, line = -0.5)
+mtext("people who moved, with the published 90% interval", side = 1, line = 2.3, cex = 0.75)
+```
+
+```{r biggest-failure}
+# the largest flow in the country that cannot be told apart from zero
+bad <- fl[!fl$sig, ][which.max(fl$est[!fl$sig]), ]
+bad[, c("from_state", "to_state", "est", "moe")]
+```
+
+**`r bad$from_state` to `r bad$to_state`: `r n(bad$est)` ± `r n(bad$moe)`.** A
+published statistic whose own publisher says it is consistent with nobody making
+that move at all.
+
+And whether your state's map survives this test depends mostly on **how big your
+state is**:
+
+```{r sig-by-size}
+rbind(head(S[order(-S$sig_in_n), c("state", "pop1", "sig_in_n", "sig_out_n")], 3),
+      head(S[order( S$sig_in_n), c("state", "pop1", "sig_in_n", "sig_out_n")], 3))
+round(cor(log(S$pop1), S$sig_in_n), 2)
+
+C1 <- S[S$state == CONTRAST, ]   # the state with the fewest usable inflows
+```
+
+```{r contrast-map, fig.width=7.2, fig.height=6.6}
+par(mfrow = c(2, 1))
+arcpanel(FOCUS, "in",
+         sprintf("%s: %d of %d inflows usable", FOCUS, F1$sig_in_n, NOR),
+         grey_insig = TRUE)
+arcpanel(CONTRAST, "in",
+         sprintf("%s: %d of %d inflows usable (dotted grey = cannot be told from zero)",
+                 CONTRAST, C1$sig_in_n, NOR),
+         grey_insig = TRUE)
+```
+
+**A flow map of a small state is mostly a picture of the sample size.**
+`r CONTRAST` is not less connected to the country than `r FOCUS`; it is smaller,
+so `r NOR - C1$sig_in_n` of its `r NOR` possible inflows land in too little
+sample to resolve.
+
+# Steps 7–8 — Who a state is made of, and who came from outside
+
+Flows are a year. **Stocks are a century.** The share of a state's residents born
+in that state records every migration that ever happened to it.
+
+```{r born}
+o <- S[order(-S$born_state_pct), c("state", "born_state_pct",
+                                   "born_otherstate_pct", "born_foreign_pct")]
+rbind(head(o, 5), tail(o, 5))
+
+# the national figure, weighted by population rather than averaged over states
+round(100 * sum(S$born_state_est) / sum(S$pop_total), 1)
+```
+
+**`r o$state[1]` `r pc(o$born_state_pct[1])`%.
+`r o$state[nrow(o)]` `r pc(o$born_state_pct[nrow(o)])`%.** Nationally
+`r pc(100 * sum(S$born_state_est) / sum(S$pop_total))`% of Americans live in the
+state they were born in.
+
+```{r abroad}
+h <- head(S[order(-S$abroad_per1k), ], 6)
+h[, c("state", "abroad_est", "abroad_moe", "abroad_per1k", "net")]
+```
+
+**"From abroad" is a statement about geography, not about citizenship or legal
+status.** It counts everyone who lived outside the 50 states and DC a year ago:
+returning citizens, military families, students, people arriving from Puerto Rico
+and the U.S. Island Areas — already citizens and nationals — and immigrants.
+Nothing in this file separates them further.
+
+Of the `r nrow(h)` states taking the most arrivals from abroad per resident,
+`r sum(h$net < 0)` are **simultaneously losing people to other states** — two
+populations moving in opposite directions through the same place, which a single
+"net migration" headline cancels against each other.
+
+And note that **the survey only interviews people who live here**. There is no
+matching number for people who left the country. Emigration is not small in this
+dataset; it is *absent*.
+
+# Step 9 — One county, and the estimate coming apart
+
+```{r county}
+# county_focus.csv holds only the largest inflows, to keep the file small.
+# The counts for the WHOLE county were computed by the build script:
+head(cy[, c("state_a", "county_a", "into_b", "into_b_moe", "sig_in")], 6)
+
+c(county_pairs_reported = mn("county_all_pairs"),
+  distinguishable_from_zero = mn("county_all_sig"),
+  pct_surviving_county = round(100 * mn("county_all_sig") / mn("county_all_pairs"), 1),
+  pct_surviving_state  = mn("pct_sig_of_pairs"))
+```
+
+**`r n(mn("county_all_sig"))` of `r n(mn("county_all_pairs"))` county pairs
+feeding `r CTY` survive —
+`r pc(100 * mn("county_all_sig") / mn("county_all_pairs"))`%, against
+`r pc(mn("pct_sig_of_pairs"))`% at state level** — and that is *after* pooling
+five years of sample instead of one. County-to-county is a **five-year** estimate
+(`r mv("c2c_window")`) and cannot be put on the same axis as the one-year table
+used everywhere above.
+
+# Step 10 — Americans move less than they used to
+
+```{r mobility, fig.height=4.2}
+par(mar = c(3.8, 4.0, 1.6, 9.2))
+plot(NA, xlim = range(mo$year), ylim = c(0, max(mo$movers) * 1.04),
+     xlab = "", ylab = "% who moved in the previous year", axes = FALSE)
+axis(1); axis(2, las = 1); box(col = "#ccc")
+V <- list(c("movers", "#999999", "all movers"),
+          c("same_county", "#2c7fb8", "within the same county"),
+          c("same_state_diff_county", "#4d9221", "same state, new county"),
+          c("diff_state", "#C41230", "to a different state"))
+for (v in V) lines(mo$year, mo[[v[1]]], col = v[2], lwd = 2.2)
+for (v in V) text(max(mo$year) + 1.2, mo[[v[1]]][nrow(mo)], v[3], pos = 4,
+                  cex = 0.6, col = v[2], xpd = NA)
+```
+
+```{r mobility-endpoints}
+f <- mo[1, ]; l <- mo[nrow(mo), ]
+rbind(f, l)[, c("year", "movers", "diff_state")]
+
+# interstate moving now, as a share of what it was in the first year
+round(100 * l$diff_state / f$diff_state)
+```
+
+**In `r f$year`, `r pc(f$movers)`% of Americans had moved in the previous year.
+By `r l$year` it was `r pc(l$movers)`%.** Interstate moving fell from
+`r pc(f$diff_state)`% to `r pc(l$diff_state)`% —
+`r pc(100 * l$diff_state / f$diff_state, 0)`% of what it was.
+
+This is the **Current Population Survey**, not the ACS — a different survey with
+a different design, not comparable cell by cell, but the only thing that reaches
+back that far.
+
+Every argument about Americans sorting themselves across the country is happening
+against a long decline in Americans moving at all.
+
+# Step 11 — What you can now say
+
+```{r summing-up}
+g <- head(S[order(-S$net), c("state", "net", "net_moe")], 2)   # biggest gainers
+g
+```
+
+**You can say** who is gaining and losing: `r FOCUS` down `r n(-F1$net)` net to
+other states, `r g$state[1]` and `r g$state[2]` up `r n(g$net[1])` and
+`r n(g$net[2])`, all several times their own margins of error. And that
+`r pc(100 * sum(S$born_state_est) / sum(S$pop_total))`% of Americans live in the
+state they were born in, ranging from `r pc(min(S$born_state_pct))`% to
+`r pc(max(S$born_state_pct))`% across states.
+
+**You can say something sharper.** Of `r n(nrow(fl))` state-to-state connections
+only `r n(sum(fl$sig))` can be distinguished from zero, and those carry
+`r pc(100 * sum(fl$est[fl$sig]) / sum(fl$est, na.rm = TRUE), 1)`% of the movers. **The
+uncertainty is concentrated exactly where the interesting-looking pattern is**,
+so the more distinctive a flow claim sounds, the more likely it is to be an
+artefact of sample size.
+
+**You cannot say** why anybody moved — no reason is recorded, so politics cannot
+be tested here. You cannot say anything about people who left the country. And
+you cannot call any of this a count of people.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Audit a state's map.** Pick any state and count how many of its
+`r NOR` possible inflows and outflows clear their own margin of error
+(`S[S$state == "...", c("sig_in_n","sig_out_n")]`). Then say what an arc map of
+that state would be honest about and what it would fake. Compare a big state to a
+small one.
+
+**Option B — The league table nobody checks.** Find the `r sum(!S$net_sig)`
+states whose net migration cannot be distinguished from zero (`S[!S$net_sig, ]`).
+These states appear in "winners and losers" journalism every year. What should a
+story about them actually say, and how would you write the sentence?
+
+**Option C — Born here versus arrived.** Compare `born_state_pct` to
+`net_per1k`. The correlation is weak
+(r = `r pc(cor(S$born_state_pct, S$net_per1k), 2)`) — find the states that break
+the pattern most and explain what each one is. What is born-in-state share
+actually measuring, if not this year's migration?
+
+**Option D — Your own question.** `r n(nrow(fl))` state pairs, `r nrow(S)`
+jurisdictions, a `r max(mo$year) - min(mo$year)`-year back-series and one county
+in close-up.
+
+# What this lab cannot tell you
+
+- **Why anybody moved.** No motive is recorded anywhere in this data, so the
+  argument about political sorting cannot be settled or even tested here.
+- **Anything about emigration.** The survey interviews people who live in the
+  United States. People who left are not a small number in this file; they are
+  not in it.
+- **Anything about legal status.** "From abroad" is a residence category. It
+  mixes returning citizens, movers from U.S. territories, students and
+  immigrants, and the file separates none of them.
+- **Whether a small state's flows are real.** For `r n(sum(!fl$sig))` state pairs
+  the honest answer is that the survey does not know, and at county level that is
+  true of
+  `r pc(100 - 100 * mn("county_all_sig") / mn("county_all_pairs"), 0)`% of pairs.
+- **Anything across the two ACS tables.** One-year and five-year estimates are
+  different instruments over different windows.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- A newspaper reports that `r n(bad$est)` people moved from `r bad$from_state` to
+  `r bad$to_state`. The Census Bureau says ± `r n(bad$moe)`. What should the
+  newspaper have printed?
+- `r pc(o$born_state_pct[1], 0)`% of people in `r o$state[1]` were born there;
+  `r pc(o$born_state_pct[nrow(o)], 0)`% of people in `r o$state[nrow(o)]` were.
+  Should we expect those two states to have different kinds of politics, and why?
+- Americans move at `r pc(100 * l$movers / f$movers, 0)`% of the rate they did
+  in `r f$year`. Does that make the "Big Sort" argument more plausible or less?
+
+***
+
+### Where the data came from
+
+**State-to-state flows** — U.S. Census Bureau, *State-to-State Migration Flows*,
+**`r mv("acs_year")` ACS 1-year** estimates, Table T13, with the Bureau's
+published 90 percent margins of error.
+
+**Place of birth** — *State of Residence by Place of Birth*,
+`r mv("acs_year")` ACS 1-year, Table T13.
+
+**County-to-county flows** — *County-to-County Migration Flows*,
+**`r mv("c2c_window")` ACS 5-year** estimates.
+
+**The back-series** — *Geographical Mobility*, CPS historical Table A-1,
+`r min(mo$year)` to `r max(mo$year)`. **A different survey from the ACS.**
+
+**Map geometry** — 2020 Census centers of population by state, and the 2020
+cartographic boundary file.
+
+`data/build-data.R` parses all five and writes the CSVs this lab reads. It
+chooses the focus state, the contrast state and the focus county **from the
+data** — largest net flow, fewest usable inflows, most movement — rather than
+from a list.

@@ -1,0 +1,325 @@
+---
+title: "Baselines for Election-Night Forecasting"
+subtitle: "The 2026 Senate map, and how good a baseline has to be before it is useless"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("election-night-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Two years of campaigning, several billion dollars, tens of thousands of advertisements, an industry of polling and forecasting. Against all of that, set one sentence:
+
+> **A state elects the senator of the party whose presidential candidate carried
+> it.**
+
+There are no candidates in that sentence. No money, no polls, no issues, no campaigns, no incumbents — nothing that happened after the previous presidential election had been counted. Run it one level down, across the `r nrow(reh)` House districts of 2024 with the presidential vote counted inside each one. Then ask how many elected a member of the party that had carried them for president. The answer is `r sum(reh$as_expected)`, which is `r pc(acc(reh$as_expected))`% of a national election, called by a rule whose single input is two years stale.
+
+Almost nothing else in this course beats that, and the things that try cost millions of dollars. The number is also, taken the way it invites being taken, badly misleading — which is the more useful of the two facts, and the harder one to arrive at.
+
+Everything below is written **before** the election it is about. That is not a limitation to apologize for. A prior written down afterwards is not a prior, and the `r nrow(sen)` Senate seats this chapter ends on have not yet been voted on.
+
+## What it means for a contest to be already decided
+
+If a rule using no information about a contest predicts its outcome, then the contest was in some sense already decided. Everything the campaign did was either irrelevant, or the work required to hold a line that was already drawn. Which of those it is matters enormously and cannot be read off the result.
+
+The stakes are practical. **Attention is finite**, and it concentrates on dramatic races. If the dramatic races are also the ones where the baseline is least reliable, then attention and consequence are pointed at the same small set. That sounds reassuring until you notice how small the set is.
+
+## Why the baseline works so well is genuinely contested
+
+There is a real dispute about *why* a presidential baseline works so well, and it has consequences.
+
+- **Nationalization.** Hopkins (2018) argues that American political behavior
+  has become substantially nationalized: voters know more about Washington than
+  about their state capital and vote accordingly, so down-ballot results track
+  presidential ones. Abramowitz and Webster (2016) locate the mechanism in
+  negative partisanship — dislike of the other party producing straight-ticket
+  voting.
+- **Incumbency, dwindling.** The older tradition held that House and Senate
+  elections were substantially personal. Mayhew (1974) documented the
+  disappearance of marginal House seats; Gelman and King (1990) built the
+  estimator that made incumbency advantage measurable without bias. If that
+  advantage has shrunk, a presidential baseline should have become more accurate
+  over time, which is a testable claim this file cannot test.
+
+Both accounts predict the same high accuracy today. They disagree about whether it is new.
+
+## Two snapshots, and a third file that will be somebody's judgment
+
+Neither file was collected for the question asked here, and the file this chapter is finally about does not exist yet.
+
+The first is a roster. Which seats face the voters in 2026 is a fact about the calendar rather than a fact about politics, so it could be built two years early. The Class 2 senators are pulled out of `@unitedstates/congress-legislators`, a volunteer-maintained public-domain list of everyone currently serving, and each is joined to the presidential margin in their state.
+
+That margin is borrowed from the electoral-map chapter's folder. It traces back through a private compilation of the fifty-one state canvasses, for the reason that chapter gives at length: **no federal agency publishes American election returns.** The country's most consequential numbers reach the public through people who volunteered to assemble them.
+
+The word to hold on to in that paragraph is *currently*. A roster of current members describes today and is overwritten tomorrow, which is why `senator_last` names whoever held the seat in August 2026 and not whoever will appear on a ballot in November. Retirement, primary defeat, appointment and death each break the column, and by election day several will have. That is not damage to be repaired. It is what a current roster is, and catching a name in these `r nrow(sen)` rows that is not on any ballot is one of the more instructive things a reader can do with the file.
+
+The second file is the opposite kind of object: an election that is finished. It holds the 2024 presidential vote counted inside each congressional district, beside the party that won the House seat there. It comes from the redistricting chapter's folder, and it keeps only the `r nrow(reh)` districts where both halves are present.
+
+Its left column is less official than it looks. Nobody tallies a presidential vote by congressional district. Somebody has to lay precinct returns over district lines and divide the precincts the lines cut through, and the resulting number is a careful reconstruction rather than a canvass.
+
+It is the right evidence anyway, and for a reason peculiar to this chapter. A rule cannot be graded on the election it was written to predict, because that election has not happened. So it is rehearsed one level down, where `r nrow(reh)` districts offer `r nrow(reh)` chances to be wrong instead of `r nrow(sen)`.
+
+The third file is `results_senate_2026_TEMPLATE.csv`: `r nrow(sen)` rows and two empty columns, waiting. What eventually fills them will not be a count. **A called race is a judgment.** Analysts decide that the ballots still outstanding cannot reorder the ones already in, and states differ enormously in how much is still outstanding on Thursday morning.
+
+The template will most likely be filled by hand from a news site, which takes ten minutes and is entirely defensible. If that is what happened, the chapter should say so out loud rather than let a CSV imply a canvass.
+
+Cleaning barely arises here, and that is a property of the sources rather than a virtue of the script. Both files arrived tidy. The build is one merge on a two-letter state abbreviation, one dropping of rows, and a handful of columns worked out by comparison. Those are: who won the state for president, how far from even that was, and whether the party holding the seat is the party that lost it. Nothing was imputed, meaning no missing value was guessed at and filled in, and nothing was reweighted.
+
+Rebuilding the folder is not a matter of redoing the downloads either, and it is worth being exact about why. Exactly one thing here is fetched from the internet: the roster, a CSV that volunteers keep current at a public address. The margins are not fetched at all. They are read sideways out of what the electoral-map and redistricting chapters already produced. The compilation of fifty-one canvasses and the laying of precincts over district lines both happened in other chapters, and this folder shows no trace of either. Whatever those files got wrong, this one has already inherited.
+
+Then the file the chapter is finally about will be typed in by hand off a news site. A typed file cannot be fetched again or checked against its source. If a digit goes in wrong, nothing here will catch it. One fetch, two borrowings, and a transcription — most of the ways a table can arrive, inside one small folder, and only the first of them leaves a URL behind.
+
+## A roster of people, turned into a list of contests
+
+The one thing fetched here is `legislators-current.csv`: 537 rows and 36 columns, one row per person currently serving in Congress. Georgia's two senators, in eight of those columns:
+
+| last_name | first_name | state | type | district | senate_class | party | birthday |
+|:---|:---|:---|:---|:---|:---|:---|:---|
+| Ossoff | Jon | GA | sen | *(empty)* | 2 | Democrat | 1987-02-16 |
+| Warnock | Raphael | GA | sen | *(empty)* | 3 | Democrat | 1969-07-23 |
+
+| Column | What it holds |
+|:---|:---|
+| last_name | surname |
+| first_name | given name |
+| state | the state's two-letter code |
+| type | `sen` or `rep` — which chamber |
+| district | House district; empty for senators, who have none |
+| senate_class | which third of the Senate this seat is in, and so which years it is up |
+| party | party affiliation |
+| birthday | date of birth |
+
+**One row is a person, and this chapter needs a list of contests.** Those are not the same thing, and the gap between them is where all the work is.
+
+Notice `district` is empty and `senate_class` is filled. For a member of the House it is the other way round. **The file is two tables wearing one layout**: 435 representatives and 100 senators stacked together, each carrying blanks where the other's columns are. So the first act of using it is deciding which kind of row you are looking at, from a column called `type`.
+
+Then the selection that produces this chapter. Of the 537 rows, the ones that matter are those where `type` is `sen` **and** `senate_class` is `2`, because Senate terms are six years and the class is what says whose is expiring. Ossoff's seat is up in 2026 and Warnock's is not, and the only thing in the file that distinguishes them is that single digit. Nothing about a senator's name, party or state tells you whether they are on a ballot.
+
+Two rows of Georgia go in. **One comes out**, and Warnock is simply not in this chapter:
+
+```{r clean-en}
+```
+
+```{r shape-en}
+```
+
+### Where the judgment went
+
+**Eleven identifiers were available and none of them was used.** The roster carries `bioguide_id`, `govtrack_id`, `icpsr_id`, `opensecrets_id`, `fec_ids` and half a dozen more. It is, among other things, a crosswalk between everybody else's numbering systems: a table that translates one set of codes into another. The join here is on the two-letter state abbreviation instead, and that is correct: the thing being joined on is a presidential margin, which is a property of a state and not of a person. **A file full of excellent keys is no help when the two sides are different kinds of object.**
+
+**Three columns were made by comparison, not fetched.** `pres24_winner`, `abs_margin` and `hostile_turf` do not exist in either source. They are this chapter's arithmetic — who carried the state, by how much regardless of direction, and whether the party holding the seat is the party that lost the state. The last one is a definition, not a measurement, and every claim about which seats are exposed rests on it.
+
+**The birthday is in the file and the retirement is not.** That asymmetry is the point of the section above. A roster records facts that are true of a person now. It has no column for an intention, so a senator who has already announced they will not run looks exactly like one who is running hard. `r nrow(sen)` rows describe seats, and some number of them describe an incumbent who will not be on the ballot. **The file cannot tell you which**, and this is a defect of the *unit* rather than of the data: a roster of people was never going to be a list of contests.
+
+## One row is one Senate seat up in 2026
+
+There are two files. One row of the landscape file is **one Senate seat up in 2026**:
+
+```{r one-row}
+```
+
+Two things to notice. **`pres24_margin` is not about this election.** It is information from 2024, carried forward, and it is the only predictive column in the file.
+
+And `senator_last` is **whoever held the seat when this file was built, in August 2026.** Retirements, primary defeats and appointments between then and November are not in it. Several will have happened, and an open seat behaves very differently from an incumbent defending one. That is a real defect, and noticing a name that is not on the ballot is a genuine finding.
+
+## What is actually being defended
+
+```{r map}
+```
+
+`r nrow(sen)` seats, `r sum(sen$party == "Republican")` Republican and `r sum(sen$party == "Democrat")` Democratic. **That asymmetry is an accident of 2020**, not a strategy: it is whichever class of senators happened to be elected six years earlier.
+
+Only `r sum(sen$hostile_turf)` seats sit on hostile turf — a senator of one party in a state the other party's presidential candidate carried:
+
+```{r hostile}
+```
+
+```{r tile-static, eval=!knitr::is_html_output(), fig.height=5.0}
+```
+
+```{r tile-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The `r nrow(sen)` seats up in 2026, one square per state.** Colored squares are the `r nrow(sen)` states with a seat on the ballot, filled by the party currently defending it; gray squares have no Senate election. The letter and number inside each contested square give the defending party and that state's 2024 presidential margin. The `r sum(sen$hostile_turf)` heavily outlined squares are the only places where the two disagree — a senator of one party sitting in a state the other party's presidential candidate carried.
+
+## Most of it was never in doubt
+
+```{r safe}
+```
+
+**`r nrow(safe)` of `r nrow(sen)` seats sit in states decided by fifteen points or more in 2024**, and the median seat is in a state decided by `r pc(median(sen$abs_margin))`. Before anybody has raised a dollar, roughly half the class is out of reach.
+
+```{r sen-static, eval=!knitr::is_html_output(), fig.height=5.4}
+```
+
+```{r sen-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Every seat up in 2026, placed by how its state voted for president in 2024.** One point per state, colored by the party defending the seat and ringed where that party is not the party that carried the state. The shaded band is five points either side of even. `r nrow(safe)` of the `r nrow(sen)` points lie fifteen or more points from the center line, and the median seat sits `r pc(median(sen$abs_margin))` points out. The crowding at the edges, not the handful near the middle, is the shape of the class.
+
+## The rule, stated so it can be wrong
+
+The baseline assigns each seat to the party whose presidential candidate carried the state in 2024. Applied to this map:
+
+```{r baseline}
+```
+
+**The rule expects `r sum(sen$flips)` of `r nrow(sen)` seats to change hands** — precisely the `r sum(sen$hostile_turf)` on hostile turf, since those are the only places where the incumbent's party and the presidential winner's party disagree.
+
+That is a genuine, falsifiable prediction, made without knowing a single thing about who is running.
+
+## Testing it on an election that is already counted
+
+We cannot test the rule on 2026 yet. We can test it on an election that has already happened, in a chamber with enough seats to make the test mean something. That is the `r nrow(reh)` House districts of 2024, each with the presidential vote counted inside it. This is where the number at the top of the chapter came from, and it is worth watching it arrive.
+
+```{r rehearsal}
+```
+
+**`r sum(reh$as_expected)` of `r nrow(reh)` — `r pc(acc(reh$as_expected))`%.**
+
+So `r nrow(miss)` districts broke the rule: few enough to list by name, and enough to ask a question of.
+
+> **Before you read on, commit to an answer.** Those `r nrow(miss)` districts
+> elected a member of the party their own presidential vote did not pick.
+> **Where do they sit?** Not geographically — where on the distribution of
+> district partisanship. Scattered across it, from the safest Republican seats to
+> the safest Democratic ones, as a rule that is wrong `r pc(100 - acc(reh$as_expected))`%
+> of the time everywhere would put them? Or concentrated somewhere in it? If
+> concentrated, write down where, and how tightly, before you look.
+
+## The same rule, scored twice at every cut-off
+
+```{r bands}
+```
+
+And the complement:
+
+```{r outside}
+```
+
+```{r regimes-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r regimes-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The rule's accuracy is a function of competitiveness and of almost nothing else.** The same rule is scored twice at every cut-off. The red line is its accuracy among districts within that many points of an even presidential split. The blue line is its accuracy among districts further out than that. The two lines separate at the first cut-off and never come back together. Beyond `r pc(b100)` points from even, the blue line reaches 100% and stays there — across `r sum(reh$dev > b100)` districts, the rule did not miss once.
+
+**Outside five points of even, the rule was right in `r sum(reh$as_expected[reh$dev > 5])` districts out of `r sum(reh$dev > 5)` — `r pc(acc(reh$as_expected[reh$dev > 5]))`%. Inside five points, it was right `r pc(acc(reh$as_expected[reh$dev <= 5]))`% of the time.**
+
+Every single one of the `r nrow(miss)` misses lies within `r pc(max(miss$dev), 1)` points of an even split:
+
+```{r misses}
+```
+
+```{r strip-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r strip-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Every district the rule missed, by name.** The `r nrow(miss)` failures are plotted against the Democratic share of the district's two-party presidential vote, up-triangles for a Trump district that elected a Democrat and down-triangles for the reverse. Gray ticks along the axis mark the `r sum(reh$as_expected)` districts the rule got right, which is the whole rest of the country. The axis runs only from 43.5% to 55% because the misses need no more room than that: the furthest of them lies `r pc(max(miss$dev), 1)` points from an even split.
+
+```{r hist-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r hist-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. The failures against the whole distribution they came from.** Gray bars count all `r nrow(reh)` districts by the Democratic share of their two-party presidential vote; red bars, drawn on the same axis and the same scale, count the `r nrow(miss)` the rule got wrong. The red is not thinly spread across the gray. It occupies a single narrow column in the middle of it. The two long tails, which hold most of the House, are empty of red entirely.
+
+**The rule is not `r pc(acc(reh$as_expected))`% accurate. It is 100% accurate where nothing was at stake and a coin-flip-plus where something was.**
+
+Both readings of that `r pc(acc(reh$as_expected))`% were available and only one is right. "A rule this simple forecasts a national election" is true and misleading. "A rule this simple forecasts every uncompetitive election, which is most of them" is true and useful.
+
+## Applying the corrected rule to 2026
+
+Now ask where the `r nrow(sen)` Senate seats sit relative to the zone in which the rule broke down.
+
+```{r apply}
+```
+
+```{r close-seats}
+```
+
+**`r sum(sen$abs_margin < 5)` seats of `r nrow(sen)` are in the zone where the rule stopped working.** Everything else is, on the 2024 evidence, already answered.
+
+Two caveats before anyone treats that as a forecast. **A House district is not a Senate state** — Senate races have larger, better-funded, better-known candidates and more genuine incumbency, all of which should make a presidential baseline *less* accurate. And **a midterm is not a presidential year**: the electorate is smaller and differently composed, and the president's party has lost House seats in the large majority of midterms since 1858. The rehearsal holds neither of those constant.
+
+## What is left for a campaign to do
+
+The claim available now is sharper than the one the headline percentage supports. A rule containing no information about any candidate was right in `r pc(acc(reh$as_expected))`% of 2024 House districts, and that figure is an average over two regimes that have nothing to do with each other. Its accuracy depends on competitiveness and on essentially nothing else. So **the information a campaign adds is only worth anything in the `r sum(reh$dev <= 5)` districts where the baseline fails**, which is `r pc(100 * mean(reh$dev <= 5))`% of the House. Applied to the 2026 Senate map, that is `r sum(sen$abs_margin < 5)` seats.
+
+What does not follow is that campaigns do not matter. The baseline holding is consistent with two very different worlds: one in which nothing happened, and one in which enormous effort was spent making the expected thing happen. Nothing in either file distinguishes them, and no amount of additional accuracy would. Neither does anything here say what will happen in November. It says what would have to be explained.
+
+## What the argument is really about
+
+**The first argument is about whether this is new.** Hopkins's nationalization thesis says the alignment between presidential and congressional results has tightened over decades. Abramowitz and Webster put the tightening down to negative partisanship. If they are right, the same rehearsal run on 1980 would have produced a much lower accuracy, and the `r nrow(miss)` crossover districts of 2024 would be a small remnant of a once-large category.
+
+Mayhew (1974) documented the growth of the safe House seat from the other end. Gelman and King (1990) showed that most measures of incumbency advantage in use at the time were biased, which is worth remembering before treating any historical comparison as settled. **This file has one election in it and cannot test any of this.**
+
+**The second argument is about what to do on election night.** A high baseline accuracy is an argument for ignoring most of the returns and watching a handful of places. That is exactly what a newsroom does, and exactly what produces the recurring error of reading three dramatic races as a national verdict. Three exceptions out of `r nrow(sen)` is `r pc(100 * (nrow(sen) - 3) / nrow(sen))`% baseline accuracy, which is *worse* than 2024 and still very high.
+
+**The third argument is about counting.** Margins cited on the Thursday after an election move. Mail ballots in several states count for days or weeks. Foley (2013) documented that the shift during the canvass has leaned toward Democratic candidates since about 2000. That is 23 states where the Democratic candidate gained during the canvass in a state they lost, across three cycles, against two for Republicans. **A number that is still moving is not a result**, and a class held two days after an election is holding provisional numbers.
+
+## What `r nrow(reh)` districts can testify to
+
+The strength of this evidence is that it is a real out-of-sample test rather than a fit. The rehearsal file has `r nrow(reh)` cases in it. That is enough to say something about accuracy at each level of competitiveness, instead of only reporting one overall rate, and the level-by-level statement is the one that turned out to matter. The landscape file's single predictive column is a fact about 2024, not an estimate, so neither the rule nor its application to 2026 rests on a model.
+
+Its limits constrain different sentences and are worth taking one at a time. **The landscape is a snapshot from August 2026**: retirements, primary defeats and appointments after that date are simply absent, and an open seat behaves very differently from an incumbent defending one. **A House district is not a Senate state, and a presidential year is not a midterm**, which are the two caveats above and the reason the rehearsal's accuracy will not transfer exactly. This is **one election**, tested across both of those gaps at once. **`r 435 - nrow(reh)` House districts are missing** from the rehearsal file altogether, and every accuracy figure above is computed over `r nrow(reh)`. And there is **no turnout, no polling, no fundraising, no candidate quality** anywhere in either file — exactly one predictor by construction, which is what makes it a clean baseline and useless for anything else.
+
+Three questions remain genuinely open. Whether baseline accuracy has risen over time is the sharpest of them: the nationalization literature predicts it has, and testing that needs decades of district-level presidential results rather than one year of them. Whether the baseline holding means campaigns are irrelevant or means they worked is undecidable from outcomes alone, because it needs a counterfactual no election produces. And what happens in the `r sum(sen$abs_margin < 5)` close Senate seats is genuinely unknown, which is the honest content of a forecast rather than a defect in one.
+
+None of which disturbs the sentence this chapter opened with, only its meaning. A rule with no candidates in it called `r pc(acc(reh$as_expected))`% of a national election. It did so by getting every race that was not a race right. On the `r sum(reh$dev <= 5)` districts where anyone was actually competing it fell to `r pc(acc(reh$as_expected[reh$dev <= 5]))`%, which is still better than chance and no longer anything a forecaster would be paid for. Both halves are true at once, and a newsroom that reports the first without the second has said almost nothing about the country and something quite precise about arithmetic.
+
+## Sources
+
+**Data**
+
+- 2026 Senate landscape: seats up in Class II, with 2024 presidential margins by
+  state. Incumbents as of August 2026.
+- Rehearsal file: 2024 presidential results by congressional district, joined to
+  the party of the member elected, from Jason Timm's `PresElectionResults`
+  compilation (<https://github.com/jaytimm/PresElectionResults>).
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`rehearsal_house_2024.csv`](data/derived/rehearsal_house_2024.csv), [`senate_2026_landscape.csv`](data/derived/senate_2026_landscape.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `rehearsal_house_2024.csv` has `baseline`, `actual` and `as_expected` for every district. Count how often the baseline was right. Is that impressive, or is the bar low?
+- Find the districts in `rehearsal_house_2024.csv` where `as_expected` is FALSE. What do those districts have in common?
+- `senate_2026_landscape.csv` flags senators sitting on `hostile_turf` with `pres24_margin` beside them. List them. Which party has more exposure?
+- Sort `senate_2026_landscape.csv` by `abs_margin`. A baseline is only useful where it might be wrong. Which contests would you actually watch on the night?
+
+**Academic literature**
+
+- Abramowitz, A. I. and Webster, S. (2016). "The rise of negative partisanship
+  and the nationalization of U.S. elections in the 21st century." *Electoral
+  Studies* 41: 12–22.
+- Foley, E. B. (2013). "A Big Blue Shift: Measuring an Asymmetrically Increasing
+  Margin of Litigation." *Journal of Law and Politics* 28(4): 501–546.
+- Gelman, A. and King, G. (1990). "Estimating Incumbency Advantage Without
+  Bias." *American Journal of Political Science* 34(4): 1142–1164.
+- Hopkins, D. J. (2018). *The Increasingly United States: How and Why American
+  Political Behavior Nationalized.* Chicago: University of Chicago Press.
+- Mayhew, D. R. (1974). "Congressional Elections: The Case of the Vanishing
+  Marginals." *Polity* 6(3): 295–317.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

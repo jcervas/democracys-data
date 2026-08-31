@@ -1,0 +1,422 @@
+---
+title: "Which Way Did It Blow"
+subtitle: "84-355 Democracy's Data | The election wind map, and what an arrow promises"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2,
+                      fig.height = 4.4, dpi = 96, fig.retina = 1)
+options(scipen = 999)
+D <- "data"
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `wind-map-brief.Rmd` first.** This lab runs the same steps with the
+> code exposed.
+
+***
+
+# The claim an arrow makes
+
+> *"Miami-Dade swung eleven points."*
+
+Every wind map is thousands of sentences like that at once. Each one says:
+**this is one place, I observed it twice, and here is the difference.**
+
+That is three claims, and any of them can be false while the arrow still gets
+drawn.
+
+# Step 1 — The encoding, fixed once
+
+```{r encoding}
+ff <- read.csv(file.path(D, "facts.csv"))
+FV <- setNames(ff$value, ff$key)
+F  <- function(k) { z <- FV[[k]]; n <- suppressWarnings(as.numeric(z))
+                    if (is.na(n)) z else n }
+
+data.frame(
+  channel = c("direction", "direction", "length", "length", "thickness"),
+  rule = c("straight up = no change",
+           paste0(F("deg_per_point"), " degrees clockwise per point toward the Republican"),
+           paste0(F("km_per_point_us"), " km per point (national map)"),
+           paste0("stops growing past ", F("len_cap_pts"), " points"),
+           "square root of votes cast"))
+```
+
+Direction and length carry the same number twice. That redundancy is the point:
+the map survives being printed in black and white.
+
+**The scale is a declared constant, not something fitted to the data on the
+page.** A map that rescales its arrows to fill its own frame is a picture of
+the frame.
+
+# Step 2 — The national map, and what it is made of
+
+```{r national}
+us <- read.csv(file.path(D, "wind_us.csv"),
+               colClasses = c(county_fips = "character"))   # leading zeros!
+us <- us[us$in_frame == "TRUE" | us$in_frame == TRUE, ]
+c(counties        = nrow(us),
+  median_swing    = round(median(us$swing), 2),
+  share_toward_R  = round(100 * mean(us$swing > 0), 1),
+  largest_R_shift = round(max(us$swing), 1),
+  largest_D_shift = round(min(us$swing), 1))
+```
+
+**Read `county_fips` as character.** Read as a number, `01001` becomes `1001`
+and Alabama's counties join to nothing. A sibling lab lost 1,549 of 4,489
+identifiers to exactly this.
+
+# Step 3 — Who published this?
+
+There is **no federal source for county-level presidential returns.** The
+Federal Election Commission publishes official results by state and by
+congressional district. County returns are published by 51 separate state
+election offices in 51 formats.
+
+So the national file used above is somebody's compilation. Its own README says
+the 2024 figures were scraped from a television network's results pages and
+that the numbers **"are not authoritative."**
+
+That does not make it useless. It makes it a file you have to audit.
+
+# Step 4 — Audit the units
+
+```{r audit}
+c20 <- read.csv("../data-sources/data/pres2020_counties.csv",
+                colClasses = c(county_fips = "character"))
+c24 <- read.csv("../data-sources/data/pres2024_counties.csv",
+                colClasses = c(county_fips = "character"))
+c(rows_2020   = nrow(c20),
+  rows_2024   = nrow(c24),
+  in_both     = length(intersect(c20$county_fips, c24$county_fips)),
+  only_2020   = length(setdiff(c20$county_fips, c24$county_fips)),
+  only_2024   = length(setdiff(c24$county_fips, c20$county_fips)))
+```
+
+Eight more rows in 2024 than in 2020. **The country did not gain eight
+counties.** Take the non-matching codes apart:
+
+```{r audit2}
+aud <- read.csv(file.path(D, "provenance_audit.csv"),
+                colClasses = c(fips = "character"))
+table(sub("^([A-Za-z ]+):.*", "\\1", aud$reason), aud$appears_in)
+```
+
+Three different things, only one of which is a change on the ground:
+
+- **Alaska** does not report presidential votes by county at all. Both files
+  carry 40 State House Districts under **different made-up FIPS codes** —
+  `r F("ak_2020_range")` in one file, `r F("ak_2024_range")` in the other. Same
+  kind of unit, different arbitrary labels. And Alaska redrew those districts
+  after the 2020 census, so matching by district number would compare
+  different ground anyway.
+- **The District of Columbia** is one row in 2020 and eight wards in 2024.
+  Nothing moved; somebody reported it finer.
+- **Connecticut** is the real unit change. The Census Bureau retired its eight
+  counties and adopted **nine planning regions** as county equivalents, with
+  new codes, effective for 2022 and after.
+
+# Step 5 — The failure that does not show up in a set difference
+
+Alaska and Connecticut fail loudly: the codes do not match and the rows drop
+out. Watch what the District of Columbia does.
+
+```{r dc}
+rbind(c20[c20$county_fips == "11001", 1:6],
+      c24[c24$county_fips == "11001", 1:6])
+```
+
+**Same FIPS. Different place.** The join succeeds and an arrow gets drawn
+comparing a whole city to one eighth of itself.
+
+```{r dc2}
+mg <- function(d, g) 100 * (g - d) / (g + d)
+naive <- mg(c24$votes_dem[c24$county_fips == "11001"],
+            c24$votes_gop[c24$county_fips == "11001"]) -
+         mg(c20$votes_dem[c20$county_fips == "11001"],
+            c20$votes_gop[c20$county_fips == "11001"])
+dc24 <- c24[substr(c24$county_fips, 1, 2) == "11", ]
+true  <- mg(sum(dc24$votes_dem), sum(dc24$votes_gop)) -
+         mg(c20$votes_dem[c20$county_fips == "11001"],
+            c20$votes_gop[c20$county_fips == "11001"])
+c(naive_swing = round(naive, 2), true_swing = round(true, 2),
+  error = round(true - naive, 2))
+```
+
+**The arrow reverses.** Naively the District moved toward the Democrats; summed
+properly it moved toward the Republicans, by more than the median county moved
+at all.
+
+And both joins return the same number of rows:
+
+```{r dc3}
+c(naive_join_rows = nrow(merge(c20, c24, by = "county_fips")),
+  harmonised_rows = as.integer(F("matched_after_harmonise")))
+```
+
+> **The row count cannot warn you.** Nothing about a successful join tells you
+> whether the two sides mean the same thing.
+
+# Step 6 — What harmonising cost
+
+```{r harm}
+data.frame(
+  state = c("Alaska", "District of Columbia", "Connecticut"),
+  action = c("dropped all 40 units",
+             "eight wards summed back to one District",
+             "dropped"),
+  cost = c("no presidential arrows for Alaska",
+           "none; this is a repair",
+           paste0(format(F("ct_votes_lost"), big.mark = ","), " votes")))
+```
+
+Two of the three repairs are deletions. **A wind map cannot draw an arrow for a
+place that did not survive**, and a hole you have counted is better than an
+arrow you have invented.
+
+# Step 7 — One arrow per county, or one per voter?
+
+```{r weight}
+v <- us$votes_dem_24 + us$votes_gop_24
+agg <- function(d, g) 100 * (sum(g) - sum(d)) / (sum(g) + sum(d))
+c(median_county_swing = round(median(us$swing), 2),
+  mean_county_swing   = round(mean(us$swing), 2),
+  national_vote_swing = round(agg(us$votes_dem_24, us$votes_gop_24) -
+                              agg(us$votes_dem_20, us$votes_gop_20), 2),
+  largest_county      = max(v), smallest_county = min(v))
+```
+
+**The counties moved about three points. The country moved about six.** Both
+are correct and they answer different questions.
+
+One arrow per county gives the smallest county in the file the same visual
+weight as Los Angeles, which cast roughly
+`r format(F("us_size_ratio"), big.mark = ",")` times as many votes. Thickness
+compensates a little. It does not compensate much.
+
+**That is an editorial choice, not a technical one**, and this lab has made it.
+
+# Step 8 — Georgia, from the state's own record
+
+```{r ga}
+ga <- read.csv(file.path(D, "wind_ga.csv"), colClasses = c(fips = "character"))
+c(counties       = nrow(ga),
+  margin_2020    = round(F("ga_state_margin_20"), 2),
+  margin_2024    = round(F("ga_state_margin_24"), 2),
+  statewide_swing= round(F("ga_state_swing"), 2),
+  median_county  = round(median(ga$swing), 2),
+  share_toward_R = round(100 * mean(ga$swing > 0), 1))
+```
+
+Both years are the **Georgia Secretary of State's own record** — the 2020
+general election archive and the state's 2024 results export. Georgia has had
+159 counties since 1945, so nothing was recoded, nothing was renamed, and no
+arrow here can be fictional.
+
+Same encoding, different provenance. That is the only difference between this
+map and the national one, and it is the whole difference.
+
+# Step 9 — Why not precincts?
+
+Georgia has 2,701 precincts — seventeen times the resolution. A companion lab
+has already carried the 2020 votes onto the 2024 precinct boundaries, so the
+boundary problem is solved. All that remains is attaching the 2024 returns by
+precinct **name**.
+
+```{r ladder}
+read.csv(file.path(D, "precinct_join_ladder.csv"))
+```
+
+```{r resid}
+head(read.csv(file.path(D, "precinct_join_residual.csv")), 6)
+```
+
+The ladder stalls at `r F("pj_best_pct")`%, and the loss is not scattered:
+**`r F("pj_worst_county")` County loses all `r F("pj_worst_total")` of its
+precincts**, because the returns identify precincts by codes like `1-05C` and
+the boundary file identifies them by the name of the polling place.
+
+A precinct map would have a hole where Savannah is, and **the hole would look
+like a quiet neighbourhood.** That is why Step 8 is drawn at county level.
+
+# Step 10 — The 2026 arrow, and the office problem
+
+The midterm is **Tuesday, 3 November 2026**, during this semester. The plan is
+to draw the same map in class once returns exist.
+
+A 2024-to-2026 arrow would compare a presidential race to a midterm: different
+office, different electorate, different turnout. How much does that matter?
+
+Georgia's November 2020 ballot carried a presidential race **and** a US Senate
+race. Same voters, same day, same piece of paper. Any disagreement is a pure
+office effect with **zero** turnout difference.
+
+```{r office}
+og <- read.csv(file.path(D, "office_gap.csv"))
+c(precincts          = nrow(og),
+  statewide_pres     = round(F("og_state_pres"), 2),
+  statewide_senate   = round(F("og_state_sen"), 2),
+  office_gap         = round(F("og_state_gap"), 2),
+  median_precinct_gap= round(median(abs(og$gap)), 2),
+  pct_over_2_points  = round(100 * mean(abs(og$gap) > 2), 1),
+  georgia_2020_2024_swing = round(F("ga_state_swing"), 2))
+```
+
+**The office effect alone is about two points — the same size as the entire
+real shift Georgia experienced across two presidential elections.** And that is
+the best case, with the electorate held exactly fixed.
+
+**So this lab does not draw a 2024-to-2026 arrow.** The class map is
+**Georgia's 2022 governor's race against its 2026 governor's race**: same
+office, both midterms, same 159 counties, same publisher.
+
+# Step 11 — The half that is already built
+
+```{r base}
+g22 <- read.csv(file.path(D, "wind_ga_counties.csv"),
+                colClasses = c(fips = "character"))
+c(counties    = nrow(g22),
+  dem_2022    = F("ga22_dem"),
+  gop_2022    = F("ga22_gop"),
+  margin_2022 = round(F("ga22_margin"), 2),
+  counties_with_a_2026_result = sum(!is.na(g22$margin_to)))
+```
+
+`r F("ga22_election")`, snapshot `r F("ga22_snapshot")`, straight from
+`results.sos.ga.gov`. Every county has a tail. None has a head yet.
+
+## What has to happen on class day
+
+**One file changes.** `data/wind_input_2026.csv` has ten columns and 159 rows;
+two of the columns are empty:
+
+```{r stub}
+str(read.csv(file.path(D, "wind_input_2026.csv"),
+             colClasses = c(unit_id = "character")))
+```
+
+| Column | Meaning | Rule |
+|---|---|---|
+| `unit_id` | 5-digit county FIPS | **character**, leading zeros kept |
+| `unit_name` | county name | must match the baseline |
+| `office` | the office compared | **identical in both years, or stop** |
+| `year_from`, `year_to` | 2022, 2026 | both midterms |
+| `votes_dem_from`, `votes_gop_from` | 2022 governor | already filled |
+| `votes_dem_to`, `votes_gop_to` | 2026 governor | **the two empty columns** |
+
+The refresh is one call:
+
+```
+Rscript -e 'source("data/build-data.R"); build_2026()'
+```
+
+which fetches `export-2026NovGen.json` from the Secretary of State, fills the
+two columns, recomputes every swing, and rewrites `wind_ga_counties.csv`. If
+the state has not posted the export, edit the two columns by hand from any
+source and call `build_2026(from_stub = TRUE)`.
+
+## What will not be knowable
+
+A month after 3 November 2026, expect **unofficial** returns. Certification
+deadlines run into December in many states; close races will still be open;
+precinct-level returns rarely appear this fast. **The map drawn in class will
+be provisional and should be labelled so.** Every wind map published on
+election night has this property and most do not admit it.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Weight the map by votes.** Step 7 shows the counties moving about
+three points while the country moved about six. Redraw the national map with
+arrows sized by votes cast instead of one per county — or simply report the
+swing separately for the largest 100 counties and the smallest 1,000. Which
+map is the honest one, and honest about what?
+
+**Option B — Break the harmonisation on purpose.** Re-run Step 5 for every
+state, not just the District of Columbia: for each state, compare the number of
+rows in the two files. Which other states change their reporting grain between
+elections, and would you have caught them without being told to look?
+
+**Option C — Audit Georgia against the national file.** The national file has
+Georgia counties too, from a press compilation. Compare its Georgia numbers to
+the Secretary of State's in `wind_ga.csv`, county by county. Where do they
+disagree, by how much, and does the disagreement change any arrow's direction?
+
+**Option D — Argue with the encoding.** The map draws margin change and
+nothing else. Build the turnout-change map instead, using `tot_20` and
+`tot_24` in `wind_ga.csv`, and say which of the two you would put on a front
+page.
+
+**Option E — Your own question.** `r format(nrow(us), big.mark = ",")` national
+arrows, 159 Georgia arrows, and one that has not been drawn yet.
+
+# What this lab cannot tell you
+
+- **Whether the national numbers are right.** No federal publisher exists and
+  the compilation says of itself that it is not authoritative. Georgia's are
+  the state's own record; the rest are not.
+- **Anything about Alaska.** Two files, two arbitrary coding schemes, and
+  redrawn districts in between.
+- **What happened in Connecticut.** Its eight counties became nine planning
+  regions and those votes are simply absent from the national map.
+- **Whether a swing was caused by persuasion or by turnout.** Margin change
+  cannot separate them. A county where nobody changed their mind and a third of
+  one side stayed home gets the same arrow as a county that was persuaded.
+- **How uncertain an arrow is.** There is no error bar on a wind map and no
+  agreed way to draw one.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.**
+
+- Step 5 shows a join that succeeded, reported the same row count as the
+  correct one, and produced an arrow pointing the wrong way. **What check would
+  have caught it?** Be specific enough that someone could run it.
+- Step 7 says one arrow per county is an editorial choice. Whose interests does
+  that choice serve, and is the alternative any less of a choice?
+- Step 10 measures a two-point gap between two offices on the *same ballots*.
+  Given that, what would you need before you believed any cross-year swing
+  number smaller than two points?
+
+***
+
+### Where the data came from
+
+- **Georgia returns, all three elections** — Georgia Secretary of State.
+  2020 general election archive at
+  <https://sos.ga.gov/page/historical-elections-results>; 2022 and 2024 results
+  exports at <https://results.sos.ga.gov/>, e.g.
+  `https://results.sos.ga.gov/cdn/results/Georgia/export-2022NovGen.json`
+  (fetched 2026-08-10, HTTP 200).
+- **County population centroids** — U.S. Census Bureau, *Centers of Population
+  by County: 2020*,
+  <https://www2.census.gov/geo/docs/reference/cenpop2020/county/CenPop2020_Mean_CO.txt>
+  (fetched 2026-08-10, HTTP 200, 3,221 rows).
+- **National county presidential returns** — Tony McGovern, *US County Level
+  Election Results 08-24*, as committed in `../data-sources/`.
+  <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
+  **Scraped from news organisations; not authoritative, by its own account.**
+- **Official federal returns** — Federal Election Commission,
+  <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>
+  Published by state and congressional district, **not by county**, which is
+  why this lab needs the compilation above.
+- **The wind-map idiom** — Observable, *Plot: election wind map*.
+  <https://observablehq.com/@observablehq/plot-election-wind-map>
+
+The build is `data/build-data.R`. It records every URL, the fetch date and the
+row counts, and it contains `build_2026()`, the one function that has to run in
+November.

@@ -1,0 +1,915 @@
+---
+title: "A Country Nobody Lives In"
+subtitle: "84-355 Democracy's Data | Race in the 2020 census, from the nation to the block"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.6,
+                      dpi = 96, fig.retina = 1)
+options(scipen = 999)
+D <- "data"
+rd <- function(f, ...) read.csv(file.path(D, f), stringsAsFactors = FALSE, ...)
+
+# GEOIDs are CHARACTER. A tract identifier is 11 digits and a block identifier
+# 15; read as numbers the block becomes 2.6163e+14 and any identifier in a
+# state whose FIPS code starts with a zero loses that zero. Every read below
+# that touches an identifier pins the column.
+fc  <- rd("facts.csv")
+nat <- rd("nation.csv")
+reg <- rd("regions.csv")
+sta <- rd("states.csv",   colClasses = c(st = "character", geoid = "character"))
+cou <- rd("counties.csv", colClasses = c(geoid = "character", st = "character"))
+lad <- rd("ladder.csv")
+dec <- rd("decades.csv")
+cts <- rd("categories.csv")
+std <- rd("standards.csv")
+wtr <- rd("wayne_tracts.csv",      colClasses = c(geoid = "character"))
+wtg <- rd("wayne_tract_rings.csv", colClasses = c(id = "character"))
+wbg <- rd("wayne_bg.csv",          colClasses = c(geoid = "character"))
+wbr <- rd("wayne_bg_rings.csv",    colClasses = c(id = "character"))
+wou <- rd("wayne_outline.csv",     colClasses = c(id = "character"))
+wtx <- rd("wayne_transect.csv",    colClasses = c(GEOID = "character"))
+wbk <- rd("wayne_block_rings.csv", colClasses = c(id = "character"))
+wdt <- rd("wayne_detroit_rings.csv")
+pro <- rd("eightmile_profile.csv")
+
+FV <- function(k) { v <- fc$value[fc$name == k]
+                    if (!length(v)) stop("no such fact: ", k); v }
+FN <- function(k) as.numeric(FV(k))
+n  <- function(x) format(round(as.numeric(x)), big.mark = ",")
+pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
+mag <- function(k) sub("^[+-]", "", FV(k))
+
+CAT <- c("hispanic", "nh_white", "nh_black", "nh_asian", "nh_two",
+         "nh_aian", "nh_sor", "nh_nhpi")
+SHORT <- c(hispanic = "Hispanic", nh_white = "White", nh_black = "Black",
+           nh_asian = "Asian", nh_two = "Two or More", nh_aian = "AIAN",
+           nh_sor = "Some Other Race", nh_nhpi = "NHPI")
+COL <- c(hispanic = "#E08214", nh_white = "#7F9BB3", nh_black = "#C41230",
+         nh_asian = "#4D9221", nh_two = "#8073AC", nh_aian = "#B35806",
+         nh_sor = "#999999", nh_nhpi = "#2C7FB8")
+RACE6 <- c("white", "black", "aian", "asian", "nhpi", "sor")
+RLAB  <- c(white = "White", black = "Black or African American",
+           aian = "American Indian and Alaska Native", asian = "Asian",
+           nhpi = "Native Hawaiian and Other Pacific Islander",
+           sor = "Some Other Race")
+
+# ---- geometry helpers, shared by both renderers ----------------------------
+onepath <- function(X, Y) {
+  dx <- X[-1] - X[-length(X)]; dy <- Y[-1] - Y[-length(Y)]
+  seg <- paste0(dx, ifelse(dy < 0, "", ","), dy)
+  sep <- c("", ifelse(substr(seg[-1], 1, 1) == "-", "", " "))
+  paste0("M", X[1], ",", Y[1], "l", paste0(sep, seg, collapse = ""), "Z")
+}
+ringpaths <- function(d, sx, sy) {
+  if (!nrow(d)) return(character(0))
+  k <- interaction(d$id, d$part, drop = TRUE)
+  p <- vapply(split(d, k), function(z) {
+    X <- round(sx(z$x)); Y <- round(sy(z$y))
+    keep <- c(TRUE, X[-1] != X[-length(X)] | Y[-1] != Y[-length(Y)])
+    X <- X[keep]; Y <- Y[keep]
+    if (length(X) < 3) return(paste0("M", X[1], ",", Y[1], "h1v1h-1Z"))
+    onepath(X, Y)
+  }, character(1))
+  p[nzchar(p)]
+}
+ringids <- function(d) {
+  k <- interaction(d$id, d$part, drop = TRUE)
+  vapply(split(d, k), function(z) z$id[1], character(1))
+}
+drawrings <- function(d, fill, border = NA, lwd = 0.3) {
+  if (!nrow(d)) return(invisible())
+  k <- interaction(d$id, d$part, drop = TRUE)
+  for (l in levels(k)) {
+    z <- d[k == l, ]
+    polygon(z$x, z$y, col = fill[[as.character(z$id[1])]], border = border,
+            lwd = lwd)
+  }
+}
+jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
+jnum <- function(x) paste0("[", paste0(x, collapse = ","), "]")
+win <- function(d, pad = 0.04) {
+  rx <- range(d$x); ry <- range(d$y)
+  s <- max(diff(rx), diff(ry)) * (1 + pad) / 2
+  list(x = mean(rx) + c(-s, s), y = mean(ry) + c(-s, s), s = 2 * s)
+}
+spread <- function(y, gap) {
+  o <- order(y); v <- y[o]
+  for (i in 2:length(v)) if (v[i] - v[i - 1] < gap) v[i] <- v[i - 1] + gap
+  v <- v + (mean(y) - mean(v))
+  out <- numeric(length(y)); out[o] <- v; out
+}
+
+knit_print.data.frame <- function(x, ...) {
+  nm <- names(x); nm <- gsub("_", " ", nm)
+  nm <- sub("^(.)", "\\U\\1", nm, perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = nm, row.names = FALSE), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+```
+
+Everything here runs as given. **You will not write any code.** Your job is to
+read what comes out and say what it means.
+
+> **Read `demographics-brief.Rmd` first.** This lab runs the same argument as
+> numbered steps with the code exposed. The chunks that *compute* are shown;
+> the chunks that only *draw* are folded away, because their job is pictures,
+> not arithmetic.
+
+***
+
+# The claim under examination
+
+> *"The United States is `r pc(100 * as.numeric(nat["nh_white"]) / nat$total)`%
+> White."*
+
+True, on one of at least three defensible definitions, of a country in which
+almost nobody lives in a place that looks like that.
+
+This lab holds the census fixed — one day, one enumeration,
+`r n(FV("us_pop"))` people — and changes two things: **which definition** you
+count with, and **how big a box** you compute the average over.
+
+# Step 1 — The eight categories
+
+```{r step1}
+c(us_population = FN("us_pop"),
+  categories    = FN("n_categories"))
+
+d <- data.frame(category = SHORT[CAT],
+                people   = as.numeric(nat[CAT]),
+                pct      = round(100 * as.numeric(nat[CAT]) / nat$total, 2))
+d <- d[order(-d$people), ]
+d$people <- format(d$people, big.mark = ",")
+d
+
+# the eight must partition the population exactly -- no remainder, no overlap
+sum(as.numeric(nat[CAT])) == nat$total
+```
+
+These come from **Table P2** of the 2020 redistricting file, which cross-cuts
+the race question by the Hispanic-origin question and reports every resident
+exactly once. `r n(FV("us_pop"))` people, `r FV("n_categories")` boxes, no
+remainder.
+
+Two questions on the form, one table out. The `census` lab in this course is
+about those two questions and the write-in boxes behind them; this lab starts
+from the table they produce.
+
+# Step 2 — Nobody at the Census Bureau chose these boxes
+
+```{r step2}
+o <- std[, c("issued", "citation", "categories", "question_form",
+             "first_census")]
+o$issued <- format(as.Date(o$issued), "%d %b %Y")
+o
+```
+
+The categories are set by the **Office of Management and Budget** in
+Statistical Policy Directive No. 15, and they bind every federal agency that
+collects data on race. The directive has been issued three times, and each
+version changed what a person could be counted as:
+
+```{r step2b}
+YC <- paste0("c", c(1980, 1990, 2000, 2010, 2020, 2030))
+o <- cts[cts$dimension == "race", c("category", YC)]
+names(o) <- c("category", c(1980, 1990, 2000, 2010, 2020, "2030 (planned)"))
+o
+```
+
+Read the row for **Two or More Races**. It is empty until 2000, and not because
+nobody was of two races before 2000. Until the 1997 revision the form allowed
+one mark. **The category was created by a sentence in the Federal Register**,
+and the people it counted in 2000 had been in the country all along, in other
+boxes.
+
+Read the row for **Middle Eastern or North African**. It appears only in the
+planned 2030 column. The 1977 directive defined White as covering origins in
+"Europe, North Africa, or the Middle East," so until the 2024 revision the
+category absorbed them. Hold that fact: Step 9 lands on a county that contains
+the largest Arab-American concentration in the United States.
+
+> **Before you run the next chunk, commit to a number.** Step 3 counts each of
+> the six races two ways — alone, and alone-or-in-any-combination. **Which
+> category grows the most, in proportion, when the second mark is allowed, and
+> by what factor?** Write down a name and a multiplier before you run it.
+
+# Step 3 — Alone, or in any combination
+
+```{r step3}
+o <- data.frame(
+  race  = RLAB[RACE6],
+  alone = vapply(RACE6, function(r) FN(paste0("us_", r, "_alone")), 0),
+  any   = vapply(RACE6, function(r) FN(paste0("us_", r, "_any")), 0))
+o$difference <- o$any - o$alone
+o$ratio      <- round(o$any / o$alone, 2)
+o[order(-o$ratio), ]
+```
+
+```{r fig-dumbbell-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+R6 <- data.frame(k = RACE6, lab = RLAB[RACE6],
+                 a = vapply(RACE6, function(r) FN(paste0("us_", r, "_alone")), 0),
+                 b = vapply(RACE6, function(r) FN(paste0("us_", r, "_any")), 0),
+                 stringsAsFactors = FALSE)
+R6 <- R6[order(-R6$b / R6$a), ]
+xmax <- sqrt(max(R6$b) * 1.02)
+W3 <- 740; L3 <- 232; R3 <- 118; T3 <- 40; RH3 <- 32
+H3 <- T3 + nrow(R6) * RH3 + 42
+rows <- paste(vapply(seq_len(nrow(R6)), function(i) sprintf(
+  '{"l":"%s","a":%.4f,"b":%.4f,"r":"%s"}', R6$lab[i],
+  sqrt(R6$a[i]) / xmax, sqrt(R6$b[i]) / xmax,
+  FV(paste0("us_", R6$k[i], "_ratio"))), character(1)), collapse = ",")
+tk <- c(1e6, 1e7, 5e7, 1e8, 2e8)
+tks <- paste(sprintf('{"x":%.4f,"t":"%s"}', sqrt(tk) / xmax,
+                     c("1m", "10m", "50m", "100m", "200m")), collapse = ",")
+cat(paste0('
+<div id="db" style="margin:1em 0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function(){
+const R=[', rows, '],TK=[', tks, '];
+const W=', W3, ',H=', H3, ',L=', L3, ',RR=', R3, ',T=', T3, ',RH=', RH3, ';
+const svg=d3.select("#db").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const x=v=>L+v*(W-L-RR);
+TK.forEach(t=>{
+  svg.append("line").attr("x1",x(t.x)).attr("x2",x(t.x)).attr("y1",T-14)
+    .attr("y2",T+R.length*RH-8).attr("stroke","#eee");
+  svg.append("text").attr("x",x(t.x)).attr("y",T-20).attr("text-anchor","middle")
+    .attr("font-size","10px").attr("fill","#aaa").text(t.t);});
+R.forEach((d,i)=>{
+  const y=T+i*RH;
+  svg.append("text").attr("x",L-12).attr("y",y+4).attr("text-anchor","end")
+    .attr("font-size","11.5px").attr("fill","#333").text(d.l);
+  svg.append("line").attr("x1",x(d.a)).attr("x2",x(d.b)).attr("y1",y).attr("y2",y)
+    .attr("stroke","#C41230").attr("stroke-width",3).attr("stroke-opacity",0.5);
+  svg.append("circle").attr("cx",x(d.a)).attr("cy",y).attr("r",5.2)
+    .attr("fill","#fff").attr("stroke","#555").attr("stroke-width",1.6);
+  svg.append("circle").attr("cx",x(d.b)).attr("cy",y).attr("r",5.2)
+    .attr("fill","#C41230");
+  svg.append("text").attr("x",W-RR+10).attr("y",y+4).attr("font-size","12px")
+    .attr("font-weight","600").attr("fill","#C41230").text("x "+d.r);});
+const lg=svg.append("g").attr("transform","translate("+L+","+(H-14)+")");
+lg.append("circle").attr("r",5.2).attr("fill","#fff").attr("stroke","#555")
+  .attr("stroke-width",1.6);
+lg.append("text").attr("x",11).attr("y",4).attr("font-size","11px")
+  .attr("fill","#666").text("alone");
+lg.append("circle").attr("cx",84).attr("r",5.2).attr("fill","#C41230");
+lg.append("text").attr("x",95).attr("y",4).attr("font-size","11px")
+  .attr("fill","#666").text("alone or in any combination  (square-root scale)");
+})();
+</script>'))
+```
+
+```{r fig-dumbbell-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=2.9}
+R6 <- data.frame(k = RACE6, lab = RLAB[RACE6],
+                 a = vapply(RACE6, function(r) FN(paste0("us_", r, "_alone")), 0),
+                 b = vapply(RACE6, function(r) FN(paste0("us_", r, "_any")), 0),
+                 stringsAsFactors = FALSE)
+R6 <- R6[order(R6$b / R6$a), ]
+xmax <- sqrt(max(R6$b) * 1.02)
+par(mar = c(2.4, 14.0, 1.8, 5.0))
+plot(NA, xlim = c(0, 1), ylim = c(0.5, nrow(R6) + 0.5), axes = FALSE, ann = FALSE)
+tk <- c(1e6, 1e7, 5e7, 1e8, 2e8)
+abline(v = sqrt(tk) / xmax, col = "#eeeeee")
+axis(3, sqrt(tk) / xmax, c("1m", "10m", "50m", "100m", "200m"), tick = FALSE,
+     cex.axis = 0.55, col.axis = "#aaa", line = -1.2)
+for (i in seq_len(nrow(R6))) {
+  a <- sqrt(R6$a[i]) / xmax; b <- sqrt(R6$b[i]) / xmax
+  segments(a, i, b, i, col = adjustcolor("#C41230", 0.5), lwd = 3)
+  points(a, i, pch = 21, bg = "white", col = "#555555", cex = 1.1, lwd = 1.4)
+  points(b, i, pch = 19, col = "#C41230", cex = 1.1)
+  mtext(R6$lab[i], side = 2, at = i, las = 1, line = 0.3, cex = 0.55)
+  text(1.02, i, paste0("x ", FV(paste0("us_", R6$k[i], "_ratio"))), adj = 0,
+       cex = 0.6, font = 2, col = "#C41230", xpd = NA)
+}
+legend("bottomleft", c("alone", "alone or in any combination"),
+       pch = c(21, 19), col = c("#555555", "#C41230"),
+       pt.bg = c("white", "#C41230"), bty = "n", cex = 0.6, horiz = TRUE,
+       inset = c(0, -0.12), xpd = NA)
+```
+
+**`r RLAB[["aian"]]` goes from `r n(FN("us_aian_alone"))` to
+`r n(FN("us_aian_any"))`, a factor of `r FV("us_aian_ratio")`.** White moves by
+the largest absolute amount — `r n(FN("us_white_gap"))` people — and by the
+smallest proportion, `r FV("us_white_ratio")`.
+
+Almost everyone predicts Black or White, because those are the categories the
+first two steps put in your head. The rule is the opposite: **the smaller the
+category, the more the second mark matters.** And the small categories are
+exactly the ones that voting-rights law, tribal funding formulas and
+civil-rights enforcement are written about.
+
+# Step 4 — Two censuses, and why they do not compare
+
+```{r step4}
+K <- c("white_alone", "white_any", "black_alone", "black_any",
+       "aian_any", "sor_any", "two_plus")
+data.frame(
+  measure   = K,
+  y2010     = vapply(K, function(k) FN(paste0("d10_", k)), 0),
+  y2020     = vapply(K, function(k) FN(paste0("d20_", k)), 0),
+  pct_change = vapply(K, function(k) FV(paste0("chg_", k)), ""))
+```
+
+**White alone falls `r mag("chg_white_alone")`% and White in any combination
+rises `r mag("chg_white_any")`%.** Two or More Races rises
+`r mag("chg_two_plus")`%.
+
+Do not read those as demographic change. Between the two censuses the Bureau
+added dedicated write-in areas under "White" and under "Black or African
+American," raised the characters captured per write-in from 30 to 200, and
+began assigning up to six detailed codes per response instead of two. Of the
+jump in Some Other Race the Bureau's own analysts wrote that it "could be
+attributed to a number of factors, including demographic change since 2010. But
+we expect they were largely due to the improvements to the design of the two
+separate questions for race and ethnicity, data processing and coding."
+
+Notice how hard this failure is. **2010 and 2020 are the easy pair**: same OMB
+standard, same categories, same file format, same fields in the same order.
+Everything that could be held constant was, and the comparison still cannot be
+trusted. A comparison crossing 1997 has no chance at all.
+
+# Step 5 — Regions and divisions
+
+```{r step5}
+o <- reg[, c("kind", "name", "total", CAT[1:4], "entropy")]
+o$diversity <- round(100 * o$entropy / log(8), 1)
+o$entropy <- NULL
+o[order(o$kind, -o$total), ]
+```
+
+Composition varies enormously by region. But the smallest of the four regions
+holds `r n(min(reg$total[reg$kind == "region"]))` people, and an average over a
+container that size describes nowhere in particular.
+
+# Step 6 — States
+
+```{r step6}
+sta$diversity <- round(100 * sta$entropy / log(8), 1)
+sta$white_pct <- round(100 * sta$nh_white / sta$total, 1)
+
+head(sta[order(-sta$diversity), c("name", "total", "white_pct", "largest",
+                                  "diversity")], 6)
+head(sta[order(sta$diversity),  c("name", "total", "white_pct", "largest",
+                                  "diversity")], 6)
+
+# the states whose largest group is not White
+sta[sta$largest != "White", c("name", "largest", "diversity")]
+```
+
+`r sta$name[which.max(sta$entropy)]` scores
+`r pc(100 * max(sta$entropy) / log(8))` and
+`r sta$name[which.min(sta$entropy)]` scores
+`r pc(100 * min(sta$entropy) / log(8))`. Only
+`r sum(sta$largest != "White")` states have a largest group that is not White.
+
+# Step 7 — The measure, and the control
+
+The **diversity score** used from here on is the multigroup entropy index,
+expressed as a percentage of its maximum. For a unit with shares $p_r$ over the
+eight categories, $E = \sum_r p_r \ln(1/p_r)$; it is 0 when everyone is in one
+category and $\ln 8$ when the eight are perfectly even.
+
+```{r step7}
+c(E_united_states = FN("E_us"),
+  E_maximum       = FN("E_max"),
+  diversity_score = FN("div_nation"))
+```
+
+Entropy rather than the more famous dissimilarity index, for one reason:
+dissimilarity takes exactly **two** groups. With eight categories that means
+either 28 numbers or a decision that one contrast — nearly always Black against
+White — is *the* contrast. That decision is a claim about the country, and the
+measure should not make it silently.
+
+The measure has a real problem, and Step 8 controls for it. **Smaller units
+always look more segregated, even if people were sprinkled at random**, because
+a unit of twelve people cannot be evenly mixed across eight categories. So the
+build script also computes a **null**: the same population shuffled at random
+into units of the identical sizes.
+
+```{r step7b}
+o <- lad[, c("level", "units", "diversity", "H", "H0")]
+o$H <- round(o$H, 4); o$H0 <- round(o$H0, 4)
+o
+```
+
+`H` is the share of national diversity missing from the average person's unit.
+`H0` is the same number for the shuffled population. **Read them as a pair.**
+
+# Step 8 — The ladder
+
+```{r fig-ladder-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+LV <- lad$level
+d0 <- 100 * lad$ebar0 / log(8); d1 <- lad$diversity
+W6 <- 740; L6 <- 58; R6M <- 150; T6 <- 42; B6 <- 58; H6 <- 320
+SW <- (W6 - L6 - R6M) / length(LV)
+yl <- c(30, 63)
+ys <- function(v) T6 + (yl[2] - v) / diff(yl) * (H6 - T6 - B6)
+steps <- function(v) {
+  s <- character(0)
+  for (i in seq_along(v)) {
+    x0 <- L6 + (i - 1) * SW; x1 <- L6 + i * SW
+    s <- c(s, sprintf("%s%.1f,%.1f L%.1f,%.1f", if (i == 1) "M" else "L",
+                      x0, ys(v[i]), x1, ys(v[i])))
+    if (i < length(v)) s <- c(s, sprintf("L%.1f,%.1f", x1, ys(v[i + 1])))
+  }
+  paste(s, collapse = " ")
+}
+labs <- paste(vapply(seq_along(LV), function(i) sprintf(
+  '{"l":"%s","u":"%s","x":%.1f,"y":%.1f,"d":"%s"}', LV[i], n(lad$units[i]),
+  L6 + (i - 0.5) * SW, ys(d1[i]), pc(d1[i])), character(1)), collapse = ",")
+cat(paste0('
+<div id="ld" style="margin:1em 0"></div>
+<script>
+(function(){
+const L=[', labs, '],P1="', steps(d1), '",P0="', steps(d0), '";
+const W=', W6, ',H=', H6, ',LX=', L6, ',T=', T6, ',B=', B6, ';
+const svg=d3.select("#ld").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+[35,40,45,50,55,60].forEach(v=>{
+  const y=T+(', yl[2], '-v)/', diff(yl), '*(H-T-B);
+  svg.append("line").attr("x1",LX).attr("x2",W-150).attr("y1",y).attr("y2",y)
+    .attr("stroke","#f0f0f0");
+  svg.append("text").attr("x",LX-8).attr("y",y+4).attr("text-anchor","end")
+    .attr("font-size","10px").attr("fill","#aaa").text(v);});
+svg.append("path").attr("d",P0).attr("fill","none").attr("stroke","#bbb")
+  .attr("stroke-width",1.6).attr("stroke-dasharray","5,3");
+svg.append("path").attr("d",P1).attr("fill","none").attr("stroke","#C41230")
+  .attr("stroke-width",2.6);
+L.forEach(d=>{
+  svg.append("circle").attr("cx",d.x).attr("cy",d.y).attr("r",3.6)
+    .attr("fill","#C41230");
+  svg.append("text").attr("x",d.x).attr("y",d.y-10).attr("text-anchor","middle")
+    .attr("font-size","11.5px").attr("font-weight","600").attr("fill","#C41230")
+    .text(d.d);
+  svg.append("text").attr("x",d.x).attr("y",H-B+16).attr("text-anchor","middle")
+    .attr("font-size","11px").attr("fill","#333").text(d.l);
+  svg.append("text").attr("x",d.x).attr("y",H-B+29).attr("text-anchor","middle")
+    .attr("font-size","9.5px").attr("fill","#999").text(d.u);});
+svg.append("text").attr("x",LX).attr("y",T-16).attr("font-size","11.5px")
+  .attr("fill","#C41230").attr("font-weight","600")
+  .text("diversity score of the unit the average American lives in");
+const lx=W-144;
+svg.append("line").attr("x1",lx).attr("x2",lx+22).attr("y1",T+8).attr("y2",T+8)
+  .attr("stroke","#C41230").attr("stroke-width",2.6);
+svg.append("text").attr("x",lx+28).attr("y",T+12).attr("font-size","11px")
+  .text("observed");
+svg.append("line").attr("x1",lx).attr("x2",lx+22).attr("y1",T+26).attr("y2",T+26)
+  .attr("stroke","#bbb").attr("stroke-width",1.6).attr("stroke-dasharray","5,3");
+svg.append("text").attr("x",lx+28).attr("y",T+30).attr("font-size","11px")
+  .text("shuffled at random");
+})();
+</script>'))
+```
+
+```{r fig-ladder-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.4}
+LV <- lad$level
+d0 <- 100 * lad$ebar0 / log(8); d1 <- lad$diversity
+par(mar = c(4.0, 3.4, 2.6, 0.8))
+plot(NA, xlim = c(0.5, length(LV) + 0.5), ylim = c(30, 63), axes = FALSE,
+     ann = FALSE)
+abline(h = seq(35, 60, 5), col = "#f0f0f0")
+axis(2, seq(35, 60, 5), cex.axis = 0.6, col = "#dddddd", col.axis = "#aaa",
+     tck = -0.015, mgp = c(2, 0.4, 0), las = 1)
+stepx <- rep(seq_along(LV), each = 2) + c(-0.5, 0.5)
+lines(stepx, rep(d0, each = 2), col = "#bbbbbb", lwd = 1.6, lty = 2)
+lines(stepx, rep(d1, each = 2), col = "#C41230", lwd = 2.4)
+points(seq_along(LV), d1, pch = 19, col = "#C41230", cex = 0.8)
+text(seq_along(LV), d1 + 1.6, pc(d1), cex = 0.6, font = 2, col = "#C41230")
+axis(1, seq_along(LV), LV, tick = FALSE, cex.axis = 0.6, line = -0.4,
+     col.axis = "#333")
+mtext(n(lad$units), side = 1, at = seq_along(LV), line = 1.1, cex = 0.5,
+      col = "#999")
+title("Diversity score of the unit the average American lives in",
+      cex.main = 0.85, adj = 0, col.main = "#C41230", line = 1.2)
+legend("bottomleft", c("observed", "shuffled at random"),
+       col = c("#C41230", "#bbbbbb"), lwd = c(2.4, 1.6), lty = c(1, 2),
+       bty = "n", cex = 0.6)
+```
+
+```{r step8}
+c(nation      = FN("div_nation"),
+  state       = FN("div_state"),
+  county      = FN("div_county"),
+  tract       = FN("div_censustract"),
+  block       = FN("div_censusblock"))
+
+# the same climb, with the null beside it
+o <- lad[, c("level", "H", "H0", "H_net")]
+o[, 2:4] <- round(o[, 2:4], 4)
+o
+```
+
+**The country scores `r FV("div_nation")`; the average American's census tract
+scores `r FV("div_censustract")`.** The dashed line is flat at the national
+value all the way down to block groups — so the fall is **not** an artefact of
+using smaller boxes. Only at the block rung, where a unit holds a few dozen
+people, does randomness start producing apparent segregation by itself, and
+even there most of the effect survives the control.
+
+Without any index at all:
+
+```{r step8b}
+c(pct_in_tract_at_least_80_pct_one_group = FN("pop_tract_80plus"),
+  pct_in_tract_at_least_90_pct_one_group = FN("pop_tract_90plus"),
+  pct_in_tract_whose_largest_group_under_half = FN("pop_tract_under50"))
+```
+
+**`r FV("pop_tract_80plus")`% of Americans live in a census tract where at
+least four residents in five are in the same category.**
+
+Compare this with `areal-units`, which runs a similar ladder to make the
+*opposite* point: that aggregation destroys tails and flips correlations. That
+lab is about the measuring instrument. Step 8 is what is left when you subtract
+the instrument.
+
+# Step 9 — One county
+
+```{r step9}
+c(wayne_population = FN("wayne_pop"),
+  tracts           = FN("wayne_tracts"),
+  block_groups     = FN("wayne_bg"),
+  blocks           = FN("wayne_blocks"))
+
+# the county row: no majority group at all
+round(100 * as.numeric(cou[cou$geoid == "26163", CAT]) /
+      cou$total[cou$geoid == "26163"], 1) -> v
+setNames(v, SHORT[CAT])
+
+c(diversity_score = FN("wayne_div"),
+  rank_of_3143_counties = as.integer(rank(-cou$entropy)[cou$geoid == "26163"]))
+```
+
+**Wayne County, Michigan** contains Detroit, has no majority group, and sits in
+the most diverse `r pc(100 * rank(-cou$entropy)[cou$geoid == "26163"] / nrow(cou))`%
+of American counties. From the county row alone you would call it integrated.
+
+```{r fig-wayne-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+PWs <- 232L; GAPs <- 12L; TOPs <- 34L; BOTs <- 40L
+w <- win(wou, pad = 0.03); sc <- PWs / w$s
+KEYC <- c(White = "#7F9BB3", Black = "#C41230", Hispanic = "#E08214",
+          Asian = "#4D9221", `Two or More` = "#8073AC", AIAN = "#B35806",
+          `Some Other Race` = "#999999", NHPI = "#2C7FB8")
+lev <- list(
+  list(t = "the county", sub = "1 unit", rings = wou, id = "26163",
+       largest = FV("wayne_largest"), pct = FN("wayne_largest_pct")),
+  list(t = "its tracts", sub = paste(n(FV("wayne_tracts")), "units"),
+       rings = wtg, id = wtr$geoid, largest = wtr$largest,
+       pct = wtr$largest_pct),
+  list(t = "its block groups", sub = paste(n(FV("wayne_bg")), "units"),
+       rings = wbr, id = wbg$geoid, largest = wbg$largest,
+       pct = wbg$largest_pct))
+mkw <- function(i) {
+  L <- lev[[i]]; off <- (i - 1L) * (PWs + GAPs)
+  fx <- function(x) off + (x - w$x[1]) * sc
+  fy <- function(y) TOPs + (w$y[2] - y) * sc
+  P <- ringpaths(L$rings, fx, fy); ids <- ringids(L$rings)
+  m <- match(ids, L$id)
+  cl <- KEYC[L$largest[m]]; cl[is.na(cl)] <- "#eeeeee"
+  op <- 0.22 + 0.78 * pmin(pmax((L$pct[m] - 30) / 60, 0), 1)
+  op[is.na(op)] <- 0.1
+  paste0("[", jstr(P), ",", jstr(unname(cl)), ",",
+         jnum(sprintf("%.2f", op)), ",", off, ',"', L$t, '","', L$sub, '"]')
+}
+PANW <- vapply(1:3, mkw, character(1))
+KL <- names(KEYC)[names(KEYC) %in% unique(c(wtr$largest, wbg$largest))]
+keyj <- paste(sprintf('{"n":"%s","c":"%s"}', KL, unname(KEYC[KL])),
+              collapse = ",")
+Ww <- 3L * PWs + 2L * GAPs; Hw <- TOPs + PWs + BOTs
+cat(paste0('
+<div id="wy" style="margin:1em 0"></div>
+<script>
+(function(){
+const P=[', paste(PANW, collapse = ","), '],K=[', keyj, '];
+const W=', Ww, ',H=', Hw, ',PW=', PWs, ';
+const svg=d3.select("#wy").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+P.forEach(p=>{
+  const paths=p[0],cl=p[1],op=p[2],off=p[3],t=p[4],s=p[5];
+  svg.append("g").selectAll("path").data(paths).join("path").attr("d",d=>d)
+    .attr("fill",(d,j)=>cl[j]).attr("fill-opacity",(d,j)=>op[j])
+    .attr("stroke","#ffffff").attr("stroke-width",0.25);
+  svg.append("text").attr("x",off+PW/2).attr("y",15).attr("text-anchor","middle")
+    .attr("font-size","12.5px").attr("font-weight","600").text(t);
+  svg.append("text").attr("x",off+PW/2).attr("y",27).attr("text-anchor","middle")
+    .attr("font-size","10px").attr("fill","#888").text(s);});
+let kx=8;
+K.forEach(k=>{
+  svg.append("rect").attr("x",kx).attr("y",H-24).attr("width",11)
+    .attr("height",11).attr("fill",k.c);
+  svg.append("text").attr("x",kx+15).attr("y",H-15).attr("font-size","10.5px")
+    .attr("fill","#555").text(k.n);
+  kx+=26+k.n.length*5.9;});
+svg.append("text").attr("x",8).attr("y",H-3).attr("font-size","10px")
+  .attr("fill","#999")
+  .text("colour = the largest category in the unit; stronger colour = a larger share");
+})();
+</script>'))
+```
+
+```{r fig-wayne-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.0}
+w <- win(wou, pad = 0.03)
+KEYC <- c(White = "#7F9BB3", Black = "#C41230", Hispanic = "#E08214",
+          Asian = "#4D9221", `Two or More` = "#8073AC", AIAN = "#B35806",
+          `Some Other Race` = "#999999", NHPI = "#2C7FB8")
+lev <- list(
+  list(t = "the county", sub = "1 unit", rings = wou, id = "26163",
+       largest = FV("wayne_largest"), pct = FN("wayne_largest_pct")),
+  list(t = "its tracts", sub = paste(n(FV("wayne_tracts")), "units"),
+       rings = wtg, id = wtr$geoid, largest = wtr$largest,
+       pct = wtr$largest_pct),
+  list(t = "its block groups", sub = paste(n(FV("wayne_bg")), "units"),
+       rings = wbr, id = wbg$geoid, largest = wbg$largest,
+       pct = wbg$largest_pct))
+layout(matrix(1:3, 1, 3))
+op <- par(mar = c(0.4, 0.2, 2.6, 0.2), oma = c(2.6, 0, 0, 0))
+for (L in lev) {
+  cl <- KEYC[L$largest]; cl[is.na(cl)] <- "#eeeeee"
+  al <- 0.22 + 0.78 * pmin(pmax((L$pct - 30) / 60, 0), 1); al[is.na(al)] <- 0.1
+  fill <- as.list(mapply(adjustcolor, unname(cl), al)); names(fill) <- L$id
+  plot(NA, xlim = w$x, ylim = w$y, asp = 1, axes = FALSE, ann = FALSE)
+  drawrings(L$rings, fill, border = "#ffffff", lwd = 0.15)
+  title(L$t, cex.main = 0.95, line = 1.1)
+  mtext(L$sub, side = 3, line = 0.25, cex = 0.55, col = "#888")
+}
+KL <- names(KEYC)[names(KEYC) %in% unique(c(wtr$largest, wbg$largest))]
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(NA, xlim = c(0, 1), ylim = c(0, 1), axes = FALSE, ann = FALSE)
+legend("bottom", KL, fill = unname(KEYC[KL]), border = NA, bty = "n",
+       cex = 0.55, horiz = TRUE, inset = c(0, 0.005))
+par(op); layout(1)
+```
+
+```{r step9b}
+table(largest_group_in_tract = wtr$largest)
+
+c(median_tract_pct_one_group = FN("wayne_tract_median_largest"),
+  tracts_at_least_80_pct_black = FN("wayne_tracts_80_black"),
+  tracts_at_least_80_pct_white = FN("wayne_tracts_80_white"),
+  pct_of_county_in_those_tracts = FN("wayne_pop_80_pct"),
+  tracts_at_least_90_pct_one_group = FN("wayne_tracts_90"),
+  pct_of_county_in_those = FN("wayne_pop_90_pct"))
+```
+
+**The median Wayne County tract is `r FV("wayne_tract_median_largest")`% a
+single category**, and `r FV("wayne_pop_80_pct")`% of the county's residents
+live in a tract that is at least 80% one group. The county row and the tract
+rows answer different questions, and only the tract rows are about anybody's
+street.
+
+# Step 10 — One street
+
+The boundary you can see in the middle panel is Eight Mile Road, the northern
+city limit of Detroit. Along this stretch it is **also the county line**, which
+means no county-level statistic can show it.
+
+```{r fig-eightmile-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+MW <- 380L; PWp <- 290L; GP <- 34L
+rxk <- range(wbk$x); ryk <- range(wbk$y)
+scm <- min(MW / diff(rxk), 290 / diff(ryk))
+MH <- round(diff(ryk) * scm); T8 <- 42L; B8 <- 40L
+W8 <- MW + GP + PWp + 74; H8 <- T8 + MH + B8
+fx <- function(x) 8 + (x - rxk[1]) * scm
+fy <- function(y) T8 + (ryk[2] - y) * scm
+BP <- ringpaths(wbk, fx, fy); bid <- ringids(wbk)
+m <- match(bid, wtx$GEOID)
+pb <- 100 * wtx$nh_black[m] / ifelse(wtx$total[m] == 0, 1, wtx$total[m])
+pb[is.na(pb) | wtx$total[m] == 0] <- NA
+DP <- ringpaths(wdt, fx, fy)
+PX <- 8 + MW + GP
+pro$pw <- 100 * pro$nh_white / pro$total
+pro$pb <- 100 * pro$nh_black / pro$total
+prj <- paste(sprintf('{"y":%.1f,"b":%.2f,"w":%.2f}',
+                     T8 + (ryk[2] - (mean(ryk) + pro$mid)) * scm,
+                     pro$pb, pro$pw), collapse = ",")
+cat(paste0('
+<div id="em" style="margin:1em 0"></div>
+<script>
+(function(){
+const BP=', jstr(BP), ',V=', jnum(ifelse(is.na(pb), -1, round(pb, 1))), ';
+const DP=', jstr(DP), ',PR=[', prj, '];
+const W=', W8, ',H=', H8, ',PX=', PX, ',PW=', PWp, ',T=', T8, ',MH=', MH, ';
+const svg=d3.select("#em").append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const ramp=d3.interpolateRgb("#f7f7f7","#C41230");
+svg.append("g").selectAll("path").data(BP).join("path").attr("d",d=>d)
+  .attr("fill",(d,j)=>V[j]<0?"#e8e8e8":ramp(0.06+0.94*V[j]/100))
+  .attr("stroke","#ffffff").attr("stroke-width",0.15);
+svg.append("g").selectAll("path").data(DP).join("path").attr("d",d=>d)
+  .attr("fill","none").attr("stroke","#111").attr("stroke-width",1.8);
+svg.append("text").attr("x",8).attr("y",16).attr("font-size","12.5px")
+  .attr("font-weight","600").text("blocks along Eight Mile Road");
+svg.append("text").attr("x",8).attr("y",30).attr("font-size","10px")
+  .attr("fill","#888").text("shading = share Black");
+const x=v=>PX+v/100*PW;
+[0,25,50,75,100].forEach(v=>{
+  svg.append("line").attr("x1",x(v)).attr("x2",x(v)).attr("y1",T).attr("y2",T+MH)
+    .attr("stroke","#eee");
+  svg.append("text").attr("x",x(v)).attr("y",T+MH+15).attr("text-anchor","middle")
+    .attr("font-size","10px").attr("fill","#aaa").text(v+"%");});
+const ln=k=>d3.line().x(d=>x(d[k])).y(d=>d.y).curve(d3.curveStepBefore)(PR);
+svg.append("path").attr("d",ln("b")).attr("fill","none").attr("stroke","#C41230")
+  .attr("stroke-width",2.4);
+svg.append("path").attr("d",ln("w")).attr("fill","none").attr("stroke","#7F9BB3")
+  .attr("stroke-width",2.4);
+const yline=', sprintf("%.1f", T8 + (ryk[2] - mean(ryk)) * scm), ';
+svg.append("line").attr("x1",PX).attr("x2",PX+PW).attr("y1",yline).attr("y2",yline)
+  .attr("stroke","#111").attr("stroke-width",1.4).attr("stroke-dasharray","4,3");
+svg.append("text").attr("x",PX+PW).attr("y",yline-6).attr("text-anchor","end")
+  .attr("font-size","10.5px").attr("fill","#111").text("the city limit");
+svg.append("text").attr("x",PX).attr("y",16).attr("font-size","12.5px")
+  .attr("font-weight","600").text("composition, by distance from it");
+svg.append("text").attr("x",PX+8).attr("y",T+MH-10).attr("font-size","11px")
+  .attr("fill","#C41230").attr("font-weight","600").text("Black");
+svg.append("text").attr("x",PX+8).attr("y",T+22).attr("font-size","11px")
+  .attr("fill","#7F9BB3").attr("font-weight","600").text("White");
+})();
+</script>'))
+```
+
+```{r fig-eightmile-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.4}
+rxk <- range(wbk$x); ryk <- range(wbk$y)
+layout(matrix(1:2, 1, 2), widths = c(1.25, 1))
+op <- par(mar = c(2.6, 0.4, 2.6, 0.4))
+ramp <- colorRampPalette(c("#f7f7f7", "#C41230"))(101)
+pbv <- 100 * wtx$nh_black / ifelse(wtx$total == 0, 1, wtx$total)
+pbv[wtx$total == 0] <- NA
+fill <- as.list(ifelse(is.na(pbv), "#e8e8e8", ramp[round(6 + 0.94 * pbv) + 1]))
+names(fill) <- wtx$GEOID
+plot(NA, xlim = rxk, ylim = ryk, asp = 1, axes = FALSE, ann = FALSE)
+drawrings(wbk, fill, border = "#ffffff", lwd = 0.1)
+for (p in unique(wdt$part)) {
+  z <- wdt[wdt$part == p, ]
+  lines(z$x, z$y, col = "#111111", lwd = 1.4)
+}
+title("blocks along Eight Mile Road", cex.main = 0.85, adj = 0, line = 1.2)
+mtext("shading = share Black; black line = Detroit city limit", side = 3,
+      line = 0.2, cex = 0.5, col = "#888", adj = 0)
+pro$pw <- 100 * pro$nh_white / pro$total
+pro$pb <- 100 * pro$nh_black / pro$total
+par(mar = c(2.6, 2.6, 2.6, 1.6))
+plot(NA, xlim = c(0, 100), ylim = c(-2.5, 2.5), axes = FALSE, ann = FALSE)
+abline(v = seq(0, 100, 25), col = "#eeeeee")
+ys2 <- c(pro$mid[1] - 0.125, rep(pro$mid, each = 2)[-c(1, 2 * nrow(pro))],
+         pro$mid[nrow(pro)] + 0.125)
+lines(rep(pro$pb, each = 2), ys2, col = "#C41230", lwd = 2.2)
+lines(rep(pro$pw, each = 2), ys2, col = "#7F9BB3", lwd = 2.2)
+abline(h = 0, col = "#111111", lty = 2, lwd = 1.2)
+axis(1, seq(0, 100, 25), paste0(seq(0, 100, 25), "%"), cex.axis = 0.55,
+     col = "#dddddd", col.axis = "#aaa", tck = -0.015, mgp = c(2, 0.3, 0))
+axis(2, c(-2.5, 0, 2.5), c("2.5 km south", "the city limit", "2.5 km north"),
+     cex.axis = 0.5, col = "#dddddd", col.axis = "#888", tck = -0.01,
+     mgp = c(2, 0.4, 0), las = 1)
+text(70, -2.0, "Black", col = "#C41230", cex = 0.7, font = 2)
+text(70, 2.0, "White", col = "#7F9BB3", cex = 0.7, font = 2)
+title("composition, by distance from it", cex.main = 0.85, adj = 0, line = 1.2)
+par(op); layout(1)
+```
+
+```{r step10}
+c(blocks_in_the_profile = FN("profile_blocks"),
+  people_in_the_profile = FN("profile_pop"),
+  pct_black_south_of_the_line = FN("prof_south_black"),
+  pct_black_north_of_the_line = FN("prof_north_black"),
+  pct_black_last_500m_inside   = FN("prof_in500_black"),
+  pct_black_first_500m_outside = FN("prof_out500_black"),
+  the_step_in_points = FN("prof_jump_black"))
+```
+
+**Across one road the Black share falls `r FV("prof_jump_black")` points.**
+
+Look at the *shape* rather than the levels. It is flat, then a step, then flat
+again. Composition does not fade with distance from Detroit the way something
+diffusing would; it changes at the boundary and stops. Whatever produced this
+was operating on the line itself — on which side of a municipal border a house
+sits — and not on distance from a city centre.
+
+# Step 11 — What you can now say
+
+**You can say** what the United States looked like in 2020, in eight
+categories, and give the numbers.
+
+**You can say** that "the Black population" and "the White population" are
+quantities with at least two correct values each, name the gap
+(`r FV("us_aian_ratio")`× for American Indian and Alaska Native,
+`r FV("us_white_ratio")`× for White), and explain which OMB revision created
+the ambiguity and when.
+
+**You can say** that the 2010-to-2020 change in the multiracial and Some Other
+Race counts is largely a measurement change, and cite the Bureau saying so.
+
+**You can say** that the diversity of the unit the average American lives in
+falls from `r FV("div_nation")` to `r FV("div_censustract")` between the nation
+and the census tract, **and** that a random-shuffle control rules out the
+obvious objection, because the null stays flat at `r FV("H0_censustract")`
+through the tract rung.
+
+**You cannot say** why anyone lives where they live. Nothing here has a
+mechanism in it.
+
+**You cannot say** that any of these numbers is definition-free. Change the
+categories — which OMB has now done — and every figure moves.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — A different county.** `data/counties.csv` holds all
+`r n(FV("n_counties"))` counties with the eight categories and a diversity
+score. Find one whose county-level score is high and say what you would need in
+order to know whether it is actually integrated. Then find a county whose score
+is *low* and ask whether the county row is misleading in the other direction.
+
+**Option B — A different definition.** Step 3 gives every race two counts.
+Recompute the state table in Step 6 using `black_any` instead of `nh_black`,
+and report which states move most. Which definition would you defend in a
+voting-rights case, and why?
+
+**Option C — A different threshold.** Step 8 reports the share of Americans in
+a tract that is at least 80% one group. `data/tract_largest.csv` has the whole
+distribution in ten-point bins. At what threshold does the statistic stop
+sounding alarming, and what does the fact that you can choose tell you about
+the statistic?
+
+**Option D — The 2024 categories.** The revised Directive 15 has
+`r std$categories[std$key == "2024"]` categories rather than eight, and moves
+Hispanic origin into the race list. Using `data/categories.csv`, work out which
+of this lab's numbers would change, which would not, and which are impossible
+to predict without new data.
+
+# What this lab cannot tell you
+
+- **Whether the categories are the right ones.** They are administrative
+  categories set by OMB and implemented by the Census Bureau. Every figure here
+  is downstream of them.
+- **How the country has changed.** See Step 4. The data will not carry a clean
+  time series and the honest thing is to say so.
+- **Anything exact about a single block.** The 2020 census applied a
+  disclosure-avoidance system based on differential privacy. State totals were
+  held invariant; **block-level counts were not**, and the noise is
+  proportionally largest where units are smallest.
+- **Anything about voters.** These are residents, including children and
+  non-citizens. Voting-age population is in the same file and gives different
+  numbers.
+- **Whether Wayne County is typical.** It was chosen because its county row is
+  misleading in an instructive direction. Step 8 is the national check that
+  stops the county example doing work it cannot do.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.**
+
+- Step 3 shows the same population producing two correct counts. If a news
+  story reports "the Black population of the United States," what is the one
+  question you now have to ask before believing the number?
+- Step 4 shows a decade of apparent demographic change that the Census Bureau
+  attributes largely to a better form. Whose fault is a headline like "the
+  White population declined for the first time in history," and what should the
+  Bureau have done differently — if anything?
+- Step 8 shows the country scoring `r FV("div_nation")` and the average
+  American's neighbourhood scoring `r FV("div_censustract")`. Which of those
+  two numbers should appear in a news story about American diversity, and does
+  your answer change if the story is about school assignment rather than
+  national identity?
+
+***
+
+### Where the data came from
+
+- **Race and Hispanic origin at every level** — U.S. Census Bureau, *2020
+  Census Redistricting Data (P.L. 94-171) Summary File*, legacy format, Tables
+  P1 and P2. The national roll-up plus all 51 state files, giving the nation,
+  4 regions, 9 divisions, 51 states, `r n(FV("n_counties"))` counties,
+  `r n(FV("n_tracts"))` tracts, `r n(FV("n_blockgroups"))` block groups and
+  `r n(FV("n_blocks"))` blocks. Fetched `r FV("fetched")`. Keyless; **this lab
+  uses no Census API and contains no API key.**
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
+- **The 2010 comparison** — the same file for 2010, national roll-up only.
+  <https://www2.census.gov/census_2010/redistricting_file--pl_94-171/National/>
+- **Boundaries** — Census TIGER/Line 2020: states, and for Michigan the tracts,
+  block groups, blocks and place boundaries.
+  <https://www2.census.gov/geo/tiger/TIGER2020/>
+- **The categories** — Office of Management and Budget, Statistical Policy
+  Directive No. 15 (1977), `r std$citation[std$key == "1997"]` (1997), and
+  `r std$citation[std$key == "2024"]` (2024).
+- **The measure** — Theil, H. (1972), *Statistical Decomposition Analysis*;
+  Reardon, S. F. and Firebaugh, G. (2002), "Measures of Multigroup
+  Segregation," *Sociological Methodology* 32(1).
+
+The build is `data/build-data.R`. It records its source URLs, fetch date and
+row counts, checks that the eight categories partition the population at every
+level of every state, and stops if a state's blocks do not sum to the state.

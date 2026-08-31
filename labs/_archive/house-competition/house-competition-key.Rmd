@@ -1,0 +1,410 @@
+---
+title: "Key: The Races Nobody Contested"
+subtitle: "84-355 Democracy's Data | House competition | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+d  <- read.csv("data/races.csv",       stringsAsFactors = FALSE)
+by <- read.csv("data/by_year.csv",     stringsAsFactors = FALSE)
+k  <- read.csv("data/clerk_house.csv", stringsAsFactors = FALSE)
+
+# Every number in the prose below is computed from those three files.
+n1 <- function(x) format(x, big.mark = ",")
+p1 <- function(x) sprintf("%.1f", x)
+dc <- function(v, decade) p1(mean(by[[v]][(by$year %/% 10) * 10 == decade]))
+
+# uncontested races, and incumbency where the file records it
+unc     <- d[d$uncontested, ]
+unc_inc <- unc[!is.na(unc$incwin), ]
+
+# split-district share by decade, from the race-level flag
+spdec <- round(tapply(d$split_district, (d$year %/% 10) * 10,
+                      function(x) 100 * mean(x, na.rm = TRUE)), 1)
+
+# Clerk parse against Jacobson on the years both cover
+ov  <- sort(intersect(unique(d$year[d$source == "Jacobson"]), unique(k$year)))
+mm  <- merge(d[d$year %in% ov, c("year", "stcd", "dv")],
+             k[k$year %in% ov, c("year", "stcd", "dv")],
+             by = c("year", "stcd"), suffixes = c("_j", "_k"))
+dif <- mm$dv_k - mm$dv_j
+
+# dvp is the PREVIOUS election's dv, not the presidential vote
+o   <- d[order(d$stcd, d$year), ]
+prv <- ave(o$dv, o$stcd, FUN = function(x) c(NA, head(x, -1)))
+ok  <- !is.na(prv) & !is.na(o$dvp)
+
+# what the file's split_district flag agrees with
+agree_pres <- round(100 * mean(d$split_district ==
+                     ((d$dv > 50) != (d$dpres > 50)), na.rm = TRUE), 1)
+agree_dvp  <- round(100 * mean(d$split_district ==
+                     ((d$dv > 50) != (d$dvp   > 50)), na.rm = TRUE), 1)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief
+(`house-competition-brief.Rmd`) is now a chapter rather than a parallel copy of
+the lab: prose organised by argument, under idea headings, with two numbered
+figures and no numbered steps. The lab (`house-competition.Rmd`) still runs
+Steps 1-10 with the code exposed. **Students should read the brief first.**
+**Step numbers below refer to the lab**; the chapter is cited by figure number
+or section title.
+
+
+**Pairs with the redistricting lab.** That one measures district partisanship
+from presidential votes; this one measures what happened in the House races
+themselves. Same question, two instruments, and they mostly agree — which is
+worth saying, because they need not have.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+In the 1950s, `r dc("pct_uncontested_south", 1950)`% of Southern House races had
+one candidate, that is nearly gone, competition fell anyway, and the whole
+finding lives in a column that is empty.
+
+***
+
+# The findings
+
+```{r headline}
+dec <- function(v) round(tapply(by[[v]], 10 * (by$year %/% 10), mean), 1)
+rbind(uncontested_south     = dec("pct_uncontested_south"),
+      uncontested_non_south = dec("pct_uncontested_non_south"),
+      competitive           = dec("pct_competitive"),
+      landslide             = dec("pct_landslide"))
+```
+
+- **South uncontested: `r dc("pct_uncontested_south", 1940)`% (1940s) →
+  `r dc("pct_uncontested_south", 1950)`% (1950s) →
+  `r dc("pct_uncontested_south", 2010)`% (2010s), and
+  `r dc("pct_uncontested_south", 2020)`% so far in the 2020s.** Non-South never
+  leaves `r p1(min(tapply(by$pct_uncontested_non_south, (by$year %/% 10) * 10, mean)))`–`r p1(max(tapply(by$pct_uncontested_non_south, (by$year %/% 10) * 10, mean)))`%.
+- **Competitive races (within 5 points): `r dc("pct_competitive", 1940)`% →
+  `r dc("pct_competitive", 2000)`% (2000s) → `r dc("pct_competitive", 2010)`%
+  (2010s).** The single worst year is
+  **`r by$year[which.min(by$pct_competitive)]`, at `r p1(min(by$pct_competitive))`%.**
+- **Landslides (20+ points): `r dc("pct_landslide", 1940)`% → peak
+  `r p1(max(by$pct_landslide))`% in `r by$year[which.max(by$pct_landslide)]`.**
+- `r n1(nrow(unc))` of `r n1(nrow(d))` races have no vote share, and where the
+  file records incumbency at all, **`r n1(sum(unc_inc$incwin == 1))` of
+  `r n1(nrow(unc_inc))` of those are incumbent wins.**
+
+***
+
+# The three things to get said
+
+**1. Start with the 14,777 empty rows.** Load the file raw and show them. This
+is the most transferable five minutes in the lab: **a standard research dataset,
+used for decades, that silently doubles in size if you do not look.** Ask what
+would have happened had a student computed a mean without checking — every
+number halved, no error, no warning.
+
+**2. The missing column is the finding.** There is no uncontested flag. `dv` is
+a *two-party* share, and one candidate means no two-party share exists. **Make
+the room reconstruct that inference from the evidence** — of the uncontested
+races with an incumbency flag the incumbent won
+`r n1(sum(unc_inc$incwin == 1))` of `r n1(nrow(unc_inc))`, and missingness is
+`r p1(100 * mean(d$uncontested[d$south == 1]))`% South against
+`r p1(100 * mean(d$uncontested[d$south == 0]))`% elsewhere — rather than being
+told. It is the same "absence is the signal" move as the CPS lab's blank
+pre-1980 rates.
+
+
+**3. Then the substance, which is genuinely striking.** In the 1950s South, the
+Democratic primary *was* the election. That is not a close race or a safe seat —
+it is no general election at all, in a democracy, for decades. **And competition
+fell nationally anyway.** One-party dominance did not end; it changed form, from
+empty ballots to lopsided ones.
+
+**The line for the board:** a race with one candidate is the least competitive
+race there is, and it has no margin at all.
+
+***
+
+# Step 6 is the one to slow down on
+
+The denominator question — all races versus contested races — is the third or
+fourth appearance of "per what?" this term, and here it is unusually clean:
+
+```{r denom}
+cont <- d[!d$uncontested, ]
+rbind(all_races      = round(100 * tapply(d$competitive, 10 * (d$year %/% 10), mean), 1),
+      contested_only = round(100 * tapply(cont$competitive, 10 * (cont$year %/% 10), mean), 1))
+```
+
+Both are defensible; they answer different questions. **Push students to argue
+for including the uncontested races**, since a race with one candidate is
+maximally uncompetitive and excluding it flatters the system.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | One district-election, the scope, and the three definitions | 8 | **The NA in `dv` is the finding.** A student who would drop those rows has deleted the answer. |
+| **4-5** | The flat national trend, and who holds uncontested seats | 7 | `r p1(by$pct_uncontested[which.min(by$year)])`% to `r p1(by$pct_uncontested[which.max(by$year)])`% across `r max(by$year) - min(by$year)` years, with single-election swings wider than the whole drift. It looks like nothing happened. Let that land as a disappointment. |
+| **6** | Split the country in two | 12 | **The pivot.** Two opposite trends cancelling in a national average. |
+| **7-8** | Competitive and landslide; then split districts | 9 | Four measures, four methods, same direction. |
+| **9** | All five series at once | 5 | The converging uncontested lines are the image to remember, and the heavy black national average sits between them the whole way: that is Step 6 in one picture. |
+| **10** | What you can say | 5 | Elite decision, not voter verdict: of the uncontested races whose incumbency the file records, `r p1(100 * mean(unc_inc$incwin == 1))`% had an incumbent. |
+
+**Two figures were added to the chapter and are worth planning around.** Figure
+1, under *A challenger on the ballot is a low bar*, is the material of Steps 7-8:
+a per-decade distribution of winning margins among contested races, which is the
+same claim as the 5-point and 20-point cuts without the thresholds; use it to ask
+what a different cut point would have done. Figure 2, under *Four measures, one
+direction*, is the chart of Step 9, and it now includes the national uncontested
+share as a heavy black line, so the "correctly computed mean of two
+subpopulations" is visible sitting between the two regional lines instead of
+being asserted underneath the figure.
+
+**Step 6 is the pivot.** Show the flat national line in Step 4, let the room conclude 'nothing changed', then split by region. The aggregation trap is more memorable when they walked into it.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Midterms
+
+## Verified output
+
+```{r a}
+rbind(competitive = round(100 * tapply(d$competitive, d$midterm, mean), 1),
+      uncontested = round(100 * tapply(d$uncontested, d$midterm, mean), 1))
+```
+
+**Almost nothing.** Competitive races:
+`r p1(100 * mean(d$competitive[d$midterm == 0]))`% in presidential years,
+`r p1(100 * mean(d$competitive[d$midterm == 1]))`% in midterms. Uncontested:
+`r p1(100 * mean(d$uncontested[d$midterm == 0]))`% against
+`r p1(100 * mean(d$uncontested[d$midterm == 1]))`%.
+
+**3/4:** Runs it and reports the difference is small.
+
+**4/4:** Says the null is the interesting result, and says why it is surprising —
+midterms have lower turnout and a different electorate, so one might expect
+different margins. **District partisanship swamps the electorate's composition.**
+
+**4/4, best:** Notes that a gap this small — `r sprintf("%.1f", abs(100 * mean(d$competitive[d$midterm == 0]) - 100 * mean(d$competitive[d$midterm == 1])))` points on
+competitiveness, `r sprintf("%.1f", abs(100 * mean(d$uncontested[d$midterm == 0]) - 100 * mean(d$uncontested[d$midterm == 1])))` on uncontested — across `r n1(nrow(d))` races is precisely
+estimated, so this is a real null rather than an underpowered one — and contrasts
+it with the *midterm penalty* lab, where the president's party reliably loses
+seats. **Midterms move which party wins without moving how close the races are.**
+That is a genuinely sharp observation and worth full credit.
+
+***
+
+***
+
+# When your source and your predecessor disagree
+
+**Worth ten minutes, because the answer is not always "trust the elder."**
+
+The Clerk parse and Jacobson overlap for `r min(ov)`–`r max(ov)` —
+`r n1(sum(!is.na(dif)))` districts, median difference
+**`r sprintf("%.2f", median(abs(dif), na.rm = TRUE))` points**. Only
+`r sum(abs(dif) > 1, na.rm = TRUE)` districts differ by more than a point. Every
+one was run down, and they did not all resolve the same way:
+
+| Districts | Who was wrong | How we knew |
+|---|---|---|
+| SC-06, 2004 | **Us** | "Constitution" was missing from the fusion party list, so 4,157 votes never reached the Republican. Adding it matched Jacobson exactly. |
+| NY ×4 | **Us** | Fusion lines listing two parties ("Conservative, Libertarian") went unmatched. |
+| LA-01, 2014 | **Us** | We took the leading candidate of each party; the Clerk's own Recapitulation *sums* them, and so does Jacobson. |
+| NE-03 2004, UT-01 2006 | **Jacobson** | The candidate blocks *and* the Recapitulation table both give our figures. Two independent presentations inside the official document agree with each other and disagree with him. |
+| CT ×5, 2008 | **Jacobson**, arguably | He counts fusion lines in New York and South Carolina and not in Connecticut. CT-01 minus the Working Families line is 71.68; he reports 71.7. |
+| LA ×2, TX-22, TX-23 | **Nobody** | Open primaries, December runoffs, and a write-in campaign. No rule reproduces him, and the Clerk mixes two elections in one row. Flagged, not fixed. |
+
+**The teachable move is the third column.** We did not decide who was right by
+seniority or by which number looked nicer. The Clerk's document happens to print
+the same results twice — once as candidate blocks, once as a per-state
+Recapitulation — and where those two agree with each other, they outrank a
+single derived figure from anywhere else.
+
+**Ask the class what they would have done** with a 2-point disagreement against
+a dataset that scholars have used for forty years. The honest answer is that
+most people quietly adopt the established number, and that this is how errors
+survive.
+
+***
+
+# The column-name trap, and what to do with it
+
+**Worth five minutes of class time, because it happened here.**
+
+The Jacobson file carries three similar columns:
+
+| column | what it is |
+|---|---|
+| `dv` | Democratic share of the two-party **House** vote, this election |
+| `dvp` | the same thing for the **previous** election |
+| `dpres` | Democratic share of the two-party **presidential** vote in the district |
+
+`dvp` reads as "d-v-presidential" and is "d-v-previous". **An earlier build of
+this lab used it as the presidential vote**, computed split districts as
+`(dv > 50) != (dvp > 50)` — which is a *seat that changed party*, not a split
+district — and then concluded that the file's own `split` column was unreliable
+because it disagreed.
+
+The file was right. Three things established that, and they are worth showing:
+
+1. `dvp` correlates with the previous election's `dv` at
+   **r = `r sprintf("%.3f", cor(prv[ok], o$dvp[ok]))`**, mean absolute
+   difference **`r sprintf("%.2f", mean(abs(prv[ok] - o$dvp[ok])))` points**,
+   across `r n1(sum(ok))` district-years.
+2. Recomputed with `dpres`, the flag agrees with the file's `split` column
+   **`r agree_pres`%** of the time; recomputed with `dvp` it agrees only
+   `r p1(agree_dvp)`% of the time.
+3. `dpres` for AL-01 in 2012 is
+   **`r sprintf("%.2f", d$dpres[d$stcd == 101 & d$year == 2012])`**; The
+   Downballot's independent calculation is **37.70161**.
+
+**The lesson is not "read the codebook."** There is no codebook — the Stata file
+ships with empty variable labels. The lesson is that a column whose meaning you
+have inferred should be checked against something outside the file before you
+build a finding on it, and that a disagreement with the file's own derived
+column is evidence about *you* first.
+
+***
+
+# Coverage, before anybody plots pct_split
+
+`pct_split` is `NA` for
+**`r paste(paste(head(by$year[is.na(by$pct_split)], -1), collapse = ", "), "and", tail(by$year[is.na(by$pct_split)], 1))`**. Presidential
+results by congressional district are not published by any government — they are
+calculated by outside analysts from precinct returns, and nobody did the 1940s.
+`split_coverage` gives the share of districts each year's figure rests on;
+anything under 90% is masked.
+
+Students who plot it without checking will draw a line straight through
+`r sum(is.na(by$pct_split))` gaps. That is the point of the option.
+
+***
+
+# Option B — Split districts
+
+## Verified output
+
+```{r b}
+round(tapply(d$split_district, 10 * (d$year %/% 10),
+             function(x) 100 * mean(x, na.rm = TRUE)), 1)
+```
+
+**`NaN` in the 1940s, peaking at `r p1(max(spdec, na.rm = TRUE))`% in the
+`r names(spdec)[which.max(spdec)]`s, then `r p1(spdec[["2000"]])`% in the 2000s,
+`r p1(spdec[["2010"]])`% in the 2010s and `r p1(spdec[["2020"]])`% in the
+2020s.**
+
+**3/4:** Plots the decline and calls it nationalisation.
+
+**4/4:** Is careful about what "split" means here — whether the district's
+presidential and House winners were of different parties, which requires both to
+be recorded. **The 1940s are `NaN`, not zero**: nobody computed presidential
+results by district for those years, so there is nothing to divide by. From
+`r min(d$year[d$source != "Jacobson"])` on the flag is computed from `dv` and
+`dpres`, which **drops uncontested races automatically**, so the denominator
+shifts at the source splice as well as with coverage.
+
+**4/4, best:** Refuses to read the decade path confidently off
+`r sum(!is.na(spdec))` averages, and notices that the `NaN` is a coverage
+statement rather than a finding. Also worth credit: asking where the flag comes
+from, and checking it rather than assuming — recomputed from `dv` and `dpres` it
+matches the file's own `split` column `r agree_pres`% of the time, whereas
+the `dvp` mistake described above would have matched only `r p1(agree_dvp)`%.
+
+***
+
+# Option C — The South, defined
+
+## Verified output
+
+```{r c}
+c(n_south_states = length(unique(d$state[d$south == 1])))
+sort(unique(d$state[d$south == 1]))
+```
+
+**`r length(unique(d$state[d$south == 1]))` states**, coded numerically — the
+Confederacy.
+
+**3/4:** Reports that it is `r length(unique(d$state[d$south == 1]))` states and
+that the definition is a choice.
+
+**4/4:** Tests whether the finding depends on it. It does not, and cannot: at
+`r dc("pct_uncontested_south", 1940)`–`r dc("pct_uncontested_south", 1950)`%
+uncontested in the mid-century South against
+`r p1(min(tapply(by$pct_uncontested_non_south, (by$year %/% 10) * 10, mean)))`–`r p1(max(tapply(by$pct_uncontested_non_south, (by$year %/% 10) * 10, mean)))`%
+elsewhere in any decade, **no plausible reassignment of a border state changes
+the picture.** A student who checks rather than assumes has done the work.
+
+**4/4, best:** Notes that the `r length(unique(d$state[d$south == 1]))`-state
+definition is itself a theoretical
+claim — that the relevant thing about the South is Confederate history rather
+than, say, Democratic-primary dominance — and that Oklahoma, Kentucky and West
+Virginia are excluded by that logic despite similar politics in the period.
+**The variable encodes an argument.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is reasoning from the *absence* of data — the
+  empty rows and the missing column — rather than only from the numbers present.
+- **A 2** is reporting the competitiveness decline without engaging with the
+  denominator question after Step 6 raised it.
+- **Reward anyone who is disturbed by the 1950s South figure of
+  `r dc("pct_uncontested_south", 1950)`%.** It is the correct reaction and the
+  reason the lab exists.
+
+## Anticipated questions
+
+- *"Why do some columns stop before the data does?"* — The series runs
+  `r min(by$year)`–`r max(by$year)`, but it is two sources spliced: Jacobson
+  supplies `r n1(sum(d$source == "Jacobson"))` races through
+  `r max(d$year[d$source == "Jacobson"])`, and the Clerk of the House the
+  remaining `r n1(sum(d$source != "Jacobson"))` from
+  `r min(d$year[d$source != "Jacobson"])` on. The Clerk's tables report votes,
+  not careers, so **`incwin` and `dvp` are empty for every race after
+  `r max(d$year[d$source == "Jacobson"])`** — `r n1(sum(is.na(d$incwin[d$source != "Jacobson"])))`
+  rows. Anything about incumbency or the previous election therefore stops at
+  `r max(d$year[d$source == "Jacobson"])`, which is why the incumbency figures
+  above are quoted over the races where the flag exists. The splice itself is
+  sound: the two sources overlap for `r min(ov)`–`r max(ov)` and agree to a
+  median of `r sprintf("%.2f", median(abs(dif), na.rm = TRUE))` points across
+  `r n1(sum(!is.na(dif)))` districts.
+- *"Were uncontested seats always Democratic in the South?"* — Overwhelmingly in
+  the early period. The file records the incumbent won but not the party in the
+  columns we kept, so **do not assert it from this data** — say it is
+  historically established elsewhere.
+- *"Is 5 points the right definition of competitive?"* — It is a convention.
+  Anyone can change it in one line, and they should be invited to.
+- *"Does redistricting explain the decline?"* — Partly, and the redistricting lab
+  is where that argument gets made properly. Note that the decline runs across
+  decades with very different redistricting regimes.
+
+## Connections
+
+- **Redistricting** — the same question from presidential votes; compare the
+  "empty middle" finding directly.
+- **The midterm penalty** — Option A's null sits against that lab's strongest
+  result.
+- **CPS turnout** — missing values that mean something, second appearance.
+- **EAVS, precincts, redlining** — "per what?", again.

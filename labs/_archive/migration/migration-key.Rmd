@@ -1,0 +1,386 @@
+---
+title: "Key: Who Moved, and Who Never Left"
+subtitle: "84-355 Democracy's Data | Migration | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+D  <- "data"
+fl <- read.csv(file.path(D, "flows.csv"),        stringsAsFactors = FALSE)
+st <- read.csv(file.path(D, "states.csv"),       stringsAsFactors = FALSE,
+               colClasses = c(fips = "character"))
+ar <- read.csv(file.path(D, "arcs.csv"),         stringsAsFactors = FALSE)
+mo <- read.csv(file.path(D, "mobility.csv"),     stringsAsFactors = FALSE)
+cy <- read.csv(file.path(D, "county_focus.csv"), stringsAsFactors = FALSE)
+mm <- read.csv(file.path(D, "meta.csv"),         stringsAsFactors = FALSE)
+
+mv <- function(k) mm$value[mm$key == k]
+mn <- function(k) as.numeric(mv(k))
+n  <- function(x) format(round(x), big.mark = ",")
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+
+S        <- st[st$is_state, ]          # 50 states + DC; Puerto Rico flagged out
+FOCUS    <- mv("focus_state")
+CONTRAST <- mv("contrast_state")
+CTY      <- mv("focus_county")
+NOR      <- nrow(st) - 1               # origins available to any one state
+F1 <- S[S$state == FOCUS, ]
+C1 <- S[S$state == CONTRAST, ]
+# the largest flow in the country that cannot be told apart from zero
+bad <- fl[!fl$sig, ][which.max(fl$est[!fl$sig]), ]
+# born-in-state, ordered
+o  <- S[order(-S$born_state_pct), ]
+# CPS endpoints
+f  <- mo[1, ]; l <- mo[nrow(mo), ]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`migration-brief.Rmd`) is now a chapter rather than a
+parallel copy of the lab: prose organised by argument, under idea headings, with
+seven numbered figures and no numbered steps. The lab (`migration.Rmd`) still
+runs Steps 1–11 with the code exposed. **Students should read the brief first.**
+**Step numbers below refer to the lab**; the chapter is cited by figure number or
+section title.
+
+**This is the course's margin-of-error session.** Every other lab shows students
+a number somebody published. This one shows them the interval the same publisher
+printed beside it, and what happens to a famous-looking map when you honour it.
+
+Every number below is computed from the built CSVs at knit time. Nothing in this
+document is typed in.
+
+***
+
+# The session in one sentence
+
+State-to-state migration is a survey estimate, not a count, and when you apply
+the margins of error the Census Bureau publishes beside it,
+`r pc(mn("pct_fail_of_pairs"), 0)`% of the flows on the map turn out to be
+indistinguishable from nobody moving at all — and they are exactly the thin,
+surprising, interesting-looking ones.
+
+***
+
+# The findings
+
+```{r headline}
+c(state_pairs        = nrow(fl),
+  distinguishable    = sum(fl$sig),
+  pct_surviving      = round(100 * sum(fl$sig) / nrow(fl), 1),
+  pct_of_movers_lost = round(100 * sum(fl$est[!fl$sig], na.rm = TRUE) /
+                             sum(fl$est, na.rm = TRUE), 2),
+  net_not_sig_states = sum(!S$net_sig),
+  focus_net          = F1$net,
+  focus_inflows_ok   = F1$sig_in_n,
+  contrast_inflows_ok = C1$sig_in_n,
+  county_pct_surviving = round(100 * mn("county_all_sig") /
+                               mn("county_all_pairs"), 1))
+```
+
+- **`r n(sum(!fl$sig))` of `r n(nrow(fl))` state pairs
+  (`r pc(100 * sum(!fl$sig) / nrow(fl), 0)`%) cannot be told apart from zero** —
+  and they hold only
+  `r pc(100 * sum(fl$est[!fl$sig], na.rm = TRUE) / sum(fl$est, na.rm = TRUE), 2)`%
+  of the movers. The uncertainty sits where the pattern is, not where the volume
+  is.
+- **`r FOCUS` is down `r n(-F1$net)` net to other states**, which is
+  `r pc(abs(F1$net) / F1$net_moe, 1)` times its own margin of error and therefore
+  real. **`r sum(!S$net_sig)` of the `r nrow(S)` jurisdictions have a net figure
+  that is not.**
+- **`r FOCUS` can use `r F1$sig_in_n` of its `r NOR` inflows;
+  `r CONTRAST` can use `r C1$sig_in_n`.** Same survey, same year. Log population
+  and usable inflows correlate at
+  r = `r pc(cor(log(S$pop1), S$sig_in_n), 2)` — a flow map of a small state is
+  mostly a picture of the sample size.
+- **At county level only
+  `r pc(100 * mn("county_all_sig") / mn("county_all_pairs"))`% of pairs survive**
+  (`r n(mn("county_all_sig"))` of `r n(mn("county_all_pairs"))` feeding `r CTY`),
+  and that is after pooling five years of sample rather than one.
+- **Born-in-state runs from `r pc(min(S$born_state_pct))`%
+  (`r o$state[nrow(o)]`) to `r pc(max(S$born_state_pct))`% (`r o$state[1]`)**,
+  nationally `r pc(100 * sum(S$born_state_est) / sum(S$pop_total))`%.
+- **Americans move at `r pc(100 * l$movers / f$movers, 0)`% of the `r f$year`
+  rate**; interstate moving is at `r pc(100 * l$diff_state / f$diff_state, 0)`%
+  of it.
+
+***
+
+# The three things to get said
+
+**1. A margin of error is not decoration.** Step 5 is the whole session. An
+estimate smaller than its own margin of error is a number the survey cannot
+distinguish from nobody. The published example to put on the board is
+**`r bad$from_state` to `r bad$to_state`: `r n(bad$est)` ± `r n(bad$moe)`** — the
+largest flow in the country whose own publisher says it is consistent with zero.
+**Make somebody say what a newspaper should print instead.** The honest sentence
+is "somewhere between `r n(max(0, bad$est - bad$moe))` and
+`r n(bad$est + bad$moe)`, and we cannot rule out none."
+
+**2. The uncertainty is not spread evenly, and that is what makes it dangerous.**
+The failed pairs hold
+`r pc(100 * sum(fl$est[!fl$sig], na.rm = TRUE) / sum(fl$est, na.rm = TRUE), 2)`%
+of the movers: median surviving flow `r n(median(fl$est[fl$sig]))` people, median
+failed flow `r n(median(fl$est[!fl$sig], na.rm = TRUE))`. So the map is
+trustworthy about volume and unreliable about *connections* — and the long thin
+exotic arc that makes a flow map worth looking at is precisely the arc that is
+not there. **The more distinctive a migration claim sounds, the more likely it is
+an artefact of sample size.**
+
+**3. Step 6 is the political consequence.** `r FOCUS` gets `r F1$sig_in_n` usable
+inflows and `r CONTRAST` gets `r C1$sig_in_n`, and nothing about that is a fact
+about the states. It is a fact about how many of their movers landed in the
+sample. **Ask what it means that the states whose migration we can describe
+confidently are the large ones**, when the states that gain and lose House seats
+at the margin are often not.
+
+**The line for the board:** a survey that cannot see a flow has not measured
+zero, and a map that draws it anyway is drawing its own sample size.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** What a statistic is | One question: where did you live a year ago | 5 | **Most moving is local.** Interstate is the small slice everyone argues about. |
+| **2** One state | `r FOCUS` in, out, net, abroad | 5 | The `±` column is already on screen. Nobody reads it yet. That is the setup. |
+| **3** The arc map | Population-weighted centres, both directions | 6 | The heaviest arc runs both ways. Net is a difference of two large numbers. |
+| **4** Every state | Net per 1,000, ranked | 5 | Grey bars are already visible here. Do not explain them yet. |
+| **5** None are counts | Apply the published margins | **12** | **The pivot.** Take the prediction first. Protect this step. |
+| **6** Whose map survives | `r F1$sig_in_n` vs `r C1$sig_in_n` usable inflows | **8** | Size, not connectedness. The scatter makes it mechanical. |
+| **7** Born in state | Stocks, not flows | 6 | `r pc(min(S$born_state_pct))`% to `r pc(max(S$born_state_pct))`%. A century of migration, not this year's. |
+| **8** From abroad | A residence category, not a legal one | 5 | **Say this precisely or not at all.** Emigration is absent, not small. |
+| **9** One county | `r pc(100 * mn("county_all_sig") / mn("county_all_pairs"))`% survive | 5 | Finer grain, worse estimates, *and* a different instrument. |
+| **10** The back-series | CPS, `r f$year`–`r l$year` | 5 | Different survey. Do not put it on an ACS axis. |
+| **11** What you can say | Including what you cannot | 4 | "Why" is not in the file. Neither is anyone who left. |
+
+**Where the chapter sits against that table.** The rows are the lab's steps and
+the minutes are for running the lab, so they stand as they are. The one place the
+two documents do not line up is rows 2 and 3: the chapter treats one state and
+its arc map as a single section, *The state with the largest imbalance*, ending
+in Figure 1, so a class working from the chapter will not find a seam between
+them. Run the pair as one eleven-minute block and take the break wherever the
+room's attention gives out; the lab still has a `# Step 3` heading if you want the
+old cut. The rest map one to one: row 1 to *Nobody votes on this* and *Most moving
+is local*, row 4 to Figure 2, row 5 to *An estimate smaller than its own margin of
+error* and Figure 3, row 6 to *Whose map can be drawn at all* and Figures 4–5,
+row 7 to Figure 6, row 8 to *A residence category, not a legal one*, row 9 to
+*Finer grain, worse estimate*, row 10 to Figure 7, and row 11 to *What a survey of
+movers can testify to*.
+
+**Step 5 deserves the prediction, and it is the best prediction in the course.**
+Ask the room: *there are `r n(nrow(fl))` ordered pairs of states — how many
+describe a flow the survey can tell apart from zero?* Almost everyone guesses
+something in the nineties. It is `r pc(mn("pct_sig_of_pairs"), 0)`%. Then ask the
+follow-up before revealing it: *and how many of the actual movers are in the
+pairs that failed?* Having just been told a third of the map is unusable, the
+room expects a large number. It is
+`r pc(mn("pct_volume_in_failed_pairs"), 2)`%. **Both surprises are needed** — the
+first says the map is mostly noise, the second says the noise is weightless, and
+the interesting claim lives in the gap between them.
+
+**If you are short on time**, protect Steps 5, 6 and 9. Everything else is
+context for those three.
+
+***
+
+# Handling the room
+
+- **Nobody writes code.** Say it at the start; the lab is dense with output and a
+  few students read that as a coding session.
+- **The Big Sort is the hook.** Most students have met the claim that Americans
+  are sorting themselves politically. The chapter's *The argument this data
+  cannot settle* is where to spend any spare minutes: Mummolo and Nall, Martin
+  and Webster, Chen and Rodden.
+- **Do not let the room settle the sorting argument.** This data has no political
+  variable at all. The honest contribution is Step 10's constraint: whatever
+  sorting is happening, it is happening while the mechanism runs at
+  `r pc(100 * l$diff_state / f$diff_state, 0)`% of its `r f$year` speed.
+- **Step 8 is where a class can go wrong fast.** "From abroad" is a statement
+  about geography. It counts returning citizens, military families, students and
+  people arriving from Puerto Rico and the Island Areas alongside immigrants, and
+  the file separates none of them. Say so before anyone infers otherwise.
+
+***
+
+# Option A — Audit a state's map
+
+## Verified output
+
+```{r a}
+rbind(head(S[order(-S$sig_in_n), c("state", "pop1", "sig_in_n", "sig_out_n")], 3),
+      head(S[order( S$sig_in_n), c("state", "pop1", "sig_in_n", "sig_out_n")], 3))
+c(median_usable_inflows = median(S$sig_in_n),
+  states_below_half     = sum(S$sig_in_n < NOR / 2),
+  cor_logpop_usable     = round(cor(log(S$pop1), S$sig_in_n), 2))
+```
+
+**3/4:** Picks a state, reports its `sig_in_n` and `sig_out_n`, and says the map
+would be partly unusable.
+
+**4/4:** Compares a large state to a small one and states the mechanism — the
+survey samples households, so a state with fewer residents contributes fewer
+movers to every cell, and the margin of error is large relative to a small
+estimate. Says explicitly what the map would be honest about (total volume, the
+handful of heavy neighbouring flows) and what it would fake (every thin
+long-distance arc).
+
+**4/4, best:** Notices that `sig_in_n` and `sig_out_n` are close for most states
+and asks why, or works out that **no state's flow map is complete**: even the
+median jurisdiction loses `r NOR - median(S$sig_in_n)` of its `r NOR` inflows,
+and `r sum(S$sig_in_n < NOR / 2)` of `r nrow(S)` lose more than half. A student
+who converts this into a rule ("do not draw an arc map below population X") has
+understood the step better than the lab states it.
+
+***
+
+# Option B — The league table nobody checks
+
+## Verified output
+
+```{r b}
+z <- S[!S$net_sig, c("state", "net", "net_moe", "net_per1k")]
+z <- z[order(-abs(z$net)), ]
+z$net_moe <- round(z$net_moe)
+head(z, 8)
+nrow(z)
+```
+
+**3/4:** Lists the states and reports that their net migration cannot be
+distinguished from zero.
+
+**4/4:** Writes the corrected sentence. Something like: *`r z$state[1]`'s
+population change from interstate migration in `r mv("acs_year")` was
+`r n(z$net[1])`, with a margin of error of ± `r n(z$net_moe[1])` — the survey
+cannot tell whether the state gained or lost.* The move that earns the 4 is
+refusing the direction, not just adding an interval.
+
+**4/4, best:** Notices that these are mostly **mid-sized states** — not the
+smallest — and works out why: net is a difference of two large numbers, so its
+margin of error is the root of the sum of two squared margins and can easily
+exceed the difference itself. **A state can have perfectly well-measured inflows
+and outflows and a completely unmeasured net.** That is the sharpest available
+observation on the whole lab, and it explains why "winners and losers" stories
+are worse than the data they are built on.
+
+***
+
+# Option C — Born here versus arrived
+
+## Verified output
+
+```{r c}
+round(cor(S$born_state_pct, S$net_per1k), 2)
+r <- resid(lm(net_per1k ~ born_state_pct, data = S))
+rbind(head(S[order(-r), c("state", "born_state_pct", "net_per1k")], 3),
+      head(S[order( r), c("state", "born_state_pct", "net_per1k")], 3))
+```
+
+**3/4:** Reports the weak correlation and names a couple of states that do not
+fit.
+
+**4/4:** Explains what the two variables are measuring on different clocks.
+Born-in-state share is a **stock** — the residue of every migration a state has
+ever had, plus its birth rate and its retention of the people born there.
+Net migration per 1,000 is a **flow**, one year wide. There is no reason for them
+to agree, and the weak correlation is the expected result rather than a puzzle.
+
+**4/4, best:** Picks the outliers apart individually and finds that they are
+different stories: a state can be low on born-in-state and *losing* people
+(decades of churn that has stopped), or high on born-in-state and *gaining*
+(recent growth that has not yet worked through the stock). Best of all is the
+student who points out that the outlier list is unstable because
+`r sum(!S$net_sig)` of the net figures cannot be told from zero anyway —
+**`r pc(100 * sum(!S$net_sig) / nrow(S), 0)`% of the residuals in this scatter
+are noise, and the lab's own Step 5 says so.**
+
+***
+
+# Option D — Their own question
+
+No verified output. Grade the question as much as the answer.
+
+**3/4:** A sensible question answered correctly from the files.
+
+**4/4:** A question whose answer required checking a margin of error, or one that
+compares two things the lab kept separate and says why the comparison is limited.
+
+**4/4, best:** A question the data **cannot** answer, correctly identified as
+such, with a statement of what source would be needed. Emigration and motive are
+the two obvious ones and both are named in the lab; credit anyone who finds a
+third.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given.
+- **The move that earns a 4** is treating the margin of error as part of the
+  finding rather than a caveat appended to it.
+- **A 2** is "the data has margins of error so we can't really know anything" —
+  true-sounding, useless, and the opposite of what Step 5 shows. The point is not
+  that nothing is knowable; it is that
+  `r pc(100 - mn("pct_volume_in_failed_pairs"), 1)`% of the movers are in flows
+  we *can* measure, and the failures are concentrated somewhere specific.
+- **Also a 2**: reporting any of these figures as a count of people.
+- **Reward anyone who asks about the people who left the country.** Emigration is
+  absent from this dataset, not small in it, and noticing the absence of a
+  variable is harder than reading one that is present.
+- **Reward anyone who separates "from abroad" from immigration** without being
+  prompted.
+
+## Anticipated questions
+
+- *"Why doesn't the Census just count everybody?"* — It does, every ten years,
+  and that count is what apportions the House. This is the survey that fills the
+  nine years in between; annual migration is not something the decennial census
+  measures at all.
+- *"If the margin is that big, why publish the number?"* — Because the Bureau
+  publishes the margin with it. The failure is downstream: newspapers, state
+  development offices and think tanks republish the estimate and drop the
+  interval. Nothing in this lab is a criticism of the Census Bureau.
+- *"Couldn't they just pool more years?"* — That is exactly what the
+  county-to-county table does (`r mv("c2c_window")`, five years), and even then
+  only `r pc(100 * mn("county_all_sig") / mn("county_all_pairs"))`% of pairs
+  survive. Pooling also costs you the ability to say *when*.
+- *"Does this mean the flow maps I see online are wrong?"* — Not wrong about the
+  heavy flows. Wrong to draw the thin ones with the same confidence, and usually
+  silent about which is which.
+- *"Why is Puerto Rico in the flow table but not the rankings?"* — It is an
+  origin and destination for migration, so it belongs on the map, but its
+  place-of-birth categories are constructed differently and it is not a state.
+  The build script flags it rather than silently ranking it.
+- *"Which state is really winning?"* — Only the ones whose net clears its own
+  margin. `r nrow(S) - sum(!S$net_sig)` of `r nrow(S)` do; the top two are
+  `r head(S[order(-S$net), "state"], 1)` and
+  `r head(S[order(-S$net), "state"], 2)[2]`. For the rest, the answer is that the
+  survey does not know.
+
+## Connections
+
+- **`census` and `apportionment`** — where migration ends up:
+  seats. This lab is the nine years between the counts, and the reminder that
+  the annual numbers everyone argues about are not the ones that move seats.
+- **`poll-simulation` and `gss-confidence`** — the other places the course handles
+  sampling error. Run one of them before this if you can; students who have
+  already met a confidence interval get Step 5 much faster.
+- **`levels-of-aggregation`** — the same lesson from the other direction: state
+  totals are stable and county cells fall apart. Step 9 is that lab's point with
+  a published margin attached.
+- **`regional-shift`** — seventy years of population moving between regions,
+  measured by the census rather than a survey. Useful contrast: there, the number
+  is a count and the hard part is what it means.
+- **`bisg-check`** — the other lab where an estimate is routinely
+  presented without the uncertainty its own authors published.

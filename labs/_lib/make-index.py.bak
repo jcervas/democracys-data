@@ -1,0 +1,483 @@
+#!/usr/bin/env python3
+"""Build the lab index -- INDEX.md and index.html in the labs root.
+
+    python3 _lib/make-index.py
+
+Every field is read from the chapter files themselves, so the index cannot
+drift from the corpus: run it again after adding a chapter and it is current.
+
+WHAT IS READ, AND FROM WHERE
+
+  Chapter      the folder name
+  Title        the YAML `title:` of <slug>-brief.Rmd
+  Topic        the YAML `subtitle:` of the same file
+  Data source  the `# SOURCE` block of the folder's build script, if it has
+               one; else the first fetch URL in that script; else a note that
+               the chapter derives its data from a sibling.
+
+WHY THE SOURCE COLUMN IS BEST-EFFORT. Build scripts are prose at the top and
+code below, and the prose was written for a reader rather than a parser. Most
+carry a `# SOURCE.` line; some spell it `# SOURCES`, some put the citation two
+lines down, and a handful have no build script because the chapter reads
+another chapter's output. The extractor handles those cases and marks what it
+could not resolve rather than guessing, so an empty cell means "look at the
+chapter", not "no source".
+"""
+
+import html
+import os
+import re
+import subprocess
+from datetime import date
+
+LABS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SKIP = {"_lib", "_archive", "_syllabus-template"}
+
+# ---------------------------------------------------------------- extraction
+
+def yaml_field(text, field):
+    m = re.search(rf'^{field}:\s*(.+)$', text, re.M)
+    if not m:
+        return ""
+    v = m.group(1).strip()
+    if v.startswith('"') and v.endswith('"'):
+        v = v[1:-1]
+    return v.replace('\\"', '"')
+
+
+def build_scripts(folder):
+    d = os.path.join(folder, "data")
+    if not os.path.isdir(d):
+        return []
+    out = []
+    for f in sorted(os.listdir(d)):
+        if f.endswith((".R", ".py")) and ("build" in f.lower() or f == "assemble.R"):
+            out.append(os.path.join(d, f))
+    return out
+
+
+def script_text(folder):
+    """Every build script's text, for tagging. The extracted `source` line is
+    truncated and often omits the words that identify a dataset, so tags are
+    matched against the scripts themselves."""
+    out = []
+    for path in build_scripts(folder):
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            out.append(fh.read())
+    return "\n".join(out)
+
+
+def source_of(folder):
+    """The chapter's primary source, as its own build script states it."""
+    for path in build_scripts(folder):
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            txt = fh.read()
+
+        # the header comment block only -- code below can contain the word too
+        head = txt[:9000]
+
+        # Build scripts announce their provenance under several headings, and
+        # several put a rule line (# ------) directly beneath the heading. Take
+        # a window after the heading and discard rules and blanks rather than
+        # letting the first rule terminate the capture.
+        heads = (r'SOURCES?', r'WHERE EVERY INPUT COMES FROM',
+                 r'WHERE THE (?:DATA|INPUTS?) COMES? FROM', r'INPUTS?')
+        for h in heads:
+            m = re.search(rf'^#\s*{h}\b([^\n]*)$', head, re.M)
+            if not m:
+                continue
+            # The heading line usually carries the start of the citation
+            # ("# SOURCE. American National Election Studies, Time Series..."),
+            # so keep its remainder rather than starting at the line below.
+            first = re.sub(r'^[.:]?\s*', '', m.group(1)).strip()
+            first = re.sub(r'^\([^)]*\)\s*', '', first)
+            tail = head[m.end():].split("\n")[1:]
+            keep = [first] if len(first) > 3 else []
+            for ln in tail[:18]:
+                if not ln.startswith("#"):
+                    break
+                body = ln[1:].strip()
+                if set(body) <= {"-", "="} and body:      # a rule line
+                    continue
+                if not body:
+                    if keep:
+                        break                              # blank ends the block
+                    continue
+                if re.match(r'^[A-Z][A-Z ]{4,}[.:]?$', body):   # next ALL-CAPS heading
+                    break
+                keep.append(body)
+            body = " ".join(" ".join(keep).split())
+            body = re.sub(r'\s*Run from this directory.*$', '', body)
+            body = re.sub(r'^\(all relative to [^)]*\):?\s*', '', body)
+            if len(body) > 12:
+                return body[:400], os.path.basename(path)
+
+        u = re.search(r'https?://[^\s"\')]+', head)
+        if u:
+            return u.group(0), os.path.basename(path)
+
+        # No fetch of its own: name the sibling chapters it reads instead.
+        sib = sorted(set(re.findall(r'\.\./\.\./([a-z0-9-]+)/data', txt)
+                         + re.findall(r'"\.\.", "([a-z0-9-]+)", "data"', txt)))
+        if sib:
+            return "Derived from other chapters in this book: " + ", ".join(sib), os.path.basename(path)
+
+    return "", ""
+
+
+def first_url(text):
+    m = re.search(r'https?://[^\s"\')<>]+', text)
+    return m.group(0) if m else ""
+
+
+
+
+# ------------------------------------------------------------------- parts
+#
+# What the reader is trying to understand. This is the professor's own framing
+# of the book -- elections, election administration, formal representation,
+# public opinion -- with two groups added rather than forced into those four,
+# because money does not sit under any of them without distorting one.
+#
+# Unlike KIND and TAGS this cannot be derived from the files: it is a judgment
+# about subject matter. So it is an explicit map, and a chapter missing from it
+# shows as "unassigned" rather than being guessed at. A new chapter appearing
+# here unassigned is the signal to decide where it belongs.
+PARTS = {
+  "elections": """returns-source cast-vote-records levels-of-aggregation ga-precinct-returns
+     precinct-geography electoral-map election-night house-competition historical-campaigns
+     midterm-loss regional-shift retirements primary-defeats vote-targeting wind-map mapping
+     campaign-visits media-attention models-markets bellwether""",
+  "administration": """voter-files-source voter-files eavs residual-votes false-matches
+     disenfranchisement section-203 surveys-source data-sources turnout-denominator""",
+  "representation": """census-source census census-api census-geography demographics areal-units
+     apportionment vote-dilution redistricting rpv bisg-check surnames redlining rollcalls-source
+     dw-nominate officeholder-age scdb sweet-spot""",
+  "public opinion": """surveys anes party-id ideology abortion-opinion gss-confidence ces-class
+     poll-simulation migration""",
+  "money": "finance-source campaign-finance independent-expenditures lobbying gotv",
+  "civic": "jury-selection policing",
+  "front matter": "introduction",
+}
+PART_OF = {}
+for _p, _slugs in PARTS.items():
+    for _s in _slugs.split():
+        PART_OF[_s] = _p
+
+# ------------------------------------------------------------------ tagging
+#
+# Tags name the DATASET a chapter reads, so a reader can ask "what else uses
+# ANES?" and get an answer at a glance. They are matched against the chapter's
+# stated source, its title and its topic -- never hand-assigned -- so a chapter
+# that changes its source changes its tags when this is re-run.
+#
+# Order matters only for readability; a chapter may carry several.
+TAGS = [
+    ("ANES",            r"American National Election Stud|ANES|VCF0"),
+    ("CES",             r"Cooperative Election Stud|CCES|CES 20"),
+    ("GSS",             r"General Social Survey|gss\.norc|GSS cumulative"),
+    ("CPS",             r"Current Population Survey|CPS Voting"),
+    ("Census: decennial", r"P\.?L\.? 94-171|decennial|redistricting data summary|apportionment"),
+    ("Census: ACS",     r"American Community Survey|\bACS\b"),
+    ("Census: geography", r"TIGER|Gazetteer|cartographic boundary|GENZ|Block Assignment|CenPop|ZCTA"),
+    ("Census: estimates", r"popest|cc-est|2010surnames|genealogy|population estimates"),
+    ("Voteview",        r"[Vv]oteview|HSall|DW-NOMINATE"),
+    ("SCDB",            r"Supreme Court Database|scdb\."),
+    ("FEC",             r"Federal Election Commission|fec\.gov|weball|independent[_ ]expenditure"),
+    ("EAC / EAVS",      r"Election Assistance Commission|EAVS"),
+    ("Voter file",      r"voter registration|voter file|registration extract|Houston County|vlist_"),
+    ("Cast vote records", r"[Cc]ast [Vv]ote [Rr]ecord|\bCVR\b"),
+    ("State returns",   r"Secretary of State|Statement of Vote|State Board of Elections|canvass|precinct returns|county-returns"),
+    ("Clerk of the House", r"Clerk of the U\.S\. House|Statistics of the Congressional"),
+    ("Lobbying (LDA)",  r"Lobbying Disclosure|lobbying disclosure|senate\.gov/lobby"),
+    ("Wikipedia",       r"[Ww]ikimedia|[Ww]ikipedia|pageview"),
+    ("Prediction market", r"Polymarket|prediction market|gamma-api"),
+    ("HOLC / redlining", r"HOLC|Mapping Inequality|mappinginequality"),
+    ("Court records",   r"jury|juror|peremptory|APM-Reports"),
+    ("Policing",        r"Stanford Open Policing|traffic stop|police stop"),
+    ("Simulated",       r"[Ss]imulat|invented outright|generated rather than collected"),
+    ("Wire service",    r"Associated Press|\bAP\b tracker|interactives\.ap\.org"),
+    ("Advocacy compilation", r"Sentencing Project|Brennan Center"),
+    ("Jacobson",        r"Jacobson|house_jacobson"),
+    ("House History",   r"history\.house\.gov|Party Divisions"),
+    ("Researcher repo", r"jaytimm|PresElectionResults|tonmcg|github\.com/[A-Za-z]"),
+    ("Derived in-book", r"Derived from other chapters"),
+]
+
+def tags_for(r):
+    hay = " ".join([r.get("source",""), r.get("body",""), r.get("title",""),
+                    r.get("topic",""), r.get("slug","")])
+    out = []
+    for name, pat in TAGS:
+        if re.search(pat, hay):
+            out.append(name)
+    # A chapter that reads a sibling is tagged for that alone only if nothing
+    # else matched -- otherwise the real dataset tags are more informative.
+    if len(out) > 1 and "Derived in-book" in out:
+        out.remove("Derived in-book")
+    return out
+
+# ------------------------------------------------------------------ assemble
+
+rows = []
+for name in sorted(os.listdir(LABS)):
+    folder = os.path.join(LABS, name)
+    if not os.path.isdir(folder) or name in SKIP or name.startswith("."):
+        continue
+    briefs = [f for f in os.listdir(folder) if f.endswith("-brief.Rmd")]
+    if not briefs:
+        continue
+    with open(os.path.join(folder, briefs[0]), encoding="utf-8", errors="replace") as fh:
+        head = fh.read(4000)
+
+    brief = briefs[0]
+    stem  = brief[:-4]                      # <name>-brief
+    href_html = f"{name}/{stem}.html"
+    href_pdf  = f"{name}/{stem}.pdf"
+    has_html = os.path.exists(os.path.join(folder, stem + ".html"))
+    has_pdf  = os.path.exists(os.path.join(folder, stem + ".pdf"))
+
+    src, script = source_of(folder)
+    body = script_text(folder)
+
+    # KIND. Six chapters take an INSTRUMENT as their subject -- what a source
+    # records, what it structurally cannot, and the decisions between the
+    # record and the number. The rest take a QUESTION as their subject and
+    # read an instrument to answer it. The distinction is the book's spine,
+    # so it is derived here rather than left to the folder name: `surveys` is
+    # a source chapter and its folder does not say so.
+    SOURCE_CHAPTERS = {"surveys", "census-source", "voter-files-source",
+                       "returns-source", "rollcalls-source", "finance-source"}
+    kind = ("source" if name in SOURCE_CHAPTERS
+            else "front matter" if name == "introduction"
+            else "case")
+
+    rows.append(dict(
+        href_html=href_html if has_html else "",
+        href_pdf=href_pdf if has_pdf else "",
+        part=PART_OF.get(name, "unassigned"),
+        kind=kind,
+        slug=name,
+        title=yaml_field(head, "title"),
+        topic=yaml_field(head, "subtitle"),
+        source=src,
+        body=body,
+        url=first_url(src),
+        script=script,
+        has_data=os.path.isdir(os.path.join(folder, "data")),
+        has_raw=os.path.isdir(os.path.join(folder, "data", "raw")),
+    ))
+
+for r in rows:
+    r['tags'] = tags_for(r)
+
+n = len(rows)
+n_src = sum(1 for r in rows if r["source"])
+n_raw = sum(1 for r in rows if r["has_raw"])
+today = date.today().strftime("%-d %B %Y")
+
+# --------------------------------------------------------------- markdown
+
+md = [f"# Labs, by topic and data source\n",
+      f"*{n} chapters. Generated from the chapter files on {today} by "
+      f"`_lib/make-index.py` — do not edit by hand; re-run it instead.*\n",
+      "| Part | Kind | Chapter | Title | Tags | Topic | Data source |",
+      "|---|---|---|---|---|---|---|"]
+for r in rows:
+    src = r["source"] or "—"
+    if len(src) > 180:
+        src = src[:177] + "…"
+    md.append("| {} | {} | `{}` | {} | {} | {} | {} |".format(
+        r["part"],
+        r["kind"],
+        r["slug"],
+        ("[{}]({})".format(r["title"].replace("|", "\\|"), r["href_html"])
+         if r["href_html"] else r["title"].replace("|", "\\|")),
+        ", ".join(r["tags"]) or "—",
+        r["topic"].replace("|", "\\|"),
+        src.replace("|", "\\|")))
+md.append("")
+md.append(f"{n_src} of {n} chapters state a source in their build script; "
+          f"{n_raw} commit a `data/raw/` capture of the source as it arrives.")
+with open(os.path.join(LABS, "INDEX.md"), "w", encoding="utf-8") as fh:
+    fh.write("\n".join(md) + "\n")
+
+# ------------------------------------------------------------------- html
+
+def esc(s):
+    return html.escape(s or "", quote=True)
+
+trs = []
+for r in rows:
+    src = esc(r["source"]) or "&mdash;"
+    if r["url"]:
+        src = src.replace(esc(r["url"]),
+                          f'<a href="{esc(r["url"])}">{esc(r["url"])}</a>', 1)
+    trs.append(
+        f'<tr><td><code>{esc(r["slug"])}</code></td>'
+        f'<td class="t">' + (
+            f'<a href="{esc(r["href_html"])}" target="_blank" rel="noopener">{esc(r["title"])}</a>'
+            if r["href_html"] else esc(r["title"])) + (
+            f' <a class="pdf" href="{esc(r["href_pdf"])}" target="_blank" rel="noopener" '
+            f'title="PDF">PDF</a>' if r["href_pdf"] else '') + '</td>'
+        f'<td class="tags">' + "".join(
+            f'<button class="tag" data-tag="{esc(t)}">{esc(t)}</button>' for t in r["tags"]) + '</td>'
+        f'<td>{esc(r["topic"])}</td>'
+        f'<td class="src">{src}</td>'
+        f'<td class="c">{"yes" if r["has_raw"] else ""}</td></tr>')
+
+page = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Democracy's Data — labs by topic and data source</title>
+<style>
+:root{{--bg:#EFF1F2;--panel:#fff;--sunk:#E4E8EA;--ink:#12181D;--ink2:#4E5A63;
+--ink3:#76838C;--rule:#CBD3D8;--rule2:#DEE4E7;--acc:#1C4C5C}}
+@media (prefers-color-scheme:dark){{:root:not([data-theme=light]){{--bg:#101418;
+--panel:#171D22;--sunk:#1E262C;--ink:#E3E8EA;--ink2:#9CA9B2;--ink3:#77848D;
+--rule:#2B343B;--rule2:#232B31;--acc:#79B6C6}}}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,
+BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}}
+.wrap{{max-width:1240px;margin:0 auto;padding:0 clamp(14px,3vw,32px) 72px}}
+h1{{font-family:"Iowan Old Style",Charter,Palatino,Georgia,serif;font-size:clamp(26px,4vw,40px);
+margin:clamp(28px,5vw,56px) 0 6px;font-weight:600;letter-spacing:-.01em}}
+p.sub{{color:var(--ink2);margin:0 0 18px;max-width:76ch;font-size:14px}}
+.bar{{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 14px}}
+input[type=search]{{flex:1 1 260px;padding:9px 12px;font:inherit;border:1px solid var(--rule);
+border-radius:5px;background:var(--panel);color:var(--ink)}}
+.count{{font-size:12.5px;color:var(--ink3);white-space:nowrap}}
+.tablewrap{{overflow-x:auto;border:1px solid var(--rule);background:var(--panel)}}
+table{{border-collapse:collapse;width:100%;min-width:940px;font-size:13px}}
+th,td{{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule2);vertical-align:top}}
+thead th{{position:sticky;top:0;background:var(--sunk);border-bottom:1px solid var(--rule);
+font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);
+cursor:pointer;user-select:none;white-space:nowrap}}
+thead th:hover{{color:var(--ink)}}
+thead th::after{{content:"";opacity:.45;font-size:9px;margin-left:5px}}
+thead th.asc::after{{content:"\\25B2"}}
+thead th.desc::after{{content:"\\25BC"}}
+tbody tr:last-child td{{border-bottom:0}}
+tbody tr:hover{{background:var(--sunk)}}
+code{{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--acc)}}
+td.t a{{color:inherit;text-decoration:none;border-bottom:1px solid var(--rule)}}
+td.t a:hover{{color:var(--acc);border-bottom-color:var(--acc)}}
+a.pdf{{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:9.5px;letter-spacing:.06em;
+color:var(--ink3);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:5px;
+text-decoration:none;vertical-align:1px;font-style:normal}}
+a.pdf:hover{{color:var(--acc);border-color:var(--acc)}}
+td.t{{font-family:"Iowan Old Style",Charter,Palatino,Georgia,serif;font-style:italic;font-size:14px}}
+td.src{{color:var(--ink2);font-size:12px;max-width:44ch}}
+td.c{{text-align:center;color:var(--ink3);font-size:11.5px}}
+td.tags{{max-width:22ch}}
+button.tag{{font:inherit;font-size:10.5px;line-height:1.5;margin:1px 3px 1px 0;padding:1px 7px;
+border:1px solid var(--rule);border-radius:10px;background:var(--sunk);color:var(--ink2);
+cursor:pointer;white-space:nowrap}}
+button.tag:hover{{border-color:var(--acc);color:var(--acc)}}
+button.tag.on{{background:var(--acc);border-color:var(--acc);color:var(--panel);font-weight:600}}
+#chips{{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 14px}}
+#chips button{{font:inherit;font-size:11px;padding:3px 9px;border:1px solid var(--rule);
+border-radius:11px;background:var(--panel);color:var(--ink2);cursor:pointer}}
+#chips button:hover{{border-color:var(--acc);color:var(--acc)}}
+#chips button.on{{background:var(--acc);border-color:var(--acc);color:var(--panel);font-weight:600}}
+td.kind{{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);white-space:nowrap}}
+tr.k-source td.kind{{color:var(--acc);font-weight:600}}
+tr.k-source{{background:color-mix(in srgb,var(--acc) 6%,transparent)}}
+a{{color:var(--acc);word-break:break-all}}
+tr.hide{{display:none}}
+footer{{margin-top:26px;font-size:12.5px;color:var(--ink3);max-width:80ch}}
+</style></head><body><div class="wrap">
+<h1>Labs, by topic and data source</h1>
+<p class="sub">{n} chapters. Generated from the chapter files on {today} by
+<code>_lib/make-index.py</code> — re-run it after adding a chapter rather than
+editing this page. Click a column heading to sort; type to filter.
+{n_src} of {n} chapters state a source in their build script, and {n_raw} commit
+a <code>data/raw/</code> capture of that source exactly as it arrives.</p>
+<div id="chips"></div>
+<div class="bar">
+  <input type="search" id="q" placeholder="Filter by chapter, title, topic or source…" autocomplete="off">
+  <span class="count" id="count"></span>
+</div>
+<div class="tablewrap"><table id="t">
+<thead><tr><th>Part</th><th>Kind</th><th>Chapter</th><th>Title</th><th>Tags</th><th>Topic</th><th>Data source</th><th>Raw capture</th></tr></thead>
+<tbody>
+{chr(10).join(trs)}
+</tbody></table></div>
+<footer>Sorting and filtering run in the page; nothing is fetched. An empty
+source cell means the chapter&rsquo;s build script does not state one in a form
+this generator recognises &mdash; usually because it reads another
+chapter&rsquo;s output &mdash; not that the chapter has no source.</footer>
+</div>
+<script>
+(function(){{
+  var t=document.getElementById('t'), tb=t.tBodies[0],
+      rows=[].slice.call(tb.rows), q=document.getElementById('q'),
+      c=document.getElementById('count'), dir={{}};
+  function shown(){{ return rows.filter(function(r){{return !r.classList.contains('hide');}}).length; }}
+  function tally(){{ c.textContent = shown()+' of '+rows.length+' chapters'; }}
+  [].forEach.call(t.tHead.rows[0].cells, function(th,i){{
+    th.addEventListener('click', function(){{
+      var d = dir[i] = !dir[i];
+      [].forEach.call(t.tHead.rows[0].cells,function(o){{o.className='';}});
+      th.className = d ? 'asc' : 'desc';
+      rows.sort(function(a,b){{
+        var x=a.cells[i].textContent.trim().toLowerCase(),
+            y=b.cells[i].textContent.trim().toLowerCase();
+        if(x===y) return 0;
+        if(x==='') return 1;
+        if(y==='') return -1;
+        return (x<y? -1:1) * (d?1:-1);
+      }});
+      rows.forEach(function(r){{tb.appendChild(r);}});
+    }});
+  }});
+  // ---- tag filtering -------------------------------------------------
+  var active=null;
+  function tagsOf(r){{
+    return [].slice.call(r.querySelectorAll('button.tag'))
+             .map(function(b){{return b.dataset.tag;}});
+  }}
+  function apply(){{
+    var v=q.value.toLowerCase();
+    rows.forEach(function(r){{
+      var okText = !v || r.textContent.toLowerCase().indexOf(v)>=0;
+      var okTag  = !active || tagsOf(r).indexOf(active)>=0;
+      r.classList.toggle('hide', !(okText && okTag));
+    }});
+    [].forEach.call(document.querySelectorAll('button.tag'), function(b){{
+      b.classList.toggle('on', active && b.dataset.tag===active);
+    }});
+    [].forEach.call(document.querySelectorAll('#chips button'), function(b){{
+      b.classList.toggle('on', b.dataset.tag===active);
+    }});
+    tally();
+  }}
+  function pick(t){{ active = (active===t ? null : t); apply(); }}
+
+  var all={{}};
+  rows.forEach(function(r){{ tagsOf(r).forEach(function(t){{ all[t]=(all[t]||0)+1; }}); }});
+  var bar=document.getElementById('chips');
+  Object.keys(all).sort(function(a,b){{ return all[b]-all[a] || a.localeCompare(b); }})
+    .forEach(function(t){{
+      var b=document.createElement('button');
+      b.textContent=t+' ('+all[t]+')'; b.dataset.tag=t;
+      b.addEventListener('click', function(){{ pick(t); }});
+      bar.appendChild(b);
+    }});
+  document.addEventListener('click', function(e){{
+    if(e.target.classList && e.target.classList.contains('tag')) pick(e.target.dataset.tag);
+  }});
+  q.addEventListener('input', apply);
+  tally();
+}})();
+</script></body></html>
+"""
+with open(os.path.join(LABS, "index.html"), "w", encoding="utf-8") as fh:
+    fh.write(page)
+
+print(f"{n} chapters -> INDEX.md and index.html")
+print(f"  source stated in build script : {n_src}")
+print(f"  raw capture committed         : {n_raw}")
+missing = [r["slug"] for r in rows if not r["source"]]
+if missing:
+    print(f"  no source resolved ({len(missing)}): {' '.join(missing)}")

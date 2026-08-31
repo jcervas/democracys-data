@@ -1,0 +1,245 @@
+---
+title: "Key: The Door That Revolves, On the Record"
+subtitle: "84-355 Democracy's Data | Lobbying | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+f  <- read.csv("data/filings.csv",   stringsAsFactors = FALSE)
+lo <- read.csv("data/lobbyists.csv", stringsAsFactors = FALSE)
+is <- read.csv("data/issues.csv",    stringsAsFactors = FALSE)
+en <- read.csv("data/entities.csv",  stringsAsFactors = FALSE)
+lo$has <- nchar(lo$former_government_position) > 0
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`lobbying-brief.Rmd`) is now a
+chapter rather than a parallel copy of the lab: prose organised by argument,
+under idea headings, with three numbered figures and no numbered steps. The lab
+(`lobbying.Rmd`) still runs Steps 1-10 with the code exposed. **Students should
+read the brief first.** **Step numbers below refer to the lab**; the chapter is
+cited by figure number or section title.
+
+
+**Pairs with the campaign-finance labs.** Those are money spent to decide who
+wins; this is money spent on what happens next, and it is larger. Teaching them
+in the same week makes the contrast do the work.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+Congress passed a law requiring lobbyists to disclose that they used to work for
+Congress, more than a quarter of them do, and the field recording it is more
+precise than the field recording the money.
+
+***
+
+# The findings
+
+```{r headline}
+c(filings = nrow(f), lobbyists = nrow(lo),
+  with_former_gov_job = sum(lo$has),
+  pct = round(100 * mean(lo$has), 1),
+  median_filing = median(f$amount[f$amount > 0]))
+```
+
+- **216 of 773 lobbyists (27.9%)** disclose a previous government position.
+- Median filing reports **$30,000** for the quarter.
+- Top issue: **Budget/Appropriations**. Most-lobbied: **the House and Senate**,
+  then HHS and the White House.
+- The sample is **1,500 of 19,016** Q2 2024 filings — see below.
+
+***
+
+# The three things to get said
+
+**1. The revolving door is not an exposé here — it is a form field.** Students
+expect this kind of fact to come from investigative journalism. It comes from
+`covered_position`, a box on a federal disclosure form, because the **Lobbying
+Disclosure Act of 1995** requires it. **Read three or four of the entries
+aloud.** "U.S. Representative Nancy Pelosi (D-CA)" lands harder than any
+percentage.
+
+**2. Then ask what disclosure accomplishes.** Requiring somebody to announce a
+conflict is not the same as preventing it. Congress chose the weaker of the two
+tools, and the data exists precisely *because* it chose the weaker one. **That
+is worth five minutes and has no clean answer.**
+
+**3. Compare the precision of the two fields.** `covered_position` is specific
+enough to name a member of Congress. The money is a single number per filing,
+undivided across issues, with no meetings, dates or people named. **Both were
+written by the same Congress in the same statute.** Ask which lobbyists would
+have objected to which.
+
+**The line for the board:** everything here is public because somebody decided
+disclosure was enough.
+
+***
+
+# The sampling problem — teach it, do not hide it
+
+**We have 1,500 of 19,016 filings from one quarter.** The Senate's API
+rate-limits anonymous users to 25 records a request and returns 429 if pushed.
+
+This is not a footnote; **it is the third instance of the course's running
+theme** — the census API needing a key, VEST behind a guestbook, and now a
+public database that hands out its contents 25 rows at a time. Say the pattern
+out loud: **"public" and "usable" are different properties.**
+
+And be strict about what survives it. Rates (the 27.9%) are fine. Rankings
+(Budget/Appropriations first) are probably fine. **Totals are meaningless** and
+students should not quote the $45 million.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | One filing; the 7.9% sample; the money column and its zeros | 10 | **Public is not usable.** The rate limit is a finding, not an excuse. |
+| **4-6** | The number that does not exist; issues; entities | 12 | **The pivot.** One dollar figure, 17 issue areas, no division. |
+| **7-8** | The covered-position field, then reading the entries | 12 | Precise enough to name a senator — and loose enough to contain 'President and CEO'. |
+| **9** | The asymmetry | 6 | Same statute, same Congress: one field too specific to aggregate, one too coarse to attribute. |
+| **10** | What you can say | 5 | The finding is about the regime, not the lobbyists. |
+
+**Figure 2 of the chapter is the form itself**, under *The question that cannot
+be asked*. It is one filed LD-2 — Barker Leavitt, PLLC for Millcreek, Utah, Q2
+2024, which is a row of `filings.csv`, not an illustration of one — with four
+boxes marked on it: the single income figure (line 12), the two general issue
+area codes on separate pages (line 15), the institutions contacted (line 17), and
+the covered-position field (line 18). Put it on the screen before arguing about
+the data, because every complaint the lab raises in its Steps 4 to 9 is a
+property of that piece of paper. Two
+details worth pointing at: the same lobbyist is listed twice under two different
+descriptions of his own career, and on the second page his surname is misspelt.
+Nothing on the form is validated. The fetch, the redaction of the filer's
+telephone number and e-mail, and the annotations are in
+`data/fetch-form-image.R`.
+
+**The form and the asymmetry are the pair that matters** — Figure 2 and *The same statute, in two failing directions* in the chapter, Steps 4 and 9 in the lab. Ask the class how much was spent lobbying on health care. Let them look for it. The answer is that the form does not ask.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Firms versus causes
+
+## Verified output
+
+```{r a}
+r <- sort(table(f$registrant), decreasing = TRUE)
+head(data.frame(registrant = names(r), filings = as.vector(r)), 8)
+c(unique_registrants = length(unique(f$registrant)),
+  unique_clients     = length(unique(f$client)))
+```
+
+**3/4:** Reports the most frequent registrants and notices a few firms file many
+times.
+
+**4/4:** Reads the client lists and sees that a single firm represents clients
+with nothing in common — a dispatch centre, a university, a trade association.
+**That is not subject-matter expertise. It is access being rented**, and the
+lobbyist's asset is the relationship, not the policy knowledge.
+
+**4/4, best:** Connects it to *A field precise enough to name a senator* — if the asset is access, the
+covered-position field is a **price list**, and a firm's value is partly the sum
+of its employees' former employers. A student who says the disclosure form
+inadvertently documents the business model has it.
+
+***
+
+# Option B — Search the door
+
+## Verified output
+
+```{r b}
+p <- lo$former_government_position[lo$has]
+c(mentions_Senator        = sum(grepl("Senator", p, ignore.case = TRUE)),
+  mentions_Representative = sum(grepl("Representative|Congressman|Congresswoman",
+                                      p, ignore.case = TRUE)),
+  mentions_Chief_of_Staff = sum(grepl("Chief of Staff", p, ignore.case = TRUE)),
+  mentions_Counsel        = sum(grepl("Counsel", p, ignore.case = TRUE)),
+  total_with_position     = length(p))
+```
+
+**3/4:** Counts the categories and reports which is commonest.
+
+**4/4:** Notices that **staff roles vastly outnumber members**. Former members
+are the famous case; the volume is chiefs of staff, legislative directors and
+committee counsel — the people who actually wrote the bills. A student who says
+the door revolves mostly at staff level has corrected a popular misconception.
+
+**4/4, best:** Notices the field is **free text with no controlled vocabulary** —
+"U.S. Representative Nancy Pelosi (D-CA)" and "former Legislative Director for
+Congressman Mike Turner (R-OH)" are formatted completely differently — so any
+count is a guess about strings. **The law requires disclosure and does not
+require it to be machine-readable**, which is a very old trick.
+
+***
+
+# Option C — What the sample costs you
+
+No verified output; grade the reasoning.
+
+**3/4:** Says rates are safer than totals.
+
+**4/4:** Distinguishes three things — **rates** (fine, if the sample is not
+selected on the outcome), **rankings** (usually fine, since it takes a big error
+to reorder the top of a skewed distribution), and **totals** (hopeless, off by
+roughly 13×). Then notes the sample is not random: it is whatever the API
+returned first, which is likely near-chronological.
+
+**4/4, best:** Identifies the specific danger — **the largest filings are rare**,
+so an 8% sample of a heavily skewed distribution will usually miss them
+entirely. Any statement about "the biggest lobbying spenders" from this file is
+unsupported no matter how carefully hedged. **Knowing which claims are
+unavailable is the skill.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating disclosure as a policy choice with
+  consequences rather than as a neutral source of data.
+- **A 2** is "lobbying is corrupt," which the data does not show and was not the
+  question.
+- **Also a 2**: quoting a total from an 8% sample.
+- **Reward anyone who notices the free-text field** and what it implies.
+
+## Anticipated questions
+
+- *"Is any of this illegal?"* — No. Everything here is legal, disclosed, and
+  filed on time. That is what makes it interesting.
+- *"Who checks the filings?"* — The Secretary of the Senate and Clerk of the
+  House refer non-compliance to the U.S. Attorney; enforcement is rare. Compare
+  the FEC's independent-expenditure junk filings, where nobody checked either.
+- *"What about people who don't register?"* — The definition requires multiple
+  contacts and a share of working time. **Strategic advisers who never contact
+  an official file nothing**, and that is the largest hole in the regime.
+- *"Can I look up a specific person?"* — Yes, the database is searchable at
+  lda.senate.gov. Students find this genuinely startling.
+
+## Connections
+
+- **Campaign finance** — the same money, before the election instead of after.
+- **Independent expenditures** — the other disclosure regime, and the other
+  place where the government publishes what was filed without checking it.
+- **EAVS** — self-reporting by the people being measured.
+- **The Census API and VEST** — the recurring gap between public and usable.

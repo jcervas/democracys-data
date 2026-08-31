@@ -1,0 +1,584 @@
+---
+title: "Key: Building a Score From Scratch"
+subtitle: "84-355 Democracy's Data | Session 12, part 2 — the Supreme Court's votes | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+
+ag <- read.csv("data/agreement.csv",   stringsAsFactors = FALSE)
+jj <- read.csv("data/justices.csv",    stringsAsFactors = FALSE)
+bt <- read.csv("data/by_term.csv",     stringsAsFactors = FALSE)
+cc <- read.csv("data/close_cases.csv", stringsAsFactors = FALSE)
+
+js    <- sort(unique(c(ag$a, ag$b)))
+NJ    <- length(js)
+NPAIR <- nrow(ag)
+HOLE  <- ag[ag$cases == 0, ]
+
+nice <- function(x) sub("^[A-Z]+(?=[A-Z][a-z])", "", x, perl = TRUE)
+nm   <- function(x, k = 3) formatC(x, format = "f", digits = k)
+pc   <- function(x, k = 1) formatC(x, format = "f", digits = k)
+
+# --- the scaling exactly as the lab runs it --------------------------------
+build <- function(a, jsx = js) {
+  m <- matrix(NA_real_, length(jsx), length(jsx), dimnames = list(jsx, jsx))
+  diag(m) <- 1
+  for (i in seq_len(nrow(a))) {
+    if (a$cases[i] == 0) next
+    r <- a$agree[i] / a$cases[i]
+    m[a$a[i], a$b[i]] <- r; m[a$b[i], a$a[i]] <- r
+  }
+  m
+}
+M    <- build(ag)
+FILL <- mean(M[upper.tri(M)], na.rm = TRUE)
+M[is.na(M)] <- FILL
+sol   <- cmdscale(as.dist(1 - M), k = 2, eig = TRUE)
+score <- sol$points[, 1]
+ord   <- sort(score)
+R     <- cor(score[jj$justice], jj$pct_conservative)
+
+CONS  <- names(ord)[1:6]; LIBS <- names(ord)[7:NJ]
+SPAN  <- as.vector(ord[6] - ord[1])
+CHASM <- as.vector(ord[7] - ord[6])
+GAPS  <- diff(ord)
+
+# --- the scaling refusing to guess -----------------------------------------
+OUT <- c(HOLE$a, HOLE$b)
+a2  <- ag[!(ag$a %in% OUT | ag$b %in% OUT), ]
+js2 <- sort(unique(c(a2$a, a2$b)))
+sol2   <- cmdscale(as.dist(1 - build(a2, js2)), k = 2, eig = TRUE)
+score2 <- sol2$points[, 1]
+ord2   <- sort(score2)
+R2     <- cor(score2[js2], jj$pct_conservative[match(js2, jj$justice)])
+keep   <- names(ord)[names(ord) %in% js2]
+MOVED  <- sum(keep != names(ord2))
+
+# --- close cases -----------------------------------------------------------
+blocs <- strsplit(cc$majority_bloc, " ")
+inmaj <- table(unlist(blocs))
+jj$close_maj <- as.vector(inmaj[jj$justice])
+# a justice's real denominator is the one-vote cases in the terms they sat for.
+# Tenure is inferred from the terms in which they appear in any one-vote
+# majority; every justice here appears in both their first and last term.
+jj$close_n <- sapply(jj$justice, function(j) {
+  t <- cc$term[sapply(blocs, function(v) j %in% v)]
+  sum(cc$term >= min(t) & cc$term <= max(t))
+})
+jj$close_pct <- 100 * jj$close_maj / jj$close_n
+# did the recovered blocs decide the one-vote cases?
+nc <- sapply(strsplit(cc$majority_bloc, " "), function(v) sum(v %in% CONS))
+BLOC_WINS <- sum(nc == 5)
+
+# --- how much of the ordering is sampling noise ----------------------------
+set.seed(2026)
+B <- 2000; ord0 <- names(ord); same <- 0; flipTA <- 0; flipRK <- 0
+cor1 <- cor2 <- numeric(B)
+for (b in seq_len(B)) {
+  a <- ag; ok <- a$cases > 0
+  a$agree[ok] <- rbinom(sum(ok), a$cases[ok], a$agree[ok] / a$cases[ok])
+  mm <- build(a); mm[is.na(mm)] <- mean(mm[upper.tri(mm)], na.rm = TRUE)
+  pp <- cmdscale(as.dist(1 - mm), k = 2, eig = TRUE)$points
+  o  <- names(sort(pp[, 1]))
+  if (identical(o, ord0)) same <- same + 1
+  if (which(o == "SAAlito")     < which(o == "CThomas"))   flipTA <- flipTA + 1
+  if (which(o == "BMKavanaugh") < which(o == "JGRoberts")) flipRK <- flipRK + 1
+  cor1[b] <- abs(cor(pp[, 1], sol$points[, 1]))
+  cor2[b] <- abs(cor(pp[, 2], sol$points[, 2]))
+}
+SAME <- 100 * same / B; FTA <- 100 * flipTA / B; FRK <- 100 * flipRK / B
+D1COR <- median(cor1); D2COR <- median(cor2)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`scdb-brief.Rmd`) is a chapter, "Forty-Four Numbers and
+a Guess". It is organised by argument under prose headings and carries four
+numbered figures — Figure 1, the agreement matrix in both orders, with the
+toggling D3 panel; Figure 2, the scaling with the guess and without it; Figure 3,
+majority rates against position; Figure 4, the by-term series. It no longer has
+numbered steps. The lab (`scdb.Rmd`) runs the same sequence in Parts 1–6 with the
+code exposed and ends with four options. **Students should read the brief first.**
+**The Step numbers below are this key's own walking order for the session**, the
+eleven rows of the timing table, and the lab's Parts map onto them (Part 1 =
+Step 1, Part 2 = Steps 2 and 6, Part 3 = Steps 3–7, Part 4 = Step 8, Part 5 =
+Step 10, Part 6 = the options). Where the brief is meant it is named, and cited by
+figure number or heading.
+
+**This is the second half of Session 12.** The morning lab (`dw-nominate`) hands
+students a published ideal-point score and asks them to read it. This one builds
+one in front of them, from `r NPAIR - nrow(HOLE)` numbers, and then breaks it.
+The pairing is the point: the same method, once as a consumer and once as a
+manufacturer.
+
+Every number below was computed from the files in `data/` at knit time. **The
+brief computes its numbers the same way; the lab does not.** `scdb.Rmd` prints
+live output but states the figures in prose by hand — `r pc(max(ag$pct, na.rm = TRUE))`%,
+`r nm(R)`, `r nm(CHASM)`, and the rest. They are all correct against the current
+files, checked. If `data/build-data.R` is ever re-run against a newer SCDB
+release, **the lab's prose is the thing that goes stale**, and this key and the
+brief will not warn you, because they will simply report the new numbers.
+
+***
+
+# The session in one sentence
+
+Feed nothing but "how often did these two vote the same way" into a
+one-dimensional scaling and the conventional left–right ordering of the Roberts
+Court falls out — but one of the `r NPAIR` cells contains no data, and what you
+put there decides the fine ordering, so the blocs are in the data and the ranking
+is in the assumptions.
+
+***
+
+# The findings
+
+```{r headline}
+c(justices          = NJ,
+  pairs             = NPAIR,
+  pairs_with_data   = NPAIR - nrow(HOLE),
+  fill_value        = round(FILL, 3),
+  cor_with_fill     = round(R, 3),
+  cor_refusing      = round(R2, 3),
+  bloc_span         = round(SPAN, 3),
+  chasm             = round(CHASM, 3),
+  positions_moved   = MOVED,
+  one_vote_cases    = nrow(cc),
+  bloc_only_wins    = BLOC_WINS,
+  terms             = nrow(bt))
+```
+
+```{r headline-2}
+# all nine adjacent gaps; the fill only ever decides the two smallest
+round(GAPS, 4)
+
+# how often the recovered order survives resampling the votes
+c(exact_order_pct   = SAME,
+  alito_before_thomas_pct    = FTA,
+  kavanaugh_before_roberts_pct = FRK)
+```
+
+- **The ordering is `r paste(nice(CONS), collapse = ", ")`, then a gap, then
+  `r paste(nice(LIBS), collapse = ", ")`** — recovered from
+  `r NPAIR - nrow(HOLE)` agreement rates with no ideology supplied.
+- **It correlates `r nm(R)`** with each justice's share of conservative votes, a
+  variable the scaling never saw. Refusing to guess, on `r length(js2)`
+  justices: **`r nm(R2)`**.
+- **It is two clusters, not a spectrum.** The six on one side span
+  `r nm(SPAN)`; the single step across the middle is **`r nm(CHASM)`**.
+- **One cell of `r NPAIR` has no data.** `r nice(HOLE$a)` and `r nice(HOLE$b)`
+  never sat together. Filling it with the mean moves `r MOVED` positions.
+- **And those positions were never determined anyway.** The two pairs that swap
+  are separated by `r nm(GAPS[1], 4)` and `r nm(GAPS[5], 4)` on a scale spanning
+  `r nm(diff(range(ord)))`. Resample the votes and the full order comes back
+  **`r pc(SAME)`% of the time**; Alito and Thomas trade places on essentially a
+  coin flip.
+- **Kavanaugh is in the majority `r pc(max(jj$pct_in_majority))`% of the time**
+  and Roberts `r pc(jj$pct_in_majority[jj$justice == "JGRoberts"])`%. In the
+  `r nrow(cc)` one-vote decisions both fall to
+  **`r pc(max(jj$close_pct))`%**.
+- **Only `r BLOC_WINS` of the `r nrow(cc)` one-vote decisions** were won by a
+  majority drawn entirely from the six-justice bloc the scaling found. Two thirds
+  of the closest cases cut across the line the lab just built.
+- The long series runs **`r nrow(bt)` terms, `r min(bt$term)` to
+  `r max(bt$term)`**, every value a coder's judgement about direction.
+
+***
+
+# The three things to get said
+
+**1. The blocs are in the data; the fine ordering is in the assumptions. This is
+the pivot.** Steps 6 and 7 are the session. A student who leaves knowing only
+that one empty cell reorders the justices has got the course's transferable
+lesson: **every published score has a fill**, a cell with nothing in it and a
+decision about what to put there, and the question to ask of any such number is
+not whether it made assumptions but which ones and what happens if you change
+them. Make somebody state the asymmetry out loud — the coarse structure survives
+refusing to guess (`r nm(R2)` on `r length(js2)` justices, blocs unchanged) and
+the fine structure does not.
+
+**And go one step past the brief.** The two pairs that swap are separated by
+`r nm(GAPS[1], 4)` and `r nm(GAPS[5], 4)`. They were never distinguished in the
+first place. The fill is not overturning a finding; it is breaking a tie that the
+data never broke. That is worse than it sounds and better than it sounds at the
+same time, and saying which is the discussion.
+
+**2. "Moderate" is a description of the winning side, not of anyone's opinions.**
+Step 8 lands hard: the two justices nearest the middle of the recovered line win
+`r pc(max(jj$pct_in_majority))`% and `r pc(jj$pct_in_majority[jj$justice == "JGRoberts"])`%
+of cases, and the ones at the ends lose a quarter to a third. It is a mechanical
+consequence of position, not a personality trait. **Then take it back with Step
+9**: restricted to the `r nrow(cc)` one-vote decisions those same two fall to
+`r pc(max(jj$close_pct))`%, and only `r BLOC_WINS` of the `r nrow(cc)` were won by
+the conservative bloc alone. The `r pc(max(jj$pct_in_majority))`% figure is
+mostly a fact about unanimous and lopsided cases, which are most cases.
+
+**3. Every number in the `r nrow(bt)`-term series is a human coding decision, and
+every row of the underlying file is a person's act.** The direction codes are a
+codebook applied case by case since `r min(bt$term)`. That is not a reason to
+discard the series; it is a reason to say what it is. And note the level: this is
+**individual-level data** — Thomas's vote is Thomas's vote, not a rate computed
+over a group — which is why the agreement matrix is even possible. Aggregate data
+cannot support this analysis at all.
+
+**The line for the board:** the score is a measurement of nine people and a
+measurement of one decision we made, and the arithmetic cannot tell them apart.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** What one record is | Ten justices, cases, direction, majority | 5 | The two short tenures are planted here. Point at them; do not explain yet. |
+| **2** Who agrees with whom | `r NPAIR` pairs, `r pc(max(ag$pct, na.rm = TRUE))`% to `r pc(min(ag$pct, na.rm = TRUE))`% | 6 | "No ideology has been supplied to it" is the sentence that has to land. |
+| **3** The score falls out | `cmdscale` on 1 minus agreement | 7 | Students think a model was fitted. Nothing was fitted; distances were arranged. |
+| **4** Check against something unseen | Correlation `r nm(R)` | 4 | The sign is arbitrary (see below). Do not let anyone read meaning into it. |
+| **5** Not a spectrum | Span `r nm(SPAN)` vs chasm `r nm(CHASM)` | 5 | Ask for the prediction *before* showing the chasm. |
+| **6** One cell is not a number | `r nice(HOLE$a)` and `r nice(HOLE$b)`, `r HOLE$cases` shared cases | 8 | **Undefined, not zero, not missing.** No future data fixes it. |
+| **7** Refuse to guess | `r MOVED` positions move; blocs do not | **12** | **The pivot.** Take the prediction in the block quote seriously — most rooms guess "nothing changes" or "everything changes", and both are wrong. |
+| **8** The number that surprises | `r pc(max(jj$pct_in_majority))`% in the majority | 7 | Someone will call it power. It is geometry. |
+| **9** Close cases | `r nrow(cc)` one-vote decisions | **10** | Denominators differ by justice — see the caution below. This is Step 6's problem wearing a different hat. |
+| **10** Seventy-eight terms | `r min(bt$term)`–`r max(bt$term)`, coded direction | 8 | The series stops at `r max(bt$term)`. Say so out loud. |
+| **11** What you can now say | And cannot | 6 | Push for "the blocs are in the data" in a student's own words. |
+
+Total 78 minutes; Steps 7 and 9 absorb overruns.
+
+**If you are short on time, protect Steps 6, 7 and 9.** The undefined cell, what
+happens when you refuse to fill it, and the collapse of the majority rates in
+close cases are the argument. Steps 1–5 can be walked in ten minutes as a
+narrated demonstration; Step 10 can be a single sentence over the plot.
+
+***
+
+# What the brief now shows before any of this
+
+Figure 1 of the brief, under "Who agrees with whom", draws all `r NPAIR`
+agreement rates as a 10 x 10 heatmap, with the one undefined pair left blank and
+outlined in red, and a button labelled *re-sorted by the recovered order* (two
+panels in the PDF) that re-sorts the same matrix. **Use it as the cold open.**
+Students see the block structure and the hole with no method in between, which
+makes Steps 3 to 6 an explanation of something they have already noticed rather
+than a sequence of results they have to take on trust. Figure 3, under "Does the
+middle still win when it is close?", adds the majority rates plotted against
+position: an arch for all cases, and a flatter, partly inverted shape for the
+one-vote cases.
+
+# Two cautions about the numbers themselves
+
+## The axes have no meaning and no orientation
+
+Classical multidimensional scaling recovers **distances**, not coordinates. A
+scaling solution can be reflected, rotated, or both without changing its fit by
+any amount at all: if you multiply every position by -1 the pairwise distances are
+identical, so the fit is identical. **"Left" and "right" on that plot are
+conventions the analyst imposes after the fact, not findings.**
+
+Three practical consequences:
+
+- The correlation with conservative voting is `r nm(R)` **and it is negative only
+  because the solution came out with conservatives on the negative side.** A
+  reflected solution would give `r nm(-R)`. The magnitude is the finding; the
+  sign is not.
+- **The brief now states this under "The score falls out"**, immediately after the recovered
+  ordering, and both figures that use the scale label the axis as arbitrary in
+  direction. If a student quotes the brief at you, it agrees with this page.
+- The lab's plot is labelled `position (left = conservative here)`. The word
+  "here" is doing real work. **If the plot ever renders mirrored on a student's
+  machine, nothing is wrong** — eigen-decomposition sign conventions can differ.
+  Say this before somebody reports a bug.
+- In two dimensions (Option A) rotation is free as well, so "the second dimension
+  is X" is a claim about a coordinate system you chose, not about the Court.
+
+This is not a defect peculiar to our version. It applies to Martin-Quinn, to
+NOMINATE, and to every ideal-point estimate students will ever read about. The
+orientation is always supplied by the analyst.
+
+## The close-case denominators are not all `r nrow(cc)`
+
+`close_cases.csv` records the term, so each justice's real denominator is the
+one-vote decisions in the terms they actually sat for.
+
+```{r denoms}
+d <- jj[order(-jj$close_pct), c("justice", "close_maj", "close_n", "close_pct")]
+d$justice <- nice(d$justice); d$close_pct <- pc(d$close_pct)
+print(d, row.names = FALSE)
+```
+
+`r nice(HOLE$b)` sat for `r jj$close_n[jj$justice == HOLE$b]` of the one-vote
+decisions and `r nice(HOLE$a)` for `r jj$close_n[jj$justice == HOLE$a]`. Dividing
+either by `r nrow(cc)` — which is what a student will do — gives
+`r pc(100 * jj$close_maj[jj$justice == HOLE$b] / nrow(cc))`% and
+`r pc(100 * jj$close_maj[jj$justice == HOLE$a] / nrow(cc))`%, both badly wrong.
+Barrett, by contrast, was confirmed before the first one-vote decision in the
+window was handed down, so her `r jj$close_maj[jj$justice == "ACBarrett"]` of
+`r nrow(cc)` is comparable even though she has fewer coded cases than the rest.
+
+**This is the single most likely arithmetic error in Option C, and catching it is
+a 4.**
+
+***
+
+# Option A — Two dimensions
+
+## Verified output
+
+```{r a}
+round(sol$points[order(sol$points[, 1]), ], 4)
+round(sol$eig[1:5], 4)                       # scree: how much each axis carries
+round(c(eig2_over_eig1 = sol$eig[2] / sol$eig[1],
+        eig2_over_eig3 = sol$eig[2] / sol$eig[3],
+        gof_1d = cmdscale(as.dist(1 - M), k = 1, eig = TRUE)$GOF[1],
+        gof_2d = sol$GOF[1]), 3)
+round(c(median_cor_dim1_under_resampling = D1COR,
+        median_cor_dim2_under_resampling = D2COR), 3)
+```
+
+Dimension 1 carries an eigenvalue of `r nm(sol$eig[1])`; dimension 2 carries
+`r nm(sol$eig[2])` and dimension 3 carries `r nm(sol$eig[3])`. **The second
+dimension is barely larger than the third**, which is the cleanest available
+signature of noise: a real second dimension stands apart from the ones below it,
+and this one does not. Resampling the votes, the recovered second dimension
+correlates a median `r nm(D2COR)` with the one in the data — dimension 1 comes
+back at `r nm(D1COR)` by comparison.
+
+**Who it separates matters too.** On dimension 2 the extremes are
+`r nice(names(which.max(sol$points[, 2])))` and
+`r nice(names(which.min(sol$points[, 2])))` — which are exactly the two justices
+joined by the invented cell from Step 6. **The second dimension in the ten-justice
+solution is substantially manufactured by the fill.** Run it on the eight
+overlapping justices and a different second dimension appears, with Gorsuch at
+one end and Roberts and Kavanaugh at the other:
+
+```{r a2}
+round(sol2$points[order(sol2$points[, 1]), ], 4)
+round(sol2$eig[1:4], 4)
+```
+
+**3/4:** Runs `k = 2`, plots both, reports that the second dimension does not
+change the left–right ordering and separates one or two justices from the rest.
+
+**4/4:** Names who moves and asks whether it is real. Any of these is the move:
+notices the second dimension's extremes are Breyer and Jackson and connects that
+to the fill; or compares eigenvalue 2 to eigenvalue 3 and concludes they are
+indistinguishable; or proposes a substantive reading (Gorsuch on criminal
+procedure and Indian law is the standard one) **and says what evidence would
+distinguish it from noise**.
+
+**4/4, best:** Says that the question as posed cannot be settled from the
+agreement matrix at all, because the axes of a scaling solution are only defined
+up to rotation — dimension 2 is whatever is left over after dimension 1, in a
+coordinate system nobody chose on substantive grounds. To interpret it you would
+need to leave the matrix and go look at which cases those justices split on.
+**Knowing the data cannot answer it is the right answer**, and it is the same
+move rewarded in Option B of the `precinct-geography` lab.
+
+***
+
+# Option B — Refuse to guess
+
+## Verified output
+
+```{r b}
+data.frame(rank = seq_along(ord2),
+           filled  = nice(keep),
+           refusing = nice(names(ord2)),
+           changed = ifelse(keep == names(ord2), "", "swapped"))
+round(c(cor_with_fill = R, cor_refusing = R2), 3)
+round(ord[keep], 4)   # positions with the guess
+round(ord2, 4)        # positions refusing to guess
+```
+
+Two adjacent pairs trade places, `r MOVED` positions in all. Nothing else moves,
+the blocs are identical, and the correlation with conservative voting **improves**
+from `r nm(R)` to `r nm(R2)`.
+
+**3/4:** Re-runs it, reports that two pairs swapped and that the blocs held.
+
+**4/4:** Draws the general conclusion — coarse structure is robust, fine ordering
+is not — and says what that implies for reading any published ranking of the
+justices. Bonus for noticing that the correlation went *up* without the guess,
+and for resisting the conclusion that the eight-justice version is therefore
+"better": it answers a different question, about a Court that never existed.
+
+**4/4, best:** Notices *which* pairs swapped and checks the gaps. Thomas and
+Alito are `r nm(GAPS[1], 4)` apart and Roberts and Kavanaugh `r nm(GAPS[5], 4)`,
+on a scale spanning `r nm(diff(range(ord)))` — so the fill did not overturn a
+result, it broke a tie. A student who says "those two were never distinguished by
+this data in the first place, with or without the guess" has understood the
+method better than the brief states it. The resampling above puts a number on it:
+the full order survives `r pc(SAME)`% of the time and Alito precedes Thomas in
+`r pc(FTA)`% of resamples.
+
+*(That resampling treats each pair's agreement count as an independent binomial,
+which it is not — the same votes enter many pairs — so read it as illustrative
+rather than as a confidence interval. A proper resample would be at the case
+level and the aggregated files do not support one. Worth saying if a student
+asks; do not require it.)*
+
+***
+
+# Option C — The close cases
+
+## Verified output
+
+```{r c}
+o <- jj[order(-jj$close_pct),
+        c("justice", "pct_in_majority", "close_maj", "close_n", "close_pct")]
+o$justice <- nice(o$justice); o$close_pct <- pc(o$close_pct)
+print(o, row.names = FALSE)
+
+# how many one-vote majorities came entirely from the six-justice bloc
+table(conservatives_in_majority = nc)
+```
+
+**3/4:** Counts correctly, reports that Kavanaugh and Roberts are still top but
+much lower — `r pc(max(jj$close_pct))`% against
+`r pc(max(jj$pct_in_majority))`% — and that the ordering below them scrambles.
+
+**4/4:** Handles the denominator (see the caution above): either restricts to the
+justices who sat the whole window, or uses each justice's own terms. A student
+who divides Breyer's `r jj$close_maj[jj$justice == "SGBreyer"]` by `r nrow(cc)`
+and reports `r pc(100 * jj$close_maj[jj$justice == "SGBreyer"] / nrow(cc))`% has
+made exactly the Step 6 error in a new place, and should be told so rather than
+marked down hard — it is the most instructive mistake in the lab.
+
+**4/4, best:** Notices that only `r BLOC_WINS` of the `r nrow(cc)` one-vote
+decisions were won by a majority drawn entirely from the conservative bloc, and
+draws the conclusion: **the dimension the scaling recovered explains the Court's
+agreement in general but not its closest cases.** Two thirds of the one-vote
+decisions cut across it. That is a genuine limit on what an ideal-point score
+buys you, and it is not stated anywhere in the brief — reward it warmly.
+
+***
+
+# Option D — Your own question
+
+No fully verified output; grade the reasoning and the fit between question and
+data.
+
+**3/4:** Asks a question the four files can actually answer and answers it
+without error — most-agreeing pair by term, the shape of the by-term series
+around a particular appointment, which justices appear together most often in
+one-vote majorities.
+
+**4/4:** States what would have to be true for the answer to mean what the
+student wants it to mean, and checks at least one of those things. The commonest
+good version: a claim about change over time that runs into the fact that this
+is a snapshot and the by-term series measures a different quantity (case
+direction) from the scaling (justice agreement).
+
+**4/4, best:** Asks a question the data *cannot* answer and explains precisely
+why — then says what data would. Examples that have worked: "did Roberts move
+after 2018?" (needs a dynamic model, which is exactly why Martin-Quinn exists);
+"do these blocs disagree about outcomes or about reasons?" (the file has no
+opinions in it); "is the docket selected by the same nine people whose agreement
+we are measuring?" (yes, and it makes the denominator endogenous). **Rejecting a
+question for a stated reason is worth as much as answering one.**
+
+Common failures: comparing "% conservative" across distant terms without any
+argument about the codebook; reading a trend off the raw grey line in Step 10
+rather than the smoothed one; treating the `r nrow(bt)`-term series and the
+four-term scaling as if they measured the same thing.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code — it is given.** A wrong number from correctly running
+  the given code is a reading error, not a coding error, and should be graded as
+  interpretation.
+- **The move that earns a 4** is treating the fill as a substantive decision with
+  consequences rather than a technical detail, and being explicit about which
+  parts of the answer survive changing it.
+- **A 2** is "the score is subjective so it doesn't mean anything." True in the
+  trivial sense, useless, and the exact conclusion Step 7 is designed to prevent —
+  the whole point is that *some* of it survives and you can say which.
+- **Also a 2:** reporting the recovered ranking as though the positions were
+  measured quantities, e.g. "Thomas is the most conservative justice" as a finding
+  rather than as a coin flip with Alito.
+- **Also a 2:** dividing every close-case count by `r nrow(cc)` and not noticing.
+- **Reward anyone who asks how precise the positions are.** The lab gives no
+  error bars and there is no honest way to attach them without going back to the
+  case-level data. Noticing their absence is the most sophisticated available
+  response, and it is what the resampling above exists to answer for you rather
+  than for them.
+
+## Anticipated questions
+
+- *"Isn't this circular? You got the answer everyone already knew."* — The
+  strongest thing you can say is that the ordering was not put in: the scaling saw
+  `r NPAIR - nrow(HOLE)` numbers and no labels, and the dimension it found is the
+  one the culture already names. The strongest objection is that agreement and
+  ideology may be the same phenomenon measured twice, in which case `r nm(R)` is a
+  tautology with extra steps. **Both are defensible and neither is refutable from
+  this table.** Say that; do not resolve it.
+- *"Why not just use Martin-Quinn?"* — Because a published score is the answer,
+  and this session is about how the answer gets made. Also, practically, the
+  Martin-Quinn site is behind a bot check and cannot be fetched by a script; the
+  build note in `data/build-data.R` says so.
+- *"Why is conservative negative?"* — It is not. See the orientation caution
+  above. The solution could be reflected at no cost.
+- *"Couldn't you just leave the missing cell out?"* — Not in classical scaling,
+  which needs a complete distance matrix. Option B's answer is to drop the two
+  justices instead, which is the honest version of leaving it out and costs you
+  two justices.
+- *"Why does the data stop at `r max(bt$term)`?"* — Because the SCDB release used
+  here is the 2024 release, covering terms through `r max(bt$term)`. **Nothing
+  after the `r max(bt$term)` term is in these files**, so no claim in this lab is
+  about the current Court. Anyone reaching for a 2025 or 2026 decision is off the
+  edge of the data.
+- *Is* Allen v. Milligan, *which is sitting in `close_cases.csv`, still good
+  law?* — Largely not, and it is a gift of an example. *Allen v. Milligan*, 599
+  U.S. 1 (2023), appears in the file as a
+  `r cc$majVotes[cc$caseName == "ALLEN v. MILLIGAN"]`–`r cc$minVotes[cc$caseName == "ALLEN v. MILLIGAN"]`
+  decision whose majority was **Roberts and Kavanaugh joined with Kagan,
+  Sotomayor and Jackson** — one of the `r nrow(cc) - BLOC_WINS` one-vote cases
+  that cut across the recovered line. Then came *Louisiana v. Callais*, 608 U.S.
+  ___ (2026), decided April 29, 2026, in which the Court substantially reworked
+  Voting Rights Act § 2 and held that § 2 did not require Louisiana to draw an
+  additional majority-minority district. Alito wrote for a six-justice majority
+  that included **both Roberts and Kavanaugh**, with Kagan dissenting for
+  herself, Sotomayor and Jackson. **Two of the justices who made the** Milligan
+  **majority were on the other side three years later** — a concrete
+  demonstration of the lab's own limitation that a snapshot cannot show anyone
+  changing. If you use this, get the neighbours right too: *Shelby County v.
+  Holder*, 570 U.S. 529 (2013), struck the § 4(b) coverage formula, not § 5
+  itself, and *Bartlett v. Strickland*, 556 U.S. 1 (2009), is a plurality, not a
+  majority.
+- *"Do the justices know these numbers exist?"* — Yes. Several have commented on
+  them, usually unfavourably. That is a good thirty seconds, not more.
+
+## Connections
+
+- **`dw-nominate`** — the other half of Session 12 and the direct pair. There
+  students consume a published score; here they build one. **Run them in that
+  order**, and ask at the end of this one what DW-NOMINATE's fill is.
+- **`levels-of-aggregation`** — this lab sits on the **individual** side of the
+  course's individual-versus-aggregate axis. A justice's vote is a person's act,
+  recorded as such, and that is precisely why a pairwise agreement matrix can
+  exist at all; no aggregate table of "the Court voted conservative 60% of the
+  time" could support it. Worth one sentence at the top of the session.
+- **`cast-vote-records`** — the other lab built on individual acts rather than
+  rates, and the closest analogue: an anonymous ballot there, a named vote here.
+  The contrast between the two is a good exam question.
+- **`rpv`** — where the *absence* of individual-level data forces inference from
+  aggregates, and everything gets harder. The cleanest possible foil for this
+  session.
+- **`precinct-geography`** — the same shape of lesson in a different domain: two
+  defensible methods, one invisible choice, a moved answer.
+- **`surveys-source`** and **`gss-confidence`** — the other places in the course
+  where a headline number turns out to rest on a coding decision made by somebody
+  the reader never meets.

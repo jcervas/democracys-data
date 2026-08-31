@@ -1,0 +1,210 @@
+---
+title: "Data Session 5, part 2: The Money Nobody Controls"
+subtitle: "84-355 Democracy's Data | Independent expenditures, 2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number come from?
+
+> *"Outside groups spent $4 billion on the 2024 election."*
+
+You have just seen what candidates raise. This is the other pot: an
+**independent expenditure** is money spent for or against a candidate by
+somebody the candidate does not control — and, by law, may not coordinate with.
+
+It is reported to the FEC separately, it is frequently larger than the
+campaign's own spending, and it is the part of the disclosure system that works
+least well. Today you find out how badly.
+
+**Start by reading a number off the raw file.**
+
+```{r first-look}
+s <- read.csv("data/ie_summary.csv", stringsAsFactors = FALSE)
+s[s$version == "raw", ]
+```
+
+**$49.7 billion**, of which 94.5% supports candidates and 5.5% opposes them.
+
+Both of those numbers are wrong. One is wrong by a factor of ten. The other is
+backwards.
+
+# Part 1 — Sixteen rows
+
+```{r outliers}
+o <- read.csv("data/ie_outliers.csv", stringsAsFactors = FALSE)
+nrow(o)
+o[, c("spender", "cand_name", "amount", "pur")]
+```
+
+That is the entire problem. **Sixteen rows out of 73,449 — 0.02% of the file —
+carry 90.4% of the dollars.** Read who filed them.
+
+**"THE COMMITTEE OF 300."** **"THE COURT OF DIVINE JUSTICE."** **"The Masonic
+Illuminati Eye."** Nearly ten billion dollars each, almost all naming one
+obscure candidate, for purposes including **"DEPOSIT FOR WINNING IN ELECTION"**.
+One committee reports **$255,000,000** spent on a candidate named **Walter
+White**, for "funding for waltuh white's campaign."
+
+These are not errors. They are **junk filings**, and they are sitting in the
+federal government's official record of campaign spending, published exactly as
+submitted.
+
+**The FEC publishes what is filed. It does not check whether it is true.**
+
+```{r dupes}
+o[o$spender == "Food & Water Action", c("spender", "amount", "file_num")]
+```
+
+And then a completely different problem. Nine rows, all $114,056,874, all the
+same committee, all supporting the same candidate — and **all carrying the same
+file number.** One filing, exported nine times. Not a prank; a plumbing failure.
+
+**Two kinds of bad data in one table**, and only one of them was anybody's
+fault.
+
+# Part 2 — What happens when you take them out
+
+```{r cleaned}
+s
+```
+
+```{r flip-plot}
+m <- matrix(c(s$pct[s$version == "raw"], s$pct[s$version == "cleaned"]), nrow = 2)
+barplot(m, beside = FALSE, names.arg = c("raw file", "16 rows removed"),
+        col = c("#2c7fb8", "#C41230"), ylab = "percent of dollars",
+        legend.text = c("supporting a candidate", "opposing a candidate"))
+```
+
+**The total falls from $49.7 billion to $4.75 billion** — which is the real
+figure, and matches what watchdog groups report.
+
+**And the headline reverses.** In the raw file, 94.5% of outside money supports
+candidates. Once sixteen rows are gone, **57.6% of it is spent attacking
+somebody.**
+
+That is not a rounding change. It is the single most important substantive fact
+about independent expenditure — *most of this money is negative* — and the raw
+file tells you the opposite.
+
+**How the cleaning was done, so you can argue with it:** every row above $100
+million was dropped. That is a **threshold, not a diagnosis**. It happens to
+catch exactly the sixteen rows above and nothing else, but it is crude, and a
+real analyst would have to defend it. Part 5 asks you to.
+
+# Part 3 — Who is being attacked
+
+```{r candidates}
+cd <- read.csv("data/ie_candidates.csv", stringsAsFactors = FALSE)
+head(cd[, c("candidate", "office", "supporting", "opposing", "pct_against")], 10)
+```
+
+```{r cand-plot}
+top <- head(cd[cd$office == "S", ], 6)
+barplot(rbind(top$supporting, top$opposing) / 1e6, beside = TRUE,
+        names.arg = sub(",.*", "", top$candidate), las = 2, cex.names = 0.7,
+        col = c("#2c7fb8", "#C41230"), ylab = "$ millions",
+        legend.text = c("supporting", "opposing"))
+```
+
+Look at the Senate races. **Sherrod Brown: 81.7% of the outside money aimed at
+him was spent against him. Bob Casey: 87.6%.**
+
+For the presidential candidates the split is closer to even — Harris 42.6%
+against, Trump 55.0% — because both had large supportive super PACs. **Senate
+challengers and incumbents mostly get attacked.**
+
+Notice what this does to the phrase "money spent on a candidate." Money spent
+*on* Sherrod Brown was overwhelmingly money spent trying to defeat him.
+
+# Part 4 — Who is doing it
+
+```{r committees}
+cm <- read.csv("data/ie_committees.csv", stringsAsFactors = FALSE)
+head(cm[, c("spender", "amount", "pct_against")], 12)
+```
+
+Some committees exist almost entirely to attack. Others almost entirely to
+promote. **The same legal instrument does both**, and the disclosure form does
+not distinguish between them beyond a single letter — `S` or `O` — in a column
+most people never read.
+
+# Part 5 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Argue with the threshold.** The $100 million cut is arbitrary. Try
+$50 million and $500 million (`o$amount > 5e7`). Does the support/oppose flip
+survive? At what threshold does it stop working, and what does that tell you
+about how robust the finding is?
+
+**Option B — A better rule.** Rather than a dollar threshold, you could drop
+rows whose *purpose* text looks fake, or whose committee filed only once, or
+whose amount exceeds the entire cycle's real spending. Pick one, say how you
+would implement it, and say what it would wrongly remove.
+
+**Option C — Negative by office.** Compare `pct_against` for presidential,
+Senate and House candidates in `ie_candidates.csv`. Which office attracts the
+most negative money, and what about those races would explain it?
+
+**Option D — Your own question.** 73,449 filings, 16 of them nonsense.
+
+# What this lab cannot tell you
+
+- **Whether the junk filings were prosecuted.** The FEC has an enforcement
+  process; this file records what was filed, not what happened next.
+- **Whether an ad worked.** We have dollars and a direction, not persuasion.
+  The obvious next dataset would be the ad libraries — which are closed. Meta
+  requires an access token and identity verification; Google reports spend in
+  **ranges** rather than figures, through a cloud service. **The most detailed
+  record of political persuasion in America is not public.**
+- **Coordination.** "Independent" is a legal claim, not an observed fact. The
+  data cannot show you whether a super PAC and a campaign were actually working
+  together; that is what investigations are for.
+- **Everything spent.** Independent expenditures are one category. Electioneering
+  communications, party spending and dark-money groups that never file at all
+  are elsewhere or nowhere.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- Sixteen rows out of 73,449 changed the headline finding from "mostly
+  supportive" to "mostly negative." What does that do to your confidence in
+  numbers quoted from official data?
+- The FEC published "THE COURT OF DIVINE JUSTICE" spending $9.9 billion. Should
+  it have? What would checking cost, and who would pay?
+- 87.6% of the outside money around Bob Casey was spent against him. Is that a
+  problem, and for whom?
+
+***
+
+### Where the data came from
+
+Federal Election Commission bulk downloads, **independent expenditures, 2024
+cycle** — 73,449 filings.
+<https://www.fec.gov/files/bulk-downloads/2024/independent_expenditure_2024.csv>
+
+The build is in `data/build-ie-data.R`. It documents all three data problems
+found in this file: the junk filings, the nine-fold duplicate, and the
+unnormalised candidate names that split "Harris, Kamala" from "HARRIS, KAMALA"
+until they were merged. **Every row removed by the cleaning rule is committed in
+`ie_outliers.csv`**, so you can check the decision rather than trust it.

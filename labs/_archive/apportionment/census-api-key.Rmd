@@ -1,0 +1,226 @@
+---
+title: "Data Session 2 Key, part 3: Three Front Doors"
+subtitle: "84-355 Democracy's Data | Session 2 — The Census API | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+v <- read.csv("data/api_variables.csv", stringsAsFactors = FALSE)
+g <- read.csv("data/api_geography.csv", stringsAsFactors = FALSE)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** The third part of Session 2, after apportionment and the
+race classification. It is the shortest piece of the session and the one that
+travels furthest — every later session gets its data from somewhere, and this is
+where students learn that "somewhere" has a door, a lock, and a key.
+
+**It runs entirely offline.** The two metadata files are cached in `data/`.
+Nothing here needs a network or an API key, deliberately.
+
+***
+
+# The session in one sentence
+
+The Census API answers "what exists?" to anybody and "what is the number?" only
+to registered users, and when you ask without a key it hands you a **web page**
+instead of an error.
+
+***
+
+# The findings
+
+```{r headline}
+c(variables        = nrow(v),
+  geography_levels = nrow(g),
+  vra_18plus_pair  = sum(v$concept == "HISPANIC OR LATINO, AND NOT HISPANIC OR LATINO BY RACE FOR THE POPULATION 18 YEARS AND OVER"),
+  all_18plus       = sum(grepl("18 YEARS AND OVER", v$concept)))
+```
+
+- **338 variables** from a census that asked about ten things.
+- **145 of them — 43% — are the 18-and-over versions** of other tables.
+- **96 geography levels**, including `block` and `voting district`.
+- A keyless data request returns an **HTML page titled "Missing Key."**
+
+***
+
+# The three things to get said
+
+**1. A census with ten questions publishes 338 variables.** The gap between
+*what was asked* and *what is released* is the whole point. Nobody was asked
+"are you a non-Hispanic Asian adult living in a group quarters" — that is a
+cross-tabulation, produced by the Bureau after the fact, and someone decided it
+was worth producing.
+
+**2. Forty-three percent of the file exists because of the Voting Rights Act.**
+Every racial table is published twice, once for everyone and once for adults,
+because **the VRA is about voters and voters are adults**. That is a statute
+visible in the shape of a data file. **Ask the room to name another dataset
+whose column list was determined by a law** — Session 6's voter file, whose race
+column exists for the same reason, is the answer you want.
+
+**3. A locked door that returns HTML is worse than one that returns an error.**
+A script asking without a key does not crash — it receives a web page where it
+expected numbers. Ask what happens next: either an obvious explosion downstream,
+or, worse, a parser that silently produces nothing and a table of zeroes nobody
+questions. **This is the same failure shape as Session 11's −99 codes and
+Session 6's missing 2020 voters**: the data did not announce its own absence.
+
+**The line for the board:** the catalogue is public, the data is not, and the
+lock is quiet.
+
+***
+
+# On the key policy — decide before Sep 3
+
+The API **now rejects keyless requests**; the old allowance of a few hundred
+queries a day is gone. Three options, and the lab is built for the first:
+
+1. **Cached metadata plus optional key** *(what this lab does)*. Everything runs
+   offline. Students who want a live query register their own key in about a
+   minute. Nobody is blocked by wifi or by a queue at the signup page.
+2. Require every student to register. Adds a failure mode on day one for no
+   pedagogical gain.
+3. Share one key. **Do not.** See below.
+
+**Revoke the F25 key.** A live Census API key sits in plain text in
+`F25/Assignments/labs/surnames/surnames.md`, which was distributed to students a
+year ago. Revoke at <https://api.census.gov/data/key_signup.html>. The warning in
+Part 5 of the lab refers to this without identifying it; if a student asks, the
+honest answer is that it was mine and it was a mistake, which is a better lesson
+than a hypothetical.
+
+***
+
+# Option A — Find the adult version
+
+## Verified output
+
+```{r a}
+ad <- grepl("18 YEARS AND OVER", v$concept)
+table(sub("_.*", "", v$variable[ad]))
+c(count = sum(ad), pct_of_file = round(100 * mean(ad)))
+```
+
+The 18+ tables are **P3** (race) and **P4** (Hispanic origin by race) — the
+adult twins of P1 and P2. **145 variables, 43% of the file.** (`GEO` appears in
+the count too; it is the geography identifier, not a substantive table.)
+
+**3/4:** Finds the concept, counts the variables, identifies P3/P4.
+
+**4/4:** Explains *why* — Section 2 vote-dilution claims turn on whether a
+minority group is large enough to form a majority in a district, and the
+relevant population is voting-age, not total. Without P3 and P4 you cannot
+compute the thing the litigation is about.
+
+**4/4, best:** Notices that even 18+ is not the right denominator, because it
+includes non-citizens and people with felony disenfranchisement. **The Bureau
+publishes the closest thing it can measure, not the thing the law wants**, and
+courts have argued about that gap for decades. A student who gets here has
+independently found CVAP.
+
+***
+
+# Option B — Build a query
+
+## Verified output
+
+```{r b}
+h <- v[grepl("Hispanic or Latino$", v$label) & grepl("^P2_", v$variable), ]
+h[, c("variable", "label")]
+cat("\nhttps://api.census.gov/data/2020/dec/pl?get=NAME,P2_002N&for=county:*&in=state:13\n")
+```
+
+The variable is **`P2_002N`** and Georgia is state FIPS **13**. The query would
+return **159 rows** — one per Georgia county — of which one is Houston County,
+which students will meet again in Sessions 6, 7 and 14. (Georgia has 159
+counties, second only to Texas. If a student says 160, that is worth catching:
+the row count is a checkable prediction, which is the point of the exercise.)
+
+**3/4:** Finds a plausible variable and writes a syntactically correct URL.
+
+**4/4:** Picks `P2_002N` rather than `P4_002N` and can say why — P2 is total
+population, P4 is adults only — and states the expected row count.
+
+**4/4, best:** Notes that they cannot verify any of this without a key, and that
+**writing a query you cannot run is the ordinary condition of working with
+gated data.** Being able to state precisely what you would get is the skill.
+
+***
+
+# Option C — The smallest unit
+
+## Verified output
+
+```{r c}
+small <- c("block", "block group", "tract", "county subdivision",
+           "subminor civil division", "place", "voting district")
+g$name[g$name %in% small]
+c(below_county = sum(g$name %in% small), total_levels = nrow(g))
+```
+
+Seven levels sit below the county, and **`voting district` is one of them** —
+the Census publishes population by precinct.
+
+**3/4:** Counts them and observes the API goes very small.
+
+**4/4:** Answers the question actually asked — who the users are. Ninety-six
+levels exist because school boards, water districts, city planners, marketers
+and litigators all need different geographies. **The Census Bureau's users are
+overwhelmingly not researchers**, and the file is shaped for administration.
+
+**4/4, best:** Spots `voting district` and works out what it implies — the
+Bureau publishes population inside precinct lines, which is precisely the join
+Session 14 performs to run racially polarized voting analysis. **The data
+required to challenge a districting plan is published by the government that
+drew it.** Say this is deliberate: PL 94-171 exists to enable exactly that.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is reading the file's shape as evidence about who
+  made it and why. Anyone who writes "this variable exists because…" and
+  finishes correctly has the session.
+- **A 2** is describing what the API does without asking why it is arranged that
+  way.
+- **This is a short piece.** It follows apportionment and race classification in
+  the same 80 minutes; do not let it run long. Twenty minutes is right.
+
+## Anticipated questions
+
+- *"Why do I need a key for public data?"* — Rate limiting and abuse prevention,
+  officially. The effect is that the automatable door is the gated one, while
+  the point-and-click door stays open. Both facts are true and worth stating.
+- *"Is the API data different from the website's?"* — No, same published tables.
+  What differs is scale: a person can click through fifty counties, not eight
+  million blocks.
+- *"Are these the real numbers?"* — They are the *published* numbers. Since 2020
+  the Bureau injects noise for differential privacy, so block-level counts are
+  deliberately not exact. Flag it; it is the wrap's census-privacy topic.
+- *"Can I use this for the data journalism project?"* — Yes, and this is the
+  session where somebody realises they can.
+
+## Connections
+
+- **Session 3 (ACS)** — the same API, tens of thousands of variables, and every
+  one with a margin of error.
+- **Session 6 (voter files)** — the other dataset whose columns were written by
+  a statute.
+- **Session 11 (EAVS)** — the other place where the data quietly fails to
+  announce its own absence.
+- **Session 14 (precincts)** — `voting district`, which is where that join comes
+  from.

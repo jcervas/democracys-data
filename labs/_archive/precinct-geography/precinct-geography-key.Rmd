@@ -1,0 +1,482 @@
+---
+title: "Key: The Ground Moves Under the Data"
+subtitle: "84-355 Democracy's Data | Precinct geography | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+D  <- "../ga-precinct-returns/data"
+HC <- "HOUSTON"
+a  <- read.csv(file.path(D, "assign_point.csv"),      stringsAsFactors = FALSE)
+ba <- read.csv(file.path(D, "block_assign.csv"),      stringsAsFactors = FALSE)
+ar <- read.csv(file.path(D, "crosswalk.csv"),         stringsAsFactors = FALSE)
+po <- read.csv(file.path(D, "crosswalk_pop.csv"),     stringsAsFactors = FALSE)
+cp <- read.csv(file.path(D, "crosswalk_compare.csv"), stringsAsFactors = FALSE)
+ck <- read.csv(file.path(D, "crosswalk_check.csv"),   stringsAsFactors = FALSE)
+ts <- read.csv("fig_twosource.csv",                   stringsAsFactors = FALSE)
+wm <- read.csv("fig_rozr_meta.csv",                   stringsAsFactors = FALSE)
+
+# 30 rows of the 2020 shapefile (27 of 2024) carry no county and no precinct
+# name, so the build key collapses them into a single pseudo-precinct "NA|NA".
+# Left in, it masquerades as a real precinct and inflates the extremes -- the
+# "worst disagreement" reads 0.894 and is really 0.890. Drop it from EVERY file
+# it appears in, not just the comparison table.
+ok   <- function(x) !is.na(x) & x != "NA|NA"
+junk <- function(d) d[ok(d$from_2020) & ok(d$to_2024), ]
+a <- junk(a); ar <- junk(ar); po <- junk(po); cp <- junk(cp)
+
+cty <- function(x) sub("\\|.*$", "", x)
+nm  <- function(x) sub("^[^|]*\\|", "", x)
+inC <- function(d) d[cty(d$from_2020) == HC, ]
+
+p20 <- unique(a$from_2020);  p24 <- unique(a$to_2024)
+h20 <- sort(unique(a$from_2020[cty(a$from_2020) == HC]))
+h24 <- sort(unique(a$to_2024[cty(a$to_2024)   == HC]))
+h24all <- sort(unique(ba$precinct_2024[!is.na(ba$precinct_2024) &
+                                       cty(ba$precinct_2024) == HC]))
+arH <- inC(ar); poH <- inC(po); cpH <- inC(cp)
+baH <- ba[!is.na(ba$precinct_2020) & cty(ba$precinct_2020) == HC, ]
+sp  <- function(d, f = 0) { d <- d[d$weight >= f, ]; round(100*mean(table(d$from_2020) > 1), 1) }
+sv  <- function(A, B) round(100 * length(intersect(A, B)) / length(A), 1)
+gap <- abs(wm$ballots_area[wm$target == "PEC"] - wm$ballots_pop[wm$target == "PEC"])
+spl <- names(which(table(poH$from_2020) > 1))   # Houston precincts really split
+ren <- setdiff(h20, h24)                        # Houston precincts merely renamed
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`precinct-geography-brief.Rmd`) is now a chapter, "The
+Ground Moves Under the Data": it is organised by argument under prose headings and
+carries four numbered D3 figures rather than numbered steps — Figure 1, Houston
+County's precincts in 2020 and 2024; Figure 2, disaggregate-then-reaggregate in
+one sketch; Figure 3, the one piece of Houston ground that changed precinct;
+Figure 4, where land and people give different answers across Georgia. The lab
+(`precinct-geography.Rmd`) is unchanged and still runs Steps 1–10 with the code
+exposed. **Students should read the brief first.** **Step numbers below refer to
+the lab.** The chapter covers the same ground in the same order, so each lab Step
+has a heading facing it: Step 1 = "Nobody in Atlanta drew these lines"; Step 2 =
+"Sixteen precincts you can name" (Figure 1); Step 3 = "The repair that deletes the
+wrong precincts"; Steps 4 and 5 = "A unit that both maps contain" (Figure 2);
+Step 6 = "Land or people", worked out in "One precinct, taken apart" (Figure 3)
+and scaled up in "How bad it gets elsewhere" (Figure 4); Steps 7, 8 and 9 =
+"Carrying the votes, and checking that they arrived"; Step 10 = "What the
+crosswalk licenses".
+
+**The worked example is Houston County, and the statewide numbers stay.** Every
+step is illustrated in one county you can talk about from memory, then checked
+against Georgia so nobody thinks the county was chosen for its answer. Where the
+two differ, the difference is the lesson — most sharply in Step 6, where Houston
+is a *stronger* case than the state, and in Option B, where it is a much weaker
+one.
+
+**This is a methods session, and it is the only one in the course that teaches a
+procedure students could be asked to perform.** Everything else asks them to read
+data somebody else assembled. Here they learn a thing redistricting analysts,
+expert witnesses and election reporters actually do, and why it is contested.
+
+Every number below is computed from the built files at knit time.
+
+***
+
+# The session in one sentence
+
+Precinct boundaries move between elections, so comparing precincts across years
+means putting both years on one map — and the reasonable ways of doing that
+disagree with each other about something as basic as whether a precinct was
+split.
+
+***
+
+# The findings
+
+```{r headline}
+rbind(
+  HOUSTON = c(name_survival_pct = sv(h20, h24),
+              precincts_2020    = length(h20),
+              blocks            = nrow(baH),
+              population        = sum(baH$pop),
+              areal_split_pct   = sp(arH),
+              pop_split_pct     = sp(poH),
+              pairs_over_10pts  = sum(abs(cpH$diff) > 0.10),
+              worst_gap         = round(max(abs(cpH$diff)), 3)),
+  GEORGIA = c(sv(p20, p24), length(p20), nrow(ba), sum(ba$pop, na.rm = TRUE),
+              sp(ar), sp(po), sum(abs(cp$diff) > 0.10), round(max(abs(cp$diff)), 3)))
+```
+
+- **`r sv(h20, h24)`% of Houston's precinct names survive 2020→2024;
+  `r sv(p20, p24)`% of Georgia's do.** Statewide, precinct *codes* do worse still
+  — about 75%. Two keys, two answers.
+- **Houston: `r format(nrow(baH), big.mark=",")` blocks,
+  `r format(sum(baH$pop), big.mark=",")` people.** Georgia:
+  `r format(nrow(ba), big.mark=",")` blocks,
+  `r format(sum(ba$pop, na.rm=TRUE), big.mark=",")` — the census count exactly.
+- **Areal weighting calls `r sp(arH)`% of Houston's precincts split; population
+  weighting calls `r sp(poH)`%.** Statewide: `r sp(ar)`% and `r sp(po)`%. **The
+  county's contrast is the sharper one** — that is why the example moved there.
+- **`r round(100*mean(abs(cpH$diff) > 0.10), 1)`% of Houston's weight pairs
+  differ by more than ten points, worst `r sprintf("%.3f", max(abs(cpH$diff)))`.**
+  Statewide `r round(100*mean(abs(cp$diff) > 0.10), 1)`%, worst
+  `r sprintf("%.3f", max(abs(cp$diff)))`. **Do not quote the statewide extreme as
+  Houston's** — see the note under Option B.
+- The carry loses **`r ck$value[ck$check == "votes lost"]` votes of
+  `r ck$value[ck$check == "votes before"]`**.
+
+## The Houston inventory, which is the new centre of the session
+
+```{r inventory}
+aH <- inC(a); aH <- aH[order(aH$from_2020), ]
+data.frame(precinct_2020 = nm(aH$from_2020), became_2024 = nm(aH$to_2024))
+
+setdiff(nm(h24all), nm(h24))          # the 2024 precinct no interior point sees
+```
+
+**`r length(h20)` lines, and they tell three different stories.**
+
+1. **`r length(intersect(h20, h24))` precincts are unchanged** in name and, as
+   the crosswalk confirms, in ground.
+2. **`r length(ren)` are renames**: HCTC→VFW, NSES→NORTH HOUSTON SPORT COMPLEX,
+   RECR→WELLSTON CENTER. Population weighting sends **100%** of each old
+   precinct's people to the new name; areal overlap is above 99.7%. **The
+   polling place moved and the boundary did not.**
+3. **`r length(spl)` is a real split**: ROZR shed its western half to a
+   brand-new precinct, PEC.
+
+```{r renames}
+po[po$from_2020 %in% ren, ]                   # the renames: weight is exactly 1
+po[po$from_2020 %in% spl, ]                   # the one real split
+```
+
+**This is the single biggest teaching win of the county version, and it is worth
+protecting time for.** The statewide statistic — `r sv(p20, p24)`% of names
+survive — silently merges two completely different events. In Houston you can separate them by
+name, out loud, in ninety seconds: **`r length(ren)` of the
+`r length(ren) + length(spl)` changes are clerical and `r length(spl)` is real.**
+Ask the room which of them a name-matched comparison drops.
+The answer is *the `r length(ren)` that did not matter* — the rule deletes the
+harmless changes and keeps the one that would have broken the comparison.
+
+***
+
+# The three things to get said
+
+**1. An identifier that is not stable is not an identifier.** Step 2 gives two
+different answers depending on whether you key on name or on code, and both are
+computed correctly. **Make somebody say why that is worse than either number
+alone**: if the two keys disagreed only occasionally you would call it noise, but
+they drift independently, which means neither is tracking the thing you care
+about — a piece of ground. Houston makes it concrete: `r sv(h20, h24)`% of names
+survived, and only `r length(spl)` of the county's `r length(h20)` precincts
+changed its boundary at all.
+
+**2. The dropped precincts are not missing at random** (Step 3). This is the step
+students will skate over, and it is the one with real consequences. Statewide the
+argument is that counties split precincts where population grew, so dropping
+non-matching precincts deletes the fastest-growing places. **In Houston the
+mechanism is visible and it points the other way**: name-matching drops the three
+renames and keeps ROZR, the only precinct whose ground moved. Either way,
+**name-matching is not a filter on boundary change at all** — it is a filter on
+clerical churn. Ask what a turnout-change map looks like when the filter is
+uncorrelated with the thing it is supposed to control for.
+
+**3. Step 6 is the session.** Two defensible methods, computed on the same data,
+disagreeing about whether `r sp(arH)`% or `r sp(poH)`% of a county's precincts
+were split. Neither is a bug. Area answers "how much land moved"; population
+answers "how many people moved." **The lesson is not which to pick — it is that a
+methodological choice this invisible moves the answer this much.**
+
+New this version, and worth two minutes: **most of what area calls a split is a
+sliver.**
+
+```{r slivers}
+c(houston_area = sp(arH), houston_area_1pct_floor = sp(arH, 0.01),
+  houston_pop  = sp(poH), houston_pop_1pct_floor  = sp(poH, 0.01),
+  georgia_area = sp(ar),  georgia_area_1pct_floor = sp(ar, 0.01),
+  georgia_pop  = sp(po),  georgia_pop_1pct_floor  = sp(po, 0.01))
+```
+
+Ignore any fragment smaller than 1% of a precinct and Houston's areal figure
+falls from `r sp(arH)`% to `r sp(arH, 0.01)`%, exactly matching population.
+Statewide the same correction takes area from `r sp(ar)`% to `r sp(ar, 0.01)`%
+and population from `r sp(po)`% to `r sp(po, 0.01)`%; the
+`r round(sp(ar, 0.01) - sp(po, 0.01), 1)`-point residue is genuine empty land.
+**This links Step 5 to Step 6** — the slivers Step 5 says the interior-point
+method avoids are the same slivers inflating area's answer in Step 6.
+
+**The line for the board:** the map is not the ground, and the label is not
+the map.
+
+***
+
+# Walking the steps
+
+| Step | What it does | Min | Watch for |
+|---|---|---|---|
+| **1** Who owns a boundary | The state's own "best fit" language | 6 | **Read the quotation aloud.** Students assume the state draws precincts. It does not. Houston's board does. |
+| **2** How much moved | `r sv(h20, h24)`% of Houston's names, `r sv(p20, p24)`% of Georgia's | 7 | The two-key disagreement is the finding, not a nuisance. |
+| **2b** The inventory | `r length(h20)` lines: `r length(intersect(h20,h24))` same, `r length(ren)` renamed, `r length(spl)` split | **8** | **New, and the best thing in the lab.** Do it by name, out loud. |
+| **3** Why you cannot drop them | Non-random missingness | 7 | Houston drops the three harmless ones and keeps the real one. |
+| **4** The recipe | Target, disaggregate, reaggregate | 5 | Houston: `r format(nrow(baH), big.mark=",")` blocks, `r round(nrow(baH)/length(h20))` per precinct. |
+| **5** How a block is assigned | Interior point, not intersection | 6 | PEC is invisible to a precinct-level interior point. That is why blocks. |
+| **6** Two weightings | `r sp(arH)`% vs `r sp(poH)`% in Houston | **12** | **The pivot.** Take a vote before revealing the second number. |
+| **7** Carry and check | `r ck$value[ck$check == "votes lost"]` votes of `r ck$value[ck$check == "votes before"]` | 8 | The 9.8% failure story lives here. Do not rush it. |
+| **8** Was the shortcut legitimate | `r format(ts$identical[ts$scope=="Georgia"], big.mark=",")` of `r format(ts$matched[ts$scope=="Georgia"], big.mark=",")` identical | 4 | Check *before* relying, not after. |
+| **9** What you can say | Including what you cannot | 6 | Population is not voters. |
+
+**Step 6 deserves the prediction.** Ask the room: *areal weighting says
+`r round(sp(arH))`% of Houston's precincts are split by the boundary change —
+what will population weighting say?* Almost everyone predicts a similar number.
+It is `r sp(poH)`% — **`r length(spl)` precinct** — and the reason (most splits
+are slivers or empty land) is obvious in hindsight and almost never guessed.
+Houston makes the reveal sharper than the statewide version did, because
+"`r length(spl)` precinct out of `r length(h20)`" is a fact about a place rather
+than a percentage.
+
+**If you are short on time**, protect 2b, 6 and 7. The inventory, the two
+weightings, and the join that lost a tenth of the state are the argument.
+
+***
+
+# The mistake in Step 7, and how to teach it
+
+**Tell this story, because it happened while building the lab.**
+
+The first version attached votes to the map by matching precinct names. It
+reached 90.4% and lost **489,876 votes — 9.8% of Georgia** — concentrated in
+Chatham (92 precincts) and DeKalb (48), where the returns and the shapefile spell
+precincts differently.
+
+The fixes attempted, in order:
+
+1. Strip a leading ballot-order number: `"01 BETHLEHEM COMMUNITY CENTER"` →
+   `"BETHLEHEM COMMUNITY CENTER"`. Loss fell from 11.1% to 9.8%.
+2. Allow a trailing letter on the code: `"01C FIRST PRESBYTERIAN CHURCH"`. Loss
+   did not move at all.
+
+**Neither was the answer, and the third attempt was not another regex.** The
+precinct shapefile already carried the vote totals in its own attribute table,
+attached to the geometry. There was never a join to make.
+
+The pedagogy: **ask the class what they would have tried third.** Most will
+propose fuzzy matching or a manual alias table — both reasonable, both more work,
+both unnecessary. The instinct to improve a join is strong enough that it
+crowds out the question of whether the join is needed.
+
+Then note what made it safe to abandon: Step 8 shows the two state sources agree
+on every precinct the join reached.
+
+```{r twosource}
+ts
+round(100 * ts$matched / ts$shapefile_precincts, 1)     # what the join reached
+```
+
+**The shortcut was verified before it was relied on**, which is the difference
+between a shortcut and a guess. And note the second line: the join reached
+`r round(100*ts$matched[ts$scope=="Georgia"]/ts$shapefile_precincts[ts$scope=="Georgia"], 1)`%
+of Georgia's precincts and **`r round(100*ts$matched[ts$scope==HC]/ts$shapefile_precincts[ts$scope==HC], 1)`%
+of Houston's** — the data was never wrong, the labels were.
+
+> **A note on a number you may remember.** Earlier drafts of this key quoted
+> "2,401 of 2,401" for the two-source check. That figure came from a
+> normalisation of the returns that is no longer in the pipeline. Recomputed from
+> the files as they now stand, the plain `COUNTY|PRECINCT` join reaches
+> `r format(ts$matched[ts$scope=="Georgia"], big.mark=",")` precincts and
+> **agreement is still exact on every one of them**, which is the part that
+> matters. The chunk above is the live number; use it.
+
+***
+
+# Handling the room
+
+This lab is more technical than the rest of the course and a few students will
+decide it is "the coding one" and disengage. Three things help:
+
+- **Nobody writes code here either.** Say so. The procedure is conceptual —
+  target, disaggregate, reaggregate — and the code is given.
+- **Anchor it in a place, not a statistic.** The county version exists for this.
+  "Warner Robins" and "the precinct at the tech college" beat "78.3% of
+  precincts" every time; the statewide figure is there to stop anyone concluding
+  that Houston is weird.
+- **The disagreement in Step 6 is the interesting part**, not the machinery. If
+  the room only takes away that two reasonable methods said `r sp(arH)`% and
+  `r sp(poH)`% about the same `r length(h20)` precincts, that is a successful
+  session.
+
+***
+
+# Option A — Use the areal crosswalk instead
+
+**Scope: Houston, `r length(h24all)` precincts.** Only one of them moves at all,
+which is the point.
+
+## Verified output
+
+```{r a}
+big <- cpH[order(-abs(cpH$diff)), c("from_2020","to_2024","weight_area","weight_pop","diff")]
+big[, 3:5] <- round(big[, 3:5], 3)
+head(big, 5)
+
+wm     # ballots, both ways, for the one precinct that actually splits
+```
+
+**3/4:** Swaps the file, recomputes, and reports that
+`r length(h20) - length(spl)` of Houston's `r length(h20)` precincts do not move
+at all.
+
+**4/4:** Identifies ROZR as the only precinct where the choice matters, quantifies
+it (**`r format(gap, big.mark=",")` ballots** out of
+`r format(wm$ballots_total[1], big.mark=",")` cast), and explains *why*: the
+western half is large and thinly settled, so area over-weights it and population
+does not.
+
+**4/4, best:** Generalises from the one case — area and population agree wherever
+population density is uniform and diverge wherever it is not, so **the choice of
+method is effectively a choice about how much sparsely settled ground counts.**
+A student who then checks that claim against the statewide scatter in the brief
+(Figure 4, "How bad it gets elsewhere"),
+and notices that the off-diagonal points are the low-density ones, has done the
+whole exercise.
+
+***
+
+# Option B — Find the worst disagreement in Georgia
+
+> **Scope is statewide, and the lab now says so explicitly.** Houston's worst
+> disagreement is only `r sprintf("%.3f", max(abs(cpH$diff)))` — the ROZR split — so a
+> student who searches only the county will not find anything dramatic and should
+> not be marked down for reporting that. **The `r sprintf("%.3f", max(abs(cp$diff)))`
+> case does not exist in Houston.** If a student's answer quotes
+> `r sprintf("%.3f", max(abs(cp$diff)))` as a Houston number, that is the error to
+> correct.
+
+## Verified output
+
+```{r b}
+w <- cp[which.max(abs(cp$diff)), ]                 # cp already has "NA|NA" dropped
+data.frame(from = w$from_2020, to = w$to_2024,
+           area = round(w$weight_area, 3), pop = round(w$weight_pop, 3),
+           gap  = round(w$diff, 3))
+
+# for contrast, the same query inside the county
+cpH[which.max(abs(cpH$diff)), ]
+```
+
+**Watch for the junk row.** A student who forgets the `"NA|NA"` guard will report
+0.894 from the pseudo-precinct instead of `r sprintf("%.3f", max(abs(cp$diff)))` from
+`r nm(w$from_2020)`. Noticing the guard is itself worth credit; the lab and the
+brief both print it.
+
+**3/4:** Reports the pair and the size of the gap.
+
+**4/4:** Works out what the gap means concretely — one method sends about
+`r round(100*w$weight_area)`% of that precinct's votes to the target, the other
+sends about `r round(100*w$weight_pop)`%. Says which is more likely correct and
+why.
+
+**4/4, best:** Recognises that a single pair cannot be adjudicated from the
+table, and that settling it needs a map or local knowledge — then says what they
+would look for (a river, an industrial tract, a park). **Knowing that the data
+cannot answer it is the right answer.** The strongest version notices the
+asymmetry the county example sets up: *in Houston we could adjudicate, because
+somebody in the room knows the ground; in Chatham nobody in the room does, and
+the method has no way to tell you that it is out of its depth.*
+
+***
+
+# Option C — Turnout, honestly
+
+**Scope: Houston.** No fully verified output; grade the reasoning and the
+comparison.
+
+**3/4:** Computes turnout change both ways and reports that the numbers differ.
+
+**4/4:** Quantifies the difference and names the three precincts the naive
+method drops (`r paste(nm(setdiff(h20, h24)), collapse = ", ")`), noting that
+the naive method is not merely noisier but **structurally wrong** — it deletes
+precincts for a clerical reason unrelated to whether the ground moved.
+
+**4/4, best:** Notices that even the crosswalked version has a problem the lab
+warned about: **2020 turnout carried on 2020 population weights, compared against
+2024 turnout, attributes to "turnout change" some of what is really population
+change.** In a county that split a precinct precisely because it was growing,
+that is not a hypothetical. A student who sees that has understood the limitation
+better than the method does.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is given.
+- **The move that earns a 4** is treating the weighting choice as a substantive
+  decision with consequences, not a technical detail.
+- **Also a 4**: separating "the name changed" from "the boundary changed."
+  Houston hands them the distinction; using it on a number they did not compute
+  themselves — the statewide `r sv(p20, p24)`% — is the transfer worth rewarding.
+- **A 2** is "the boundaries changed so the data is unreliable" — true, useless,
+  and the thing the whole lab is designed to move past.
+- **Also a 2**: reporting the crosswalked numbers as though they were counted.
+- **Also a 2**: quoting a Houston illustration as though it were a statewide
+  finding, or the reverse. The documents are built to make the scope explicit;
+  ignoring it is the failure mode the county version introduces.
+- **Reward anyone who asks for an error bar.** There isn't one, and noticing its
+  absence is the most sophisticated available response.
+
+## Anticipated questions
+
+- *"Why Houston?"* — Because it is small enough to check by hand and because the
+  instructor knows the ground. Then say what the statewide columns are for: if
+  the county were doing the work, they would not be there.
+- *"Is Houston typical?"* — On name survival, almost exactly (`r sv(h20, h24)`%
+  against `r sv(p20, p24)`%). On the area-versus-population split it is more
+  extreme, and the honest answer is that this is partly a small-county artefact:
+  with `r length(h20)` precincts, `r length(spl)` real split is `r sp(poH)`%.
+- *"Why not just use counties?"* — You can, and it is stable. You also lose all
+  the resolution that makes precinct data worth having. This is a real position
+  some analysts hold; say so.
+- *"Couldn't we weight by registered voters?"* — Yes, and it would be better.
+  Nobody publishes registered voters by census block. Worth naming as the gap.
+- *"Is this what expert witnesses do?"* — Yes. Effectively this procedure, with
+  more care about which small unit to use.
+- *"How would I know if a precinct changed?"* — By noticing that it did. There is
+  no notification, no changelog, and no requirement to publish one. That answer
+  usually lands harder than anything else in the session.
+
+## If you want to check a Houston number against a third source
+
+Houston County publishes its own precinct-level results at
+<https://www.houstoncountyga.gov/residents/election-results.cms>. Nothing in the
+lab is built on it and no chunk fetches it. It is worth knowing about for two
+reasons: it is a genuinely independent copy of the same totals, so it settles any
+question about a Houston figure on the spot; and it is a live example of the
+Step 8 point that three offices publish the same numbers separately and the only
+thing that ever disagrees is the labels.
+
+## Rebuilding the figures
+
+`build-houston-figures.R` in this folder reads the shapefiles and block
+assignments in `../ga-precinct-returns/data/` and writes the small coordinate
+tables the maps draw from (`fig_houston*.csv`, `fig_rozr*.csv`,
+`fig_twosource.csv`). **Rerun it after any rebuild of the crosswalks**, then
+reknit all three documents; every number in them is computed at knit time, so a
+stale figure file is the only way they can go out of date.
+
+## Connections
+
+- **`census-geography`** — the nesting spine, and why precincts sit off it. This
+  lab is that lab's abstract point made concrete and consequential.
+- **`ga-precinct-returns` and `rpv`** — both use precinct data as though the
+  unit were fixed. Run this first if you can.
+- **`redlining`** — point-in-polygon, the same uniform-distribution assumption,
+  and there we could not measure the error. Here we can.
+- **`apportionment`** — the other lab where a technical rule with no
+  obvious politics turns out to allocate something people care about.

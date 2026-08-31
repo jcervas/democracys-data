@@ -1,0 +1,263 @@
+---
+title: "Data Session 5 Key, part 2: The Money Nobody Controls"
+subtitle: "84-355 Democracy's Data | Session 5 — Independent expenditures | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+s  <- read.csv("data/ie_summary.csv",   stringsAsFactors = FALSE)
+o  <- read.csv("data/ie_outliers.csv",  stringsAsFactors = FALSE)
+cd <- read.csv("data/ie_candidates.csv", stringsAsFactors = FALSE)
+cm <- read.csv("data/ie_committees.csv", stringsAsFactors = FALSE)
+```
+
+```{r vals, include=FALSE}
+# Same definitions as the brief, so key and brief cannot drift apart.
+# ROWS is the source file's row count. The 19 MB raw FEC file is not committed;
+# this figure is the count recorded by data/build-ie-data.R when it ran, and is
+# the one number in this key that cannot be re-derived from data/.
+ROWS <- 73449
+
+get  <- function(v, k) s$dollars[s$version == v & s$side == k]
+RAWS <- get("raw", "support");     RAWO <- get("raw", "oppose")
+CLNS <- get("cleaned", "support"); CLNO <- get("cleaned", "oppose")
+RAW  <- RAWS + RAWO;               CLN  <- CLNS + CLNO
+OUT  <- sum(o$amount); NOUT <- nrow(o)
+SHARE <- 100 * OUT / RAW
+
+FW    <- o[o$spender == "Food & Water Action", ]
+FWN   <- nrow(FW); FWAMT <- sum(FW$amount)
+WW    <- o[o$spender == "Gus Associates", ]
+OUTMIN <- min(o$amount)
+
+cd$off <- c(P = "President", S = "Senate", H = "House")[cd$office]
+PA <- function(k) 100 * sum(cd$opposing[cd$off == k]) /
+  sum(cd$supporting[cd$off == k] + cd$opposing[cd$off == k])
+CASEY <- cd$pct_against[cd$candidate == "CASEY, ROBERT"]
+
+# Re-derive any threshold at or above the $50m cut used to build ie_outliers.csv.
+# Below that cut the removed rows are not in data/, so those table rows stay typed.
+TH <- function(t) {
+  drop <- o$amount > t
+  sup  <- RAWS - sum(o$amount[drop & o$sup_opp == "S"])
+  opp  <- RAWO - sum(o$amount[drop & o$sup_opp == "O"])
+  c(removed = sum(drop), total = sup + opp,
+    pct_sup = 100 * sup / (sup + opp), pct_opp = 100 * opp / (sup + opp))
+}
+THR <- function(t) unname(TH(t)["removed"])
+THT <- function(t) bnk(unname(TH(t)["total"]), 2)
+THP <- function(t) paste0(pc(unname(TH(t)["pct_sup"])), " / ",
+                          pc(unname(TH(t)["pct_opp"])))
+
+pc  <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+bnk <- function(x, k = 2) paste0("$", pc(x / 1e9, k), "bn")
+dm  <- function(x) paste0("$", nn(x / 1e6), "M")
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** The second half of Session 5, after the candidates' own
+FEC filings. **It replaced a planned lab on the Meta and Google ad libraries,
+which turned out to be closed** — Meta needs a token and identity verification;
+Google publishes only through BigQuery, in spend ranges rather than figures.
+The syllabus now spends a minute on that absence, and it is worth making: the
+most detailed record of political persuasion in America is not public.
+
+**This is the dirtiest dataset in the course**, and it is the point.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+The `r NOUT` rows in `data/ie_outliers.csv`, out of `r nn(ROWS)` in the source
+file, inflate the federal record of outside spending `r round(RAW / CLN)`-fold
+and reverse its most important finding, and they are still there.
+
+***
+
+# The findings
+
+```{r headline}
+c(rows_total     = ROWS,          # 73,449; see setup — the raw file is not committed
+  outlier_rows   = nrow(o),
+  raw_billions   = round(sum(s$dollars[s$version == "raw"]) / 1e9, 1),
+  clean_billions = round(sum(s$dollars[s$version == "cleaned"]) / 1e9, 2),
+  raw_pct_oppose   = s$pct[s$version == "raw"     & s$side == "oppose"],
+  clean_pct_oppose = s$pct[s$version == "cleaned" & s$side == "oppose"])
+```
+
+- **`r bnk(RAW, 1)` raw, `r bnk(CLN)` real.** `r NOUT` rows carry
+  **`r pc(SHARE)`%** of the raw total.
+- **Support/oppose flips: `r pc(100 * RAWS / RAW)`/`r pc(100 * RAWO / RAW)` raw →
+  `r pc(100 * CLNS / CLN)`/`r pc(100 * CLNO / CLN)` cleaned.**
+- **Senate races are `r pc(PA("Senate"))`% negative, House
+  `r pc(PA("House"))`%, President `r pc(PA("President"))`%.**
+- Bob Casey: **`r pc(CASEY)`%** of the outside money around him was spent
+  against him.
+
+***
+
+# The three things to get said
+
+**1. There are two different problems here and students must separate them.**
+The junk filings (*THE COURT OF DIVINE JUSTICE*, *`r dm(WW$amount)` for Walter
+White*) are **people lying to the government**. The `r FWN`-fold Food & Water duplicate is
+**the government's own export repeating a row**. One is fraud, one is plumbing,
+and they need different fixes. **Do not let the room lump them together as
+"bad data."**
+
+**2. The flip is the lesson, not the total.** Anyone can see that `r bnk(RAW, 1)` is
+too big. The dangerous error is the one that looks fine: `r pc(100 * RAWS / RAW)`% supportive is a
+perfectly plausible number that a student could put in a paper. **Wrongness that
+announces itself is the safe kind.** Ask what else they have read that had a
+quiet version of this problem.
+
+**3. "The FEC publishes what is filed."** It is a disclosure agency, not an
+auditor. Ask what checking would cost and who would do it — and note that the
+alternative, an agency that decides which filings are real, has obvious
+problems of its own. **There is no free version of this.**
+
+**The line for the board:** official does not mean checked.
+
+***
+
+# Option A — Argue with the threshold
+
+## Verified output
+
+| cut at | rows removed | total | support / oppose |
+|---|---|---|---|
+| none (raw) | 0 | `r bnk(RAW, 1)` | `r pc(100 * RAWS / RAW)` / `r pc(100 * RAWO / RAW)` |
+| $1M | 897 | $2.39bn | 47.7 / 52.3 |
+| $5M | 102 | $3.92bn | 39.8 / 60.2 |
+| $10M | 42 | $4.34bn | 40.9 / 59.1 |
+| **$50M** | **`r THR(5e7)`** | **`r THT(5e7)`** | **`r THP(5e7)`** |
+| **$100M** | **`r THR(1e8)`** | **`r THT(1e8)`** | **`r THP(1e8)`** |
+| $500M | `r THR(5e8)` | `r THT(5e8)` | `r THP(5e8)` |
+
+The three middle rows are the only figures in this key that are **not**
+re-derived from `data/`. `ie_outliers.csv` holds the rows above the $50M cut, so
+every threshold from $50M up recomputes here; the $1M, $5M and $10M rows were
+recorded from the uncommitted 19 MB raw file when `data/build-ie-data.R` ran.
+
+**3/4:** Runs two or three thresholds and reports that the answer moves.
+
+**4/4:** Sees that **the flip survives everything from $1M to $100M** — every
+threshold in that range gives roughly 40/60 — so the finding is robust across
+two orders of magnitude. That is a much stronger claim than "it worked at the
+number I picked."
+
+**4/4, best:** Works out **why $500M breaks it.** Raising the cut that far lets
+`r NOUT - THR(5e8)` rows back in, every one of them on the *supporting* side: the
+`r FWN` identical Food & Water rows, `r bnk(FWAMT)` of duplicated money, together
+with the `r dm(WW$amount)` Walter White filing. So the sensitivity is not
+vagueness in the data; it is two specific artifacts re-entering — one a
+duplicate, one a fabrication — and a student who diagnoses either has done real
+work.
+
+Also worth noticing: **$50M and $100M give identical answers**, because no row
+sits between them — the smallest row removed at either cut is `r dm(OUTMIN)`. A
+threshold with slack around it is more defensible than one tuned to the data.
+
+***
+
+# Option B — A better rule
+
+No single answer; grade the design.
+
+**3/4:** Proposes a plausible rule — flag committees that filed once, or amounts
+above the cycle's known total.
+
+**4/4:** Says what the rule would wrongly remove. A single-filing rule kills
+every small genuine committee that spent once. A "purpose text looks fake" rule
+requires somebody to judge text, which is the discretion problem from Session 11
+in a new place.
+
+**4/4, best:** Notices that the honest fix is not a rule at all but
+**publication of the `r NOUT` rows alongside the total**, so a reader can decide.
+That is what this lab does, and a student who arrives at it independently should
+be told so.
+
+***
+
+# Option C — Negative by office
+
+## Verified output
+
+```{r c}
+cd$off <- c(P = "President", S = "Senate", H = "House")[cd$office]
+aggregate(cbind(supporting, opposing) ~ off, data = cd, sum)
+```
+
+Across the committed file: **Senate `r pc(PA("Senate"))`% against, House
+`r pc(PA("House"))`%, President `r pc(PA("President"))`%.**
+
+*(An earlier version of this key reported 71.5 / 69.1 / 42.6. Those were
+computed on the full cleaned FEC extract, which is not what ships in `data/` —
+and 42.6 was Harris's own `pct_against`, not the presidential aggregate. The
+figures above re-derive from `ie_candidates.csv` and are what the chunk prints.
+Every number in a key should reproduce from the committed data; these now do.)*
+
+**3/4:** Reports the ranking.
+
+**4/4:** Explains the presidential exception. Both 2024 presidential candidates
+had very large *supportive* super PACs; down-ballot, outside groups mostly
+attack, because attacking an unknown candidate is cheaper than introducing your
+own. **Name recognition is the mechanism.**
+
+**4/4, best:** Notes the strategic asymmetry — a negative ad about a little-known
+Senate challenger can define them before they define themselves, which is not
+available against a sitting president everybody already has an opinion about.
+**The spending pattern is a function of how much the electorate already knows.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is separating fraud from plumbing, and noticing
+  that the plausible error is more dangerous than the absurd one.
+- **A 2** is "you can't trust government data." That is both lazy and wrong —
+  the data is fine once you look at it, and looking took `r NOUT` rows.
+- **Reward anyone who asks what the FEC is for.** Disclosure and verification
+  are different jobs and Congress only funded one of them.
+
+## Anticipated questions
+
+- *"Is filing a fake report a crime?"* — Knowingly false FEC filings can be.
+  Whether these were prosecuted is not in this file; do not speculate.
+- *"How did nobody catch this?"* — Somebody probably did. The bulk file is the
+  raw record; the FEC's own summary pages apply filters this file does not.
+  **That is worth saying: the same agency publishes both a clean and a dirty
+  version, and the dirty one is the one you download.**
+- *"Who is Nader Akhlaghy?"* — A minor candidate named in the junk filings. We
+  do not know why, and the file cannot say.
+- *"Why is 'independent' spending independent?"* — Because *Buckley* and
+  *Citizens United* permit unlimited spending only if uncoordinated. It is a
+  legal category, and whether it describes reality is what enforcement fights
+  are about. This connects straight to Tuesday's Ch. 4 debate.
+
+## Connections
+
+- **Session 5 part 1 (FEC candidate filings)** — same agency, same cycle, and a
+  file that is clean. **Contrast them explicitly; it shows the problem is the
+  form, not the FEC.**
+- **Session 11 (EAVS)** — the other self-reported dataset, and the other place
+  where the reporting entity is the entity being measured.
+- **Session 1 (returns)** — the first "two official sources disagree" moment.
+- **Session 14 (RPV)** — where a defensible-looking methodological choice
+  changes a legal conclusion. Same shape as the threshold here.

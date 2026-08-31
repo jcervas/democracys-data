@@ -1,0 +1,386 @@
+---
+title: "The Age of Members of Congress"
+subtitle: "The denominator that decides the answer"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("officeholder-age-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The Constitution sets a floor on the age of American officeholders and no ceiling at all. A representative must be 25, a senator 30, a president 35. Above those numbers the document is silent: no retirement age, no maximum term, no mechanism for removing somebody who has simply stayed, short of an election or a death.
+
+So the age of American government is not set by anything. It is a residue — what is left over after nominations, primaries, incumbency, party recruitment, and several thousand private decisions about when to stop. In the `r n(sitting(NOW))`th Congress that residue is a median member aged **`r f0(val("Congress", NOW))`** and a median senator aged **`r f0(val("Senate", NOW))`**, both at or near the highest figures in a series that begins in 1789.
+
+Say that in company and somebody will answer within a sentence. *Of course they are older. Everybody is older. Life expectancy has gone up thirty years.*
+
+It is a good objection, offered in good faith, and it is testable. Testing it turns out to reverse it. The reversal has nothing to do with Congress and everything to do with which row of a government table you happen to read.
+
+Age is not a proxy for competence and nothing here treats it as one. It matters for a narrower and more defensible reason. **Age is a rough guide to how long ago somebody's politics were formed, and to how much of the future they will personally be present for.**
+
+A legislature whose median member entered public life forty years ago is making binding decisions about a country. Most of that country's residents were not born then. Whether that is a problem is a political judgment. Whether it is true is a question about data.
+
+## Three files that were never meant to meet
+
+This chapter runs on three sources with nothing in common except a calendar.
+
+The first is Voteview's member table (Lewis, Poole, Rosenthal, Boche, Rudkin and Sonnet): one row per member per Congress from the first to the `r n(max(m$congress))`th, maintained at UCLA as academic infrastructure. It was built to serve DW-NOMINATE, a scaling of roll-call votes that has nothing to do with age; the biographical columns, `born` among them, are there because a scaling has to know who is who. No statute required any of it, and nothing keeps it current except a discipline's need for it.
+
+Calling that a source understates what it is. Voteview does not receive a member table from anybody. It builds one.
+
+The primary record is roll calls, chamber by chamber over two centuries, in formats that changed as often as the printing did. Turning those into tidy rows meant three things. Deciding that two spellings are one man. Attaching a number to every member, because the government's own records carry no usable one. And coding a party for people who served before parties had settled names.
+
+That labour is the only reason the file opens in a spreadsheet at all. It also means **the cleaning happened decades before this chapter did, by people making judgment calls the file never records.** What arrives looks like a record of who served. It is a research team's considered answer to that question.
+
+One of those calls leaves a mark on a number used below. When a member changes party in the middle of a Congress, Voteview does not amend his row. It issues him a second identifier and a second row, so he sits in the file twice for that Congress under two party codes. It happens `r sum(tapply(m$icpsr, paste(m$congress, m$chamber, m$bioname, m$born), function(i) length(unique(i))) > 1)` times: Jeffords, Specter, Manchin, and the group of Democrats who crossed over after 1994. Nothing in the file flags it.
+
+This chapter dates a member's arrival by the first Congress in which his identifier appears. So a switcher's new identifier reads as a freshman. Billy Tauzin entered the House in `r min(m$entry_year[m$bioname == "TAUZIN, Wilbert Joseph (Billy)"])`, and appears in the 104th twice: once with `r max(m$years_since_entry[m$bioname == "TAUZIN, Wilbert Joseph (Billy)" & m$congress == 104])` years of service, and once with none at all.
+
+Those few extra rows, against `r n(nrow(m))`, move no median anywhere in this chapter. The point is not the size of the error. It is that the error entered through a decision somebody else made, for a purpose that was not this one. A reader who never opens the build will never learn it happened.
+
+The second and third come from the National Center for Health Statistics, a federal statistical agency doing precisely what it was created to do. Life expectancy at birth arrives from CDC's open-data catalog as a machine-readable annual series. Remaining life expectancy at 65 and at 75 does not: that series sits in Trend Table 4 of *Health, United States, 2019*, a published PDF, and had to be parsed out of one. Two rows of the same table, two completely different amounts of work to obtain — and, as this chapter is about to argue, two different answers.
+
+The parse is the fragile step, and worth being explicit about why. A file pulled from a catalogue can be fetched again next year and compared byte for byte against the copy read here. A table lifted out of a PDF cannot. What would need checking is not a file but a *reading* of one, and the reading lives in a script rather than on the page.
+
+So the build checks it sideways, against the series it can fetch again. There are `r ck$value[ck$check == "years where HUS and CDC both give e(0)"]` years where the PDF and the CDC catalogue both publish life expectancy at birth. The two agree exactly in `r ck$value[ck$check == "of those, years where the two agree exactly"]` of them, and differ by at most `r ck$value[ck$check == "largest HUS-vs-CDC disagreement on e(0), years"]` of a year in the rest.
+
+That agreement is the entire warrant that the column the chapter turns on was read off the page correctly.
+
+What makes these the right evidence is also what makes them risky. The objection being tested is that Congress is older because everybody is older. Testing it means putting a congressional series and a mortality series on one axis, when the people who built them never imagined the two would meet. The join is calendar year, and it is not automatic. A Congress convenes in an odd year and sits through the even one after it, while life tables are published for calendar years. So this chapter states the correspondence outright rather than letting a merge guess.
+
+Better evidence does not exist. Nobody publishes a life table for the population of people who become senators.
+
+Underneath sits a problem no file can fix. "Old" has no denominator here. There is no bottom number to divide by, no agreed figure that separates old from not. The Constitution supplies a floor of twenty-five, thirty and thirty-five, and no ceiling whatever. So any line at which somebody counts as old is the analyst's choice, not the country's.
+
+And the two mortality series describe different populations. That is the entire mechanism of the reversal ahead. One of them is a made-up figure for everybody born in a given year, dominated by deaths in infancy, and nobody in Congress is an infant.
+
+The cleaning is mostly assertion. All three sources are fetched, and what is believed about them is stated before anything is written. That the first Congress convenes in `r ck$value[ck$check == "Congress 1 begins in 1789"]` and the `r n(max(m$congress))`th in `r ck$value[ck$check == "Congress 119 begins in 2025"]`. And that no person in the file carries two conflicting birth years, a count that comes to `r ck$value[ck$check == "people carrying two different birth years"]`. That last one is the check that would have caught a merge gone wrong.
+
+Exactly `r ck$value[ck$check == "people with a birth year on some rows and not others"]` person has a birth year on some of his rows and not on others. The build names him rather than patching him: `r ck$value[ck$check == "who that is"]`. Nothing is de-duplicated, because a member who serves twenty years is supposed to appear ten times. One row is a member in one Congress, not a member.
+
+And every fetch is logged with its byte count and a fingerprint, so a reader in ten years can establish whether the file they downloaded is the file this chapter read. That is a question this book keeps asking and that almost no published analysis can answer about itself.
+
+## One column, and what a birth year buys you
+
+Every age in this chapter comes from a single column of a single file: the Voteview member table, one row per member per Congress since 1789, with a `born` column.
+
+```{r whatfile}
+```
+
+**`born` is a year, so every age below is approximate to within a year.** Age here means the year a Congress convened minus the year a member was born. For anybody with a December birthday, that overstates their age on opening day by one. The error is not hypothetical and it is easy to watch happen. Joe Biden was born in 1942 and was inaugurated in January 2021, aged 78:
+
+```{r biden}
+```
+
+One year off, in a case where the true answer is a matter of public record. Across `r n(nrow(m))` rows those errors run about half a year on average and point in no particular direction, so medians and trends survive them. Individual ages do not, and nothing in this chapter turns on one person's age.
+
+There is a second warning in the same file, quieter. Search it for `ADAMS, John` and two different men come back: the president, whose birth year is unrecorded here, and a Massachusetts representative born in 1778. **Names are not identifiers.** The file supplies a numeric one, `icpsr`, and everything below uses it.
+
+And a third, of the kind you only find by going looking for it:
+
+```{r cleveland}
+```
+
+**Grover Cleveland has a birth year on his first-term rows and a blank on his second-term rows** — the same man, the same file, one number present and then absent. No two rows anywhere in `r n(nrow(m))` disagree about a birth year; exactly one person is half-missing, and nothing announces it. An average would skip the blank rows and return a number that looked entirely reasonable. That is why the build script counts this rather than quietly patching it.
+
+## Twenty-two columns arrive and four of them are the chapter
+
+Everything above is about what the file gets wrong. This is about what it is *shaped* like, because before a median can be taken of anything the file has to stop being what Voteview wrote and start being a table about age.
+
+Here is the top of `HSall_members.csv` exactly as it comes off the server. The header is one physical line in the file and is far too long for this page, so it and the rows under it are folded at their commas; nothing else is changed.
+
+```{r rawvv}
+```
+
+Nothing in that block was written for this chapter. Of its `r NCOL_RAW` columns, `r NOM` are the roll-call scaling the file exists to serve: ideal points, likelihoods and error counts. Not one of them is read here. The four this chapter needs are `congress`, `chamber`, `icpsr` and `born`. They are in the file so a scaling can tell one member from another.
+
+Then read the block for what is not in it. **There is no year.** A row is dated by a Congress number, and the arithmetic that turns 1 into 1789 is the analyst's, not the file's. **There is no age.** Age is a subtraction nobody has performed.
+
+**`born` arrives as `1736.0`.** That is a calendar year written as a decimal, because a column with any blank in it reads as numeric. It will not join to anything until somebody makes it a whole number.
+
+**Washington's row is empty from `bioguide_id` rightward**, including `born`, which is why `r ck$value[ck$check == "member-Congress rows with no birth year"]` rows in the finished file still have no age.
+
+And **`bioname` contains a comma**, inside quotes. That is the trap that eats a whole file if it is split carelessly, and the build says so in a comment before it reads a byte.
+
+Now the same three rows after the build. This is the clean unit: one row per member per Congress, with the columns that were derived rather than supplied.
+
+```{r cleanrow}
+```
+
+Four of those nine columns are not in the download. `year` is the claim `1787 + 2 x congress`, checked afterwards against two fixed points rather than trusted.
+
+`age` is `year - born`. It inherits the year-only precision of `born`, so it is right to within twelve months and no better. `entry_year` required grouping the whole file by member and chamber and taking a minimum. `years_since_entry` is the difference. Those two columns are what let a later figure split "older" into arriving older and staying longer.
+
+Washington keeps his row and carries `NA` four times over. Dropping him would have been tidier and would have hidden the gap.
+
+The counts are the rest of the story. The raw file has `r ck$value[ck$check == "Voteview rows"]` rows, and so does the clean member file, all `r n(nrow(m))` of them. **Nothing is dropped and nothing is de-duplicated.**
+
+A member who serves twenty years is supposed to appear ten times. One row is a member in one Congress, not a member. Removing duplicates anywhere in here would quietly answer a different question.
+
+What the build does drop is `r n(sum(m$chamber == "President"))` presidential rows, and only from the totals. Presidents get their own file, because a president is not a legislator and averaging him into a chamber would be a mistake of kind.
+
+The last reshaping is a collapse, and it invents a category. From `r n(sum(m$chamber %in% c("House", "Senate")))` member-Congress rows the build writes `r n(nrow(ac))` rows of `derived/age_by_congress.csv`, one per chamber per Congress — House, Senate, and a third value called `Congress` that appears nowhere in the download. It is the two chambers pooled, so every member-Congress row is counted twice in that file, once in his chamber and once in the whole. That is a defensible choice and an invisible one: a reader who sees three chambers in a file that has two will not learn from the file which one is real.
+
+```{r cleanagg}
+```
+
+## When it happened
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+**Figure 1. Two and a third centuries of congressional age.** Median age of each chamber at every Congress, with the shaded band covering the middle half of the chamber. One green dot marks each president at the start of a term. The Senate runs above the House throughout. The recent rise is steep and short. The median member was `r f0(TR$median_age)` in `r TR$year`, and `r f0(max(CC0$median_age))` by `r min(OLDEST)`.
+
+```{r step2-tab}
+```
+
+Three things are visible in that picture and only one of them is the thing people expect to see.
+
+**First, the rise is real but it is not a long slide.** Congress stood at `r f0(tr$median_age)` in `r tr$year`, the first time it had been that young since `r PRIOR`, `r TR$year - PRIOR` years earlier. It reached `r f0(hi$median_age)` by `r min(OLDEST)`. Almost the entire increase people argue about happened inside a single working lifetime, after 1980.
+
+**Second, the Senate has always been older**, by about `r f0(val("Senate", NOW) - val("House", NOW))` years today and by a similar gap for most of two centuries. That is the chamber doing what it was designed to do: six-year terms, a higher age floor, and until 1913 no direct election at all.
+
+**Third, the presidents are a scatter rather than a trend.** Individual presidents are single draws, and forty-odd draws across two centuries will not support a line. What can be said is arithmetic: `r f0(mean(pr$age_at_term_start[pr$year < 1900], na.rm = TRUE))` was the average age at which a president took office before 1900, and `r f0(mean(pr$age_at_term_start[pr$year >= 1981], na.rm = TRUE))` since 1981.
+
+## Everyone lives longer now
+
+Here is the objection, stated as strongly as it deserves. Between `r BY` and `r EY` American life expectancy rose from **`r f1(E0a)`** years to **`r f1(E0b)`**, a gain of **`r f1(dE0)` years**. Over exactly the same span the median member of Congress aged from `r f0(A0)` to `r f0(A1)`, a gain of **`r f0(dA)` years**.
+
+A gain of `r f0(dA)` is less than a gain of `r f1(dE0)`. On that comparison Congress has not aged relative to the lifespan it is drawn from; it has aged *less* than the country it governs. The objection does not merely survive, it wins outright, and the chapter could stop here.
+
+It is wrong, and it is wrong in a way worth learning, because the error is not in the arithmetic and not in the source. It is in the choice of which number counts as "how long people live."
+
+> **Before you read on, commit to a number.** You have two of the three numbers
+> this argument turns on. Between `r BY` and `r EY` the median member of
+> Congress aged `r f0(dA)` years, while life expectancy at birth rose
+> `r f1(dE0)` years. There is a third way to measure how long people live, and
+> it is the one that actually applies to a sitting senator. **Over those same
+> `r EY - BY` years, did it rise by more than `r f1(dE0)`, by something between
+> `r f0(dA)` and `r f1(dE0)`, or by less than `r f0(dA)`?** Write down a
+> number of years before you read on.
+
+## The row further down the same page
+
+`r f1(E0b)` is life expectancy **at birth**. It is the average length of a life for a baby born in `r EY`, and the reason it rose so far across the twentieth century is mostly that babies and children stopped dying. Antibiotics, sanitation, vaccination, obstetrics: enormous achievements, every one of them irrelevant to a sitting senator, who has already survived all of it.
+
+The quantity that describes an officeholder's remaining life is **remaining life expectancy at an age they have actually reached** — how many more years a 65-year-old can expect. The National Center for Health Statistics publishes it in the same table as the at-birth figure, one section further down the page.
+
+```{r step4-tab}
+```
+
+Most readers write down something at or above `r f1(dE0)`, reasoning that if lives got that much longer, the years after 65 must have got longer too. The gain is `r f1(dE6)` years, which is smaller than the `r f0(dA)` years Congress aged over the same span.
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.0}
+```
+
+**Figure 2. The same 68 years, measured against two rows of one government table.** Here are the gains between `r BY` and `r EY`. Life expectancy at birth rose `r f1(dE0)` years. The median age of Congress rose `r f0(dA)`. The remaining life expectancy of a 65-year-old rose `r f1(dE6)`.
+
+Congress aged less than the first and more than the third. Only the third is about people who have already reached the age members of Congress are.
+
+**Congress aged `r f0(dA)` years; a 65-year-old's remaining life expectancy grew `r f1(dE6)`.** Against the honest yardstick Congress aged *faster* than longevity, not slower. Against the at-birth yardstick it aged slower. Same data, same source, same printed table, opposite conclusions, and the only thing that changed between them was which row was read.
+
+One further number makes the mechanism concrete.
+
+```{r step4-share}
+```
+
+**At most `r f0(REL)`% of the famous rise in life expectancy is a rise in how long a 65-year-old lives.** The remainder is people who used to die young and now do not. That transforms the average life, and changes a senator's prospects not at all.
+
+> The lesson is not really about actuarial tables. It is that a comparison has a
+> denominator, that the denominator is a choice, and that a denominator chosen
+> without thinking can reverse the sign of the answer. It is the same move as
+> "crime per capita" against "crime per capita among people who go outside."
+
+Two caveats belong beside that result rather than after it, because anybody who uses these numbers will run into both. The first is that the at-65 series is **sparse**. It is published for `r ck$value[ck$check == "years with a published e(65)"]` years between `r ck$value[ck$check == "e(65) series first year"]` and `r ck$value[ck$check == "e(65) series last year"]`. Not for every year, and not at all before `r ck$value[ck$check == "e(65) series first year"]`. Nothing between the published years has been filled in here.
+
+**The comparison above can be made for 1950 onwards and cannot honestly be made for 1900.** That is a shame. 1900 is exactly where the at-birth series looks most impressive, and where the temptation is greatest.
+
+The second is that the two NCHS publications used here disagree with each other.
+
+```{r step4-checks}
+```
+
+Two NCHS products publish life expectancy at birth. On `r ck$value[ck$check == "of those, years where the two agree exactly"]` of `r ck$value[ck$check == "years where HUS and CDC both give e(0)"]` shared years they agree to the tenth. On two of them, 2003 and 2004, they do not. The printed trend table runs 77.2 then 77.6. The open-data file runs 77.6 then 77.5.
+
+One rises and one does not, which is what a swapped pair of numbers looks like. Nothing here settles it. It is reported because a reader told that the two sources agree everywhere has been told something false.
+
+## Arriving older, or staying longer
+
+A median age can rise two ways: new members arrive older, or sitting members stay longer. These are different phenomena with different causes and different remedies, and people assert one or the other constantly without checking which.
+
+Checking is possible because the two add up exactly. For every member, at every Congress:
+
+$$\text{age now} \;=\; \text{age when they first arrived} \;+\; \text{years since}$$
+
+That is an identity, not a model, so it survives averaging. Average each term across a chamber and its mean age decomposes into exactly two pieces, with nothing left over.
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+**Figure 3. Mean age of Congress, split into its only two components.** The lower band is the average age at which sitting members first arrived; the upper band is the average time they have been there since. The two sum exactly to the mean age, drawn as the dark line, because the split is an identity rather than a model. Between `r BY` and `r EY` the mean rose `r sgn(DC["total"], 2)` years, of which `r sgn(DC["entry"], 2)` is arrival age and `r sgn(DC["stay"], 2)` is time served.
+
+```{r step5-tab}
+```
+
+**For Congress as a whole, `r f0(100 * DC["entry"] / DC["total"])`% of the rise between `r BY` and `r EY` is people arriving older.** The popular explanation, that incumbents cling on, is the smaller half of it.
+
+**And the two chambers disagree.** In the House, `r f0(100 * DH["entry"] / DH["total"])`% of the rise is arrival age. In the Senate it is `r f0(100 * DS["entry"] / DS["total"])`%. So **most of the Senate's ageing really is senators staying**, which is what six-year terms and very high re-election rates would predict. A single national figure conceals two different institutions.
+
+The decomposition also explains the dip in Figure 1. Look at the blue band around 1970.
+
+```{r step5-dip}
+```
+
+Congress got *younger* through the 1960s and 1970s, and it did so almost entirely by electing younger people: mean arrival age fell `r f1(abs(dec("Congress", 1950, 1980)["entry"]))` years while time in office barely moved. Then the same lever went the other way. Whatever produced the Watergate-era freshman classes stopped producing them, and the recovery of mean age since 1980 has come mostly through the same channel that lowered it.
+
+## The median hides the tail
+
+A median describes the middle member and says nothing about the shape around them. The shape is where the argument actually lives, because nobody is worried about a 59-year-old.
+
+```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+**Figure 4. The full age distribution of the House and Senate together, by era.** One curve per era, over all `r n(sum(RN))` member-Congress records with a recorded age. The median and the share aged 70 or over are printed beside each. The dashed line marks age 70. The median moves from `r f1(RMED[1])` in the first era to `r f1(RMED[length(ELAB)])` in the last, while the share over 70 moves from `r f1(R70[1])`% to `r f1(R70[length(ELAB)])`%: the right tail travels further than the middle does.
+
+```{r step6-tab}
+```
+
+**Between `r BY` and `r NOW` the median moved `r f0(val("Congress", NOW) - val("Congress", BY))` years and the tail moved much further.** The share of Congress over 70 went from `r f1(val("Congress", BY, "pct_70plus"))`% to `r f1(val("Congress", NOW, "pct_70plus"))`%. In the Senate it now stands at `r f1(val("Senate", NOW, "pct_70plus"))`%, better than one senator in three. The over-80 share was `r f1(val("Congress", BY, "pct_80plus"))`% in `r BY` and is `r f1(val("Congress", NOW, "pct_80plus"))`% now.
+
+Take the two Congresses in that table and compare them at three points instead of one.
+
+```{r step6-edges}
+```
+
+The young end moved `r f0(q(NOW, 0.05) - q(BY, 0.05))` years, the middle `r f0(q(NOW, 0.5) - q(BY, 0.5))`, and the old end `r f0(q(NOW, 0.95) - q(BY, 0.95))`. **The distribution did not slide; it stretched, and it stretched at the top.** Any statistic that reports only the middle will understate what changed.
+
+Over the full two centuries the picture is different again. The young end moves almost as much as the old one, so the stretching is a feature of the modern period rather than of the whole record. Figure 4 is worth reading twice for that reason.
+
+## The careers you cannot see
+
+If members stay longer, careers should be getting longer, and they are.
+
+```{r step7-tenure}
+```
+
+Notice what that table had to exclude. It counts only people who entered by 1985 and drops anybody still serving. Both exclusions are necessary and both cost something. **A career you can measure is a career that is over.**
+
+Ask "how long do members serve?" of everyone in the file, and the recent groups come back looking short. Not because service got shorter, but because their careers are still running.
+
+This is right-censoring, and it is the commonest way a tenure statistic gets reported backwards.
+
+```{r fig5-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig5-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+**Figure 5. Age on arrival against length of career, for careers that are finished.** One dot per completed chamber career, nudged apart and coloured by when it began. The group medians are drawn large. Median arrival age moves right across the three groups: `r f0(med$ea[1])`, `r f0(med$ea[2])`, `r f0(med$ea[3])`. Median completed service goes `r f0(med$ys[1])`, `r f0(med$ys[2])`, `r f0(med$ys[3])` years.
+
+**The last of those is a side effect of the cut-off rather than a finding.** The most recent group can only contain careers that have already ended.
+
+The cloud tilts the way it should. Of the careers that ran thirty years or more, `r f1(100 * mean(CAR$entry_age[CAR$years_served >= 30] <= 45))`% began at 45 or younger; their median arrival age is `r f0(median(CAR$entry_age[CAR$years_served >= 30]))` against `r f0(median(CAR$entry_age))` for careers in general. **Arriving young is close to a precondition for a long career**, which makes the rise in arrival age a plausible brake on future tenure as well as a cause of present age.
+
+One popular explanation for senators arriving old does not survive contact with the file. Senators do increasingly come up through the House:
+
+```{r step7-pipeline}
+```
+
+**Senators who came up through the House arrive *younger*, not older.** The pipeline is not what is aging the Senate. Something else is, and this file does not say what.
+
+## Who leaves the data before you can count them
+
+There is one more reason for care with any statement about how old officeholders become, and it is a selection problem rather than a measurement one.
+
+```{r step8-deaths}
+```
+
+Members used to die in office roughly `r f1(mean(DIO[hs$decade %in% c(1920, 1930)]) / mean(DIO[hs$decade %in% c(2010, 2020)]))` times as often as they do now, and every one of those deaths removed an old member from every subsequent Congress in this file.
+
+**That biases the historical series downward.** Some of the apparent youth of Congress a century ago is not a preference for young people; it is that old members stopped being members by dying. And it is precisely the part of the change that longevity *does* explain, which is why it belongs in the same argument as the denominator above, on the other side of the ledger. The honest version of "people live longer now" is not that it accounts for the rise. It is that it accounts for a piece of the rise that nobody counts, in the historical comparison rather than the modern one.
+
+## The argument about all of this
+
+The measurement is not seriously disputed. Everything downstream of it is.
+
+That officeholders are older is agreed by everyone who has looked. What people disagree about is the right comparison. To the population's age structure, to the electorate's, to the pool of plausible candidates, or to nothing at all. Each of those choices gives a different sense of how unusual the current Congress is. The American population has also aged over this period, for reasons having nothing to do with elections, and no series here measures it. Whether the right question is "how old is Congress" or "how much older than the country is Congress" is a judgment this data cannot settle.
+
+There is also a serious methodological objection to everything above. Median age is a crude summary of a body whose members do not have interchangeable roles. Seniority concentrates power, so the age of a chamber's *leadership* and of its committee chairs may matter far more than the age of its median member, and neither is measured here. Anybody arguing from Figure 4 should be asked why the median is the right statistic to be arguing from.
+
+And there is a limitation no amount of care fixes: the counterfactual is unobservable. There is no country where the same electorate ran the same elections with a different spread of candidate ages. So any claim that Congress is "too old" is a claim about a world for which nobody has data.
+
+## What this evidence will bear
+
+The Voteview file is a complete enumeration rather than a sample: every member of every Congress since 1789, with a stable numeric identifier. The life-expectancy series are official NCHS publications. Every number above is recomputed from those files each time this document is rendered.
+
+Its limits bound different claims, and they are worth taking one at a time. **`born` is a year**, so every age carries about a year of noise, which trends absorb and individuals do not.
+
+**`r ck$value[ck$check == "member-Congress rows with no birth year"]` rows have no birth year at all**, concentrated in the first twenty Congresses, along with four presidents. So the earliest part of Figure 1 rests on fewer people than it appears to. **The at-65 series is sparse and starts in 1950.** So the most tempting version of the comparison, 1900 against today, cannot be made honestly and is not made here.
+
+**Two NCHS sources disagree in two years**, which is small and real and reported rather than resolved. **Deaths in office censor the historical series**, in the direction that flatters the "Congress used to be young" reading.
+
+And every age is measured **at the start of a Congress** rather than on any particular day. A member who arrived mid-term is dated to the opening of the Congress they joined.
+
+Three questions stay genuinely open. Whether the rise continues or has peaked is unknown; the last three Congresses are flat, which is one observation rather than a trend. What produced the change in arrival age is the larger half of the whole effect and the half nobody has a settled explanation for. And whether any of it affects what the institution actually does is untouched by this file, because no measure of performance appears anywhere in it.
+
+What can be said is bounded and worth saying. Congress is at or near its oldest recorded point. The rise is recent, mostly after 1980, and mostly a matter of people arriving older rather than staying longer. The Senate is the exception, where the reverse holds.
+
+And "people just live longer now" does not account for it. Between `r BY` and `r EY` the median member of Congress aged `r f0(dA)` years, while the remaining life expectancy of a 65-year-old grew `r f1(dE6)`. That comparison runs the opposite way from the one everybody reaches for, using the same table, the same source and the same two dates.
+
+## Sources
+
+**Data**
+
+- Lewis, J.B., Poole, K., Rosenthal, H., Boche, A., Rudkin, A. and Sonnet, L.
+  *Voteview: Congressional Roll-Call Votes Database.*
+  <https://voteview.com/static/data/out/members/HSall_members.csv>
+  `r ck$value[ck$check == "Voteview rows"]` member-Congress records,
+  Congresses 1 to `r max(m$congress)`.
+- National Center for Health Statistics. *Life expectancy at birth, by race and
+  sex, 1900-2018.* CDC open data.
+  <https://data.cdc.gov/api/views/w9j2-ggv5/rows.csv?accessType=DOWNLOAD>
+- National Center for Health Statistics. *Health, United States, 2019*, Trend
+  Table 4: life expectancy at birth, at age 65 and at age 75.
+  <https://www.cdc.gov/nchs/data/hus/2019/004-508.pdf>
+  Parsed from the published PDF and checked against the open-data series above.
+
+All three are fetched from the addresses above, reduced to the files this chapter reads, and the counts quoted in the opening pages recorded.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`age_by_congress.csv`](data/derived/age_by_congress.csv), [`entry_tenure.csv`](data/derived/entry_tenure.csv), [`life_expectancy.csv`](data/derived/life_expectancy.csv), [`members.csv`](data/derived/members.csv), [`presidents.csv`](data/derived/presidents.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `age_by_congress.csv` has `median_age` and `mean_entry_age`. Plot both. Is Congress ageing because members arrive older, or because they stay longer?
+- Join `age_by_congress.csv` to `life_expectancy.csv` by year. Compare the rise in median age against the rise in `e0_annual`. Is Congress ageing faster than the country?
+- `entry_tenure.csv` has `entry_age` and `years_served` for every career. Group by entry decade. Has the path into Congress changed?
+- `age_by_congress.csv` splits by `chamber`. Compare House and Senate. Which is older, and is the gap growing?
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

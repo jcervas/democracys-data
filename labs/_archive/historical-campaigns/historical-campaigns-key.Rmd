@@ -1,0 +1,308 @@
+---
+title: "Data Session 4 Key, part 1: A Century and a Half of Campaigns"
+subtitle: "84-355 Democracy's Data | Session 4 — Returns over time (self-study) | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+pres <- read.csv("data/pres_states_1864_2024.csv", stringsAsFactors = FALSE)
+pres$d2 <- 100 * pres$democrat / (pres$democrat + pres$republican)
+gap_for <- function(sts) {
+  pres$r <- ifelse(pres$state_abbrev %in% sts, "S", "R")
+  a <- aggregate(d2 ~ year + r, data = pres, FUN = mean, na.rm = TRUE)
+  w <- reshape(a, idvar = "year", timevar = "r", direction = "wide")
+  names(w) <- c("year", "rest", "south"); w$gap <- round(w$south - w$rest, 1); w
+}
+c11 <- c("AL","AR","FL","GA","LA","MS","NC","SC","TN","TX","VA")
+c17 <- c(c11, "KY","MO","MD","WV","OK","DE")
+```
+
+```{r vals, include=FALSE}
+# Every figure quoted in this key is computed here and inserted inline, using
+# the same definitions as the brief, so the two cannot drift apart.
+A11 <- gap_for(c11); A17 <- gap_for(c17)
+G   <- function(w, y) w$gap[w$year == y]
+FIRSTNEG <- function(w) w$year[!is.na(w$gap) & w$gap < 0][1]
+FLIP <- function(w) {
+  yy <- w$year[!is.na(w$gap)]
+  min(yy[sapply(yy, function(y) all(w$gap[w$year >= y & !is.na(w$gap)] < 0))])
+}
+
+# state the year, and say "either way" only if the two state lists agree
+EITHER <- function(f) {
+  x <- f(A11); y <- f(A17)
+  if (identical(x, y)) paste(x, "either way")
+  else paste0(x, " on the eleven-state list and ", y, " on the seventeen")
+}
+
+SP  <- aggregate(d2 ~ year, data = pres, FUN = sd, na.rm = TRUE)
+names(SP)[2] <- "sd"
+SDY   <- function(y) SP$sd[SP$year == y]
+SDMIN <- SP$year[which.min(SP$sd)]; SDMAX <- SP$year[which.max(SP$sd)]
+
+NST <- function(y) sum(pres$year == y)
+NCL <- function(y, mg = 5) sum(abs(pres$d2[pres$year == y] - 50) < mg, na.rm = TRUE)
+PCL <- function(y, mg = 5) 100 * NCL(y, mg) / NST(y)
+
+# share of state-to-state variation that is South vs rest (the brief's Figure 4)
+VB <- function(y) {
+  d <- pres[pres$year == y & !is.na(pres$d2), ]
+  tot <- mean(d$d2); grp <- d$state_abbrev %in% c11
+  gm  <- tapply(d$d2, grp, mean); nn <- table(grp)
+  100 * sum(nn * (gm - tot)^2) / sum((d$d2 - tot)^2)
+}
+
+ST <- function(s, y) pres$d2[pres$state_abbrev == s & pres$year == y]
+VTFIRST <- min(pres$year[pres$state_abbrev == "VT" & pres$d2 > 50], na.rm = TRUE)
+
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+sg <- function(x, k = 1) paste0(ifelse(x >= 0, "+", "−"),
+                                formatC(abs(x), format = "f", digits = k))
+```
+
+All Part 7 code is given to students. Grade the interpretation, not the code.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+American campaigns transformed partly because the map they ran on transformed —
+a country where a third of the states were uncontested for eighty years became
+one where a dozen states decide everything, and that shift explains more about
+modern campaign behaviour than any change in technique.
+
+***
+
+# The three findings students should leave with
+
+```{r headline}
+a <- gap_for(c11)
+a[a$year %in% c(1924, 1948, 1964, 1976, 1980, 1984, 2024), c("year","south","rest","gap")]
+
+sp <- aggregate(d2 ~ year, data = pres, FUN = sd, na.rm = TRUE); names(sp)[2] <- "sd"
+sp[sp$year %in% c(1924, 1960, 2024), ]
+
+pres$close <- abs(pres$d2 - 50) < 5
+nc <- aggregate(close ~ year, data = pres, FUN = sum, na.rm = TRUE)
+nc[nc$year %in% c(1960, 1976, 2024), ]
+```
+
+1. **The South flips.** Gap peaks at **`r sg(G(A11, 1924))` in 1924**, is
+   **`r sg(G(A11, 1948))` in 1948**, goes negative for the first time in
+   **`r FIRSTNEG(A11)`**, returns positive under Carter
+   (**`r sg(G(A11, 1976))` in 1976**, **`r sg(G(A11, 1980))` in 1980**), and is
+   negative in **every election from `r FLIP(A11)` onward**, reaching
+   **`r sg(G(A11, 2024))` in 2024**.
+2. **State-to-state spread is U-shaped.** SD bottoms at
+   **`r pc(SDY(SDMIN), 2)` in `r SDMIN`** and **roughly
+   `r pc(SDY(2024) / SDY(SDMIN))`× that by 2024, at `r pc(SDY(2024), 2)`** — but
+   for a different reason than the peak of `r pc(SDY(SDMAX))` in `r SDMAX`. In
+   `r SDMAX`, **`r pc(VB(SDMAX))`%** of the state-to-state variation was the
+   South differing from everywhere else; in 2024 that is **`r pc(VB(2024))`%**.
+   The country is spread out again, but along different seams.
+3. **The battleground shrinks.** **`r NCL(1960)`** states within 5 points in
+   1960; **`r NCL(2024)`** in 2024, out of `r NST(2024)` states rather than the
+   `r NST(1960)` that existed then.
+
+***
+
+# Option A — Move the line
+
+## Verified output
+
+```{r a}
+b <- gap_for(c17)
+m <- merge(a[, c("year","gap")], b[, c("year","gap")], by = "year",
+           suffixes = c("_11", "_17"))
+m[m$year %in% c(1924, 1948, 1960, 1964, 1976, 1984, 2024), ]
+```
+
+**The magnitudes shrink; the story does not move.** Adding the six border states
+cuts the 1924 peak from `r pc(G(A11, 1924))` to `r pc(G(A17, 1924))` and the
+1964 trough from `r sg(G(A11, 1964))` to `r sg(G(A17, 1964))`. But the first
+negative year is **`r EITHER(FIRSTNEG)`**, and the permanent flip is
+**`r EITHER(FLIP)`**.
+
+## What a good answer says
+
+**3/4:** Reports that the numbers changed but the shape didn't, and identifies
+1964 as stable.
+
+**4/4:** Draws the right inference — this is a **robustness check the finding
+passed**. The realignment is not an artifact of a convenient state list. A
+student who says "I tried to break it and couldn't, which makes me believe it
+more" is doing science.
+
+**4/4, best:** notices *why* the magnitudes shrink — the border states were
+always less Democratic than the Deep South, so adding them dilutes both extremes.
+The dilution is itself evidence: it says the effect is concentrated where the
+theory predicts.
+
+**Common stumble:** treating "the numbers changed" as evidence the finding is
+shaky. Push back — the question is whether the *conclusion* changed, and it
+didn't. This distinction is worth a minute of class time.
+
+***
+
+# Option B — Pick a state and follow it
+
+## Verified output
+
+```{r b}
+for (s in c("MS", "VT")) {
+  x <- pres[pres$state_abbrev == s, ]
+  cat("\n", s, "\n"); print(x[x$year %in% c(1948, 1960, 1964, 1972, 2024),
+                              c("year", "d2", "winner")])
+}
+```
+
+**Mississippi:** `r pc(ST("MS", 1948))` Democratic two-party share in 1948 →
+`r pc(ST("MS", 1964))` in 1964 → `r pc(ST("MS", 2024))` in 2024.
+**Vermont:** `r pc(ST("VT", 1948))` in 1948 → `r pc(ST("VT", 1964))` in 1964 →
+`r pc(ST("VT", 2024))` in 2024.
+
+They have swapped places almost exactly. `r VTFIRST` was the **first time
+Vermont ever voted Democratic for president**.
+
+## What a good answer says
+
+**3/4:** Narrates the line and identifies the break year for their state.
+
+**4/4:** Notices that Mississippi 1948 shows `d2` of `r pc(ST("MS", 1948))` while
+the `winner` column says
+**`r pres$winner[pres$state_abbrev == "MS" & pres$year == 1948]`**. Both are
+true: Truman took `r pc(ST("MS", 1948), 0)`% of the
+Truman-versus-Dewey vote, and neither of them won the state, because the
+Dixiecrat took it. That is the two-party-share limitation from Part 2 biting in
+the exact place the lab warned it would. Students who catch this have connected
+two parts of the lab unprompted.
+
+**4/4, best:** answers the campaign question seriously. A 1950 strategist wrote
+Mississippi off as unwinnable-because-already-won and Vermont as
+unwinnable-because-already-lost; in 2024 a strategist writes both off for exactly
+the opposite reasons. The state changed completely and its *campaign treatment*
+did not change at all. Uncontested is uncontested.
+
+**Common stumble:** picking a state that never did anything interesting (Utah,
+Nebraska) and concluding the lab is boring. Redirect them to MS, VT, WV, CA, or
+GA in office hours.
+
+***
+
+# Option C — When did the battleground shrink?
+
+## Verified output
+
+```{r c}
+tot <- as.data.frame(table(pres$year)); names(tot) <- c("year","n")
+tot$year <- as.numeric(as.character(tot$year))
+for (mg in c(2, 5, 10)) {
+  pres$cl <- abs(pres$d2 - 50) < mg
+  n <- aggregate(cl ~ year, data = pres, FUN = sum, na.rm = TRUE)
+  n <- merge(n, tot, by = "year"); n$pct <- round(100 * n$cl / n$n, 1)
+  cat("margin", mg, ":",
+      paste0(n$year[n$year %in% c(1960,1976,1992,2008,2024)], "=",
+             n$pct[n$year %in% c(1960,1976,1992,2008,2024)], "%", collapse = "  "), "\n")
+}
+```
+
+| threshold | 1960 | 1976 | 1992 | 2008 | 2024 |
+|---|---|---|---|---|---|
+| ±2 pts | `r pc(PCL(1960, 2))`% | `r pc(PCL(1976, 2))`% | `r pc(PCL(1992, 2))`% | `r pc(PCL(2008, 2))`% | **`r pc(PCL(2024, 2))`%** |
+| ±5 pts | `r pc(PCL(1960, 5))`% | `r pc(PCL(1976, 5))`% | `r pc(PCL(1992, 5))`% | `r pc(PCL(2008, 5))`% | `r pc(PCL(2024, 5))`% |
+| ±10 pts | `r pc(PCL(1960, 10))`% | `r pc(PCL(1976, 10))`% | `r pc(PCL(1992, 10))`% | `r pc(PCL(2008, 10))`% | `r pc(PCL(2024, 10))`% |
+
+## What a good answer says
+
+**3/4:** Confirms the decline holds as a percentage, not just a count.
+
+**4/4:** Reports honestly that the finding is **robust at ±5 and ±10 but wobbles
+at ±2**, where 2024 (`r pc(PCL(2024, 2))`%) is *higher* than 2008
+(`r pc(PCL(2008, 2))`%). At the tightest cut-off
+you are counting a handful of states and the series gets noisy. The right
+conclusion is "the decline is real and large, and the tightest threshold is too
+noisy to add anything" — not "the finding failed."
+
+**4/4, best:** notices the ±10 row barely moves across 1960, 1976 and 1992 and
+then drops — and then goes and looks at the years the table does not print,
+where it is not flat at all. It falls to `r pc(PCL(1972, 10))`% in 1972 and
+`r pc(PCL(1984, 10))`% in 1984, both national landslides, and climbs back to
+`r pc(PCL(1992, 10))`% in 1992. At ±10 the measure is picking up **how lopsided
+the national result was** as much as how many states were genuinely in play, and
+the three early columns in the table all happen to be close national elections.
+Compare like with like — close elections only — and the decline survives and is
+still late: `r pc(PCL(1992, 10))`% in 1992 against `r pc(PCL(2024, 10))`% in
+2024, both close nationally. That is a genuinely open question and good Option D
+material.
+
+**Do not award the 4 for "the ±10 row is flat until 2008" on its own.** It reads
+that way only because of which five years the table prints; across every
+election in the file the ±10 share spans
+`r pc(diff(range(sapply(SP$year, PCL, 10))))` points. This is the same lesson as Option A in
+reverse — there, sampling the state list did not change the conclusion; here,
+sampling the years does.
+
+**Common stumble:** reporting only ±5 because it worked and not mentioning the
+others. Ask for all three in feedback.
+
+***
+
+# Option D — Their own question
+
+Reward curiosity over machinery. The 1960 Truman rows, the 1912 Roosevelt states,
+and the Vermont–Mississippi swap are all live threads.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **This lab rewards noticing.** The strongest submissions will flag something
+  the lab did not point at — an odd year, a state that misbehaves, a label that
+  cannot be right. Say so in feedback so the habit spreads.
+- **Reward robustness reasoning.** Options A and C are both robustness checks in
+  disguise. A student who distinguishes "the number moved" from "the conclusion
+  moved" has learned the most transferable thing here.
+
+## Anticipated questions
+
+- *"Why does the file say Truman won states in 1960?"* — Alabama and Mississippi
+  ran **unpledged elector** slates; Mississippi's won. The compiler needed a name
+  and used a Democrat's. Covered in Part 3, and it is the best single example in
+  the course of a data error that leaves the numbers intact and the labels wrong.
+- *"Why is the South missing in 1864?"* — Eleven states were in rebellion. The
+  file records this only as absent rows.
+- *"Are the 19th-century numbers trustworthy?"* — Partly. The bigger problem is
+  not accuracy but meaning: post-1877 Southern returns are accurate counts of
+  elections conducted under systematic disenfranchisement. Say this out loud;
+  it connects back to **Session 3 (§203)** and forward to the
+  `disenfranchisement/` lab.
+- *"Isn't two-party share cheating?"* — It is a choice with a cost, stated in
+  Part 2. 1912, 1968 and 1992 are where it hurts.
+
+## Connections forward
+
+- **`campaign-visits`** (retired, on disk) is the direct sequel: `r NCL(2024)`
+  competitive states is *why* candidates go where they go. Refer back to Part 5
+  by name.
+- **Session 12 (roll calls and the bench)** — the realignment here is the mass-level
+  counterpart to the elite polarization students will measure there. Same
+  phenomenon, two instruments.
+- **Session 3 (the ACS and §203)**, which ran last week — Part 3's disenfranchisement caveat is its historical setup.
+  The Solid South was solid partly because most Black Southerners could not vote,
+  and the 1965 Act is what changed the electorate underneath these lines.
+- **Session 1 (election returns)** — the Truman rows and the sparse `other` column are the same
+  provenance lesson, now in a historical file.

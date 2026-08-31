@@ -1,0 +1,567 @@
+---
+title: "Malapportionment and the First Gingles Precondition"
+subtitle: "A claim about a map that does not exist"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("vote-dilution-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+To win a racial vote dilution case, a plaintiff must prove something about a district that has never existed. Not that an election was stolen, not that anybody was turned away, but that the lines **could** have been drawn so that a minority group would have been a majority somewhere. There is no record of such a district. No election was held in it, no returns exist, no census counted its residents as its residents. Somebody has to build it — and the somebody is the party that needs it to exist.
+
+## Two kinds of dilution, and only one of them is arithmetic
+
+**Vote dilution** is the claim that your vote is worth less than somebody else's. Not that you were stopped from casting it, but that the rules for turning votes into seats were arranged so it counts for less. American law recognizes two versions, and they could hardly be less alike.
+
+**Malapportionment.** Districts of unequal population. Twice as many people, one representative each, and everyone in the large district has half a representative. *Reynolds v. Sims*, 377 U.S. 533 (1964) held the Equal Protection Clause forbids this in both houses of a state legislature. **The test is arithmetic. You count the people.**
+
+**Racial vote dilution.** Districts drawn so that a cohesive minority group, voted against by a cohesive majority, cannot elect anyone. Section 2 of the Voting Rights Act, 52 U.S.C. § 10301(b), makes out a violation where a group's members have less opportunity than others. The words are "less opportunity than other members of the electorate to participate in the political process and to elect representatives of their choice." *Thornburg v. Gingles*, 478 U.S. 30, 50–51 (1986) turned that into three things a plaintiff must show first:
+
+1. the group is **sufficiently large and geographically compact** to be a
+   majority in a single-member district — the Court now puts it as a
+   **"reasonably configured"** district;
+2. it is **politically cohesive**;
+3. the majority **votes as a bloc** usually to defeat the group's preferred
+   candidate.
+
+Clear those three and a court then weighs the totality of the circumstances.
+
+> **This framework was rewritten four months ago.** *Louisiana v. Callais*,
+> 608 U.S. \_\_\_ (2026), decided 29 April 2026, left the three preconditions
+> standing and changed what satisfies them. Precondition one now carries **two**
+> conditions, and both bear on what follows here. First: a plaintiff
+> "cannot use race as a districting criterion" in drawing an illustrative map.
+> Second: the map "must meet all the State's legitimate districting objectives,
+> including traditional districting criteria and the State's specified political
+> goals" — and must achieve them **"just as well"** as the State's own map (slip
+> op., at 29). The algorithm below builds a district with a dial that optimizes
+> race and nothing else — deliberately, because that was standard practice until
+> this spring. A later section sets out all three changes.
+
+Preconditions two and three are claims about an election that happened: whether Black and white voters in fact preferred different candidates, estimated from precinct returns. **Precondition one is different in kind.** It is the claim about the district that does not exist, and it is the one this chapter is about.
+
+## The evidence is manufactured by the party that needs it
+
+Polarized voting is not a wrong on its own. It becomes one when a districting plan converts it into a permanent loss. So the question that decides Section 2 cases is **"could the lines have been drawn otherwise?"** Nobody can observe the answer. It has to be built: an expert draws a map, and the court is asked whether it counts.
+
+**The evidence is manufactured by the party that needs it.** That is no scandal, since there is no alternative. But the answer inherits every choice the mapmaker made.
+
+What follows turns one of those choices into a dial and watches what the dial does.
+
+## The doctrine has a spine, and it doubles back on itself
+
+Look at the sequence.
+
+**1980.** *City of Mobile v. Bolden*, 446 U.S. 55, requires proof that a scheme was adopted with racially discriminatory **intent**.
+
+**1982.** Congress amends Section 2 specifically to displace that, installing a **results** test. Its central phrase, a process "not equally open to participation," is lifted from *White v. Regester*, 412 U.S. 755, 766 (1973).
+
+**1986.** *Gingles* gives the results test a shape.
+
+**2023.** *Allen v. Milligan*, 599 U.S. 1, surprises nearly everyone by leaving that shape intact.
+
+**2026.** *Callais* holds that Section 2 "imposes liability only when the evidence supports a strong inference that the State **intentionally** drew its districts to afford minority voters less opportunity because of their race."
+
+It grounds that reading in the Fifteenth Amendment. On the Court's account, that amendment bars only state action "motivated by discriminatory purpose."
+
+**Forty-four years after Congress wrote the intent standard out of the statute, the newest reading of that statute reads it back in.**
+
+Whether that is a correction or a repeal by interpretation is the live argument, and this chapter returns to both sides of it.
+
+Beneath it sits an objection that survives every turn. **Section 2 remedies require sorting voters by race in order to stop voters being sorted by race.**
+
+## Four files, four makers, none of them thinking about this
+
+The county is assembled here out of four inputs and no two of them were made by the same kind of body. The population counts are the 2020 census at block level. That is the file a 1975 statute obliges the Bureau to hand every state legislature so it can draw districts.
+
+The shapes come from the Bureau's TIGER/Line release: what each block looks like, and which blocks touch which. The list of which touches which had to be computed during the build, because nothing supplies it ready-made.
+
+The enacted five-district plan is not a reconstruction of anything. It is law, passed by the Georgia General Assembly and currently in force, expressed as a list saying which block belongs to which district. And the registered-voter counts come from Georgia's voter registration file. That file exists to route people to polling places.
+
+It carries **self-reported** race because of Section 5 of the Voting Rights Act. Georgia was a covered jurisdiction, and a covered jurisdiction had to be able to show the federal government what a change in its election rules did to minority voters. You cannot show that without recording who is registering. **A column exists in this file today because of a federal requirement that stopped operating in 2013.**
+
+One disclosure belongs here rather than in a footnote. Houston County's method of electing its Board of Commissioners is the subject of pending litigation, *Driver v. Houston County*, No. 5:25-cv-00025 (M.D. Ga.), in which the instructor has been retained by plaintiffs. **No material from any expert report is used anywhere in this chapter**, the four inputs above are all public, and this chapter reaches no legal conclusion about that case or any other.
+
+Public is not the same as fetchable, and the difference is worth one paragraph. This chapter's build downloads nothing. It opens four folders.
+
+The block shapes were pulled from TIGER/Line once, by the precinct chapter, and are reused here rather than fetched again. The registration counts are the file the surname-inference chapter commits, with imputed races already removed there. To *impute* is to fill in a value nobody recorded, by guessing it from other things.
+
+The census counts are read from an assembled copy of the Bureau's published 2020 redistricting tables for Georgia.
+
+And the enacted plan arrives as a **block equivalency file**: one row per census block, one district number, the whole plan expressed as a lookup rather than as a shape. It came from the county, because that is the form in which an enacted plan actually exists.
+
+**So the cost of assembling a chapter this way is that nobody can rebuild it from a web address.** It inherits, all at once and unexamined, every decision the other folders made. What a block is, which vintage of geography to use, and who counts as Black. The partial compensation is that three of those four folders are elsewhere in this book. A reader who wants those decisions can go and read them being made.
+
+Those four files are the right ones because the first *Gingles* precondition asks about a map that does not exist. Answering it requires a building block you can reassemble into any map at all. The census block is that building block.
+
+It is also why this chapter needs three population columns rather than one. The doctrine turns on which people count, and total population, voting-age population and registered voters are three different answers. This county happens to supply all three at once. Almost nowhere else does, because almost nowhere else records race on the registration form. What would have been better is citizen voting-age population by block. The census does not measure it, and the American Community Survey estimates it only with margins of error wider than the distinctions being drawn here.
+
+Then there is the part that is strange enough to say outright. **Most of the districts examined in this chapter did not exist until this chapter's own code made them.**
+
+Every district other than the enacted five was grown by the algorithm printed later on, from a starting block, with a dial.
+
+That is not a defect in the evidence. It *is* the evidence, and it is exactly what the section above means by saying the proof is manufactured by the party that needs it. The difference between this and a filed expert report is that here the algorithm, the dial, the starting point and the sweep across every plausible setting are all on the page.
+
+Three definitional choices were made in the build, and none of them was collapsed away afterwards.
+
+"Black" means **any-part Black**, alone or in combination, which matches Voting Rights Act practice. The surname chapter documents what the stricter definition costs in this very county. The three population bases are carried side by side through every table rather than reduced to a preferred one. Which base the first precondition is measured against is contested, and the chapter's pivot turns on it. And the registration counts use reported race only. Rows whose race had been guessed were dropped earlier, in the file the surname-inference chapter commits, so that no number here is an estimate wearing a headcount's clothes.
+
+Blocks with nobody living on them are kept, since a district has to be drawn across them too.
+
+## A law, expressed as a two-column CSV
+
+This chapter has no raw arrival to show, because it downloads nothing. What it has is four files that other people already cleaned. The honest version of this section is short. The interesting work happened elsewhere, and three of those four elsewheres are chapters in this book.
+
+What is worth seeing is the shape of what gets opened. Here are the first lines of three of the four:
+
+**`block_equiv/boe-5.csv`** — the enacted plan:
+
+```{r rawvd-plan}
+```
+
+**`census/pop_blocks.csv`** — the population of each block:
+
+```{r rawvd-pop}
+```
+
+**`houston_voters.csv`** — one registered voter. The surname is replaced here; the file itself carries real ones, and it is the surname-inference chapter's to display, not this one's:
+
+```{r rawvd-voters}
+```
+
+**The first of those is an enacted law.** A districting plan passed by the Georgia General Assembly, in force, deciding who elects whom. It arrives as two columns: a census block, and a number from one to five.
+
+There is no map in it. There is no boundary, no coordinate, no shape. A plan *is* a lookup table. The picture everyone argues about is drawn afterwards, by merging blocks that share a number. That is not a simplification for teaching. It is the form in which American districting plans legally exist, and it is why the block is the unit this chapter needs.
+
+The second is the Bureau's redistricting tables, already cut down to the columns this book uses. A block of zero population sits in the first row. It was kept rather than dropped, because a district has to be drawn across empty ground too. The third is registered voters, one row per person, already stripped of guessed races so that no number here is an estimate wearing a headcount's clothes.
+
+The fourth input has no header to print. It is TIGER/Line geometry, and what the build takes from it is not a column but a *computation*: which block touches which. Adjacency is nowhere in any of these files. It is derived from the shapes, in the build, because the algorithm later in this chapter cannot grow a district without knowing what is next to what.
+
+So the join key does all the work, and it is the same in all four: `GEOID20`, read as text in every one of them. Get that wrong in any single file and the county silently loses whichever blocks that file was supposed to contribute. The build asserts, rather than hopes, that the four agree — the block lists must match exactly, and TIGER's own population count must equal the published tables' to the person before anything is written.
+
+## One row is a census block
+
+The county is **Houston County, Georgia**. Its Board of Education is elected from five single-member districts under a plan enacted by the Georgia General Assembly and in force. That plan is the map on the table throughout.
+
+```{r one-row}
+```
+
+One row per **2020 census block** — the smallest unit the census publishes, and the atom every districting plan is built from. Three counts of "the people" sit in that row and they are not the same number.
+
+```{r file}
+```
+
+**Note the last three rows before going on.** The Black share of this county is `r pc(sh_pop, 2)`%, or `r pc(sh_vap, 2)`%, or `r pc(sh_reg, 2)`%, depending on which population you mean. That spread is `r pc(sh_reg - sh_vap, 2)` points wide, and it will turn out to decide a question the Supreme Court calls dispositive.
+
+## The dilution you can settle by subtraction
+
+Add up the enacted plan's five districts and compare them to the average.
+
+```{r deviation}
+```
+
+```{r dev-static, eval=!knitr::is_html_output(), fig.height=3.1}
+```
+
+```{r dev-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The enacted plan against equal population.** One bar per Board of Education district, showing how far its 2020 population sits from the ideal of `r n(IDEAL)` people. The shaded band is the 10-point maximum deviation a state or local plan is presumed to be within. The whole plan spans `r pc(DEV_RANGE, 2)` points.
+
+The ideal district holds `r n(IDEAL)` people and **the whole plan spans `r pc(DEV_RANGE, 2)` points.** *Brown v. Thomson*, 462 U.S. 835, 842 (1983) collected the rule that a state or local plan under a **10%** maximum deviation is a minor one, and does not by itself make a case. This plan uses a sixth of that allowance.
+
+(Congressional districts get no such grace. *Karcher v. Daggett*, 462 U.S. 725 (1983) struck down a New Jersey plan off by 0.70%, and the rule traces to *Wesberry v. Sanders*, 376 U.S. 1 (1964), a Georgia case.) Read as a price: **a vote in the smallest district is worth `r pc(100 * (WORTH - 1), 2)`% more than a vote in the largest.**
+
+That is the entire malapportionment inquiry, done. If it is this easy, what was it for?
+
+## What that rule replaced
+
+Until 1963 Georgia nominated statewide officers under the **county unit system**: counties cast unit votes rather than people. The eight largest got six each, the next thirty got four, and the remaining hundred and twenty-one got two. A candidate needed a majority of units.
+
+*Gray v. Sanders*, 372 U.S. 368 (1963) struck it down. It is where Justice Douglas wrote, at 381, that the idea of political equality "can mean only one thing — one person, one vote." That rule, unchanged, on Georgia's 2020 population:
+
+```{r county-units}
+```
+
+**A vote in the smallest county was worth `r pc(CU_RAT, 0)` votes in the largest**, and `r pc(K_SHR, 1)`% of the state could outvote the rest. Those are the numbers *Reynolds* and *Gray* were written against, and they are why a `r pc(DEV_RANGE, 2)`-point spread now reads as nothing at all. **The equal-population rule worked so completely that it stopped being where the argument is.**
+
+## The dilution you cannot settle by subtraction
+
+`r pc(sh_vap, 2)`% of this county's adults are Black, so proportionality would put `r pc(PROP5, 2)` of five districts in their hands. Proportionality is not the standard. Section 10301(b) says outright that nothing in the section creates a right to seats in proportion to population, and *Johnson v. De Grandy*, 512 U.S. 997 (1994) makes it relevant but never decisive. Yet it is where every argument starts.
+
+The precondition's first half is arithmetic. Each of five districts holds `r n(D_VAP)` voting-age people, so a bare majority of one needs `r n(NEED_BL)` Black adults. The county has `r n(HAVE_BL)`. **"Sufficiently large" is satisfied `r pc(HAVE_BL / NEED_BL, 2)` times over.**
+
+In *Bartlett v. Strickland*, 556 U.S. 1 (2009), a plurality read the precondition to require a real numerical majority, greater than 50 percent of voting-age population, at 19–20. No opinion there commanded five votes. A district the group could win only with crossover help "§ 2 does not require," at 25.
+
+The other half *Gingles* called **"geographically compact."** The Court's current phrase is a **"reasonably configured"** district, from *Wisconsin Legislature v. Wisconsin Elections Commission*, 595 U.S. 398, 402 (2022) (per curiam). *Milligan* then glossed it: a district is reasonably configured "if it comports with traditional districting criteria, such as being contiguous and reasonably compact," 599 U.S. at 18. *Callais* keeps that phrase and loads it. Either way it is a fact about where people live, not how many there are.
+
+```{r map-static, eval=!knitr::is_html_output(), fig.height=5.3, fig.width=5.6}
+```
+
+```{r map-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Where the Black adults are.** All `r n(nrow(b))` census blocks in Houston County, shaded by the Black share of their voting-age population. The `r n(EMPTY)` hatched blocks contain nobody at all. That is the absence of the quantity rather than a low value of it.
+
+Red lines are the five enacted Board of Education districts. There is no single Black neighbourhood to be enclosed. The dark blocks are scattered through the county.
+
+The **index of dissimilarity** is `r pc(DISS, 1)`. That is the share of Black adults who would have to move blocks for the two groups to be spread identically. Moderate segregation, not severe. Only `r n(N_HI)` of `r n(nrow(b))` blocks are majority-Black among adults, and they hold `r pc(S_HI, 1)`% of the county's Black adults. **The other `r pc(100 - S_HI, 1)`% live where they are outnumbered.** A group can be plenty large and still be spread too evenly to be gathered into a majority anywhere.
+
+Grouping `r n(nrow(b))` blocks into five districts is a **zoning** operation: the same people, re-bundled, give different summary numbers depending only on where the lines fall — the modifiable areal unit problem, under another name. **Districting is that effect deployed on purpose**, and Section 2 tries to say when deploying it becomes a wrong.
+
+## One algorithm with one dial
+
+To find out whether the district exists, build it. Start at one block and annex neighbors until the district holds `r n(IDEAL)` people. At each step the mapmaker looks at the **`reach`** nearest available blocks on the frontier and takes whichever leaves the Black share of adults highest.
+
+- **`reach = 1`.** One candidate is ever considered, so race never enters the
+  *annexation rule*. The roundest district the geography allows, and the only
+  end of this dial that could still be offered to a court.
+- **`reach = ∞`.** Every frontier block is a candidate, however far out. One
+  objective, no other constraint. Until 29 April 2026 a district built this way
+  was ordinary Section 2 evidence.
+
+**There is no statistically correct value of `reach`.** After *Callais* there is a legally disqualifying range, and it is everything above 1.
+
+**But notice where the dial is not.** The seed is the block with the most Black adults in the county — chosen by race, at every setting including `reach = 1`. Turning the dial to 1 removes race from the rule for growing the district and leaves it in the rule for starting it. *Callais* does not bar race from the annexation step; it bars race "as a districting criterion," and a seed is a districting criterion. Whether a race-blind version of this exercise is available at all is worth deciding now, because a later section tests how much the seed was doing.
+
+A third construction abandons contiguity: take the most heavily Black blocks in order, wherever they are. No one could enact it. It is a ceiling, and it comes out at **`r pc(CEIL5, 1)`%**.
+
+> **Before you read on, write two numbers down.** The county is
+> `r pc(sh_vap, 2)`% Black among adults, moderately segregated, and holds
+> `r pc(HAVE_BL / NEED_BL, 2)` times the Black adults a majority-Black district
+> would need. Ignoring geography entirely gets you to `r pc(CEIL5, 1)`%.
+>
+> First: **the highest Black share you think a *contiguous* district of
+> `r n(IDEAL)` people can reach.** Second: **how compact that district will be**,
+> on a scale where a perfect circle is 1 and a spidery tendril is near 0.
+
+## Turning the dial
+
+Fifteen settings of `reach`, five districts, one seed. For each: how Black the district came out, and how compact.
+
+**Polsby-Popper** is `4πA / P²`: one for a circle, near zero for anything with a long ragged edge. **Reock** is the district's area over the area of the smallest circle containing it. Both are standard and both get cited in briefs.
+
+```{r front-static, eval=!knitr::is_html_output(), fig.height=4.1}
+```
+
+```{r front-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. What the dial buys, and what it costs.** Each point is one setting of `reach`, plotted by the compactness of the district it produced and by the Black share of that district's adults. The triangle is the ceiling reached by dropping contiguity altogether, `r pc(CEIL5, 1)`%, which no legislature could enact. The frontier runs from `r pc(R1_5$vap_black_pct)`% Black at Polsby-Popper `r pc(R1_5$pp, 3)` to `r pc(RI_5$vap_black_pct)`% at `r pc(RI_5$pp, 3)`.
+
+**The dial buys Black share and pays in compactness, at a brutal rate.**
+
+- At `reach = 1` the district is `r pc(R1_5$vap_black_pct)`% Black among adults
+  and its Polsby-Popper is `r pc(R1_5$pp, 3)`. It is a respectable shape and it
+  is nowhere near a majority.
+- The first setting that clears 50% is `reach = `r CROSS$reach``, at
+  `r pc(CROSS$vap_black_pct)`%. Its Polsby-Popper is `r pc(CROSS$pp, 3)` —
+  **`r pc(R1_5$pp / CROSS$pp, 0)` times worse than where we started.**
+- At `reach = ∞` it reaches `r pc(RI_5$vap_black_pct)`% with a Polsby-Popper of
+  `r pc(RI_5$pp, 3)`, which is not a shape so much as a route.
+
+One setting is out of order: at `reach = `r WOB$reach`` the district drops to `r pc(WOB$vap_black_pct)`%, below several tighter settings. **A greedy algorithm is not guaranteed to be monotone in its own parameter.** The curve an expert report shows you is a property of the search, not of the county.
+
+**Now read it with the calendar in mind.** Every point except the leftmost was produced by letting race decide which block to annex. Before 29 April 2026 any of them could have been filed; after *Callais* a plaintiff "cannot use race as a districting criterion," which leaves `reach = 1` and its `r pc(R1_5$vap_black_pct)`%. **Same county, same census, same code — and a doctrine change moves the admissible answer `r pc(RI_5$vap_black_pct - R1_5$vap_black_pct, 1)` points.**
+
+And that is the generous reading. *Callais*'s second condition asks more than the dial can express. The illustrative map must meet **all** the State's legitimate districting objectives **"just as well"** as the enacted map. That includes the traditional criteria and "the State's specified political goals."
+
+Nothing on this chart is a complete plan. Nothing here knows what Georgia's objectives were. And no election result is in the file.
+
+**On the current standard the whole chart is inadmissible, not just the right-hand side of it.**
+
+The honest summary an expert could write up: *in Houston County a majority-Black district can be constructed only by abandoning compactness.*
+
+That summary is wrong.
+
+## The map already exists
+
+The enacted plan has been in force this whole time. Put its District 4 on the same two axes.
+
+```{r pivot}
+```
+
+**District 4 is `r pc(E4_VAP)`% Black among adults at a Polsby-Popper of `r pc(E4_PP, 3)`** — more Black than every contiguous district the algorithm drew below `reach = `r CROSS$reach``, and more compact than every one at or above it. **`r BEAT` of the algorithm's `r nrow(t5)` districts beat it on both measures at once.** It was drawn by people, using the whole county rather than growing outward from a seed.
+
+```{r cmp-static, eval=!knitr::is_html_output(), fig.height=3.4, fig.width=7.2}
+```
+
+```{r cmp-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. The same county, three times.** Left, the district the algorithm built at `reach = 1`: `r pc(R1_5$vap_black_pct, 1)`% Black among adults, a Polsby-Popper of `r pc(R1_5$pp, 3)`. Center, the district it built with the dial turned all the way up: `r pc(RI_5$vap_black_pct, 1)`% at `r pc(RI_5$pp, 3)`, a route rather than a shape. Right, the district Georgia enacted: `r pc(E4_VAP, 1)`% at `r pc(E4_PP, 3)` — **more Black and more compact than either.**
+
+**This is the shape of the whole problem.** The algorithm's failure was a fact about the algorithm. A district that already existed, drawn by hand out of the whole county, dominated it.
+
+Two things this does **not** show. Not how the enacted plan was drawn, or with what data in front of whom — that question is not in this file. And it is not a comparison of two illustrative maps: an enacted plan and a plaintiff's demonstration exhibit are different objects, judged by different rules.
+
+What it does show is about evidence. **Exhibiting a map settles the question in the affirmative for good. Failing to find one settles nothing**, because the search was never exhaustive and never could be. The first *Gingles* precondition is asymmetric by construction: provable, not disprovable. That is why the fight in these cases is over what *counts* as an acceptable demonstration map, and it is exactly where *Callais* intervened.
+
+## "Majority" of what?
+
+*Bartlett* requires a majority. District 4 clears 50% on all three counts, so the question does not bite there. Take the **four-district** configuration, where it does.
+
+```{r denominator}
+```
+
+```{r dumb-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r dumb-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. The same district, measured three ways.** Each row is one setting of the dial in the four-district configuration. The three dots are the Black share of that district's total population, of its voting-age population, and of its registered voters. The vertical line is 50% — the threshold *Bartlett* makes dispositive. **Every district on this chart sits on both sides of it.**
+
+**Every one of those `r nrow(f4)` districts is majority-Black among registered voters. Not one of them is majority-Black among voting-age population.** The registered-voter share never drops below `r pc(F4_REG_MIN)`% and the voting-age share never rises above `r pc(F4_VAP_MAX)`%.
+
+Same blocks, same lines, same people. Two answers to the question *Bartlett* says is dispositive.
+
+Neither number is wrong. The census counts everybody who lives here; the registration file counts everybody who signed up to vote, and here the Black share of registrants runs `r pc(sh_reg - sh_vap, 2)` points above the Black share of adults. **Courts generally work in voting-age or citizen-voting-age population**, the more conservative of the two — but the choice is a choice, and it decides the question.
+
+## Does the starting block matter?
+
+The algorithm always began at the block with the most Black adults. Restart it from every block where Black adults are already a majority and there are at least twenty of them — `r n(SW_N)` starting points. Results ran from `r pc(SW_LO)`% to `r pc(SW_HI)`%, a standard deviation of `r pc(SW_SD, 2)` points. **Where you start barely matters: `r pc(SW_HI - SW_LO, 1)` points across `r n(SW_N)` restarts, against the `r pc(RI_5$vap_black_pct - R1_5$vap_black_pct, 1)` points the dial produced.**
+
+That cuts against the easy story: not every analyst choice moves the answer. **The one that does is the one encoding what you think a district is allowed to look like** — a legal judgment wearing the clothes of a parameter.
+
+## A threshold, not a verdict
+
+Three things are established. The enacted plan is not malapportioned — a `r pc(DEV_RANGE, 2)`-point spread against a 10-point allowance. The first *Gingles* precondition's arithmetic half is satisfied `r pc(HAVE_BL / NEED_BL, 2)` times over. And a majority-Black district in this county both can be drawn and has been.
+
+Sharper: compactness and minority share trade along a curve, measured above, from `r pc(R1_5$vap_black_pct)`% Black at Polsby-Popper `r pc(R1_5$pp, 3)` to `r pc(RI_5$vap_black_pct)`% at `r pc(RI_5$pp, 3)`. The enacted district sits off that curve entirely, at `r pc(E4_VAP)`% and `r pc(E4_PP, 3)`, **so the curve described a search rather than a county.**
+
+None of which says whether Houston County's method of election dilutes anyone's vote. Nothing above touches preconditions two and three, or the totality of the circumstances, which is where these cases are actually decided. **Precondition one is a threshold, not a verdict.**
+
+Nor does it say whether a *second* majority-Black district could be drawn. The algorithm builds one district and stops. A real demonstration plan has to assign every block and hold all five districts inside the population band at once. That is a harder problem, and it can fail for reasons having nothing to do with the group.
+
+And the compactness scores are not facts about fairness. A district bounded by a winding river scores badly for reasons no mapmaker chose, and any district can be made to score better by smoothing a boundary without moving a single voter.
+
+Notice, finally, what the exercise required. To find out whether Black voters *could* have a district, the algorithm had to sort every block in the county by race. **There is no race-blind way to ask this question** — which, after *Callais*, is a problem for the answer as well as for the asking.
+
+## What the totality of the circumstances actually contains
+
+This chapter has said three times that cases are decided on the totality of the circumstances, without saying what is in it. That is worth fixing, because almost none of it is the kind of thing a data file holds.
+
+The list comes from the Senate report accompanying the 1982 amendment, and *Gingles* adopted it. A court weighing a Section 2 claim considers:
+
+1. the history of official discrimination touching the group's participation;
+2. whether voting is racially polarized;
+3. unusually large districts, majority-vote requirements, bans on single-shot
+   voting, or other rules that make discrimination easier;
+4. whether the group is shut out of the process by which parties choose
+   candidates;
+5. the effects of discrimination in education, employment and health, which
+   make taking part harder;
+6. whether campaigns have used racial appeals;
+7. how many members of the group have been elected;
+8. whether officials are unresponsive to the group's needs; and
+9. whether the stated reason for the practice is thin.
+
+No court has to find all nine, and none of them is decisive on its own.
+
+**Read the list and notice what kind of evidence it asks for.** Factor two is estimated from returns, and factor seven is a count. The other seven are historical and documentary: minutes, campaign material, testimony, the record of who was elected and who was ignored. **Precondition one is the part of a Section 2 case that a census file can speak to, and it is roughly a tenth of the case.**
+
+That is the honest scale of what the rest of this chapter establishes. It also explains why *Callais* matters as much as it does. Its third change tells courts to give much less weight to discrimination "that occurred some time ago", and to disparities it treats as the effects of societal discrimination. That is factors one and five, and part of factor eight.
+
+## The argument, and how fast it moved
+
+**The case for *Gingles* is that it replaced something worse.** *Bolden* required proof of discriminatory intent, which in practice meant finding a legislator willing to say so. The 1982 results test asks about behaviour instead, and the preconditions screen cases out. Katz and colleagues (2006) reviewed 331 lawsuits covering 763 decisions since 1982, and found plaintiffs winning 37% **of the lawsuits**. That is a filter, not a rubber stamp.
+
+**The serious objection is that the framework is self-contradictory.** A Section 2 remedy is a district drawn so a racial group can elect its preferred candidate. That requires sorting voters by race. It is the very thing *Shaw v. Reno*, 509 U.S. 630 (1993) and *Miller v. Johnson*, 515 U.S. 900 (1995) treat as presumptively unconstitutional when race predominates.
+
+The law resolves that contradiction with a two-step, and the joint is where *Callais* broke it. Where race predominated, a district faces **strict scrutiny**: the state must show a compelling reason and a remedy tailored no wider than that reason. Complying with Section 2 has been treated as the compelling reason. Narrow tailoring then means the state had "good reason to think that all the *Gingles* preconditions are met." If it did, drawing a majority-minority district is justified. If it did not, it is not.
+
+Read the two steps together and the whole structure hangs from precondition one. **If Section 2 did not require the district, nothing justifies having sorted anybody by race, and the same map becomes an unconstitutional racial gerrymander.** That is the move *Callais* makes: it does not strike Section 2, it removes the compelling interest by finding the statute did not require the district. Louisiana's map failed not because the state did too little, but because it did something the Court held it had not been obliged to do.
+
+So the dial in this chapter is not merely awkward. Turning it is what a mapmaker does to establish precondition one, and precondition one is now the only thing standing between a remedial district and a constitutional violation.
+
+The dial is that contradiction in code, and turning it off yields `r pc(R1_5$vap_black_pct)`%.
+
+**And the compactness precondition rewards segregation.** Whether a group can be gathered into a majority depends on how tightly it is already clustered. So the statute protects a group in a segregated city, and offers nothing to an identically sized, identically outvoted group that is spread evenly. Houston County's dissimilarity index is `r pc(DISS, 1)`. A county at 70 would find the search easy and one at 20 impossible, with no difference in the wrong complained of. That follows directly from *Bartlett*'s 50% rule.
+
+**The measurements are contested too.** Polsby and Popper (1991) proposed the area-perimeter ratio. Reock (1961) proposed the bounding-circle ratio thirty years earlier. Niemi, Grofman, Carlucci and Hofeller (1990) showed the measures disagree, and that no compactness standard alone identifies a gerrymander. Duchin and Tenner (2024) argue that outline-based scores, which is what both of the ones used here are, share the same defects. **The compactness numbers above are one defensible answer, not the answer.**
+
+***Callais* then changed the terms.** The Court held 6–3 that because the Voting Rights Act did not require Louisiana to create an additional majority-minority district, no compelling interest justified the State's use of race. It did not overrule *Gingles*. It "updates" the framework, and it distinguished *Milligan* rather than discarding it. Three updates bear on this chapter:
+
+- **Illustrative maps must satisfy two conditions.** Plaintiffs "cannot use race
+  as a districting criterion," and the map "must meet all the State's legitimate
+  districting objectives, including traditional districting criteria and the
+  State's specified political goals" — a target partisan distribution, a margin
+  for an incumbent, "or any other goal not prohibited by the Constitution" —
+  achieving them "just as well" as the State's own map (slip op., at 29–30).
+  The dial above is the practice the first condition puts in question; the second
+  is the one nothing in this chapter could satisfy at any setting.
+- **Polarization evidence must control for party affiliation**, showing bloc
+  voting "that cannot be explained by partisan affiliation" (slip op., at 30).
+  That is a new burden on the methods used to establish preconditions two and
+  three, not on the ones used here.
+- **The totality inquiry shifts toward present-day intentional
+  discrimination**, discrimination "that occurred some time ago" and disparities
+  characterized as "effects of societal discrimination" getting much less
+  weight.
+
+Section 2 now imposes liability "only when the evidence supports a strong inference that the State intentionally drew its districts to afford minority voters less opportunity because of their race."
+
+That is the arc traced at the opening of this chapter, closing on itself.
+
+**And the other route closed first.** *Shelby County v. Holder*, 570 U.S. 529 (2013) struck the **§ 4(b) coverage formula**. It did not strike § 5 itself, which survives with nothing left to cover. That left Section 2 as the main path.
+
+Section 5 asked a different question from the one this chapter asks, and it is worth keeping the two apart. Section 2 asks whether a plan dilutes a group's vote. Section 5 asked only whether a proposed change made minority voters **worse off than the plan already in force**, which is called retrogression. A covered state could enact a plan that was bad for Black voters, so long as it was not worse than the last one. The benchmark was the status quo rather than fairness, and the burden sat on the state to come and ask first.
+
+**One preclearance route survives, and it is barely used.** Section 3 lets a court place a jurisdiction under preclearance after finding it discriminated on purpose. It does not depend on the struck coverage formula. It has been invoked around twenty times in four decades, mostly against cities, counties and school districts, and only two states have ever been bailed in — New Mexico in 1984 and Arkansas in 1990. After *Shelby County*, courts declined to apply it to Texas and to North Carolina. The reason it is rare is the reason the opening of this chapter matters: Section 3 requires proof of **intent**, which is the standard Congress wrote out of Section 2 in 1982.
+
+Then *Milligan* unexpectedly preserved *Gingles* against a direct challenge. **The most confident predictions about this area of law in the last three years were wrong twice, in opposite directions.**
+
+**And then the case that preserved it lost.** Five weeks after *Callais*, the Court stayed the district court's renewed injunction in the *Milligan* litigation itself. It held that the plaintiffs' alternative map had not performed "just as well" on Alabama's own criteria of keeping the Gulf Coast together and avoiding incumbent pairings. It also held that the court below had ignored an instruction. "The mere fact that voters of different races vote for different parties is not relevant to proving racially polarized voting patterns." *Allen v. Milligan*, 608 U.S. \_\_\_ (2026) (per curiam) (Nos. 25A1314, 25A1315, 25A1316, June 2, 2026) (Sotomayor, J., dissenting).
+
+**The plaintiffs who won in 2023 no longer have their district.** That is how fast a precondition can be rewritten out from under a way of proving things. It is worth holding next to Figure 4.
+
+## What a county of census blocks can testify to
+
+The evidence here is unusually concrete. The population numbers are the decennial census at the smallest unit it publishes, and TIGER's own block counts agree with them to the person. The enacted plan is real enacted law rather than a reconstruction. The registration file records **self-reported** race. So the third denominator in Figure 5, meaning the third bottom number that everything is divided by, is not a guess.
+
+And the central result depends on no model at all. A map that beats everything the algorithm produced exists, is in force, and can be looked at.
+
+Its limits are seven, and one of them is decisive.
+
+**The algorithm grows one district and stops.** It never divides up the whole county. So it cannot answer the question a court would actually put: whether a complete, legal five-district plan containing such a district exists. Expert reports use collections of thousands of complete plans for exactly this reason.
+
+**Nothing in this data can satisfy *Callais*'s second condition.**
+
+Meeting all the State's legitimate objectives "just as well" as the enacted map requires three things. A complete plan. A statement of what those objectives were. And election data to test the political ones.
+
+None of the three is here. **What is measured above is the first condition. The second, which is the more demanding, is untouched.**
+
+Five smaller limits sit beneath that. The search is **greedy rather than optimal**, which is why it found a point where its own dial ran backwards, and why the frontier is a lower bound and nothing more. The population is **2020 against 2026 questions**, in a county that has grown. "Black" here is **any-part Black**, matching Voting Rights Act practice, and a different definition would give different counts. **Registration is not citizenship**, and courts often want citizen voting-age population, which comes from the American Community Survey with sampling error attached. And the two compactness measures are **both outline-based**, so they are one limitation rather than two independent checks.
+
+**No election results appear anywhere**, so whether any of these districts would actually *perform* is entirely untested.
+
+Four questions are open, and the first two were created by a decision four months old.
+
+**What counts as a demonstration map after *Callais* is unknown.** If illustrative plans may not use race as a criterion, and an algorithm needs race to find anything, what procedure is left? The Court required the showing and did not specify how to make it.
+
+Race-blind collections of maps are the obvious candidate. The obvious objection is that *Milligan* declined to make such a benchmark mandatory in 2023, and *Callais* did not adopt one in 2026. **How a plaintiff proves the second condition is equally unsettled.** An illustrative map must achieve the State's political goals "just as well" as the enacted map. The State names those goals after the fact, in litigation. So the plaintiff has to hit them without knowing in advance what they will be.
+
+Whether that is a demanding standard or an impossible one is what the next few years will answer.
+
+The other two are older. **Which population the 50% rule refers to** remains unresolved. Figure 5 shows two defensible numbers on opposite sides of the line, and *Bartlett* says majority without saying majority of what. And **whether compactness should be a precondition at all** is a question nobody has answered well. It makes the remedy available in proportion to how segregated a place already is, and no workable replacement has been proposed that avoids that.
+
+What the county does establish is narrow and worth stating exactly. A district that a careful search could not find had already been drawn, by hand, out of the whole county. That is why failing to find a map proves nothing, and exhibiting one proves everything. The first precondition can be proved and cannot be disproved. That imbalance, rather than the arithmetic, is what the fighting is about.
+
+## Sources
+
+**Data**
+
+- 2020 Census, P.L. 94-171 redistricting file, block level, Houston County,
+  Georgia: population and voting-age population, both by race.
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
+- 2020 TIGER/Line tabulation blocks for Georgia, for geometry, adjacency and
+  both compactness measures. Its independent `POP20` field agrees with the
+  tables above at `r n(POP)` people.
+  <https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_13_tabblock20.zip>
+- Houston County Board of Education plan, as enacted by the Georgia General
+  Assembly and in force, as a block-equivalency file.
+- Georgia voter registration file for Houston County: **self-reported** race and
+  census block, `r n(REG)` records. Rows whose race had been filled in by
+  inference were dropped upstream; see the bisg-check chapter.
+- Every district here other than the enacted five was drawn by the growth
+  algorithm described above.
+- Houston County's method of electing its Board of Commissioners is the subject
+  of pending litigation, *Driver v. Houston County*, No. 5:25-cv-00025 (M.D.
+  Ga.), in which the instructor has been retained by plaintiffs. **No material
+  from any expert report is used here, and this chapter reaches no legal
+  conclusion about that case or any other.**
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`block_shapes.csv`](data/derived/block_shapes.csv), [`blocks.csv`](data/derived/blocks.csv), [`districts.csv`](data/derived/districts.csv), [`ga_county_units.csv`](data/derived/ga_county_units.csv), [`plan_shapes.csv`](data/derived/plan_shapes.csv), [`seed_sweep.csv`](data/derived/seed_sweep.csv), [`segregation.csv`](data/derived/segregation.csv), [`tradeoff.csv`](data/derived/tradeoff.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `districts.csv` has `pop_black_pct`, `vap_black_pct` and `reg_black_pct` for the same districts. They differ. Which one does the legal test turn on, and does the answer change with the choice?
+- `tradeoff.csv` shows what happens to compactness (`pp`, `reock`) as a district is drawn to reach further for population. Where does the trade become indefensible?
+- `seed_sweep.csv` grows a district from many different starting blocks. Look at the spread of `d5_vap_black_pct`. How much of the result is the algorithm and how much is the seed?
+- `ga_county_units.csv` gives `people_per_unit` for every county. Sort it. How unequal is representation on these boards before any line is drawn?
+
+**Cases and statute**
+
+- Voting Rights Act of 1965 § 2, 52 U.S.C. § 10301 (formerly 42 U.S.C. § 1973;
+  reclassified to Title 52 effective 1 September 2014; results test added 1982,
+  Pub. L. 97-205 § 3, 96 Stat. 134).
+- Voting Rights Act of 1965 § 3, 52 U.S.C. § 10302 (the surviving "bail-in"
+  route to preclearance), § 4(b), 52 U.S.C. § 10303(b) (the struck coverage
+  formula), and § 5, 52 U.S.C. § 10304 (preclearance itself).
+- Senate Report No. 97-417 (1982), whose nine objective factors *Gingles*
+  adopted as the totality of the circumstances.
+- *Gray v. Sanders*, 372 U.S. 368 (1963).
+- *Wesberry v. Sanders*, 376 U.S. 1 (1964).
+- *Reynolds v. Sims*, 377 U.S. 533 (1964).
+- *White v. Regester*, 412 U.S. 755 (1973).
+- *City of Mobile v. Bolden*, 446 U.S. 55 (1980).
+- *Karcher v. Daggett*, 462 U.S. 725 (1983).
+- *Brown v. Thomson*, 462 U.S. 835 (1983).
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986).
+- *Shaw v. Reno*, 509 U.S. 630 (1993).
+- *Johnson v. De Grandy*, 512 U.S. 997 (1994).
+- *Miller v. Johnson*, 515 U.S. 900 (1995).
+- *Bartlett v. Strickland*, 556 U.S. 1 (2009) (plurality).
+- *Shelby County v. Holder*, 570 U.S. 529 (2013).
+- *Wisconsin Legislature v. Wisconsin Elections Commission*, 595 U.S. 398 (2022)
+  (per curiam).
+- *Allen v. Milligan*, 599 U.S. 1 (2023).
+- *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026) (Nos. 24-109, 24-110, decided
+  29 April 2026); *Callais v. Landry*, 732 F. Supp. 3d 574 (W.D. La. 2024),
+  affirmed and remanded.
+- *Allen v. Milligan*, 608 U.S. \_\_\_ (2026) (per curiam) (Nos. 25A1314,
+  25A1315, 25A1316, order of 2 June 2026).
+
+**Reference works**
+
+- National Conference of State Legislatures. *Redistricting Law 2020*. Denver:
+  NCSL, October 2019 — Chapter 3 (Racial and Language Minorities) for the nine
+  totality factors, the strict-scrutiny and narrow-tailoring steps, the
+  retrogression standard under § 5, and the count of § 3 bail-ins.
+
+**Academic literature**
+
+- Duchin, M. and Tenner, B. E. (2024). "Discrete geometry for electoral
+  geography." *Political Geography* 109: 103040.
+- Grofman, B., Handley, L. and Niemi, R. G. (1992). *Minority Representation and
+  the Quest for Voting Equality.* New York: Cambridge University Press.
+- Katz, E. D., Aisenbrey, M., Baldwin, A., Cheuse, E. and Weisbrodt, A. (2006).
+  "Documenting Discrimination in Voting: Judicial Findings Under Section 2 of
+  the Voting Rights Act Since 1982." *University of Michigan Journal of Law
+  Reform* 39(4): 643–772.
+- Niemi, R. G., Grofman, B., Carlucci, C. and Hofeller, T. (1990). "Measuring
+  Compactness and the Role of a Compactness Standard in a Test for Partisan and
+  Racial Gerrymandering." *Journal of Politics* 52(4): 1155–1181.
+- Polsby, D. D. and Popper, R. D. (1991). "The Third Criterion: Compactness as a
+  Procedural Safeguard Against Partisan Gerrymandering." *Yale Law & Policy
+  Review* 9(2): 301–353.
+- Reock, E. C. Jr. (1961). "A Note: Measuring Compactness as a Requirement of
+  Legislative Apportionment." *Midwest Journal of Political Science* 5(1):
+  70–74.
+
+**Further reading**
+
+- Persily, N. (2007). "The Promise and Pitfalls of the New Voting Rights Act."
+  *Yale Law Journal* 117: 174.
+- Stephanopoulos, N. O. (2016). "Race, Place, and Power." *Stanford Law Review*
+  68: 1323.
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

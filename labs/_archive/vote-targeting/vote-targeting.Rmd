@@ -1,0 +1,201 @@
+---
+title: "Lab 4b: Where the Votes Have to Come From"
+subtitle: "84-355 Democracy's Data | Vote targeting in North Carolina, 2012–2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means. Nothing asks you to write code.
+
+***
+
+# The question
+
+A campaign has one statewide number it needs to hit, and a hundred counties to
+get it from. **Where does it look for the votes?**
+
+This is called *vote targeting*, and it is the least glamorous and most
+consequential thing a campaign does. Before any advertisement is written,
+somebody decides which counties are worth a field office. That decision is
+arithmetic, and today you do the arithmetic.
+
+**You are meeting this two weeks before the chapter that explains it.** Sides et
+al. take up vote targeting in Chapter 5, which we read in Week 6. That is
+deliberate: Chapter 3, which you are reading this week, is the story of campaigns
+becoming candidate-centred and professional, and this is what "professional"
+turned out to mean in practice. Do the arithmetic now; you will meet the argument
+about it later, and it will land harder for having done it.
+
+We use the same four elections Chapter 5 uses — the North Carolina governor's
+race in 2012, 2016, 2020 and 2024 — but we build it from the state's own
+returns rather than retyping the book's table. That turns out to matter.
+
+# Part 1 — The data
+
+```{r load}
+nc <- read.csv("data/nc_gov_county.csv", stringsAsFactors = FALSE)
+str(nc)
+head(nc, 3)
+```
+
+One row per county per election. `dem`, `rep` and `oth` are votes for the
+Democratic, Republican and all other candidates.
+
+```{r statewide}
+st <- aggregate(cbind(dem, rep, oth, total) ~ year, nc, sum)
+st$rep_pct <- round(100 * st$rep / st$total, 1)
+st
+```
+
+**Read this before going on.** Republicans won in 2012 and lost the next three,
+and 2024 is not a normal loss — the Republican share falls off a cliff and the
+"other" column quadruples. Mark Robinson's campaign collapsed late after a
+news investigation, and voters who would not vote for him went somewhere else.
+Hold that thought; it comes back in Part 4.
+
+# Part 2 — Each county's share of the party's votes
+
+The targeting method is simple. For each election, ask what fraction of the
+party's *statewide* votes came from each county. Then average those fractions
+across elections. That average is the county's expected contribution.
+
+```{r shares}
+tot_rep <- tapply(nc$rep, nc$year, sum)
+nc$share <- nc$rep / tot_rep[as.character(nc$year)]
+
+avg <- tapply(nc$share, nc$county, mean)
+avg <- sort(avg, decreasing = TRUE)
+
+head_tbl <- data.frame(county = names(avg)[1:10],
+                       avg_share_pct = round(100 * avg[1:10], 2))
+head_tbl
+```
+
+Ten counties out of a hundred. Notice how concentrated this is.
+
+```{r concentration}
+cat("Top 10 counties supply", round(100 * sum(avg[1:10]), 1), "% of the Republican vote\n")
+cat("Top 25 counties supply", round(100 * sum(avg[1:25]), 1), "%\n")
+cat("The bottom 50 counties supply", round(100 * sum(avg[51:100]), 1), "%\n")
+```
+
+# Part 3 — Turning a statewide goal into county goals
+
+Now pick a statewide target and push it down to the counties. The chapter uses
+**3.20 million** votes as a 2028 goal.
+
+```{r targets}
+STATEWIDE_TARGET <- 3200000          # <- this is the number you will change
+
+target <- avg * STATEWIDE_TARGET
+out <- data.frame(county = names(target)[1:10],
+                  avg_share_pct = round(100 * avg[1:10], 2),
+                  target_2028   = round(target[1:10]))
+out
+```
+
+That is a campaign plan: Wake County must produce about 267,000 Republican
+votes, Mecklenburg about 228,000, and so on down the list.
+
+**Now compare the target to what has actually happened.**
+
+```{r reality-check}
+data.frame(year = st$year,
+           rep_votes = st$rep,
+           short_of_target = STATEWIDE_TARGET - st$rep)
+```
+
+# Part 4 — One election can move the whole plan
+
+The average treats all four elections as equally informative. 2024 was not a
+normal election. Watch what happens when it is left out.
+
+```{r drop-2024}
+sub  <- nc[nc$year != 2024, ]
+tot2 <- tapply(sub$rep, sub$year, sum)
+sub$share <- sub$rep / tot2[as.character(sub$year)]
+avg2 <- tapply(sub$share, sub$county, mean)
+
+cmp <- data.frame(county = names(avg),
+                  with_2024 = round(100 * avg, 2),
+                  without   = round(100 * avg2[names(avg)], 2))
+cmp$change <- round(cmp$without - cmp$with_2024, 2)
+rbind(head(cmp[order(-cmp$change), ], 5),
+      head(cmp[order(cmp$change), ], 5))
+```
+
+The counties that gain when 2024 is dropped are the big metros. The counties
+that lose are smaller and more rural. **That is the shape of the Robinson
+collapse**, and if you leave 2024 in the average you are planning the next
+campaign around a candidate-specific disaster.
+
+# Part 5 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — A different goal.** In the chunk in Part 3, change
+`STATEWIDE_TARGET` to a number you can defend: the winning Democratic total in
+2024 (3,069,496), or the best Republican total in the data (2,586,604, in 2020). Re-run
+Parts 3. Which counties now look reachable, and which look hopeless? Does the
+choice of target change *where* a campaign should go, or only how hard it has
+to work everywhere?
+
+**Option B — Target the other party.** In Part 2, change `nc$rep` to `nc$dem`
+in both places, and `tot_rep` accordingly. Where does the Democratic vote come
+from, and how does its geographic concentration compare? A party whose votes
+are concentrated in ten counties and a party whose votes are spread over sixty
+do not run the same campaign.
+
+**Option C — Share of votes cast, not share of party votes.** Replace
+`nc$rep / tot_rep[...]` with `nc$rep / nc$total` to get each county's
+Republican *percentage* rather than its contribution. Now rank the counties.
+The list looks completely different. Which ranking should a campaign manager
+use, and for what decision?
+
+**Option D — Your own question.** The data has 400 rows and every county in the
+state. Ask something and answer it.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** — that evening or the next day, while it is fresh.
+No length requirement — a sentence or two is enough, so long as it shows you
+engaged with what we did. Any *one* of the usual four: something that surprised
+you, something we missed, something you do not understand, or an answer to a
+classmate. One post is full credit, and it can be about anything we looked at
+this week — this lab is the obvious candidate, but it is not the only one.
+
+If you want a starting point, three that would make good posts:
+
+- The arithmetic tells a campaign where the votes *were*. Does that tell it
+  where the votes *will be*? Pick a side.
+- Chapter 3 describes campaigns becoming candidate-centred and professional.
+  Having now done a piece of that professional work: what did it gain, and what
+  did it cost?
+- Something in Part 4 you did not expect. The Robinson collapse does not move
+  every county the same way, and the pattern is worth a sentence.
+
+***
+
+### A note on the textbook's table
+
+Ch. 5 prints five counties and a statewide row. Our five counties match the
+book exactly, which is reassuring. The statewide row does not: the book's own
+Tables 5.2 and 5.3 give two different figures for the 2016 Republican total
+(2,298,880 and 2,289,880), and the state's returns say the first is right.
+The 2020 figure is off by one vote.
+
+Nothing important turns on either. That is the point — you could not have known
+that without checking, and checking took one line of code. `data/build-data.R`
+does it automatically every time it runs.

@@ -1,0 +1,244 @@
+---
+title: "Key: The Same Question for Fifty-One Years"
+subtitle: "84-355 Democracy's Data | GSS confidence | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+cf  <- read.csv("data/confidence.csv",   stringsAsFactors = FALSE)
+in_ <- read.csv("data/institutions.csv", stringsAsFactors = FALSE)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`gss-confidence-brief.Rmd`) is now
+a chapter rather than a parallel copy of the lab: prose organised by argument,
+under idea headings, with three numbered figures and no numbered steps. The lab
+(`gss-confidence.Rmd`) still runs Steps 1-10 with the code exposed. **Students
+should read the brief first.** **Step numbers below refer to the lab**; the
+chapter is cited by figure number or section title.
+
+
+**This is the fourth survey lab and the one that completes the set.** One
+instrument up close; one question checked against a public record; many polls at
+once; and now **one question held still for fifty-one years.** Name that
+sequence when you open — students should see that "a survey" has been four
+different objects this term.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+Confidence in Congress fell from one in four Americans to one in eighteen, most
+other institutions fell too, the military rose, and the reason we can say any of
+that is that nobody touched the wording.
+
+***
+
+# The findings
+
+```{r headline}
+g <- cf[cf$institution == "Congress", ]
+c(congress_1973 = g$great_deal[g$year == 1973],
+  congress_2024 = g$great_deal[g$year == 2024],
+  institutions  = nrow(in_),
+  survey_years  = length(unique(cf$year)),
+  respondents   = 75699)
+in_[order(in_$change), c("institution", "change")]
+```
+
+- **Congress: 24.1% → 5.6%.**
+- **Medicine fell furthest, −28.6.** Organized religion −20.2. Congress −18.5.
+- **The military rose +10.6**, peaking at **63.1% in 1991**.
+- **Organized labor +1.3**, the scientific community −4.8: essentially flat.
+
+***
+
+# The three things to get said
+
+**1. The value here is the constancy, not the numbers.** Every other trend in
+this course carries an asterisk — the question changed, the mode changed, the
+frame changed. **Ask the room what it would take to run the same survey for
+fifty-one years**, and what an organisation gives up by refusing to modernise a
+question. The answer is comparability, and it is expensive.
+
+**2. "Trust collapsed" is a sentence the data refuses.** Most fell; one rose
+sharply; two barely moved. **The single-number version of this story is wrong in
+an interesting way**, and it is wrong because it averages across institutions
+with different histories. Same aggregation error as EAVS jurisdictions and
+pooled redlining tracts, in a new costume.
+
+**3. Medicine, not Congress, is the biggest fall.** Students assume politics is
+the story. It is not: −28.6 for medicine against −18.5 for Congress. **Let them
+be surprised, then ask what a fall in confidence in "the people running
+medicine" is actually measuring** — hospitals, insurers, pharmaceutical
+companies and doctors are all in there, and the respondent decides which.
+
+**The line for the board:** a question that never changes is the only way to
+know the country did.
+
+***
+
+# Handling the room
+
+Lower-temperature than the discrimination unit, but two live wires:
+
+- **The military result** will please some students and unsettle others. Keep it
+  on the timing: it moves with wars, and the 1991 spike is unmistakable.
+- **Confidence in science and medicine** invites 2020s arguments. The data ends
+  in 2024 and the series is smoother than students expect. **Show the whole line
+  before anyone theorises about the pandemic** — medicine was falling steadily
+  from 1973, long before.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | The question wording, one record, and the scope | 8 | **'The people running these institutions'** — the ambiguity that runs through everything. |
+| **4-5** | Congress, 1973 to 2024; then the conclusion they are about to draw | 8 | Let somebody say 'Americans have lost faith in everything.' You need it. |
+| **6-7** | All thirteen ranked; then the military's actual series | 12 | **The pivot.** Medicine fell most, not Congress. The military rose. |
+| **8-9** | Where everything stands now; fifty-one years at once | 9 | The trusted institutions are the technical ones. Ask why. |
+| **10** | What you can say | 5 | A report, not a relationship. |
+
+**Steps 6-7 are the pivot.** The military's 1991 peak is the single most useful number in the file: confidence responds to events, so this is not an irreversible drift in national character.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — A different institution
+
+Grade on method, not choice.
+
+**3/4:** Plots one series, identifies its biggest move, offers an event.
+
+**4/4:** Checks whether the "event" is plausible given the survey timing — GSS
+fields early in the year, so an event in November shows up in the *next* survey,
+which may be two years later. **Matching a spike to a headline requires knowing
+when the interviews happened.**
+
+**4/4, best:** Notices the danger in the exercise as set. With 13 institutions,
+33 survey years and hindsight, **you can always find a story for any move**, and
+a student who says they cannot distinguish explanation from post-hoc fitting has
+given the right answer to a slightly unfair question. Reward that.
+
+***
+
+# Option B — The bottom, not the top
+
+## Verified output
+
+```{r b}
+last <- do.call(rbind, lapply(split(cf, cf$institution), function(x) {
+  a <- x[x$year == min(x$year), ]; b <- x[x$year == max(x$year), ]
+  data.frame(institution = a$institution[1],
+             d_great = round(b$great_deal - a$great_deal, 1),
+             d_hardly = round(b$hardly_any - a$hardly_any, 1))
+}))
+last[order(last$d_great), ]
+```
+
+**3/4:** Redoes the ranking on `hardly_any` and reports it differs.
+
+**4/4:** Names the asymmetry. An institution can shed enthusiasts into "only
+some" without gaining enemies, or it can polarise — and **the two columns
+separate indifference from hostility.** Congress does both; some institutions do
+only the first.
+
+**4/4, best:** Notices the middle category is doing hidden work. "Only some
+confidence" absorbs everything, so **a three-point scale cannot tell a mild
+critic from a fence-sitter**, and a fifty-year commitment to three options is
+the price of comparability. That is the trade the whole lab is about, seen from
+inside the instrument.
+
+***
+
+# Option C — Ceiling and floor
+
+## Verified output
+
+```{r c}
+l <- cf[cf$institution == "Organized labor", c("year", "great_deal")]
+c(first = l$great_deal[1], last = l$great_deal[nrow(l)],
+  min = min(l$great_deal), max = max(l$great_deal),
+  range = round(max(l$great_deal) - min(l$great_deal), 1))
+```
+
+Organized labor starts at `r round(l$great_deal[which.min(l$year)], 1)` and ends
+at `r round(l$great_deal[which.max(l$year)], 1)` — **a net change of
++`r round(diff(range(c(l$great_deal[which.min(l$year)], l$great_deal[which.max(l$year)]))), 1)`
+that conceals a range of more than ten points.**
+
+**And it is the one change in the file that sampling error alone can account
+for.** Figure 2 of the chapter, under *All thirteen, ranked by how far they
+moved*, draws all thirteen institutions as a first-to-last dumbbell
+with 95% intervals on each reading; organised labour is the only row whose
+change is inside its own interval. The defensible sentence about that ranking is
+therefore *eleven fell, one rose, and one did not move* — not *two rose*. The
+intervals in that figure assume simple random sampling, which the GSS is not, so
+they are if anything too narrow.
+
+**3/4:** Plots it and observes the flat endpoints hide movement.
+
+**4/4:** Draws the general lesson — **the ranked first-to-last table (the
+chapter's *All thirteen, ranked by how far they moved*, Step 6 in the lab) is a
+first-and-last comparison, which is the crudest possible summary of a 33-point
+series** — and
+notes that a different start or end year would reorder the rankings.
+
+**4/4, best:** Proposes a better summary and defends it: a trend slope, or an
+average of the first three and last three surveys, both of which are robust to
+one odd year. **A student who notices that 2021 is the online-mode year and that
+it sits near the end of every series has found the specific reason to distrust
+endpoints here.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing the single-sentence version — noticing
+  that the institutions diverge and that averaging them is the error.
+- **A 2** is "Americans have lost trust in everything." Two of thirteen series
+  say otherwise and one goes the other way.
+- **Reward anyone who flags the 2021 mode change** without being told.
+
+## Anticipated questions
+
+- *"Why does the series skip years?"* — GSS moved from annual to biennial in
+  1994 for funding reasons, and 2020 was disrupted. The battery ran in **33** of
+  the 51 years.
+- *"What happened in 2021?"* — Face-to-face interviewing was impossible, so GSS
+  went online. **The one methodological break in the series**, and it lands right
+  where students want to draw conclusions about recent years.
+- *"Is 'a great deal' the right measure?"* — It is one of three. Option B is
+  exactly this question; do not settle it for them.
+- *"Does this predict anything?"* — Not from here. Nothing in this file links
+  confidence to behaviour — not turnout, not compliance, not vote choice.
+- *"Why is medicine in a politics course?"* — Because it is the control. It
+  shows that whatever happened, it was not confined to politics.
+
+## Connections
+
+- **The CES lab** — one instrument, up close, and the weighting problem.
+- **The CPS turnout lab** — one question checked against a public record; there
+  the survey could be *graded*, here it cannot.
+- **Polls, models and markets** — many instruments at once.
+- **EAVS and redlining** — averaging across units with different histories, and
+  what it destroys.

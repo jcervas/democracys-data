@@ -1,0 +1,383 @@
+---
+title: "Lab 12: Who Counts, and How"
+subtitle: "84-355 Democracy's Data | Week 12"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+The Constitution orders a count. Article I requires an "actual Enumeration"
+every ten years, and everything downstream — how many seats your state gets, how
+districts are drawn, where §203 language assistance is required — runs off that
+number.
+
+But a count requires categories, and categories are made by people. James Scott's
+argument, which you read for Tuesday, is that states must simplify in order to
+govern: to administer a population you first have to render it legible, and the
+rendering is never neutral. Today you will hold the instrument that does the
+rendering for American democracy.
+
+The file is called **P.L. 94-171**. A 1975 statute requires the Census Bureau to
+deliver it to every state within a year of Census Day, specifically so that
+legislatures can draw districts. It is the legal foundation of every
+redistricting cycle, including the ones you will study in Weeks 14 and 15.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: The file the law requires
+
+```{r read}
+d <- read.csv("data/pl94171_counties.csv", stringsAsFactors = FALSE,
+              colClasses = c(fips = "character"))
+dim(d)
+table(d$state)
+```
+
+Six states, 503 counties. Start at home:
+
+```{r allegheny}
+a <- d[d$fips == "42003", ]
+a[, c("county", "state", "total", "white", "black", "asian", "two_or_more")]
+```
+
+Allegheny County had **1,250,578** people on 1 April 2020. That is not an
+estimate and not a projection; it is the number the Census Bureau certified, and
+Pennsylvania's districts were drawn from it.
+
+***
+
+# Part 2: The first question — race
+
+Table P1 asks one question and produces seventy-one columns. We have kept the
+main ones:
+
+```{r p1}
+a[, c("total", "one_race", "white", "black", "aian", "asian", "nhpi",
+      "other_race", "two_or_more")]
+```
+
+The seven "alone" categories plus everyone reporting two or more races. It has to
+add up, and it does:
+
+```{r p1-check}
+with(a, one_race + two_or_more == total)
+```
+
+The full table goes further than this. Because a person may check any combination
+of six race boxes, the Census publishes **63 distinct race categories** — every
+combination, from "White alone" through "White; Black; American Indian; Asian;
+Pacific Islander; Some Other Race." That is what the other sixty columns hold.
+
+> Sixty-three categories is not the Census Bureau being fussy. It is what happens
+> when you take an idea that people experience as simple and try to make it
+> administrable.
+
+***
+
+# Part 3: The second question
+
+Here is the thing that catches everyone out. **The Census does not treat Hispanic
+or Latino origin as a race.** It is a separate question, asked separately, and a
+Hispanic respondent also answers the race question.
+
+So there are two different ways to ask how white a place is.
+
+```{r two-answers}
+st <- aggregate(cbind(total, white, nh_white, hispanic) ~ state,
+                data = d, FUN = sum)
+st$white_pct   <- round(100 * st$white / st$total, 1)
+st$nhwhite_pct <- round(100 * st$nh_white / st$total, 1)
+st$gap         <- round(st$white_pct - st$nhwhite_pct, 1)
+
+st[order(-st$gap), c("state", "total", "white_pct", "nhwhite_pct", "gap")]
+```
+
+```{r two-answers-plot, fig.width = 7.5, fig.height = 5}
+s <- st[order(st$white_pct), ]
+par(mar = c(5, 10, 4, 2))
+bp <- barplot(rbind(s$nhwhite_pct, s$white_pct - s$nhwhite_pct),
+        horiz = TRUE, las = 1, names.arg = s$state, beside = FALSE,
+        col = c("#2166AC", "#92C5DE"), border = NA, xlim = c(0, 80),
+        xlab = "% white", main = "Two answers to the same question")
+legend("bottomright", c("Non-Hispanic white", "Hispanic and white"),
+       fill = c("#2166AC", "#92C5DE"), border = NA, bty = "n", cex = 0.85)
+```
+
+> **New Mexico is 51.0% white by the race question and 36.5% white once you
+> account for the ethnicity question — a gap of 14.5 points.**
+>
+> By one measure New Mexico is a majority-white state. By the other it is not
+> close. Both numbers are correct. They are answers to different questions, and
+> almost nobody reporting a figure like this tells you which one they used.
+
+Texas shows the same thing at 10.4 points. Mississippi shows almost none (0.6),
+because very few Mississippians are both Hispanic and white.
+
+The gap is not a flaw in the data. It is the visible seam between two ways of
+classifying people that the United States has never fully reconciled.
+
+***
+
+# Part 4: "None of these"
+
+Look at the `other_race` column — people who answered the race question by
+rejecting every box offered.
+
+```{r other-race}
+st2 <- aggregate(cbind(total, other_race, two_or_more) ~ state, data = d, FUN = sum)
+st2$other_pct <- round(100 * st2$other_race / st2$total, 1)
+st2$two_pct   <- round(100 * st2$two_or_more / st2$total, 1)
+st2[order(-st2$other_pct), c("state", "other_pct", "two_pct")]
+```
+
+> **Fifteen percent of New Mexicans, and 13.6% of Texans, looked at the race
+> question and chose "Some Other Race."**
+
+Who are they? The file answers this directly, because it reports each race
+crossed with Hispanic origin.
+
+```{r other-is-hispanic}
+tot_other  <- sum(d$other_race)
+nh_other   <- sum(d$nh_other)
+hisp_other <- tot_other - nh_other
+
+cat("Chose 'Some Other Race':", format(tot_other, big.mark = ","), "people
+")
+cat("  Hispanic:    ", format(hisp_other, big.mark = ","),
+    sprintf("(%.1f%%)
+", 100 * hisp_other / tot_other))
+cat("  non-Hispanic:", format(nh_other, big.mark = ","),
+    sprintf("(%.1f%%)
+", 100 * nh_other / tot_other))
+```
+
+> **94.5% of the people who rejected every race box are Hispanic.**
+>
+> Read that again, because it is the finding of this lab. The residual category
+> on the race question — the box for people who fit nowhere else — is, in
+> practice, an ethnicity box. Seven million people were asked their race, found
+> that the form did not offer one they recognised, and the overwhelming majority
+> of them were the same seven million the *next* question was about.
+>
+> The form asks a question a large minority of respondents do not think is well
+> posed, and then records their refusal as if it were an answer.
+
+And the multiracial column varies enormously — 25.3% in Hawaii against 3.7% in
+Mississippi. Some of that is real difference in who lives where. Some of it is
+that the 2020 form invited people to elaborate in ways the 2010 form did not, and
+millions of people answered differently to a question about themselves that had
+not changed.
+
+***
+
+# Part 5: Counted where you sleep
+
+The Census counts people at their "usual residence" — where they sleep most of
+the time. For most people that is uncontroversial. For some it is not.
+
+```{r prisons}
+d$corr_pct <- round(100 * d$gq_correctional / d$total, 1)
+head(d[order(-d$corr_pct),
+       c("county", "state", "total", "gq_correctional", "corr_pct")], 8)
+```
+
+> **Thirty-eight percent of Forest County, Pennsylvania is in a state
+> correctional facility.** 2,653 people out of 6,973.
+>
+> Those 2,653 people cannot vote in Pennsylvania. They are counted as residents
+> of Forest County for the purpose of drawing districts, and they are represented
+> by a legislator they had no part in choosing — while the communities they came
+> from, mostly urban, lose the population that would have counted toward their
+> own representation.
+
+This is what "prison gerrymandering" means, and it is a consequence of a
+residence rule rather than of anybody drawing a map badly. Some states now
+reallocate incarcerated people to their home addresses before redistricting.
+Pennsylvania began doing so in 2021.
+
+The same rule catches students:
+
+```{r colleges}
+d$coll_pct <- round(100 * d$gq_college / d$total, 1)
+head(d[order(-d$coll_pct),
+       c("county", "state", "total", "gq_college", "coll_pct")], 5)
+```
+
+Centre County is 9.0% dormitory. Tompkins County, New York — Cornell — is 12.4%.
+On 1 April 2020 those students were mostly not there, because of the pandemic,
+and the Bureau had to decide what to do about it.
+
+***
+
+# Part 6: What this file will not tell you
+
+**The numbers have noise in them, on purpose.** For 2020 the Census Bureau
+applied *differential privacy*: small random adjustments designed so that no
+individual's answers can be reconstructed from published tables. State totals are
+untouched and county figures are close, but the smaller the geography the more
+the injected noise matters — and districts are drawn from blocks, not counties.
+Whether the protection was worth the distortion was litigated by states, and
+remains contested.
+
+**The categories are not stable.** Every decade the race question changes, and
+comparisons across decades compare instruments as much as populations. The 2030
+question is expected to change again, most likely by combining race and Hispanic
+origin into one question — which would erase, at a stroke, the gap you measured
+in Part 3.
+
+**A count is not a census of citizens.** P.L. 94-171 counts residents. That is
+what apportionment uses, and attempts to change it have failed in court so far.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — The gap, county by county
+
+```{r opt-a, fig.width = 8, fig.height = 5.5}
+this_state <- "Texas"          # <- change to any state in the data
+
+s <- d[d$state == this_state, ]
+s$white_pct   <- 100 * s$white / s$total
+s$nhwhite_pct <- 100 * s$nh_white / s$total
+s$gap <- s$white_pct - s$nhwhite_pct
+
+plot(s$white_pct, s$nhwhite_pct, pch = 19, col = "#2166AC88", cex = 1.2,
+     xlim = c(0, 100), ylim = c(0, 100),
+     xlab = "% white (race question only)",
+     ylab = "% non-Hispanic white (both questions)",
+     main = paste("Two measures of white population:", this_state))
+abline(0, 1, lty = 2, col = "grey50")
+
+big <- head(s[order(-s$gap), ], 6)
+big[, c("county", "total", "white_pct", "nhwhite_pct", "gap")]
+```
+
+**Write about:** every point sits below the diagonal, and the vertical distance
+is the gap. Which counties have the largest gaps, and what do they have in
+common? Then the question that matters for this course: a news story reports
+that a county is "60% white." Depending on which measure was used, that same
+county might be 60% or 35%. Which measure would you want a redistricting case to
+use, and does the answer depend on what the case is about?
+
+***
+
+### Option B — Who is warehoused where
+
+```{r opt-b, fig.width = 8, fig.height = 5.5}
+kind <- "gq_correctional"      # <- try gq_college, gq_nursing, gq_military
+
+d$share <- 100 * d[[kind]] / d$total
+top <- head(d[order(-d$share), ], 12)
+top <- top[order(top$share), ]
+
+par(mar = c(5, 13, 4, 2))
+barplot(top$share, names.arg = paste0(sub(" County","",top$county), ", ",
+        substr(top$state, 1, 2)), horiz = TRUE, las = 1,
+        col = "#B2182B", border = NA, xlab = "% of county population",
+        main = paste("Group quarters:", sub("gq_", "", kind)))
+
+top[order(-top$share), c("county", "state", "total", kind, "share")]
+```
+
+**Write about:** describe the counties at the top. Are they large or small, and
+why does that matter for the percentage? Then take the representation question
+seriously. For prisons, the people counted cannot vote where they are counted.
+For colleges, they mostly can. For nursing homes, they can. Does the objection to
+prison gerrymandering rest on the *counting*, or on the *disenfranchisement*? If
+Pennsylvania restored the vote to incarcerated people tomorrow, would the problem
+go away?
+
+***
+
+### Option C — How much does the question shape the answer?
+
+```{r opt-c}
+metrics <- data.frame(
+  state = st$state,
+  race_question_white = st$white_pct,
+  both_questions_white = st$nhwhite_pct,
+  hispanic_pct = round(100 * st$hispanic / st$total, 1))
+metrics$ratio <- round(metrics$race_question_white /
+                       metrics$both_questions_white, 2)
+metrics[order(-metrics$ratio), ]
+
+# Is the gap just a function of how Hispanic a state is?
+round(cor(metrics$hispanic_pct,
+          metrics$race_question_white - metrics$both_questions_white), 3)
+```
+
+**Write about:** the gap is strongly related to how Hispanic a state is — which
+is unsurprising, since the gap is by construction the Hispanic-and-white
+population. The interesting part is the *ratio* column: in New Mexico the race
+question inflates the white share by a factor of 1.40. Then push further: Hawaii
+has a small gap but the lowest white share of any state here, and a quarter of
+its people report two or more races. Does the race question serve Hawaii well? A
+good answer says what a better question would look like and what it would cost.
+
+***
+
+### Option D — Ask your own question
+
+Look up your home county. Compare Mississippi's counties to Hawaii's. Find the
+county with the largest multiracial share and work out why.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at an official count and see the decisions inside it.
+
+***
+
+## Where the data came from
+
+**U.S. Census Bureau**, 2020 Census Redistricting Data (P.L. 94-171) Summary
+File, legacy format
+(<https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>),
+for Pennsylvania, Texas, New York, Hawaii, Mississippi and New Mexico. Tables P1
+(race), P2 (Hispanic or Latino origin by race) and P5 (group quarters).
+
+Six states rather than fifty, because each state ships about 300 MB and these six
+pull the race and ethnicity questions apart in usefully different directions.
+
+County names are joined from the Census Gazetteer rather than the file's own
+geographic header, which populates the name field inconsistently — Pennsylvania
+carries "Allegheny County" and Hawaii leaves it blank. That is a small example of
+the thing this whole course keeps finding: even an authoritative file needs
+checking before you trust a column.
+
+**On the design of this lab.** The structure — race, then ethnicity as a second
+dimension, then the question of what the categories do — follows Moon Duchin's
+PUBPOL 2130 at Cornell, *Data and the State*, adapted from Python to R. The
+readings for Tuesday (Scott, and Nobles on race and censuses) are hers as well.
+
+The script that downloaded, parsed and checked these files is
+`data/build-data.R`. It verifies that P1 and P2 each decompose exactly, and that
+Allegheny County's total matches the published figure, before writing anything.

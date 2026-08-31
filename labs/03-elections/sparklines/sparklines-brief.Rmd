@@ -1,0 +1,115 @@
+---
+title: "A Table That Is Also Fifty-One Charts"
+subtitle: "Every state's presidential vote since 1976, drawn small enough to read down a column"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("sparklines-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+There are `r n_fmt(nrow(se))` numbers in this chapter: `r NS` states and the District of Columbia, `r NY` presidential elections, one Democratic share of the two-party vote in each.
+
+That is a small dataset by this book's standards and an awkward one to draw. Fifty-one lines on one pair of axes is a plate of spaghetti. Fifty-one separate charts is six pages nobody reads. The form that handles it was named by Edward Tufte (2006) and is the plainest in this book. A **sparkline** is a line drawn at the size of a word, with no axes, no gridlines and no labels, set inside a table where a number would otherwise go.
+
+## One row is a state and an election
+
+```{r one-row}
+```
+
+```{r varmap}
+```
+
+The share is **of the two major parties**, not of all votes. 1992 is the reason: Ross Perot took `r p1(PEROT)`% of the national vote. A share-of-everything series would show both major parties collapsing that year in every state at once, which is a fact about who else was on the ballot rather than about the states.
+
+## First, the way this is usually drawn
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The whole dataset, drawn conventionally.** Every state is a grey line; the country is in red. Move the pointer to pull one line out of the mass.
+
+Nothing about this figure is wrong and almost nothing can be read from it. The national line is legible because it is the only one coloured. The rest form a band whose thickness carries no information anyone can extract. The one thing that helps, isolating a single state, has to be done fifty-one times to see the dataset.
+
+The failure is not density. **It is that every line is drawn in the same place.** Fifty-one series share one pair of axes, so the ink of one lands on the ink of another. The comparison the figure was made for is the one it prevents.
+
+> **Before you read on, commit to a view.** From Figure 1, **name the two states
+> that moved furthest between `r FROM` and `r TO`**, one in each direction. The
+> information is on the page. Write down how long you spent looking.
+
+## The same numbers, one row each
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=8.6}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same `r n_fmt(nrow(se))` numbers, one row per state.** Every sparkline covers the same years on the same vertical scale, so the shapes can be compared. The faint line inside each is 50%. The dot is the last election, coloured by which side it fell on. The three numbers are where the state began, where it ended, and the difference.
+
+Now answer the question you were asked two figures ago. **`r UP` moved `r sg(UPC)` points**, from `r p1(UPF)`% to `r p1(UPL)`%. **`r DN` moved `r sg(DNC)`**, from `r p1(DNF)`% to `r p1(DNL)`%. Both are at the ends of the table when it is sorted by change, and neither was findable in Figure 1.
+
+Nothing was added to get here. The same numbers are on the page. They have been given **one row each instead of one axis between them**, and the axes have been thrown away because at this size they would take more room than the data. A sparkline cannot tell you that `r STB` sat at 54% — for that there is a column of numbers beside it, which is what a table is for. It tells you the *shape*, and shape is what fifty-one overlapping lines destroyed.
+
+## The trap in a table of trends
+
+Sort the table by change and a story assembles itself: the South falls, the Northeast and the West rise. Most of that is real. Some of it is not, and the button marked *show against the national* is the difference.
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+The country itself moves. The national two-party share runs from **`r p1(NLO)`% in `r NLOY` to `r p1(NHI)`% in `r NHIY`** — a swing of `r p1(NHI - NLO)` points that every state feels at once. Between any two consecutive elections in this series, a median of **`r p1(MSAME)`% of states move in the same direction as the country**, and in the least uniform pair it is still `r p1(MINSAME)`%.
+
+So most of the wiggle in most of those sparklines is not the state. It is the year. Press the button and each line becomes the state's distance from the country, which holds the year constant and leaves only what is particular to the place — and most of the lines go flat. The ones that do not are the realignments: `r RELDN` still falls `r sg(RELDNC)` points relative to the country, because that is a state changing sides rather than a state riding a national tide.
+
+`r NEVER` of the `r NS` rows never changed which party they backed in `r NY` elections. `r FLIPST` changed `r FLIPMAX` times, more than any other.
+
+## What this chapter cannot tell you
+
+**A sparkline has no axis, so it cannot be read for a value.** That is the trade, not an oversight. Every quantity a reader might want to *read* is in a column beside the line; the line carries only the shape. A sparkline used without those columns is decoration.
+
+**One scale, or fifty-one?** Every line here is drawn on the same vertical scale, which is what makes the shapes comparable and what makes the flattest rows genuinely flat. Scaling each row to its own range is the default in most software that draws these. It would make `r STB`, whose whole range is `r p1(STBR)` points, look exactly as dramatic as `r DN`, whose range is `r p1(fn("volatile_range"))`. That default is the commonest way to get this figure wrong.
+
+**States are not people and they are not equally sized.** Every row here has the same height and the same weight in the eye, and California casts about sixty-five times as many votes as Wyoming. This is a table about places, and a reader who takes an impression of "the country" from the number of rising and falling rows has counted states rather than voters.
+
+**The two-party share hides everyone else.** Perot's `r p1(PEROT)`% in 1992 disappears entirely from this chapter by construction, and so does every other third-party vote. A rise in the Democratic share of the two-party vote is not the same as a rise in Democratic votes.
+
+## Sources
+
+- Presidential vote by state and nationally, `r FROM`–`r TO`, from this
+  corpus's [historical-campaigns
+  chapter](../historical-campaigns/historical-campaigns-brief.html), which
+  documents the compilation it was built from and the repairs it needed. The
+  figures here read that chapter's published output. The compilation is Jason
+  Timm's *PresElectionResults*.
+  <https://github.com/jaytimm/PresElectionResults>
+- Tufte, Edward R. (2006). *Beautiful Evidence.* Graphics Press. Chapter 2
+  names and defines the sparkline.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`national.csv`](data/derived/national.csv), [`series.csv`](data/derived/series.csv), [`states.csv`](data/derived/states.csv), [`pres_national.csv`](../historical-campaigns/data/derived/pres_national.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `states.csv` has `rel_change`, each state's move relative to the nation. Sort it. Which states moved against the national tide?
+- `states.csv` counts `flips` for every state. Find the states that never flipped. Are they safe, or just unexamined?
+- `series.csv` has both `two` and `rel` for every state-year. Pick a state and plot both. How different is the story once you take the national swing out?
+- Compare `range` against `change` in `states.csv`. Find a state that moved a long way and ended up near where it started.
+

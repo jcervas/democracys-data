@@ -1,0 +1,527 @@
+---
+title: "Older Than They Used to Be"
+subtitle: "84-355 Democracy's Data | The age of government actors, and the denominator that decides the answer"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 3.4,
+                      dpi = 96, fig.retina = 1)
+options(scipen = 999)
+D <- "data"
+
+# Formatting only. Every number printed in the prose below is produced by the
+# code chunks you can see; these just control how many decimals it shows.
+# R rounds half to even and JavaScript rounds half up, so anything appearing in
+# both the interactive and the static figure is formatted here, once, in R.
+f0 <- function(x) formatC(x, format = "f", digits = 0)
+f1 <- function(x) formatC(x, format = "f", digits = 1)
+f2 <- function(x) formatC(x, format = "f", digits = 2)
+sgn <- function(x, k = 1) paste0(ifelse(x >= 0, "+", "-"),
+                                 formatC(abs(x), format = "f", digits = k))
+n  <- function(x) format(round(x), big.mark = ",")
+```
+
+Everything here runs as given. **You will not write any code.** Your job is to
+read what comes out and say what it means.
+
+> **Read `officeholder-age-brief.Rmd` first.** This lab runs the same steps with
+> the code exposed.
+
+***
+
+# Where did that number come from?
+
+> *"Congress is older than it has ever been."*
+>
+> *"Sure, but people live thirty years longer than they used to."*
+
+The first sentence is checkable. The second sounds like it settles the matter
+and does not. This lab is about why.
+
+# Step 1 — One file, and what a birth *year* buys you
+
+```{r load}
+m  <- read.csv(file.path(D, "members.csv"),         stringsAsFactors = FALSE)
+ac <- read.csv(file.path(D, "age_by_congress.csv"), stringsAsFactors = FALSE)
+le <- read.csv(file.path(D, "life_expectancy.csv"), stringsAsFactors = FALSE)
+et <- read.csv(file.path(D, "entry_tenure.csv"),    stringsAsFactors = FALSE)
+pr <- read.csv(file.path(D, "presidents.csv"),      stringsAsFactors = FALSE)
+
+c(rows        = nrow(m),
+  congresses  = length(unique(m$congress)),
+  first_year  = min(m$year),
+  last_year   = max(m$year),
+  no_birth_yr = sum(is.na(m$born)))
+table(m$chamber)
+```
+
+Every age here comes from one column, `born`, in the Voteview member file, and
+`born` holds **a year, not a date**. Age in this lab means *the year the
+Congress convened minus the year the member was born*.
+
+```{r biden}
+pr[pr$bioname == "BIDEN, Joseph Robinette (Joe), Jr.",
+   c("bioname", "born", "year", "age_at_term_start")]
+```
+
+Joe Biden was inaugurated in January 2021 aged **78**; his birthday is in
+November. Year arithmetic says
+`r pr$age_at_term_start[pr$bioname == "BIDEN, Joseph Robinette (Joe), Jr."]`.
+
+**Every age in this lab is approximate to within a year**, and the errors point
+in both directions, so medians and trends survive it and individual ages do not.
+
+```{r missing-born}
+c(rows_with_no_birth_year = sum(is.na(m$born)),
+  of_those_before_1830    = sum(is.na(m$born) & m$year < 1830))
+
+# one person, some rows with a birth year and some without
+sp <- split(m$born, m$icpsr)
+unique(m$bioname[m$icpsr %in%
+  as.integer(names(sp)[sapply(sp, function(b) any(is.na(b)) & any(!is.na(b)))])])
+```
+
+`r n(sum(is.na(m$born)))` rows have no birth year at all, almost all of them in
+the first twenty Congresses. **And exactly one person has a birth year on some
+of his rows and not on others**: Grover Cleveland, recorded on his first term
+and blank on his second. Nothing in the file announces that. An average would
+skip the blank rows and hand back a number that looked perfectly healthy.
+
+# Step 2 — How old is Congress, and when did it change?
+
+```{r trend}
+C <- ac[ac$chamber == "Congress", ]
+c(youngest      = min(C$median_age),
+  youngest_year = C$year[which.min(C$median_age)],
+  oldest        = max(C$median_age),
+  now           = C$median_age[C$congress == max(C$congress)],
+  senate_now    = ac$median_age[ac$chamber == "Senate" &
+                                ac$congress == max(ac$congress)],
+  house_now     = ac$median_age[ac$chamber == "House" &
+                                ac$congress == max(ac$congress)])
+C$year[C$median_age == max(C$median_age)]        # every Congress at the max
+```
+
+```{r trough}
+TR    <- C[C$year >= 1965 & C$year <= 1995, ]
+TR    <- TR[which.min(TR$median_age), ]
+PRIOR <- max(C$year[C$year < TR$year & C$median_age <= TR$median_age])
+c(trough_year = TR$year, trough_median = TR$median_age,
+  last_time_that_young = PRIOR)
+```
+
+**The rise is real and it is recent.** The median member was
+`r f0(TR$median_age)` in `r TR$year` — a figure Congress had not touched since
+`r PRIOR` — and `r f0(max(C$median_age))` by
+`r min(C$year[C$median_age == max(C$median_age)])`. Almost all of the increase
+people argue about happened after 1980.
+
+The Senate has always been the older chamber:
+`r f0(ac$median_age[ac$chamber == "Senate" & ac$congress == max(ac$congress)])`
+against
+`r f0(ac$median_age[ac$chamber == "House" & ac$congress == max(ac$congress)])`
+today.
+
+```{r presidents}
+c(n_presidencies = nrow(pr),
+  presidencies_with_no_age = sum(is.na(pr$age_at_term_start)),
+  mean_before_1900 = round(mean(pr$age_at_term_start[pr$year <  1900], na.rm = TRUE), 1),
+  mean_since_1981  = round(mean(pr$age_at_term_start[pr$year >= 1981], na.rm = TRUE), 1))
+head(pr[order(-pr$age_at_term_start), c("bioname", "year", "age_at_term_start")], 4)
+```
+
+`r nrow(pr)` presidencies is not enough observations to support a trend line,
+and this lab does not draw one. The arithmetic is still worth having: the
+average age on taking office was
+`r f1(mean(pr$age_at_term_start[pr$year < 1900], na.rm = TRUE))` before 1900 and
+`r f1(mean(pr$age_at_term_start[pr$year >= 1981], na.rm = TRUE))` since 1981.
+
+# Step 3 — The rebuttal, stated as strongly as it deserves
+
+```{r naive}
+sitting <- function(y) floor((y - 1787) / 2)   # the Congress sitting in year y
+BY <- 1950; EY <- 2018                         # the window where both life
+                                               # expectancy series exist
+A0 <- C$median_age[C$congress == sitting(BY)]
+A1 <- C$median_age[C$congress == sitting(EY)]
+E0a <- le$e0_hus[le$year == BY]; E0b <- le$e0_hus[le$year == EY]
+
+c(congress_median_1950 = A0, congress_median_2018 = A1, gain = A1 - A0,
+  life_expect_1950 = E0a, life_expect_2018 = E0b, gain_le = E0b - E0a)
+```
+
+Life expectancy rose **`r f1(E0b - E0a)` years** while the median member of
+Congress aged **`r f0(A1 - A0)`**. On that comparison Congress has aged *less*
+than the country it is drawn from, and the rebuttal wins.
+
+**That comparison is wrong.**
+
+# Step 4 — The denominator that flips the answer
+
+`r f1(E0b)` is life expectancy **at birth** — the average length of a life for a
+baby born in `r EY`. It rose so much across the twentieth century mostly because
+**babies and children stopped dying**, and a sitting senator has already
+survived all of that.
+
+The number that describes an officeholder is **remaining life expectancy at an
+age they have reached**. NCHS publishes it in the same table, one section down
+the page.
+
+```{r correct}
+E6a <- le$e65[le$year == BY]; E6b <- le$e65[le$year == EY]
+c(remaining_at_65_1950 = E6a, remaining_at_65_2018 = E6b, gain_e65 = E6b - E6a,
+  congress_gain = A1 - A0,
+  share_of_headline_gain_after_65 = round(100 * (E6b - E6a) / (E0b - E0a)))
+```
+
+```{r fig-d3, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+B <- data.frame(lab = c("Life expectancy AT BIRTH", "Median age of CONGRESS",
+                        "Remaining life expectancy AT 65"),
+                v   = c(E0b - E0a, A1 - A0, E6b - E6a),
+                col = c("#8c8c8c", "#C41230", "#2c7fb8"),
+                stringsAsFactors = FALSE)
+cat(sprintf('
+<div id="yd" style="margin:0.6em 0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function(){
+const B=[%s], CONG=%s;
+const W=760,H=232,M={t:36,r:120,b:38,l:250};
+const svg=d3.select("#yd").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
+  .attr("style","max-width:100%%;height:auto;font:12px inherit");
+const x=d3.scaleLinear().domain([0,12]).range([M.l,W-M.r]);
+const y=d3.scaleBand().domain(B.map(d=>d.lab)).range([M.t,H-M.b]).padding(0.34);
+svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(6));
+svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-6).attr("text-anchor","middle")
+  .attr("font-size","11.5px").attr("fill","#555")
+  .text("gain between 1950 and 2018, in years");
+svg.selectAll("rect").data(B).join("rect")
+  .attr("x",x(0)).attr("y",d=>y(d.lab)).attr("height",y.bandwidth())
+  .attr("width",d=>x(d.v)-x(0)).attr("fill",d=>d.col).attr("fill-opacity",0.88);
+svg.selectAll("text.v").data(B).join("text").attr("class","v")
+  .attr("x",x(d3.max(B,d=>d.v))+9).attr("y",d=>y(d.lab)+y.bandwidth()/2+4)
+  .attr("font-size","12.5px").attr("font-weight","600").attr("fill",d=>d.col)
+  .text(d=>"+"+d.s+" yrs");
+svg.selectAll("text.l").data(B).join("text").attr("class","l")
+  .attr("x",M.l-10).attr("y",d=>y(d.lab)+y.bandwidth()/2+4).attr("text-anchor","end")
+  .attr("font-size","12px").attr("fill","#333").text(d=>d.lab);
+svg.append("line").attr("x1",x(CONG)).attr("x2",x(CONG)).attr("y1",M.t-8)
+  .attr("y2",H-M.b).attr("stroke","#C41230").attr("stroke-width",1.2)
+  .attr("stroke-dasharray","4,3");
+svg.append("text").attr("x",x(CONG)).attr("y",M.t-13).attr("text-anchor","middle")
+  .attr("font-size","11px").attr("fill","#C41230").text("Congress");
+})();
+</script>
+', paste(sprintf('{"lab":"%s","v":%s,"col":"%s","s":"%s"}',
+                 B$lab, f1(B$v), B$col, f1(B$v)), collapse = ","), f1(A1 - A0)))
+```
+
+```{r fig-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=2.7}
+B <- data.frame(lab = c("Remaining life expectancy AT 65", "Median age of CONGRESS",
+                        "Life expectancy AT BIRTH"),
+                v   = c(E6b - E6a, A1 - A0, E0b - E0a),
+                col = c("#2c7fb8", "#C41230", "#8c8c8c"),
+                stringsAsFactors = FALSE)
+par(mar = c(3.4, 15.2, 1.0, 3.2))
+bp <- barplot(B$v, horiz = TRUE, col = adjustcolor(B$col, 0.88), border = NA,
+              xlim = c(0, 12), names.arg = B$lab, las = 1, cex.names = 0.72,
+              cex.axis = 0.8, space = 0.55)
+abline(v = A1 - A0, lty = 2, col = "#C41230")
+text(max(B$v) + 0.3, bp, paste0("+", f1(B$v), " yrs"), adj = 0, cex = 0.75,
+     font = 2, col = B$col, xpd = NA)
+mtext("gain between 1950 and 2018, in years", 1, line = 2.2, cex = 0.8)
+```
+
+**Congress aged `r f0(A1 - A0)` years. Remaining life expectancy at 65 grew
+`r f1(E6b - E6a)`.** Against the at-birth yardstick Congress aged slower than
+the country; against the honest one it aged faster. Same source, same table,
+different row.
+
+**At most `r f0(100 * (E6b - E6a) / (E0b - E0a))`% of the famous rise in life
+expectancy is a rise in how long a 65-year-old lives.** The rest is people who
+used to die young and now do not.
+
+> **A comparison has a denominator, the denominator is a choice, and a
+> denominator chosen without thinking can reverse the sign of the answer.**
+
+## What the at-65 series will not do
+
+```{r sparse}
+c(years_with_e65 = sum(!is.na(le$e65)),
+  first_year     = min(le$year[!is.na(le$e65)]),
+  last_year      = max(le$year[!is.na(le$e65)]),
+  years_with_e0  = sum(!is.na(le$e0_annual)))
+le$year[!is.na(le$e65)]
+```
+
+The at-birth series is annual back to 1900. **The at-65 series exists for
+`r sum(!is.na(le$e65))` years only**, none of them before
+`r min(le$year[!is.na(le$e65)])`. Nothing between the published years has been
+interpolated here. The comparison in this step can be made for 1950 onward and
+**cannot honestly be made for 1900** — which is a pity, because 1900 is where
+the at-birth number looks most dramatic.
+
+The two NCHS publications of life expectancy at birth also disagree with each
+other:
+
+```{r sources-disagree}
+ov <- le[!is.na(le$e0_hus) & !is.na(le$e0_annual), ]
+c(shared_years = nrow(ov),
+  agree_exactly = sum(ov$e0_hus == ov$e0_annual),
+  worst_gap = max(abs(ov$e0_hus - ov$e0_annual)))
+ov[ov$e0_hus != ov$e0_annual, c("year", "e0_annual", "e0_hus")]
+```
+
+On `r sum(ov$e0_hus == ov$e0_annual)` of `r nrow(ov)` shared years they agree to
+the tenth. On two they do not, and the pattern — one series monotone, the other
+not — is what a transposed pair looks like. **This lab does not adjudicate it.
+It reports it.**
+
+# Step 5 — Entering older, or staying longer?
+
+A rising median age has exactly two possible sources: **new members arrive
+older**, or **sitting members stay longer**. For every member, at every
+Congress, `age now = age on arriving + years since`. That is an identity, so it
+survives averaging.
+
+```{r decomp}
+dec <- function(ch, y1, y2) {
+  a <- ac[ac$chamber == ch & ac$congress == sitting(y1), ]
+  b <- ac[ac$chamber == ch & ac$congress == sitting(y2), ]
+  round(c(rise_in_mean_age = b$mean_age - a$mean_age,
+          from_arriving_older = b$mean_entry_age - a$mean_entry_age,
+          from_staying_longer = b$mean_years_since_entry -
+                                a$mean_years_since_entry), 2)
+}
+rbind(Congress = dec("Congress", BY, EY),
+      House    = dec("House",    BY, EY),
+      Senate   = dec("Senate",   BY, EY))
+```
+
+```{r decomp-share}
+DC <- dec("Congress", BY, EY); DH <- dec("House", BY, EY); DS <- dec("Senate", BY, EY)
+round(c(Congress = 100 * DC[2] / DC[1],
+        House    = 100 * DH[2] / DH[1],
+        Senate   = 100 * DS[2] / DS[1]))
+```
+
+**`r f0(100 * DC[2] / DC[1])`% of the rise is people arriving older**, not
+incumbents hanging on. And the chambers disagree: it is
+`r f0(100 * DH[2] / DH[1])`% in the House and `r f0(100 * DS[2] / DS[1])`% in
+the Senate, so **most of the Senate's ageing really is senators staying** —
+which six-year terms and very high re-election rates would predict.
+
+```{r decomp-eras}
+rbind(`1950 to 1980` = dec("Congress", 1950, 1980),
+      `1980 to 2025` = dec("Congress", 1980, 2025))
+```
+
+Congress got **younger** through the 1960s and 1970s, and did it by electing
+younger people: arrival age fell
+`r f1(abs(dec("Congress", 1950, 1980)[2]))` years while time in office barely
+moved. Then the same lever went the other way.
+
+# Step 6 — The median hides the tail
+
+```{r tail}
+q <- c("pct_65plus", "pct_70plus", "pct_80plus")
+round(rbind(
+  `Congress 1950` = unlist(ac[ac$chamber == "Congress" & ac$congress == sitting(BY), q]),
+  `Congress 2025` = unlist(ac[ac$chamber == "Congress" & ac$congress == max(ac$congress), q]),
+  `Senate 2025`   = unlist(ac[ac$chamber == "Senate"   & ac$congress == max(ac$congress), q])), 1)
+```
+
+```{r edges}
+hs <- m[m$chamber %in% c("House", "Senate") & !is.na(m$age), ]
+Q <- function(y) quantile(hs$age[hs$congress == sitting(y)], c(0.05, 0.5, 0.95))
+round(rbind(`1950` = Q(BY), `2025` = Q(2025), `moved by` = Q(2025) - Q(BY)))
+```
+
+**The middle moved; the top moved further.** The share of Congress over 70 went
+from
+`r f1(ac$pct_70plus[ac$chamber == "Congress" & ac$congress == sitting(BY)])`% to
+`r f1(ac$pct_70plus[ac$chamber == "Congress" & ac$congress == max(ac$congress)])`%,
+and in the Senate it is now
+`r f1(ac$pct_70plus[ac$chamber == "Senate" & ac$congress == max(ac$congress)])`%.
+Between 1950 and 2025 the 5th percentile of age rose
+`r f0(Q(2025)[1] - Q(BY)[1])` years, the median `r f0(Q(2025)[2] - Q(BY)[2])`,
+and the 95th `r f0(Q(2025)[3] - Q(BY)[3])`. **The distribution did not slide. It
+stretched, at the top.**
+
+# Step 7 — Careers, and the censoring trap
+
+```{r careers}
+E2 <- et[!et$still_serving & !is.na(et$entry_age) & et$entry_year <= 1985, ]
+E2$cohort <- cut(E2$entry_year, c(1789, 1849, 1909, 1949, 1986), right = FALSE,
+                 labels = c("1789-1848", "1849-1908", "1909-1948", "1949-1985"))
+do.call(rbind, lapply(levels(E2$cohort), function(g) {
+  z <- E2[E2$cohort == g, ]
+  data.frame(entered = g, careers = nrow(z),
+             median_entry_age = median(z$entry_age),
+             median_years_served = median(z$years_served),
+             pct_20yrs_plus = round(100 * mean(z$years_served >= 20), 1))
+}))
+```
+
+Notice what that table excluded: everybody still serving, and everybody who
+entered after 1985.
+
+```{r censoring}
+c(careers_in_file   = nrow(et),
+  still_serving     = sum(et$still_serving),
+  entered_since_1986 = sum(et$entry_year >= 1986))
+```
+
+**A career you can measure is a career that is over.** Ask "how long do members
+serve?" of everyone in the file and the recent cohorts look short — not because
+service got shorter but because it has not finished. That is **right-censoring**,
+and it is the commonest way a tenure statistic gets reported backwards.
+
+```{r pipeline}
+S <- et[et$chamber == "Senate" & !is.na(et$entry_age), ]
+c(pct_with_prior_house_all_time = round(100 * mean(S$prior_house), 1),
+  pct_with_prior_house_since_1981 =
+    round(100 * mean(S$prior_house[S$entry_year >= 1981]), 1),
+  mean_entry_age_with_house =
+    round(mean(S$entry_age[S$entry_year >= 1981 &  S$prior_house]), 1),
+  mean_entry_age_without =
+    round(mean(S$entry_age[S$entry_year >= 1981 & !S$prior_house]), 1))
+```
+
+A popular explanation for senators arriving old is that they come up through the
+House. They increasingly do —
+`r f1(100 * mean(S$prior_house[S$entry_year >= 1981]))`% of those entering since
+1981 — but **those senators arrive younger**, not older
+(`r f1(mean(S$entry_age[S$entry_year >= 1981 & S$prior_house]))` against
+`r f1(mean(S$entry_age[S$entry_year >= 1981 & !S$prior_house]))`). The pipeline
+is not the cause.
+
+# Step 8 — Who leaves the data before you can count them
+
+```{r deaths}
+died_in_office <- !is.na(hs$died) & hs$died >= hs$year & hs$died <= hs$year + 1
+era <- ifelse(hs$year < 1900, "before 1900",
+       ifelse(hs$year < 1950, "1900-1949",
+       ifelse(hs$year < 2000, "1950-1999", "2000 and after")))
+round(100 * tapply(died_in_office, factor(era, c("before 1900", "1900-1949",
+                                                 "1950-1999", "2000 and after")),
+                   mean), 2)
+```
+
+```{r deaths-total}
+c(member_terms = length(died_in_office), ended_in_death = sum(died_in_office))
+```
+
+Members used to die in office several times as often as they do now. **Each of
+those deaths removed an old member from every later Congress in this file**, so
+the historical series is biased downward — in exactly the direction that makes
+Congress look as though it used to prefer the young.
+
+That bias *is* explained by longevity, and it belongs in the same argument as
+Step 4, on the other side of the ledger.
+
+# Step 9 — What you can now say
+
+**You can say** that Congress is at or near its oldest recorded point, and that
+the rise is recent rather than gradual.
+
+**You can say that "people just live longer" does not account for it**, and how
+much of it that argument could account for at most:
+`r f1(E6b - E6a)` years against a `r f0(A1 - A0)`-year rise.
+
+**You can say which mechanism dominates**, and that it differs by chamber:
+`r f0(100 * DH[2] / DH[1])`% arrival age in the House,
+`r f0(100 * DS[2] / DS[1])`% in the Senate.
+
+**You cannot say why.** Nothing in this file identifies a cause.
+
+**You cannot say it matters.** No measure of performance appears anywhere here.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Use the wrong denominator on purpose.** Redo Step 4 with `e75`
+instead of `e65`, and then with `e0_annual`. Report all three answers and say
+which one you would put in a news story, and why. There is a defensible case for
+more than one.
+
+**Option B — Pick a different window.** Step 4 uses 1950 to 2018 because that is
+where both series exist. Redo it 1950-1980 and 1980-2018 separately. Does the
+flip survive in both halves? If it does not, say what that means for the
+headline claim.
+
+**Option C — One state, or one party.** `members.csv` carries `state_abbrev` and
+`party_code` (100 = Democrat, 200 = Republican). Compute median age by party
+over time, or for the delegation of a state you care about. Small groups are
+noisy; say something about how noisy before you interpret a gap.
+
+**Option D — The decomposition, one chamber at a time.** Step 5 shows the House
+and the Senate behaving differently. Find the Congress where they diverged and
+say what was happening in American politics around then. The data will not tell
+you; you have to bring that.
+
+**Option E — Your own question.** `r n(nrow(m))` member-Congress records, every
+Congress since 1789.
+
+# What this lab cannot tell you
+
+- **Why members arrive older or stay longer.** Primaries, money, safe seats,
+  party recruitment, longer pre-political careers and the absence of any
+  retirement rule are all consistent with these numbers. Nothing here separates
+  them.
+- **Whether age affects how anyone governs.** No performance measure appears in
+  this file, and none of the figures should be read as if one did.
+- **Anything about who dies in office**, beyond the raw rate. Members who died
+  are missing from every later Congress, which flatters the historical series
+  (Step 8), and this lab measures the size of that effect but cannot remove it.
+- **Anything about candidates who lost.** Every person in this file won. Whether
+  the electorate is choosing older candidates or being offered older candidates
+  is invisible here, and it is the most important thing the data does not carry.
+- **A single person's exact age.** `born` is a year (Step 1).
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.**
+
+- Step 4 changes one row of one table and reverses the conclusion. Write the
+  sentence a journalist would honestly write about Congress and longevity, in
+  one sentence, using both numbers.
+- Step 5 says most of the rise is people arriving older, not incumbents staying.
+  What would you expect to see in the data if the opposite were true?
+- Step 8 shows that members used to die in office much more often. Does that
+  make the historical comparison in Step 2 better or worse, and in which
+  direction?
+
+***
+
+### Where the data came from
+
+- **Members of Congress and presidents, 1789 to present** — Voteview,
+  *Congressional Roll-Call Votes Database* (Lewis, Poole, Rosenthal, Boche,
+  Rudkin and Sonnet).
+  <https://voteview.com/static/data/out/members/HSall_members.csv>
+  One row per member per Congress, with `born` and `died` as years. The same
+  file the `dw-nominate` lab uses for something completely different, which is
+  worth noticing: one well-built file answers many questions.
+- **Life expectancy at birth, 1900-2018, annual** — National Center for Health
+  Statistics, via CDC open data.
+  <https://data.cdc.gov/api/views/w9j2-ggv5/rows.csv?accessType=DOWNLOAD>
+- **Remaining life expectancy at 65 and at 75, selected years 1950-2018** —
+  National Center for Health Statistics, *Health, United States, 2019*, Trend
+  Table 4. <https://www.cdc.gov/nchs/data/hus/2019/004-508.pdf>
+  Parsed from the published PDF, because this series is not in CDC's open-data
+  catalogue, and checked against the at-birth series above.
+
+The build is `data/build-data.R`.

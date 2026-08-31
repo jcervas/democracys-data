@@ -1,0 +1,131 @@
+---
+title: "Twelve Series That Do Not Share a Scale"
+subtitle: "A year of reading drawn as a streamgraph and as a horizon chart, and what each one refuses to show"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("streamgraph-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Twelve Wikipedia articles, every day of 2024, `r n(NROW)` numbers in all. What people looked up is a rough record of what they were thinking about, and it is one of the few such records that is public, daily and free.
+
+It is also very hard to draw, for a reason that has nothing to do with politics. **The largest of these twelve series is `r n(SRATIO)` times the smallest**, and the busiest day is `r p1(DRATIO)` times the median day. Any figure that puts all twelve on one linear axis will show two or three of them and a flat line where the rest are.
+
+This chapter draws the same numbers twice, in the two forms built for exactly that problem, and neither of them is a compromise: they fail in opposite directions.
+
+## One row is an article and a day
+
+```{r one-row}
+```
+
+```{r varmap}
+```
+
+```{r arttab}
+```
+
+The busiest days are not a surprise once you read them. `r nice("Tim_Walz")` peaked at `r n(WPK)` on `r WPKD`, the day he was named to the ticket. Most of the rest peaked on the day after the election.
+
+**None of the `r n(NROW)` cells is invented, and it took a fix upstream to be able to write that.** A stacked layout cannot leave a hole, because every day needs a total. So this chapter used to fill one missing article-day with the mean of its neighbours, and say so here. The hole turned out to be a symptom: the [media-attention chapter](../media-attention/media-attention-brief.html) had asked for the title the JD Vance article has *now*. The service reports by title, so everything before the article was renamed came back as redirect traffic: a series thousands of times too small, with a gap in it. That chapter now requests both titles and sums them, and this one asserts a complete grid rather than repairing an incomplete one.
+
+> **Before you read on, commit to a view.** Twelve series, `r n(NDAY)` days.
+> **How would you draw them?** One axis, twelve axes, or something else — and
+> say what your choice gives up.
+
+## A streamgraph
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The same twelve series as a streamgraph.** Bands are stacked around a centred baseline rather than sitting on zero; the largest series is placed in the middle and the rest alternate outward. The faint vertical lines are the `r NEV` campaign events. Move the pointer and the legend fills in with that day's numbers.
+
+The shape is genuinely informative. The band is thin until late June, swells through the summer, and then goes vertical in the first week of November: `r n(PKT)` views on `r PKD` against a median day of `r n(MEDT)`. You can see the campaign happen.
+
+You can also see the dynamic-range problem reappear inside the form that was supposed to solve it. Because the vertical axis has to reach `r n(PKT)`, the ten months before September are drawn a few pixels tall. The whole spring is a hairline. A July that was `r p1(sum(se$views[format(se$date, "%m") == "07"]) / sum(se$views[format(se$date, "%m") == "02"]))` times as busy as February looks much like it. A streamgraph rescales nothing. It stacks, and a stack inherits every extreme in the data.
+
+Now try to use it. **Pick a date in September and read how many people were reading about Kamala Harris.** You cannot, and the reason is structural: her band does not sit on a baseline. Its lower edge is the cumulative total of every band beneath it, and that total is itself moving, so the thickness you are being asked to judge is a difference between two wandering curves. The eye is very bad at this — it reads the *slope* of the top edge as though it were the value.
+
+That is the streamgraph's trade. **One series has a baseline, the total, and it is the only quantity the figure states plainly.** Everything else is a thickness. The legend fills in with numbers on hover because the figure cannot answer the question on its own.
+
+## A horizon chart
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=6.4}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same twelve series as a horizon chart.** Each article gets one row. The row is only `r 34`px tall, so the series is cut into bands. The tall part is folded back down over the short part and drawn darker each time. The darkest ink means the value went off the top of the row more than once. The number on the right is the height one band represents.
+
+Every row now has a baseline, and it is at the bottom where a baseline belongs. You can read *`r nice("Springfield,_Ohio")` was quiet until September and then spiked twice* directly. That was not available in Figure 1 at all. The series is `r p1(100 * SMALLT / TOTV)`% of the total, and its band in the streamgraph is a hairline.
+
+The cost is that a horizon chart is **not beautiful and does not want to be**. It is a dense, banded, slightly ugly object designed to be scanned rather than admired. The folding has to be explained before anyone can read it, which is a real cost in a chapter, a newspaper or a slide.
+
+## The decision both figures hide
+
+The button on Figure 2 is the important control. By default each row is measured against **its own maximum**, so every series fills its row and every row is readable. Press it and all twelve are measured against the largest, and the bottom rows go flat.
+
+Neither is wrong and they answer different questions. Against its own maximum, a row says *when was this article busy, relative to its own busiest day*. Against the largest, it says *how much of the country's attention was this*. `r nice(SMALL)` is `r n(SRATIO)` times smaller than `r nice(BIG)`; on a shared scale it is invisible, and the invisibility is the honest answer to the second question and a useless answer to the first.
+
+This is the same decision the [sparklines chapter](../../03-elections/sparklines/sparklines-brief.html) makes for fifty-one states and resolves the other way — one shared scale, because there the question was how far each state moved against the others. **The form does not decide it. The question does**, and the only real error is not saying which you chose.
+
+> **A second prediction.** Suppose the API returned nothing for one article for
+> a whole week in October. **Which of these two figures would show the gap, and
+> which would hide it?** Say why in terms of the baseline — and then say which
+> one would have shown the six months of undercounted JD Vance traffic that
+> both of them carried until the capture was fixed.
+
+## What this chapter cannot tell you
+
+**Pageviews are not attention and they are certainly not opinion.** A view is somebody opening a page. It does not say whether they read it, agreed with it, or arrived there from a search for something else, and a spike after a debate mixes curiosity, hostility and homework in unknown proportions. The [media-attention chapter](../media-attention/media-attention-brief.html) takes that argument up properly.
+
+**Twelve articles is a choice, and it is the whole universe of these figures.** Both forms show composition, the streamgraph literally so, and composition is computed over whatever was captured. Add a thirteenth article and every band in Figure 1 changes thickness without a single pageview changing.
+
+**`r n(IMPC)` cells are imputed, and the count is printed because it was not always zero.** To impute is to fill in a value nobody recorded, by guessing it from other things. A stack cannot have a hole, so an incomplete capture would have been quietly repaired here and the repair would have been invisible in both figures. The hole is gone because its cause was fixed upstream, not because it was filled in — which is the only version of this sentence worth trusting.
+
+**A centred baseline is a choice too.** This chapter's streamgraph puts the midpoint of each day's total on a straight line; d3's default minimises wiggle instead, and other implementations sit the stack on zero. All three are called streamgraphs, they place the same series in visibly different places, and none of them makes an individual band easier to measure.
+
+## Sources
+
+- Wikimedia Foundation. *Pageviews API*, English Wikipedia, daily, all-access,
+  user agents only, 2024. Captured and committed by this corpus's
+  [media-attention chapter](../media-attention/media-attention-brief.html),
+  which documents the capture and the one article-day it is missing. The figures
+  here read that chapter's published output. The API is free and needs no key.
+  <https://wikimedia.org/api/rest_v1/#/Pageviews%20data>
+- Byron, Lee and Martin Wattenberg (2008). "Stacked Graphs — Geometry &
+  Aesthetics." *IEEE Transactions on Visualization and Computer Graphics*
+  14(6): 1245–1252. The paper that named the streamgraph and worked out the
+  ordering used here.
+- Few, Stephen (2008). "Time on the Horizon." *Visual Business Intelligence
+  Newsletter*, June/July. The clearest short account of why the bands are
+  folded.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`articles.csv`](data/derived/articles.csv), [`events.csv`](data/derived/events.csv), [`series.csv`](data/derived/series.csv), [`stream.csv`](data/derived/stream.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `articles.csv` has `total`, `peak` and `peak_date` for every series. Compare the totals. In a stacked chart, which series are large enough to see at all?
+- `stream.csv` has `y0` and `y1` for each article and day — the stacking decision made explicit. Pick a series in the middle of the stack and try to read its size. How hard is it?
+- `articles.csv` gives every series a `stack_order`. Reorder them yourself and see what the figure emphasises. Should a chart's conclusion depend on that?
+- Join `events.csv` to `series.csv`. Do the peaks line up with the events, or does attention arrive before and after?
+

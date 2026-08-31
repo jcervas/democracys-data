@@ -1,0 +1,42 @@
+I want to rebuild a public dataset from its original sources, without
+any starting files. Please do the following and show your work.
+
+THE FIRST SOURCE. U.S. Census Bureau, 2020 Census Redistricting Data
+(P.L. 94-171) Summary File, legacy format, for Georgia:
+https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip
+About 36 MB, no account or key needed. Inside are four pipe-delimited
+files with no headers: a geographic header, one row per geographic
+unit, and three data segments that join to it on the LOGRECNO column.
+Summary level 750 marks a census block. In the first segment, Table P1
+-- population by race -- starts at field 6. "Any part Black" means
+summing every P1 category whose combination includes Black. Block
+GEOIDs are 15-character strings; read them as text, never as numbers.
+
+THE SECOND SOURCE. TIGER/Line 2020 census block shapes for Georgia:
+https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_13_tabblock20.zip
+Also open. You will not need real geometry: the shapefile's attribute
+table carries INTPTLAT20 and INTPTLON20, the Bureau's own interior
+point for every block, and one point per block is enough here.
+
+WHAT TO BUILD.
+1. A table of every Georgia block: GEOID, total population, and the
+   any-part-Black count. Report the statewide totals.
+2. The census hierarchy is a string prefix: the first 12 characters
+   of a block GEOID name its block group, the first 11 its tract, the
+   first 5 its county. Roll the blocks up each way and compute, at
+   each scale, the population-weighted spread of the Black share
+   across units. Same people, bigger containers, smaller spread.
+3. Fulton County (GEOIDs starting 13121): report its population and
+   Black share, then use the block points to slice it into six
+   equal-population bands at several different angles, and count the
+   majority-Black bands at each angle. The count moves with the
+   angle, and that is the finding.
+
+CHECK YOUR WORK. The copies this book used were fetched in August
+2026. If your rebuild matches them, you should find:
+- 232,717 blocks holding 10,711,908 people
+- 3,538,146 of them any part Black -- 33.03%
+- by prefix: 159 counties, 2,796 tracts, 7,446 block groups
+- Fulton County: 1,066,710 people, 44.78% any part Black
+Both files are finished 2020 census products; they will not change
+until the 2030 cycle publishes successors.

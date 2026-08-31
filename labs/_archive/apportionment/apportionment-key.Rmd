@@ -1,0 +1,312 @@
+---
+title: "Data Session 2 Key, part 1: Eighty-Nine People"
+subtitle: "84-355 Democracy's Data | Session 2 — The decennial census | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+ap  <- read.csv("data/apportionment_2020.csv", stringsAsFactors = FALSE)
+pop <- setNames(ap$app_pop, ap$state)
+hh <- function(size) {
+  s <- setNames(rep(1L, length(pop)), names(pop))
+  for (i in seq_len(size - length(pop))) {
+    p <- pop / sqrt(s * (s + 1)); w <- names(which.max(p)); s[w] <- s[w] + 1L
+  }
+  s
+}
+base <- hh(435)
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+**Framing.** This is the **census** lab among the four families of democracy
+data, and it is deliberately the mirror of Session 1. Returns fail by being
+stitched from fifty-one sources; the census fails by being a single
+authoritative number that carries uncertainty it cannot show you. The closing
+table sets them side by side.
+
+The line to land is **authority and certainty are different things**. The 89-vote
+margin sits inside an error bar of hundreds of thousands, and no amount of
+institutional standing fixes that. Students who reach for "so the census is
+unreliable" have missed it — the census is excellent and still not precise
+enough for what was asked of it.
+
+Watch for the corollary in discussion: **you cannot check a census against a
+second source, because there is no second source.** The habit that caught last
+week's problem is unavailable here; reading the Bureau's own published
+uncertainty is what replaces it. That is Thursday's reading.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+The House allocates itself by arithmetic once the census is counted — and in
+2020 that arithmetic turned on **89 people**, a margin smaller than every source
+of error feeding into it.
+
+***
+
+# The findings
+
+```{r headline}
+c(states = nrow(ap), seats = sum(ap$seats),
+  reproduces_official = identical(as.integer(base[ap$state]), as.integer(ap$seats)))
+
+mn <- ap[ap$state == "Minnesota", ]; ny <- ap[ap$state == "New York", ]
+wp <- mn$app_pop / sqrt(mn$seats * (mn$seats - 1))
+need <- wp * sqrt(ny$seats * (ny$seats + 1))
+c(ny_had = ny$app_pop, ny_needed = ceiling(need), short_by = ceiling(need - ny$app_pop))
+```
+
+- Huntington–Hill on the Bureau's own population column **reproduces the
+  official 435 exactly**. If that ever returns FALSE, the data file is wrong —
+  stop and rebuild it.
+- **Seat 435 → Minnesota. New York missed by 89 people.**
+- Overseas population: New York **14,502**, Minnesota **3,258** — the rule
+  assigning federal employees abroad to a home state moved ~160× the margin.
+
+***
+
+# The two ideas to teach
+
+**1. A neutral-sounding rule has a direction.** Part 2 has students round the
+quota. It totals 435 — by luck — but produces a different House:
+
+```{r rounding}
+ap$quota <- 435 * ap$app_pop / sum(ap$app_pop)
+ap$rounded <- round(ap$quota)
+c(total = sum(ap$rounded))
+ap[ap$rounded != ap$seats, c("state", "quota", "rounded", "seats")]
+```
+
+New York and Ohio gain, Rhode Island and Montana lose. Large states have large
+fractions to round up. "Round to the nearest whole seat" is not neutral.
+
+**2. Those four states come back in Option C**, because rounding the quota *is*
+Webster's method. The obvious thing students tried in Part 2 turns out to be one
+of the named contenders Congress rejected. If nobody notices, point at it.
+
+***
+
+# Option A — Resize the House
+
+## Verified output
+
+```{r a}
+for (sz in c(436, 440, 450, 500, 600)) {
+  s <- hh(sz); d <- s[ap$state] - base[ap$state]
+  cat(sprintf("%4d seats (+%3d): %s\n", sz, sz - 435,
+              paste(names(sort(d[d > 0], decreasing = TRUE))[1:6], collapse = ", ")))
+}
+```
+
+| House | gains go to |
+|---|---|
+| **436** | **New York** — the seat it missed by 89 |
+| 440 | TX, FL, NY, OH, AZ |
+| 450 | CA, TX, FL, NY, PA, OH |
+| 600 | CA, TX, FL, NY, PA, IL |
+
+**The Wyoming Rule.** Set the average district to the least populous state:
+
+```{r a-wyoming}
+c(total_pop = sum(pop), wyoming = pop[["Wyoming"]],
+  implied_house = round(sum(pop) / pop[["Wyoming"]]))
+```
+
+**573 seats.** But it does *not* equalise districts:
+
+```{r a-wyoming-check}
+for (sz in c(435, 573)) {
+  s <- hh(sz); per <- round(pop / s)
+  cat(sprintf("House %3d: districts %s to %s, ratio %.2f\n", sz,
+      format(min(per), big.mark = ","), format(max(per), big.mark = ","),
+      max(per) / min(per)))
+}
+```
+
+Largest-to-smallest ratio falls only from **1.83 to 1.76**. At 435 the extremes
+are Delaware (990,837, one seat) and Montana (542,704); at 573 they become North
+Dakota (779,702) and South Dakota (443,885). Rounding still bites at the bottom.
+
+## What a good answer says
+
+**3/4:** Reports who gains and identifies the Wyoming Rule as implying roughly
+570–575 seats.
+
+**4/4:** Notices that **436 gives the seat to New York** and connects it back to
+Part 4 — the near-miss is not an abstraction, it is one seat away. And answers
+the "who benefits from 435" question with the mechanism rather than a slogan:
+freezing the House caps the size of large-state delegations while every small
+state keeps its floor of one, so the freeze is a small-state subsidy that
+compounds every decade the country grows.
+
+**4/4, best:** catches that the Wyoming Rule barely improves equality (1.83 →
+1.76). It is a reform aimed at the *average* district while the problem lives in
+the *extremes*, which are produced by the one-seat floor and by rounding, not by
+House size. A student who works that out has understood why the obvious fix is
+not much of a fix.
+
+**Common stumble:** assuming a bigger House helps small states. It is the
+reverse — every added seat goes to a large state until the House is very large
+indeed.
+
+***
+
+# Option B — How close was everybody else?
+
+## Verified output
+
+```{r b}
+pv <- pop / sqrt(base * (base + 1))
+top <- sort(pv, decreasing = TRUE)[1:6]
+for (nm in names(top)) {
+  k <- ap$seats[ap$state == nm]
+  cat(sprintf("  %-12s priority %9.1f   short by %s people\n", nm, top[[nm]],
+      format(ceiling(wp * sqrt(k * (k + 1)) - pop[[nm]]), big.mark = ",")))
+}
+```
+
+| priority rank | state | short by |
+|---|---|---|
+| 1 | New York | **89** |
+| 2 | Ohio | 11,462 |
+| 3 | Texas | 189,645 |
+| 4 | Florida | 171,561 |
+| 5 | Arizona | 79,509 |
+| 6 | California | 478,806 |
+
+*(Rows are in **priority order**, which is what the chunk prints and what
+decides the next seat. An earlier version of this table sorted by shortfall
+instead while still labelling the column "rank" — putting Arizona third and
+Texas fifth, and contradicting the chunk directly above it. The shortfalls
+themselves were always right. The note below is why the two orders differ.)*
+
+## What a good answer says
+
+**3/4:** Reports the ladder and notices the enormous jump from first to second.
+
+**4/4:** Draws the right conclusion from the **129-fold gap between 89 and
+11,462** — New York's near-miss was genuinely freakish, not the normal state of
+affairs. Second place missed by a small city. A student who says "the headline
+makes this look like a routine knife-edge, and the second row shows it wasn't"
+is reading the table rather than the story about it.
+
+**4/4, best:** takes on "count harder." A state cannot manufacture 89 people,
+but it *can* fund outreach, run its own count-review, and challenge the Bureau's
+figures — New York did in fact pursue this. The honest answer is that the margin
+was smaller than the census's own uncertainty, so "count harder" is not a
+strategy, it is a lottery ticket. That is the same point `census` makes about
+differential privacy — this same session — and Session 3 makes about §203 thresholds: a sharp legal line
+across an estimated quantity.
+
+**Note on Texas vs Florida.** Texas has a *higher* priority value than Florida
+yet needs *more* people. That is not an error: Texas has 38 seats to Florida's
+28, so its divisor is larger and each unit of priority costs more population.
+Reward anyone who spots it.
+
+***
+
+# Option C — Who would a different method favour?
+
+## Verified output
+
+```{r c}
+webster <- function() {
+  s <- setNames(rep(1L, length(pop)), names(pop))
+  for (i in 1:385) { p <- pop / (s + 0.5); w <- names(which.max(p)); s[w] <- s[w] + 1L }
+  s
+}
+w <- webster()
+d <- data.frame(state = ap$state, huntington_hill = ap$seats,
+                webster = as.integer(w[ap$state]))
+d[d$webster != d$huntington_hill, ]
+```
+
+**New York +1, Ohio +1, Rhode Island −1, Montana −1** — the same four states as
+naive rounding in Part 2, and for the same reason.
+
+## What a good answer says
+
+**3/4:** Reports the four states and the direction — Webster favours the large.
+
+**4/4:** Makes the connection the lab set up: rounding at the half *is* a divisor
+of $n + 0.5$, so Part 2's "obvious method" was Webster all along. Huntington–Hill
+uses the geometric mean $\sqrt{n(n+1)}$, which is always slightly *below* the
+arithmetic mean, and that small difference is exactly what protects Rhode Island
+and Montana.
+
+**4/4, best:** answers the choosing question without pretending it is technical.
+Both methods are defensible; the 1930s debate was resolved by a National Academy
+panel, and Congress adopted the method that happened to favour the states it
+favoured. A student who says "there is no neutral place to stand, so the honest
+move is to state the criterion first and pick the method second" has the
+argument.
+
+***
+
+# Option D — Their own question
+
+The 1920s are the richest thread: Congress simply **failed to reapportion** after
+the 1920 census — the only time in American history — because the count showed a
+country that had become urban and immigrant, and the sitting rural majority
+declined to give up its seats. Ten years of a House that did not reflect the
+census. That is worth a student's essay, and it is the answer to "does the
+arithmetic decide?" No. Congress does; the arithmetic only decides once Congress
+agrees to run it.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is seeing the political decision inside a piece of
+  arithmetic — that "round to the nearest seat" has a direction, that the
+  Wyoming Rule targets the wrong statistic, that 435 is a statute rather than a
+  law of nature.
+- **Watch for fatalism.** Some students conclude that because it is arithmetic
+  it is neutral and nothing can be done. Part 2 and Option C exist to break that.
+
+## Anticipated questions
+
+- *"Why is DC not in the file?"* — DC has no apportioned Representative. Fifty
+  rows, not fifty-one. Worth a moment; it is the same question §203 and the
+  Electoral College raise from other angles.
+- *"Is 435 in the Constitution?"* — No. Fixed by the Permanent Apportionment Act
+  of 1929. The House grew with the country for 140 years and then stopped.
+- *"Could New York have sued?"* — It explored challenges; the Bureau's count
+  stands absent proven error. There is no recount for a census.
+- *"What is the difference between apportionment population and the census
+  count?"* — Overseas federal employees, assigned to a home state. Table 3 in the
+  source. Students who ask this have read Part 1 properly.
+- *"Does this happen every decade?"* — The 89 is extraordinary; see Option B's
+  second row. Whether *some* state is always within a few thousand is a genuinely
+  open question here, and answering it needs the 1990/2000/2010 files, which this
+  lab does not ship. Say that rather than guessing.
+
+## Connections forward
+
+- **`census`, the other lab in this session,** is where the count itself comes under scrutiny. This
+  lab is the reason it matters: a margin of 89 against an instrument with error
+  bars in the hundreds of thousands.
+- **Session 3 (the ACS and §203)** — the same structure, a sharp legal threshold applied to an
+  estimate. Say "this is the apportionment problem again" when you get there.
+- **The Dec 3 wrap (redistricting)** — apportionment decides how many seats a state
+  gets; districting decides where the lines go. Students routinely conflate them,
+  and having run the arithmetic here makes the distinction stick.
+- **Chapter 2** — the Electoral College is apportionment plus two. Every seat
+  moved here moves an elector, which is the cleanest way to explain why census
+  litigation is partisan.

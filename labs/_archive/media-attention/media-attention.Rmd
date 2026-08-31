@@ -1,0 +1,408 @@
+---
+title: "Lab 9: What the Country Was Looking At"
+subtitle: "84-355 Democracy's Data | Week 9"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Chapter 8 asks what the media does to voters. That question is hard to answer
+because the two things you would need — what people were exposed to, and what
+they came to believe — are both very difficult to measure.
+
+Today we measure something narrower and much more tractable: **what people went
+looking for.** Every time someone reads an English Wikipedia article, that
+request is counted. The counts are public, daily, and go back years.
+
+This is not exposure and it is certainly not persuasion. It is *curiosity*, and
+curiosity leaves a sharper trace than you might expect. By the end of this lab
+you will be able to date the turning points of the 2024 campaign to within a day
+without looking at a single news story.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: A year of attention
+
+```{r read}
+w  <- read.csv("data/wiki_attention_2024.csv", stringsAsFactors = FALSE)
+ev <- read.csv("data/campaign_events_2024.csv", stringsAsFactors = FALSE)
+w$date  <- as.Date(w$date)
+ev$date <- as.Date(ev$date)
+dim(w)
+```
+
+Twelve articles, every day of 2024, in **long format** — one row per article per
+day.
+
+```{r glimpse}
+head(w, 3)
+table(w$article)
+```
+
+***
+
+# Part 2: Attention is spiky, not steady
+
+Start with the article for the election itself.
+
+```{r election-article, fig.width = 8.5, fig.height = 5}
+e <- w[w$article == "2024_United_States_presidential_election", ]
+
+plot(e$date, e$views / 1000, type = "l", lwd = 1.8, col = "#54278F",
+     xlab = "", ylab = "Pageviews (thousands)",
+     main = "English Wikipedia: '2024 United States presidential election'")
+```
+
+```{r election-summary}
+c(median = median(e$views), peak = max(e$views),
+  ratio = round(max(e$views) / median(e$views)))
+```
+
+> A typical day drew about **43,000** readers. The peak drew **4,260,085** —
+> **ninety-nine times** the median. Almost everything that happens in public
+> attention happens on a handful of days.
+
+That is the single most important fact about the media environment, and it is
+visible before we have named a single event.
+
+***
+
+# Part 3: The day the race changed
+
+Now the two principals, plus Biden.
+
+```{r three, fig.width = 8.5, fig.height = 5.5}
+cands <- c("Joe_Biden", "Donald_Trump", "Kamala_Harris")
+cols  <- c("#999999", "#B2182B", "#2166AC")
+
+sub <- w[w$article %in% cands & w$date >= as.Date("2024-06-01") &
+         w$date <= as.Date("2024-09-01"), ]
+
+plot(NULL, xlim = range(sub$date), ylim = c(0, max(sub$views) / 1000),
+     xlab = "", ylab = "Pageviews (thousands)",
+     main = "Summer 2024")
+for (i in seq_along(cands)) {
+  s <- sub[sub$article == cands[i], ]
+  lines(s$date, s$views / 1000, lwd = 2.2, col = cols[i])
+}
+abline(v = as.Date(c("2024-06-27", "2024-07-13", "2024-07-21")),
+       lty = 2, col = "grey40")
+legend("topleft", gsub("_", " ", cands), col = cols, lwd = 2.2,
+       bty = "n", cex = 0.9)
+```
+
+Three dashed lines: the June debate, the assassination attempt, and Biden's
+withdrawal. Look at what each one does.
+
+```{r july}
+h <- w[w$article == "Kamala_Harris", ]
+h[h$date >= as.Date("2024-07-19") & h$date <= as.Date("2024-07-24"), ]
+```
+
+```{r july-ratio}
+round(max(h$views) / median(h$views))
+```
+
+> Harris drew about **12,400** readers on a typical day of 2024. On **22 July**,
+> the day after Biden withdrew, she drew **2,532,334** — roughly **200 times**
+> her own baseline.
+>
+> Two and a half million people went to look up who she was.
+
+Check the events file rather than trusting the eye:
+
+```{r events}
+ev
+```
+
+***
+
+# Part 4: From nobody to nominee in a day
+
+The running mates are the clearest case in the whole dataset, because before
+their selection almost nobody was looking for them at all.
+
+```{r vp-baseline}
+vp <- w[w$article %in% c("JD_Vance", "Tim_Walz"), ]
+aggregate(views ~ article, data = vp, FUN = median)
+```
+
+> **The median day of 2024 sent 23 people to J.D. Vance's Wikipedia article.**
+> Twenty-three. He was a sitting United States senator.
+
+```{r vp-plot, fig.width = 8.5, fig.height = 5}
+plot(NULL, xlim = as.Date(c("2024-07-01", "2024-11-30")),
+     ylim = c(0, 4000), xlab = "", ylab = "Pageviews (thousands)",
+     main = "Two running mates")
+for (i in seq_along(c("JD_Vance", "Tim_Walz"))) {
+  a <- c("JD_Vance", "Tim_Walz")[i]
+  s <- vp[vp$article == a, ]
+  lines(s$date, s$views / 1000, lwd = 2.2, col = c("#B2182B", "#2166AC")[i])
+}
+abline(v = as.Date(c("2024-07-15", "2024-08-06", "2024-10-01")), lty = 2,
+       col = "grey40")
+legend("topright", c("J.D. Vance", "Tim Walz"), col = c("#B2182B", "#2166AC"),
+       lwd = 2.2, bty = "n")
+```
+
+```{r vp-peaks}
+for (a in c("JD_Vance", "Tim_Walz")) {
+  s <- vp[vp$article == a, ]
+  cat(a, "- peak", format(max(s$views), big.mark = ","),
+      "on", format(s$date[which.max(s$views)]), "\n")
+}
+```
+
+> Walz's announcement day drew **`r format(max(vp$views[vp$article == "Tim_Walz"]), big.mark = ",")`** readers,
+> against a median day of `r format(median(vp$views[vp$article == "Tim_Walz"]), big.mark = ",")`
+> across the year. Vance's own peak is printed above too.
+>
+> Hold on to both numbers. We come back to them in Part 6.
+
+***
+
+# Part 5: Misinformation leaves a footprint
+
+On 10 September 2024, during the presidential debate, a false claim was made
+that Haitian immigrants in Springfield, Ohio were eating their neighbours' pets.
+The claim was investigated by local officials and found to be baseless.
+
+The claim was false. The attention was not.
+
+```{r springfield, fig.width = 8.5, fig.height = 5}
+sp <- w[w$article == "Springfield,_Ohio", ]
+
+plot(sp$date, sp$views, type = "l", lwd = 1.8, col = "#D95F02",
+     xlab = "", ylab = "Pageviews",
+     main = "English Wikipedia: 'Springfield, Ohio'")
+abline(v = as.Date("2024-09-10"), lty = 2, col = "grey30")
+```
+
+```{r springfield-numbers}
+c(median_day = median(sp$views),
+  peak       = max(sp$views),
+  peak_date  = format(sp$date[which.max(sp$views)]))
+
+round(max(sp$views) / median(sp$views))
+```
+
+> A town of 60,000 people drew **242** readers on a normal day and **57,339** the
+> day after the debate — **237 times** its baseline.
+
+The effect is not confined to the town:
+
+```{r haitian}
+ha <- w[w$article == "Haitian_Americans", ]
+c(median_day = median(ha$views), peak = max(ha$views),
+  peak_date = format(ha$date[which.max(ha$views)]))
+```
+
+> **This is what Chapter 8 means by an agenda-setting effect, caught in the
+> act.** The media did not tell these hundreds of thousands of people what to
+> think about Springfield. It told them that Springfield was a thing to think
+> about at all — and a false statement did that just as efficiently as a true one
+> would have.
+
+***
+
+# Part 6: What attention is not
+
+Three cautions, and the third is the one that matters.
+
+**Pageviews are not exposure.** Far more people saw a headline about Springfield
+than looked it up. This measures the fraction curious enough to act.
+
+**Pageviews are not belief.** Someone looking up Springfield may have been
+checking whether the claim was true, appalled by it, or looking for an address.
+The number cannot tell them apart.
+
+**And attention is not support.**
+
+> **Before you run the next chunk, write a ranking down.** Four people stood on
+> the two national tickets in 2024: Harris, Trump, Vance, Walz. Put all four in
+> order by each one's **single largest day** of readership — not the total for
+> the year, not how the election came out, just each person's one biggest day.
+> **Who is first, and who is fourth?** Three of those four numbers have already
+> gone past you in this lab. Commit to the whole order of four, on paper, before
+> you run the chunk.
+
+```{r attention-vs-result}
+peaks <- aggregate(views ~ article, data = w[w$article %in%
+  c("Donald_Trump", "Kamala_Harris", "JD_Vance", "Tim_Walz"), ], FUN = max)
+peaks[order(-peaks$views), ]
+```
+
+> **Tim Walz has the largest single-day attention figure of any candidate in
+> 2024** — larger than Trump's peak the day after the election. His ticket lost.
+>
+> Now check your ranking. Hardly anyone puts Walz first and Vance fourth,
+> because the order most people have in mind is an order of fame, or of how the
+> election turned out. This table is neither. It ranks the four by how many
+> strangers, on one day, needed to find out who they were — and three of the
+> four numbers had already gone past you before you guessed.
+>
+> If attention converted into votes, that table would be a forecast. It is not
+> one. It is a record of what surprised people — and novelty is not popularity.
+> A country looking something up is a country that does not already know.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change, or nothing at all.
+
+Pick **one**.
+
+***
+
+### Option A — Pick an article and date its spikes
+
+```{r opt-a, fig.width = 8.5, fig.height = 5}
+this_article <- "Project_2025"     # <- change to any article in the data
+
+s <- w[w$article == this_article, ]
+
+plot(s$date, s$views / 1000, type = "l", lwd = 1.8, col = "#54278F",
+     xlab = "", ylab = "Pageviews (thousands)",
+     main = gsub("_", " ", this_article))
+abline(v = ev$date, lty = 3, col = "grey65")
+
+top <- s[order(-s$views), ][1:6, ]
+top[order(top$date), ]
+c(median = median(s$views), peak = max(s$views),
+  ratio = round(max(s$views) / median(s$views)))
+```
+
+**Write about:** name the days. Do the biggest spikes line up with the events in
+`ev`, or with something the events file does not contain? Project 2025 is
+interesting precisely because its spikes are *not* all set-piece campaign
+moments — some are the product of one side deliberately drawing attention to the
+other side's document. What does it mean for "media effects" when a campaign
+succeeds in making people look something up?
+
+Try `Swing_state` too, and say what its shape tells you about when ordinary
+people start paying attention to the mechanics of an election.
+
+***
+
+### Option B — How concentrated is attention?
+
+```{r opt-b, fig.width = 8, fig.height = 5}
+this_article <- "Donald_Trump"     # <- change this
+
+s <- w[w$article == this_article, ]
+s <- s[order(-s$views), ]
+s$cum <- cumsum(s$views) / sum(s$views) * 100
+
+plot(seq_along(s$cum), s$cum, type = "l", lwd = 2.5, col = "#B2182B",
+     xlab = "Days of 2024, busiest first", ylab = "% of the year's attention",
+     main = paste("Concentration of attention:", gsub("_", " ", this_article)))
+abline(h = 50, lty = 3); abline(v = c(10, 30), lty = 3, col = "grey60")
+
+c(top_10_days = round(s$cum[10], 1),
+  top_30_days = round(s$cum[30], 1),
+  days_for_half = which(s$cum >= 50)[1])
+```
+
+**Write about:** how many days of the year account for half of all the attention
+this article received? Compare a principal (Trump, Harris) against a topic
+(`Opinion_poll`, `Electoral_College_(United_States)`). Which is spikier, and
+why would that be? Then the question worth arguing: if public attention to
+politics is compressed into a handful of days, what does that imply about a
+campaign event's value — and about the strategy of *creating* such days?
+
+***
+
+### Option C — Two candidates, side by side
+
+```{r opt-c, fig.width = 8.5, fig.height = 5.5}
+a1 <- "Kamala_Harris"              # <- change either of these
+a2 <- "Donald_Trump"
+
+s1 <- w[w$article == a1, ]; s2 <- w[w$article == a2, ]
+
+plot(s1$date, s1$views / 1000, type = "l", lwd = 2, col = "#2166AC",
+     ylim = c(0, max(c(s1$views, s2$views)) / 1000),
+     xlab = "", ylab = "Pageviews (thousands)",
+     main = paste(gsub("_", " ", a1), "vs", gsub("_", " ", a2)))
+lines(s2$date, s2$views / 1000, lwd = 2, col = "#B2182B")
+abline(v = ev$date, lty = 3, col = "grey70")
+legend("topleft", gsub("_", " ", c(a1, a2)), col = c("#2166AC", "#B2182B"),
+       lwd = 2, bty = "n", cex = 0.9)
+
+# Who led on how many days, before and after Biden withdrew?
+mg <- merge(s1[, c("date","views")], s2[, c("date","views")], by = "date",
+            suffixes = c("_1", "_2"))
+mg$phase <- ifelse(mg$date < as.Date("2024-07-21"), "before Jul 21", "after Jul 21")
+table(mg$phase, ifelse(mg$views_1 > mg$views_2, a1, a2))
+```
+
+**Write about:** who "won" the attention battle, and does the answer change
+depending on which half of the year you look at? Be careful with the word won —
+say explicitly what you think leading in pageviews does and does not indicate.
+Then connect it to Part 6: Harris led on many days after July and lost the
+election. Is attention worth anything at all to a campaign, and if so, what?
+
+***
+
+### Option D — Ask your own question
+
+Any article in the file is fair game. Compare a person to an institution. Look
+for a day with a spike nobody has explained yet. Follow whatever nags.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at a curve of public attention and say something
+careful about what it does and does not show.
+
+***
+
+## Where the data came from
+
+**Wikimedia Foundation Pageviews API**
+(<https://wikimedia.org/api/rest_v1/#/Pageviews%20data>), daily counts for
+English Wikipedia, 1 January to 31 December 2024. Wikimedia publishes these
+counts under CC0, which is why this lab can ship its own copy of them.
+
+Two choices in how the data was pulled, both of which matter:
+
+- **Human traffic only.** The API can return all requests including known bots
+  and crawlers. This file uses the `user` filter, which excludes them. Raw
+  all-agent counts are badly contaminated and would show spikes that no person
+  ever caused.
+- **English Wikipedia only.** A large share of the world's interest in an
+  American election arrives in other languages, and none of it is here.
+
+The deeper limit is the one Part 6 is about. A pageview is a person choosing to
+look something up. It is a real behaviour, publicly and consistently measured,
+and it is *not* the thing Chapter 8 is ultimately asking about. Nothing in this
+file tells you what anyone believed before or afterwards.
+
+**Campaign events** in `campaign_events_2024.csv` were compiled by hand from the
+public record and are deliberately kept separate from the pageview file — they
+are the independent yardstick the spikes get checked against, not something
+derived from the spikes themselves.
+
+The script that fetched, checked and wrote all of this is `data/build-data.R`.

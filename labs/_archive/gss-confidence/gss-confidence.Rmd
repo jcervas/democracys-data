@@ -1,0 +1,237 @@
+---
+title: "The Same Question for Fifty-One Years"
+subtitle: "84-355 Democracy's Data | Confidence in institutions, GSS 1973–2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.8)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `gss-confidence-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"Trust in institutions has collapsed."*
+
+You have met surveys three times now: one instrument up close, one question
+checked against a public record, and many polls at once. This is the fourth
+thing a survey can be, and the rarest.
+
+Since **1973**, the General Social Survey has read the same sentence to
+Americans:
+
+> *"I am going to name some institutions in this country. As far as the people
+> running these institutions are concerned, would you say you have a great deal
+> of confidence, only some confidence, or hardly any confidence at all in
+> them?"*
+
+Same words. Same three options. Thirteen institutions. **Fifty-one years, in 33
+of which the question was asked.**
+
+That is worth pausing on. Every other trend in this course has an asterisk —
+the question changed, the mode changed, the sampling frame changed. Here almost
+nothing changed, which means **when the number moves, something in the country
+moved.**
+
+# Steps 1-3 — The question, one record, and the scope
+
+```{r load}
+cf <- read.csv("data/confidence.csv",   stringsAsFactors = FALSE)
+in_ <- read.csv("data/institutions.csv", stringsAsFactors = FALSE)
+
+c(rows = nrow(cf), institutions = nrow(in_),
+  first = min(cf$year), last = max(cf$year),
+  survey_years = length(unique(cf$year)))
+head(cf[cf$institution == "Congress", c("year", "n", "great_deal", "hardly_any")], 5)
+```
+
+One row per institution per survey year: the weighted share giving each answer,
+and how many people were asked. **75,699 respondents, and 33 survey years in which
+the battery was asked**, sit behind these 427 rows.
+
+# Steps 4-5 — One series, and the conclusion you are about to draw
+
+```{r congress}
+g <- cf[cf$institution == "Congress", ]
+g[g$year %in% c(1973, 1990, 2010, 2024), c("year", "great_deal", "only_some", "hardly_any")]
+```
+
+```{r congress-plot}
+plot(g$year, g$great_deal, type = "b", pch = 19, col = "#C41230", ylim = c(0, 45),
+     xlab = "", ylab = "% with a great deal of confidence in Congress")
+lines(g$year, g$hardly_any, type = "b", pch = 1, col = "grey50")
+legend("topright", c("a great deal", "hardly any"), col = c("#C41230", "grey50"),
+       pch = c(19, 1), bty = "n", cex = 0.85)
+```
+
+**In 1973, 24.1% of Americans had a great deal of confidence in the people
+running Congress. In 2024, 5.6%.**
+
+Roughly one in four became roughly one in eighteen. Meanwhile the share saying
+"hardly any" went the other way. This is the sentence everybody quotes, and here
+it is with the receipts.
+
+# Steps 6-7 — All thirteen, and the exception
+
+> **Stop and commit to an answer first.** You have just seen Congress fall from
+> 24.1% to 5.6%. The obvious summary is *Americans have lost confidence in their
+> institutions.* Thirteen institutions were asked in the same interview. **How
+> many of the thirteen do you expect to have fallen?**
+
+**The interesting part is what did *not* happen**, and you only see it because
+the same question was asked about thirteen things at once.
+
+```{r change}
+in_[order(in_$change), c("institution", "first_year", "last_year", "change")]
+```
+
+```{r change-plot}
+o <- in_[order(in_$change), ]
+par(mar = c(4, 12, 1, 2))
+barplot(o$change, horiz = TRUE, names.arg = substr(o$institution, 1, 34), las = 1,
+        cex.names = 0.72, col = ifelse(o$change > 0, "#2c7fb8", "#C41230"),
+        xlab = "change in % 'a great deal', 1973 to 2024")
+abline(v = 0)
+```
+
+- **Medicine fell furthest: −28.6 points.** More than Congress.
+- **Organized religion −20.2**, Congress **−18.5**, the press and education
+  close behind.
+- **The military ROSE 10.6 points**, the only substantial gain.
+- **Organized labor barely moved** (+1.3) — and it started near the bottom.
+- **The scientific community is almost flat** (−4.8) across half a century.
+
+```{r military}
+m <- cf[cf$institution == "Military", ]
+m[m$year %in% c(1973, 1980, 1991, 2002, 2010, 2024), c("year", "great_deal")]
+```
+
+Look at when the military moved. **32.7% in 1973**, at the end of Vietnam — and
+**63.1% in 1991**, the year of the Gulf War. It has drifted down since without
+ever returning to where it started.
+
+**"Trust in institutions collapsed" is not what this data says.** Confidence in
+*most* institutions fell, one rose sharply, and two hardly moved. A single
+sentence about "institutions" averages over a pattern with structure in it.
+
+# Steps 8-9 — Where everything stands now, and fifty-one years at once
+
+```{r n}
+n <- aggregate(n ~ year, data = cf[cf$institution == "Congress", ], sum)
+plot(n$year, n$n, type = "h", lwd = 3, col = "#2c7fb8",
+     xlab = "", ylab = "respondents asked about Congress")
+```
+
+Two things to notice before trusting any of the above.
+
+**The survey is not annual.** GSS ran yearly, then biennially, and the gaps are
+not evenly spaced. A line drawn through these points implies data between them
+that does not exist.
+
+**And 2021 was not a normal year.** GSS could not interview face to face during
+the pandemic and moved online — the one break in an otherwise unbroken method.
+The answers from that year come from a different instrument wearing the same
+words, which is exactly the problem the rest of this lab is celebrating the
+absence of.
+
+```{r modes}
+cf[cf$institution == "Congress" & cf$year >= 2018,
+   c("year", "n", "great_deal", "hardly_any")]
+```
+
+# Step 10 — What you can now say
+
+**You can say** that confidence in the people running most American
+institutions fell substantially between 1973 and 2024, that the decline is not
+confined to government or to politics, and that **Medicine — not Congress — lost
+the most**.
+
+**You can say it is neither universal nor irreversible.** The military rose,
+and its series responds visibly to events: it peaks in 1991, the year of the
+Gulf War. Whatever is driving the other eleven is not an irreversible drift in
+national character.
+
+**You cannot say** whether institutions became less trustworthy, whether people
+became less trusting, or whether the meaning of "a great deal of confidence"
+drifted over fifty years. The question measures a report, not a relationship.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — A different institution.** Pick one that interests you and plot its
+whole series. Find the year it moved most, and go and find out what happened
+that year. Does the event explain the move, or did you just find a story to fit?
+
+**Option B — The bottom, not the top.** Everything above uses "a great deal."
+Redo Step 6 with `hardly_any`. Do the institutions rank the same way? An
+institution can lose enthusiasts without gaining enemies, and the two columns
+tell different stories.
+
+**Option C — Ceiling and floor.** Organized labor started at 16.1% and ended at
+17.5% — but it may have moved a great deal in between. Plot it. What does a flat
+first-to-last comparison hide, and what does that imply about the table in
+Step 6?
+
+**Option D — Your own question.** 13 institutions, 35 survey years, one
+unchanged sentence.
+
+# What this lab cannot tell you
+
+- **Why anyone answered as they did.** No reasons here, only the distribution.
+- **Whether the institutions changed or the standards did.** A falling number
+  can mean worse performance or higher expectations, and the question cannot
+  separate them. This is the deepest problem with any long attitude series.
+- **What "the people running these institutions" means to a respondent.** The
+  wording is about *people*, not the institution — and whether respondents honour
+  that distinction is unknown.
+- **Anything about non-respondents.** GSS response rates have fallen sharply
+  over fifty years, like every survey's. The weights adjust for what is known;
+  the people who stopped answering may differ in ways nobody measured.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- Confidence in Congress went from one in four to one in eighteen. Which of the
+  other twelve series surprised you more?
+- The military rose while everything else fell. What would you need to know to
+  explain that?
+- A question asked identically for fifty-one years is rare and valuable. What is
+  the cost of never updating the wording?
+
+***
+
+### Where the data came from
+
+**General Social Survey**, NORC at the University of Chicago — cumulative file
+1972–2024, release 3a. 75,699 respondents.
+<https://gss.norc.org/us/en/gss/get-the-data.html>
+
+The confidence battery has been asked with identical wording since 1973.
+Estimates are weighted with `wtssps`, the only weight covering every year in the
+file.
+
+**The build script uses one package**, `haven`, and it is the only place in this
+course that does: the cumulative file is a Stata 13+ `.dta`, which base R cannot
+read. The script converts it once to the CSVs this lab reads.

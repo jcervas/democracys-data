@@ -1,0 +1,248 @@
+---
+title: "The Door That Revolves, On the Record"
+subtitle: "84-355 Democracy's Data | Federal lobbying disclosures, 2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `lobbying-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"He left Congress and became a lobbyist."*
+
+Campaign finance is money spent to decide **who wins**. This is money spent on
+what happens **afterwards** — and it is much larger, much less covered, and in
+one respect much better documented.
+
+The **Lobbying Disclosure Act of 1995** requires anyone paid to lobby the
+federal government to file quarterly: who paid them, how much, what they lobbied
+about, which parts of the government they contacted, and — the part that makes
+today possible — **whether the lobbyist previously held a government position,
+and which one.**
+
+Congress wrote a law requiring lobbyists to disclose that they used to work for
+Congress. Today we read what they filed.
+
+> **A warning about how this lab is built.** Two of the steps ahead are about
+> things this data cannot do: a question it cannot answer, and a money column
+> that cannot be attributed to anything. **Those are not digressions.** They are
+> not throat-clearing to be got through before the real findings arrive — they
+> are the findings. A disclosure regime is worth what its records can be made to
+> say, and the most important thing these records say is what they decline to.
+
+# Steps 1-3 — One filing, how much of the quarter this is, and the money column
+
+```{r load}
+f  <- read.csv("data/filings.csv",   stringsAsFactors = FALSE)
+lo <- read.csv("data/lobbyists.csv", stringsAsFactors = FALSE)
+is <- read.csv("data/issues.csv",    stringsAsFactors = FALSE)
+en <- read.csv("data/entities.csv",  stringsAsFactors = FALSE)
+
+c(filings = nrow(f), unique_lobbyists = nrow(lo), issue_codes = nrow(is))
+head(f[order(-f$amount), c("client", "registrant", "amount")], 6)
+```
+
+One row per **filing**: a lobbying firm (the *registrant*) reporting what it did
+for a *client* in one quarter.
+
+**A note on the sample, because it matters.** There were **19,016** filings in
+the second quarter of 2024. We have **1,500** — about 8% — because the Senate's
+API rate-limits anonymous users to 25 records at a time and refuses to go faster.
+The data is public and the pipe is narrow. **Every rate below is a sample
+estimate; every total is a fraction of the true total.**
+
+# Steps 4-6 — The number that does not exist, what is lobbied on, and whom
+
+> **Try to answer an obvious question first:** how much was spent lobbying on
+> health care this quarter? Look at the columns you have and work out whether
+> you can get there. **The answer to that attempt is the finding.**
+
+```{r issues}
+head(is, 10)
+```
+
+**Look at the column heading.** The quantity is `mentions`, not dollars. That is
+where your attempt died, and it died for a reason you can see on the form: a
+filing reports one amount for the quarter and a list of issue areas, with no
+division of the money between them. Step 9 is that money column, refusing to be
+split.
+
+```{r issue-plot}
+top <- head(is, 10)
+barplot(rev(top$mentions), horiz = TRUE, names.arg = rev(substr(top$issue, 1, 28)),
+        las = 1, cex.names = 0.7, col = "#2c7fb8", xlab = "activity mentions")
+```
+
+**Budget and appropriations first**, then health, defence, transportation. That
+ordering is not about ideology. It is about **where money is decided** — the
+appropriations process moves more dollars than anything else Congress does, so
+that is where the lobbyists are.
+
+```{r entities}
+head(en, 8)
+```
+
+The House and the Senate dwarf everything else, and then it is the agencies that
+write cheques and rules: HHS, the White House, USDA, Energy.
+
+# Steps 7-8 — The unusual field, and reading the entries
+
+```{r door}
+lo$has_position <- nchar(lo$former_government_position) > 0
+c(lobbyists = nrow(lo),
+  with_former_gov_job = sum(lo$has_position),
+  pct = round(100 * mean(lo$has_position), 1))
+```
+
+**216 of 773 lobbyists in this sample — 27.9% — disclose a previous government
+position.** More than one in four.
+
+> **Before you run the next chunk, write down what you expect to see.** The Act
+> requires a lobbyist to disclose a previous government position. A requirement
+> like that could be satisfied with two words — "federal service" — and nobody
+> could say it had been broken. **How specific are these twelve entries going to
+> be?** Commit to an answer before you look: vague job categories, or named
+> members of Congress and named committees.
+
+```{r door-sample}
+set.seed(84355)
+sample(lo$former_government_position[lo$has_position], 12)
+```
+
+Read them. **They are not vague, and hardly anybody writes that down.** They
+name the member, the committee, the agency — sometimes several in sequence, with
+dates — because the form asks for it.
+
+**This is the fact the lab exists to deliver.** The revolving door is not an
+inference, a leak, or an investigation. **It is a disclosure requirement**, and
+the government publishes the answers in a searchable database. One in four paid
+federal lobbyists used to be on the other side of the table, and they said so on
+a form.
+
+# Step 9 — The asymmetry
+
+```{r money}
+p <- f[f$amount > 0, ]
+c(filings_reporting_money = nrow(p),
+  total = sum(p$amount),
+  median = median(p$amount),
+  largest = max(p$amount))
+```
+
+```{r money-plot}
+hist(log10(p$amount[p$amount > 0]), breaks = 30, col = "#C41230", border = "white",
+     main = "", xlab = "log10( dollars reported in the quarter )")
+```
+
+**A median filing reports $30,000 for the quarter.** The distribution is
+enormously skewed — most filings are small, a few are very large.
+
+Now notice what you cannot do with this. **The amount is per filing, not per
+issue and not per contact.** A firm reporting $150,000 across nine issue areas
+does not tell you how much went to any one of them. There is no requirement to
+say, so nobody does.
+
+You also cannot see **who was met, or when**. The filing names the House, the
+Senate, an agency — not a person, not a date, not a meeting. Compare that to the
+precision of the covered-position field, and ask why one was written strictly
+and the other loosely.
+
+# Step 10 — What you can now say
+
+**You can say** that more than a quarter of registered federal lobbyists claim
+a prior government position, and that many of those claims **name a specific
+member of Congress** — self-reported evidence of a revolving door, in a federal
+database.
+
+**You can say lobbying concentrates on appropriations and on Congress itself**,
+in that order.
+
+**You cannot say** how much was spent on any issue, who was actually met, when,
+or what was asked for. And you cannot report a national total from this sample.
+
+**The most transferable finding is about the regime, not the lobbyists.**
+Disclosure was chosen instead of prohibition, and it was designed so that the
+two facts people most want — how much, on what — cannot be recovered from it.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Firms versus causes.** Group `filings.csv` by `registrant` and by
+`client`. Which registrants appear most often, and what does it mean that the
+same handful of firms represents dozens of unrelated clients? Is that expertise
+or access?
+
+**Option B — Search the door.** The `former_government_position` field is free
+text. Count how many mention "Senator", "Representative", "Chief of Staff", or a
+named agency (`grepl`). Which kind of former job is most common, and which would
+you expect to be most valuable to a client?
+
+**Option C — What the sample costs you.** We have 8% of one quarter. Which of
+the numbers in this lab would you still trust, and which would you not? Be
+specific: rates versus totals versus rankings.
+
+**Option D — Your own question.** 1,500 filings, 773 lobbyists, 76 issue areas.
+
+# What this lab cannot tell you
+
+- **Whether lobbying works.** No outcomes here at all. The filings record effort
+  and expenditure, never results.
+- **The real totals.** 8% of one quarter of one year, and not a random 8% —
+  it is whatever the API returned first. Rankings and rates are informative;
+  sums are not.
+- **Who was actually met.** The law requires naming the chamber or agency, not
+  the person, meeting or date.
+- **Anything about the unregistered.** People who influence policy without
+  meeting the legal definition of "lobbyist" — strategic advisers, consultants
+  under the time threshold — file nothing. **The disclosure regime measures the
+  part of the activity that agreed to be measured.**
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- More than one in four lobbyists disclosed a former government job. Is the
+  disclosure requirement a solution to the revolving door, or a substitute for
+  one?
+- The covered-position field is precise and the money field is vague. Who
+  benefits from that asymmetry?
+- The data is public and the API hands it over 25 rows at a time. Does that
+  count as public?
+
+***
+
+### Where the data came from
+
+**United States Senate, Lobbying Disclosure Act database**, filings API —
+second quarter of 2024. <https://lda.senate.gov/api/v1/filings/>
+
+No key required, and **rate-limited to 25 records per request for anonymous
+users**, which is why this is a 1,500-filing sample of 19,016. The build is in
+`data/build-data.py`, which throttles deliberately and says so.
+
+Reporting is required by the **Lobbying Disclosure Act of 1995**, as amended by
+the Honest Leadership and Open Government Act of 2007.

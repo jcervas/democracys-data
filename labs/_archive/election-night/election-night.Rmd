@@ -1,0 +1,360 @@
+---
+title: "Lab 11: The Midterms, Two Days Later"
+subtitle: "84-355 Democracy's Data | Week 11"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+The country voted on Tuesday. It is Thursday.
+
+Every other lab this term has looked at an election that finished long ago, with
+the answer already known and the arguments about it already settled. Today the
+count is barely finished, some races are not called, and nobody yet knows what
+the story is. You are going to work it out from the numbers, in the same two
+days that the people writing the analyses you will read next week are working on
+theirs.
+
+You have one advantage over them: you wrote down what you expected **before** it
+happened. That is the only way to find out whether you understood anything.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: The map, as it looked in advance
+
+```{r read-landscape}
+sen <- read.csv("data/senate_2026_landscape.csv", stringsAsFactors = FALSE)
+nrow(sen)
+table(sen$party)
+```
+
+The Senate is split into three classes and one faces the voters every two years.
+**Class 2 was up in 2026: 33 seats, of which Republicans were defending 20 and
+Democrats 13.**
+
+Which side is defending more seats is not a strategic decision. It is an accident
+of which states happened to elect whom six years ago, compounded by a rule
+written in 1789. Before a single vote was cast, one party had 20 chances to lose
+something and the other had 13.
+
+```{r landscape}
+sen[order(sen$abs_margin),
+    c("state", "senator_last", "party", "pres24_winner", "pres24_margin")]
+```
+
+***
+
+# Part 2: The baseline
+
+The simplest possible prediction: **each seat goes to the party whose
+presidential candidate carried that state in 2024.** No polling, no fundraising,
+no candidate quality — just the last time everyone voted.
+
+```{r baseline}
+sen$baseline_party <- ifelse(sen$pres24_winner == "Trump", "Republican", "Democrat")
+
+c(baseline_R = sum(sen$baseline_party == "Republican"),
+  baseline_D = sum(sen$baseline_party == "Democrat"))
+
+sum(sen$hostile_turf)
+sen[sen$hostile_turf,
+    c("state", "senator_last", "party", "pres24_winner", "pres24_margin")]
+```
+
+> Only **three** of the 33 seats were held by the party that lost that state in
+> 2024: **Peters in Michigan** (Trump +1.4), **Ossoff in Georgia** (Trump +2.2),
+> and **Collins in Maine** (Harris +6.9).
+>
+> Everywhere else, the seat and the state already agreed. If nothing else
+> happened, almost nothing would change.
+
+That is the null hypothesis for tonight. Elections are interesting exactly to the
+extent that they defeat it.
+
+```{r near-misses}
+sen[sen$abs_margin < 8,
+    c("state", "senator_last", "party", "pres24_winner", "pres24_margin")]
+```
+
+***
+
+# Part 3: How good is that baseline, really?
+
+Before trusting it, test it on an election we already know the answer to. In
+2024, did each House district elect the party that won it for president?
+
+```{r rehearsal}
+reh <- read.csv("data/rehearsal_house_2024.csv", stringsAsFactors = FALSE)
+
+c(districts = nrow(reh),
+  went_as_baseline_implied = sum(reh$as_expected),
+  pct = round(100 * mean(reh$as_expected), 1))
+```
+
+> **The baseline was right in 418 of 433 districts — 96.5% of the time.**
+
+A prediction that requires no information about the candidates, the campaigns,
+the money or the polls is right nineteen times in twenty. This is what
+polarization means operationally, and it is why the fifteen exceptions are worth
+knowing by name:
+
+```{r exceptions}
+reh[!reh$as_expected,
+    c("district", "dem_share", "pres_party", "house_rep", "house_rep_party")]
+```
+
+Every one of them is a district close to even, and most are held by an incumbent
+who has survived by being personally known. **Incumbency is what the baseline
+does not contain**, and it is almost the only thing that beats it.
+
+Keep this number in your head for the rest of the lab: **96.5%**. Anything you
+conclude tonight has to be measured against a stupid rule that is right that
+often.
+
+***
+
+# Part 4: The returns
+
+```{r results-switch}
+# ============================================================
+# ON 5 NOVEMBER: change this to FALSE and make sure
+# data/results_senate_2026.csv exists.
+# ============================================================
+REHEARSAL <- TRUE
+```
+
+```{r load-results}
+if (REHEARSAL) {
+  res <- NULL
+  cat("Running in rehearsal mode -- no 2026 results loaded.\n")
+} else {
+  res <- read.csv("data/results_senate_2026.csv", stringsAsFactors = FALSE)
+  res <- merge(sen, res, by = "state")
+  res$as_expected <- res$winner_party == res$baseline_party
+  cat("Loaded", nrow(res), "Senate results.\n")
+}
+```
+
+```{r results-summary, eval = !REHEARSAL}
+# Seats won by each party
+table(res$winner_party)
+
+# Net change against the seats as they were held going in
+c(held_before_R = sum(res$party == "Republican"),
+  won_now_R     = sum(res$winner_party == "Republican"))
+
+# Where the baseline failed
+res[!res$as_expected,
+    c("state", "senator_last", "party", "pres24_margin",
+      "winner_party", "dem_pct")]
+
+round(100 * mean(res$as_expected), 1)
+```
+
+```{r results-plot, eval = !REHEARSAL, fig.width = 8, fig.height = 6}
+r <- res[order(res$pres24_margin), ]
+plot(r$pres24_margin, r$dem_pct, pch = 19, cex = 1.4,
+     col = ifelse(r$winner_party == "Democrat", "#2166AC", "#B2182B"),
+     xlab = "2024 presidential margin (positive = Trump)",
+     ylab = "Democratic share of the 2026 Senate vote (%)",
+     main = "2026 Senate results against the 2024 baseline")
+abline(h = 50, lty = 2); abline(v = 0, lty = 2)
+text(r$pres24_margin, r$dem_pct, r$state, pos = 3, cex = 0.65)
+```
+
+**In rehearsal mode the chunks above do not run.** They are written, checked
+against the 2024 rehearsal file, and waiting. On Thursday morning your
+instructor will drop the results file into `data/` and flip one switch.
+
+***
+
+# Part 5: What to look for when the numbers land
+
+Four questions, in the order worth asking them.
+
+**1. Did the baseline hold?** Start with the count of seats that went the way
+2024 implied. If it is near 96%, the election was not about persuasion; it was
+about turnout and the calendar. If it is much lower, something real moved.
+
+**2. Where did it fail, and in which direction?** A handful of exceptions all
+favouring one party is a national swing. A handful scattered in both directions
+is noise plus incumbency. These look completely different and are easy to
+confuse when you are reading about only the exciting races.
+
+**3. Did the states move together?** In a nationalised election, nearly every
+state shifts by a similar amount in the same direction. Compare each state's
+Democratic Senate share to its 2024 presidential share and look at the spread of
+those differences, not just the average. A tight cluster means one national
+verdict; a wide scatter means thirty-three local elections.
+
+**4. Was the forecast any good?** You read the Senate Forecast Explorer before
+the election. A forecast that said a race was 70/30 and lost is not thereby
+wrong — 30% things happen 30% of the time. The only fair test is across many
+races at once: of everything it called 70/30, did roughly 70% come in? You will
+not have enough races to settle that. Say so.
+
+***
+
+# Part 6: What you cannot say on Thursday
+
+**The count is not finished.** Several states take days or weeks. California and
+Arizona in particular count large numbers of mail ballots after election day, and
+those ballots have historically leaned more Democratic than election-day ballots
+— so early returns can move steadily in one direction as counting proceeds. A
+margin you cite today may not be the final margin.
+
+**Turnout figures are provisional.** The denominator — how many people were
+eligible — is an estimate that gets revised for months.
+
+**Exit polls are not results.** They are surveys, with all of Week 10's problems,
+and they are weighted to the reported outcome as it comes in.
+
+**And you are two days in.** The people who study elections for a living will
+publish their real analyses months from now, using precinct data that does not
+exist yet. What you can do today is describe what happened and be honest about
+the parts you cannot yet see. That is a genuinely useful skill and it is what
+most published election-night commentary fails at.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.**
+
+Pick **one**.
+
+***
+
+### Option A — Judge your own prediction
+
+In Week 10 you wrote down what you expected: how many Senate seats each party
+would hold, and which specific races you thought would be close.
+
+```{r opt-a}
+# Fill these in from what you wrote in Week 10
+my_predicted_R_seats <- 22          # <- your number
+my_predicted_D_seats <- 11          # <- your number
+
+# The naive baseline, for comparison
+c(baseline_R = sum(sen$baseline_party == "Republican"),
+  baseline_D = sum(sen$baseline_party == "Democrat"))
+```
+
+**Write about:** compare your prediction to the actual result **and** to the
+baseline. The interesting question is not whether you were right — it is whether
+you beat the stupid rule. If you did not, what were you adding when you deviated
+from it? Most published forecasting adds very little to the baseline and charges
+a great deal of attention for it.
+
+***
+
+### Option B — Nationalised or local?
+
+```{r opt-b}
+# In rehearsal mode this runs on the 2024 House districts.
+# After the election, set REHEARSAL <- FALSE above and it will run on the Senate.
+if (REHEARSAL) {
+  x <- reh
+  x$shift <- x$dem_share - 50
+  cat("Rehearsal: spread of district Democratic share around 50\n")
+} else {
+  x <- res
+  x$shift <- x$dem_pct - (50 - x$pres24_margin / 2)
+  cat("2026: each state's Senate result minus its 2024 presidential baseline\n")
+}
+
+c(mean_shift = round(mean(x$shift, na.rm = TRUE), 2),
+  sd_shift   = round(sd(x$shift, na.rm = TRUE), 2),
+  n          = sum(!is.na(x$shift)))
+
+hist(x$shift, breaks = 20, col = "#BBBBBB", border = "white",
+     xlab = "Shift relative to baseline (points)",
+     main = "How much did places move, and did they move together?")
+abline(v = 0, lty = 2, lwd = 2)
+```
+
+**Write about:** the **mean** tells you which way the country moved; the
+**standard deviation** tells you whether it moved as one country. Report both.
+A large mean with a small spread is a national verdict. A mean near zero with a
+large spread is thirty-three separate contests that happened to share a date.
+Which did we just have, and what does your answer imply about whether "the
+voters sent a message"?
+
+***
+
+### Option C — The seats that were never in doubt
+
+```{r opt-c}
+safe <- sen[sen$abs_margin >= 15, ]
+c(safe_seats = nrow(safe), of_total = nrow(sen))
+safe[order(-safe$abs_margin),
+     c("state", "senator_last", "party", "pres24_margin")]
+```
+
+**Write about:** how many of the 33 seats were realistically settled before the
+campaign began? Connect it to Week 4 (13 competitive states), Week 6 (26 states
+that got no candidate visits at all) and Week 15 (four out of five House seats
+uncompetitive). You have now measured the same phenomenon four times with four
+different instruments. Say what it adds up to — and whether a Senate seat being
+safe is the same kind of problem as a House seat being safe, given that nobody
+draws state lines.
+
+***
+
+### Option D — Ask your own question
+
+Something happened on Tuesday that nobody expected. Find it in the numbers and
+explain it.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at an election two days old and say something true
+about it while being honest about what you cannot yet know.
+
+***
+
+## Where the data came from
+
+**The 2026 Senate map** — Senate class membership from
+`@unitedstates/congress-legislators`
+(<https://unitedstates.github.io/congress-legislators/legislators-current.csv>),
+joined to the 2024 presidential results by state used in Weeks 1, 2 and 6.
+
+One caveat that matters. The `senator_last` column is **whoever held the seat
+when this file was built**, not necessarily whoever appeared on the ballot.
+Retirements, primary defeats and appointments all break that assumption, and
+some of them will have happened. Treat the column as "the seat currently held
+by" and check the actual candidates before relying on any individual row.
+
+**The rehearsal file** — 2024 House results next to the presidential result in
+the same district, from the Week 15 file. Used so that every chunk in the
+post-election half of this lab could be written and tested before an election
+that had not yet happened.
+
+**The 2026 results** — added on the morning of 5 November. There is no national
+source of live returns, because, as Week 2 established, the United States has no
+national election administrator. `data/build-data.R` lists the options in order
+of preference and writes a template with the required columns. Typing thirty-three
+numbers in by hand from a news site is a completely defensible method, and if
+that is what happened, the lab should say so out loud.

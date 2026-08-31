@@ -1,0 +1,241 @@
+---
+title: "Data Session 8, part 1: You Are the Sample"
+subtitle: "84-355 Democracy's Data | This room against the Cooperative Election Study"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number come from?
+
+> *"Forty-two percent of Americans say…"*
+
+On the first day of class you filled in a survey. It was not an icebreaker. It
+was a **replication of the Cooperative Election Study** — the same questions, in
+the same words, with the same answer options, because that is the only way a
+comparison means anything.
+
+Today you meet the real thing. The **CES 2024** interviewed **60,000 people**,
+which makes it one of the largest political surveys in the world, and it is free
+for anyone to download.
+
+You are about to find out how much this room resembles the country. **The
+interesting part is not that it doesn't.** It is *which* differences are real,
+which are your age, and which are an artefact of how both surveys were built.
+
+# Part 1 — The two samples
+
+```{r load}
+b <- read.csv("data/ces2024_benchmarks.csv", stringsAsFactors = FALSE)
+
+f <- if (file.exists("data/class_responses.csv"))
+       "data/class_responses.csv" else "data/class_responses_EXAMPLE.csv"
+cls <- read.csv(f, stringsAsFactors = FALSE)
+
+cat("class file in use:", f, "\n")
+if (grepl("EXAMPLE", f))
+  cat("\n*** THIS IS THE PLACEHOLDER FILE. The numbers below are invented.\n",
+      "*** Real class responses have not been loaded yet.\n")
+
+n_class <- max(table(cls$variable))   # one row per student per question
+c(students = n_class,
+  questions = length(unique(cls$variable)),
+  rows = nrow(cls),
+  ces_respondents = 60000,
+  ratio = round(60000 / n_class))
+```
+
+The CES has roughly **three thousand times** as many people as this room. Keep
+that number in mind for Part 4, when it turns out to matter much less than you
+would think.
+
+# Part 2 — Side by side
+
+```{r compare}
+share <- function(v) {
+  x <- cls$code[cls$variable == v]
+  bb <- b[b$variable == v, ]
+  cnt <- as.vector(table(factor(x, levels = bb$code)))
+  data.frame(category = bb$category,
+             class_pct = round(100 * cnt / sum(cnt), 1),
+             ces_unweighted = bb$pct_unweighted,
+             ces_weighted   = bb$pct_weighted,
+             stringsAsFactors = FALSE)
+}
+
+share("pid7")
+```
+
+```{r compare-ideo}
+share("ideo5")
+```
+
+```{r plot-pid}
+p <- share("pid7")
+m <- rbind(class = p$class_pct, CES = p$ces_weighted)
+barplot(m, beside = TRUE, names.arg = sub(" ", "\n", p$category),
+        col = c("#C41230", "#2c7fb8"), las = 2, cex.names = 0.6,
+        ylab = "percent", legend.text = c("this room", "CES 2024 (weighted)"))
+```
+
+Read the party-ID and ideology tables together and say what you see before
+reading on.
+
+# Part 3 — What weighting does
+
+Look again at the last two columns of Part 2. They are **the same 60,000
+people**, counted twice.
+
+```{r weights}
+b$shift <- b$pct_weighted - b$pct_unweighted
+head(b[order(-abs(b$shift)),
+       c("variable", "category", "pct_unweighted", "pct_weighted", "shift")], 6)
+```
+
+**The largest adjustment in the entire file is voter registration: 91.5% of CES
+respondents say they are registered, and the weights cut that to 72.5%.**
+Nineteen points.
+
+That is not a correction for a bad question. It is a correction for **who agreed
+to be in an online panel in the first place.** People who opt into political
+surveys are much more likely to be registered, more likely to follow the news —
+`newsint` moves nearly five points — and more likely to be strong partisans.
+Strong Democrats fall from 27.6% to 21.9%.
+
+**Every CES number you have ever seen quoted has been through this.** The
+weighted column is what gets reported. The unweighted column is what the
+researchers actually collected.
+
+```{r weights-plot}
+v <- b[b$variable == "votereg", ]
+m <- rbind(raw = v$pct_unweighted, weighted = v$pct_weighted)
+barplot(m, beside = TRUE, names.arg = v$category,
+        col = c("grey65", "#2c7fb8"), ylab = "percent",
+        legend.text = c("what they collected", "what they report"))
+```
+
+Now the uncomfortable question: **our class survey has no weights at all.**
+Nobody built them, because you cannot weight a sample of nineteen to a
+population. So the class column in Part 2 is the equivalent of the grey bars —
+raw, uncorrected, and describing whoever happened to be in the room.
+
+# Part 4 — What the class comparison can and cannot show
+
+```{r educ}
+share("educ")
+```
+
+Some differences here are **certain, structural, and boring**. You are all
+students, so education looks nothing like the country's. That tells you nothing
+about politics; it tells you that a class of undergraduates is a class of
+undergraduates.
+
+```{r age-note}
+share("newsint")
+```
+
+Others are **genuinely interesting but confounded**. If the class follows news
+less than the country, is that because you are 20, or because you are at
+Carnegie Mellon, or because our survey was taken in class where nobody had
+prepared for it? **The design cannot separate these.** One room, one moment, no
+comparison group.
+
+**And here is the part worth sitting with.** Suppose the class differs from the
+CES by fifteen points on some question. With nineteen people, the margin of
+error on our own estimate is roughly:
+
+```{r moe}
+n <- n_class
+round(100 * 1.96 * sqrt(0.25 / n), 1)
+```
+
+**About twenty-two points.** So a fifteen-point gap is not a finding. It is
+noise, and it would take a much bigger room before it stopped being noise.
+
+This is the same lesson as part 2 of today's session from the other end: there,
+a survey of 60,000 got turnout wrong by systematic bias that no sample size
+could fix. Here, a survey of nineteen cannot detect anything, however true it
+is. **Sample size and bias are different problems, and neither one fixes the
+other.**
+
+# Part 5 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — A different variable.** `share()` works for any of the seven:
+gender4, educ, race, pid7, ideo5, newsint, votereg. Pick one nobody discussed,
+report the comparison, and say whether the difference is structural, political,
+or noise.
+
+**Option B — Collapse the categories.** Seven-point party ID has eight
+categories and nineteen people, so most cells have one or two students. Collapse
+to three (Democrat / Independent / Republican) by summing codes 1–3, 4, and 5–7,
+and redo the comparison. Does the picture change, and what did collapsing hide?
+
+**Option C — Which column is the right comparison?** Part 2 gives you both the
+weighted and unweighted CES. For comparing against *this class*, which one
+should you use, and why? There is a real argument on both sides — make it.
+
+**Option D — Your own question.** Seven variables, 39 benchmark categories,
+one room.
+
+# What this lab cannot tell you
+
+- **Whether the class is unusual for a class.** We have no other classroom to
+  compare against. Every difference gets attributed to "being students," which
+  is untestable here.
+- **Anything with confidence.** Nineteen people. See Part 4.
+- **Whether people answered honestly.** A survey taken in a room where the
+  instructor can see your screen is not a private survey. The CES is taken alone
+  at home, which is a different instrument even when the words are identical.
+- **What the CES itself gets wrong.** It is an opt-in online panel matched to a
+  target sample, not a random sample of Americans. Weighting adjusts for what
+  the researchers knew to adjust for. Part 2 of today's session shows the CPS —
+  a genuine probability sample, ten times the size — still missing turnout.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- 91.5% of CES respondents say they are registered; the weights cut it to 72.5%.
+  What is that adjustment actually doing, and would you trust it?
+- Our class differs from the country on something. Pick the difference you find
+  most interesting and say whether you think it is real.
+- You answered these questions before you knew what they were for. Would you
+  answer differently now?
+
+***
+
+### Where the data came from
+
+**CES 2024** — Cooperative Election Study Common Content, 2024, Data Release 2
+(Ansolabehere, Schaffner and Pope), Harvard Dataverse,
+<https://doi.org/10.7910/DVN/X11EP6>. 60,000 respondents, 694 variables,
+184 MB. The committed benchmark file is derived from it; the weight is
+`commonweight`.
+
+**Value labels were verified against the official Guide to the 2024 CES**, not
+assumed — which mattered, because the guide lists categories in a different
+order than their numeric codes.
+
+**Class responses** come from the replication survey you took on the first day
+of class, recoded to CES codes. If the file above says `EXAMPLE`, the class
+numbers on this page are invented placeholders and only the CES columns are
+real.

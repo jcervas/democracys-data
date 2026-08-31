@@ -1,0 +1,149 @@
+---
+title: "Distributions, and the Summaries That Hide Them"
+subtitle: "Four hundred House districts drawn four ways, and an average that describes almost nothing"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("distributions-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+In the `r LAST` election, `r NV` House races had two candidates and a share to record. The Democratic share of the two-party vote across those `r NV` races had a mean of **`r p1(MEAN)`%** and a median of **`r p1(MED)`%**.
+
+Those two numbers agree with each other to within `r p2(abs(MEAN - MED))` of a point, which normally means a distribution is well behaved and either summary will do. Here it means something else. **Almost no district in the country looks like either number.**
+
+This chapter is about that gap. It draws one variable four ways: a box, a histogram, a cumulative curve, and a stack of years. The argument is not that one of them is right. Each one answers a different question and destroys the evidence for the others, and a reader who has only ever seen one form has been handed a conclusion rather than a distribution.
+
+## One variable, four hundred times
+
+Every number in this chapter is the same column read four ways.
+
+```{r one-row}
+```
+
+```{r varmap}
+```
+
+`dv` is a **share of the two-party vote**, not a share of all votes, and not a margin. A district at 50 split evenly between the two major parties. A district at 70 gave the Democrat seven of every ten votes cast for either major party.
+
+## The summaries, which agree
+
+```{r summ}
+```
+
+Read that table on its own and a picture assembles itself: a distribution centred a shade under even, spread about fifteen points either way, with half the districts between `r p1(P25)` and `r p1(P75)`. It is the picture a well-behaved bell would produce, and every number in the table is correct.
+
+> **Before you read on, commit to a view.** On the evidence above, **how many of
+> the `r NV` districts do you expect to sit within five points of even?** Write
+> the number down. The table gives you everything you need to guess, and the
+> guess is the point.
+
+## A box says one thing
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The same `r NV` numbers, twice.** Above, the boxplot the summary table implies: a median at `r p1(MED)`%, a box from `r p1(P25)` to `r p1(P75)`, whiskers to the extremes, and not a single point flagged as an outlier. Below, the districts themselves, jittered so they do not stack — hover any one for its district code. The dashed line is the median carried down from the box.
+
+The boxplot is not wrong. Every mark on it is a correct summary of the numbers below it. But look at where the dashed line falls: it passes through a **thin patch** in the strip. The box has quietly asserted that the middle of the data is where the data is densest, and in this variable that is false.
+
+## A histogram says another
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same numbers again, binned.** The control sets the bin width; nothing else changes. At five points the shape is unmistakable and it is not a bell — it is **two hills with a valley between them**, and the median sits in the valley. There are `r B45` districts in the five points below even, against `r B40` in the five points below that and `r B50` in the five points above.
+
+Now widen the bins to twelve or fifteen. The valley closes, the two hills merge, and the picture becomes the well-behaved single hill the summary table implied. **No number changed.** The only thing that changed is a parameter nobody is obliged to report, and a histogram published without its bin width is an argument with a step missing.
+
+The two peaks sit near `r p1(PKR)`% and `r p1(PKD)`%. A district at either peak is not competitive: it is a seat one party wins comfortably. The modal American House district is safe, and there are two kinds of it.
+
+## A cumulative curve answers the question you asked
+
+A histogram is a good way to see a shape and a bad way to answer *how many*. The question this chapter opened with, how many districts are close to even, is a counting question. There is a form that answers it exactly.
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The same numbers as a cumulative curve.** For any share on the horizontal axis, the curve gives the percentage of districts at or below it. Set the band and the figure reads the count off the curve directly: at ±5 points it is **`r p1(W5)`%** of contested districts, and at ±10 points **`r p1(W10)`%**.
+
+Compare that with the guess you wrote down. The summary table said the middle half of districts ran from `r p1(P25)` to `r p1(P75)`, which is a spread of `r p1(P75 - P25)` points — and it is easy to read that as *the middle is crowded*. It is not. The curve climbs steeply on both flanks and **flattens through the middle**, and a flat stretch on a cumulative curve is exactly what an empty region looks like.
+
+> **A second prediction.** The valley in Figure 2 is often explained as
+> something recent — a consequence of the last two redistricting cycles.
+> **Do you expect the valley to be there in 1976?** Say what you would expect
+> the shape to look like fifty years ago, before you turn the page.
+
+## Five elections, stacked
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.9}
+```
+
+```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Five elections, same bandwidth, same axis.** The dashed line is an even split and the red dot is that year's median. Hover a band for its counts.
+
+The valley is not new. It is there in 1976, when only `r p1(by$within5[by$year == 1976])`% of contested races fell within five points of even. That is a *lower* share than in `r LAST`. What has moved is not the hole but the position of the whole distribution. In the 1970s and 1980s it sat well to the Democratic side of even, and it has slid left since.
+
+A reader shown only `r LAST` would reasonably conclude that the two-hill shape is a modern artifact of redistricting. Five elections stacked say otherwise, and the only reason to believe the stack over the single year is that it contains more of the record.
+
+## What this chapter cannot tell you
+
+**The least competitive races are missing from every figure above.** `dv` is a share of the *two-party* vote, and `r UNC` of the `r SEATS` seats in `r LAST` had only one major-party candidate. No second party, no share to compute. Those seats are not in the `r NV`.
+
+They are also, by definition, the least competitive seats in the country. So every figure in this chapter is drawn on a set with the extreme already removed. The valley would be no shallower with them; the flanks would be taller.
+
+That is worth stating plainly because it is the ordinary case rather than a special one. A variable that cannot be computed for some units silently deletes those units, and the deletion is patterned rather than random almost every time.
+
+**None of these forms is the honest one.** The boxplot is not lying: its quartiles are correct. The histogram is not lying either, at any bin width. The argument of this chapter is not that some charts deceive and others do not. It is that **every summary is a choice about what to discard**, and the only defence is to draw more than one and say which you chose.
+
+**A share is not a seat.** Nothing here counts who won. A district at 49% elected a Republican and a district at 51% elected a Democrat, and this chapter has treated them as neighbouring numbers, which they are, and as similar outcomes, which they are not.
+
+Finally, the density curves in Figure 4 use one bandwidth for all five years, chosen once and applied everywhere. That is a defensible choice and it is still a choice — the same choice the bin-width control in Figure 2 lets you make and unmake. There is no setting of it that is not an argument.
+
+## Sources
+
+- Jacobson, Gary C. *House Elections Data, 1946–2014.* Democratic share of the
+  two-party vote, by district and year.
+- Clerk of the U.S. House of Representatives. *Statistics of the Congressional
+  Election*, 2016 through 2024 editions.
+  <https://clerk.house.gov/Votes/ElectionStatistics>
+- Both are read through this corpus's own
+  [house-competition chapter](../house-competition/house-competition-brief.html),
+  which assembles them and documents its repairs. The figures here read that
+  assembled file rather than rebuilding it.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`by_year.csv`](data/derived/by_year.csv), [`districts.csv`](data/derived/districts.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `by_year.csv` has `mean` and `median` for every year alongside `sd`. Find the years where mean and median are furthest apart. What is the distribution doing there?
+- `by_year.csv` also counts `uncontested` seats. Recompute the average with and without them. Which number describes the country, and which describes the ballot?
+- `by_year.csv` carries `within5` and `within10`. Follow them across the series. Has the number of genuinely close districts fallen, and by how much?
+- `districts.csv` is one row per district per year. Pick a single year and build a histogram in a spreadsheet. Then say what the mean for that year was hiding.
+

@@ -1,0 +1,276 @@
+---
+title: "Tue Oct 20 Key: The Most Reliable Thing in American Politics"
+subtitle: "84-355 Democracy's Data | The base rate — test 1 day, revisited in Session 10 | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+h <- read.csv("data/house_midterms.csv", stringsAsFactors = FALSE)
+m <- h[h$midterm & !is.na(h$pres_party_change), ]
+m$pct <- 100 * m$pres_party_change / m$seats
+```
+
+All Part 6 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+One sentence — *the president's party loses House seats at the midterm* —
+forecasts the direction of a national election 88% of the time across 41 tries,
+which is more than any poll, model or pundit in this course manages.
+
+***
+
+# The findings
+
+```{r headline}
+c(midterms = nrow(m),
+  lost     = sum(m$pres_party_change < 0),
+  pct_lost = round(100 * mean(m$pres_party_change < 0)),
+  mean     = round(mean(m$pres_party_change), 1),
+  median   = median(m$pres_party_change))
+```
+
+- **41 midterms since 1858. The president's party lost seats in 36 — 88%.**
+- **Mean −32.5 seats, median −28.**
+- Five exceptions: **1866 (+37), 1902 (+7), 1934 (+9), 1998 (+4), 2002 (+8)**.
+- Worst: **1894 (−125)**, 1874 (−96), 1890 (−93), 1922 (−77), 1938 (−72).
+
+***
+
+# The idea to teach
+
+Two, and the second is the one that will still be useful in ten years.
+
+**First:** this is the single most reliable regularity students will meet all
+term, and it requires no data collection, no model and no money. Set it against
+Session 9 next week — a poll of 1,000 costs real money and gets you a few points of
+precision on one question in one state. This gets you the direction of a
+national election from a sentence.
+
+**Second, and harder:** **Part 4 gives two different answers depending on the
+unit.** Raw seats say the penalty has collapsed since the nineteenth century.
+As a share of the chamber it has fallen too, but far less, and it *rises* again
+in the most recent era. The House had 226 seats in 1866 and has 435 now;
+comparing raw counts across that change is the same error as comparing county
+vote totals without normalising, which they met in Session 4.
+
+If a student leaves able to ask "per what?" before reading a trend, the lab has
+done its job.
+
+***
+
+# Option A — Drop Reconstruction
+
+## Verified output
+
+```{r a}
+a <- m[m$election_year >= 1878, ]
+rbind(all   = c(n = nrow(m), pct_lost = round(100*mean(m$pres_party_change < 0)),
+                mean = round(mean(m$pres_party_change), 1)),
+      from_1878 = c(n = nrow(a), pct_lost = round(100*mean(a$pres_party_change < 0)),
+                mean = round(mean(a$pres_party_change), 1)))
+```
+
+| | n | lost | mean |
+|---|---|---|---|
+| all | 41 | 88% | −32.5 |
+| 1878+ | 37 | 89% | −32.8 |
+
+**Almost nothing moves.** That is the answer, and the lab tells students to
+expect it.
+
+## What a good answer says
+
+**3/4:** Reports that the exclusion barely changes anything.
+
+**4/4:** Says why that is informative rather than disappointing. One observation
+out of 41 cannot move a mean much — 1866 is a genuinely bad case on the merits
+(Congress was refusing to seat Southern delegations, so the chamber is not
+comparable), and it *still* does not matter arithmetically. **Being right to
+exclude a case and finding the exclusion changes nothing are two separate
+things**, and a student who separates them is doing real methodological work.
+
+**4/4, best:** notices the corollary — if one bad case does not move the result,
+then the result is also not being rescued by any single good case. Robustness
+cuts both ways.
+
+**Common stumble:** concluding "so it didn't matter, I shouldn't have bothered."
+The check is what licenses the claim. You do not know it is robust until you
+look.
+
+***
+
+# Option B — First term or second? ("the six-year itch")
+
+## Verified output
+
+```{r b}
+h2 <- h[order(h$election_year), ]
+run <- integer(nrow(h2)); r <- 0
+for (i in seq_len(nrow(h2))) {
+  r <- if (i == 1 || h2$pres_party[i] != h2$pres_party[i-1]) 0 else r + 2
+  run[i] <- r
+}
+h2$tenure <- run
+mm <- h2[h2$midterm & !is.na(h2$pres_party_change), ]
+mm$pct <- 100 * mm$pres_party_change / mm$seats
+early <- mm[mm$tenure <= 2, ]; later <- mm[mm$tenure >= 6, ]
+rbind(early = c(n = nrow(early), seats = round(mean(early$pres_party_change),1),
+                pct = round(mean(early$pct),1)),
+      later = c(n = nrow(later), seats = round(mean(later$pres_party_change),1),
+                pct = round(mean(later$pct),1)))
+```
+
+| | n | mean seats | mean % |
+|---|---|---|---|
+| party in power ≤2 yrs | 18 | −35.6 | −9.4 |
+| party in power ≥6 yrs | 11 | **−40.3** | **−11.3** |
+
+**The itch is real in direction and weak in evidence.**
+
+## What a good answer says
+
+**3/4:** Finds that later midterms are worse and reports the gap.
+
+**4/4:** Refuses to oversell it. **Eleven observations**, and the difference is
+about five seats — well inside what you would expect from chance with groups
+this small. A student who says "the folk wisdom points the right way but this
+cannot confirm it" is exactly right, and is doing something most published
+commentary does not.
+
+**4/4, best:** notices that the operationalisation is a choice. "Second midterm"
+could mean the second midterm of one president, or six years of one *party*
+holding the White House — and Ford, Johnson and Truman make those different. The
+lab uses party tenure. A student who spots that the answer depends on a
+definition nobody stated has found the real issue.
+
+***
+
+# Option C — Change the eras
+
+## Verified output
+
+```{r c}
+aggregate(cbind(pres_party_change, pct) ~ era, transform(m,
+  era = cut(election_year, c(1857,1900,1950,1980,2000,2030),
+            labels = c("1858-1900","1902-1950","1952-1980","1982-2000","2002-2024"))),
+  function(x) round(mean(x), 1))
+```
+
+| era | mean seats | mean % |
+|---|---|---|
+| 1858–1900 | −40.7 | −12.8 |
+| 1902–1950 | −37.8 | −8.8 |
+| 1952–1980 | −27.9 | −6.4 |
+| 1982–2000 | −17.6 | −4.0 |
+| **2002–2024** | **−25.0** | **−5.7** |
+
+## What a good answer says
+
+**3/4:** Moves the cut points and reports that the trend is broadly stable.
+
+**4/4:** Notices the last row goes back **up** on both measures, so "the penalty
+is shrinking" was never the right description — it fell through the twentieth
+century and has partly rebounded since 2002. Then connects that to **Chapter 10**:
+a rebound in the era of nationalised congressional elections is what the
+nationalisation argument predicts, and it is the raw-seats table that hides it.
+
+**4/4, best:** says the honest thing about era boundaries — with 41 cases split
+five ways, some cells hold three or four elections, and almost any story can be
+produced by moving a line. The right response is not to pick better boundaries
+but to distrust the whole exercise and look at the year-by-year plot instead.
+
+***
+
+# Option D — Their own question
+
+Good versions: is the penalty larger when the president won narrowly; does it
+correlate with how many seats the party gained in the prior presidential year
+(regression to the mean); do the five exceptions share anything (they mostly
+involve a crisis or a scandal aimed at the *other* party).
+
+***
+
+# Part 5 — the lab runs twice
+
+**This lab is deliberately split across two sessions**, and the gap between them
+is the lesson.
+
+**Oct 20, after Test 1.** `CHANGE_2026` is `NA`, so the chunk prints only the
+historical distribution — which is genuinely all anybody has two weeks out.
+**Make every student write a number down and keep it.** Collect them if you can:
+a photo of the board, a Canvas quiz with one numeric field, anything you can
+produce again on Nov 5. If the numbers are not recorded, the second half of this
+lab does not work, because people reliably misremember having predicted whatever
+happened.
+
+**Nov 5, in the election post-mortem.** Reopen this file, enter the seat change,
+re-run. The chunk reports the percentile against all 41 midterms. Ten seconds,
+and it is the payoff for two weeks of waiting.
+
+**The question to ask on Nov 5 is not "who was right."** It is *how many of you
+beat the median?* If the class as a whole did not beat simply reading the median
+off a table, that is the finding — and it is the same lesson as Session 9's
+polling lab the following week, arriving from the other direction. Sophistication is not free, and
+a base rate is very hard to beat.
+
+**If the count is unresolved on Nov 5**, use the best available estimate and say
+out loud that you are doing so. A provisional number with a stated caveat is a
+better lesson than waiting for certainty.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is asking "per what?" — noticing that seats and
+  shares tell different stories and saying which is honest.
+- **Reward calibrated language.** This lab makes it very easy to overclaim.
+  "The president's party always loses" is wrong; 88% is not always.
+
+## Anticipated questions
+
+- *"Why does the president's party lose?"* — Several explanations compete:
+  regression to the mean after presidential coattails, the out-party's supporters
+  being angrier and turning out, and voters balancing power deliberately. The lab
+  does not settle it and should not pretend to. Worth five minutes precisely
+  because the pattern is so clear and the cause is not.
+- *"Is 1866 cheating?"* — Yes, and Option A shows it does not matter. Both things
+  are true.
+- *"Where do the seat counts come from?"* — The House's own party-division table.
+  Say why we did not count members from the DW-NOMINATE file (Session 12): replacements make 449
+  "members" in a 435-seat chamber. This is a live example of a unit-of-analysis
+  error that would have gone unnoticed.
+- *"Could you have forecast 2026 with this?"* — Yes, directionally, and better
+  than most of what students read. That is the uncomfortable point.
+- *"Why start at 1858?"* — Stable two-party Democratic-versus-Republican
+  competition. Earlier Congresses have different party systems and the columns in
+  the source table change names.
+
+## Connections
+
+- **Session 10's election-night lab (Nov 5)** — this one sets the prior;
+  that one delivers the result. Run this first, two weeks ahead, and revisit it
+  live on the night.
+- **Chapter 10** — the nationalisation claim is the week's debate, and Option C
+  is the closest thing to a test of it that we have.
+- **Session 4's vote-targeting lab** — the "per what?" lesson, second appearance: county
+  vote totals there, chamber size here.
+- **Session 9 (polls, models, and markets)** — a one-sentence rule outperforming a 1,000-person poll is
+  worth naming out loud. It is not an argument against polling; it is an argument
+  about what each instrument is for.

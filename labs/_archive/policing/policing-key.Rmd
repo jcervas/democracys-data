@@ -1,0 +1,271 @@
+---
+title: "Key: Proving a Threshold You Cannot See"
+subtitle: "84-355 Democracy's Data | Policing | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+d <- read.csv("data/by_race.csv", stringsAsFactors = FALSE)
+y <- read.csv("data/by_year.csv", stringsAsFactors = FALSE)
+d$search_rate <- 100 * d$searched / d$stops
+d$hit_rate    <- 100 * d$contraband_found / d$searched
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`policing-brief.Rmd`) is now a
+chapter, "A Standard You Cannot Observe": it is organised by argument under prose
+headings and carries four numbered D3 figures rather than numbered steps —
+Figure 1, the same stops under four denominators; Figure 2, what each conditioning
+step discards; Figure 3, search rate against hit rate for all five groups;
+Figure 4, the ten-year series. The lab (`policing.Rmd`) is unchanged and still
+runs Steps 1–10 with the code exposed. **Students should read the brief first.**
+**Step numbers below refer to the lab.** The chapter covers the same ground in the
+same order, so each lab Step has a heading facing it: Steps 1 and 2 = "A traffic
+stop is a decision, and the file records only the outcome"; Steps 3 and 4 = "The
+population at risk of being stopped was never counted" (Figure 1); Step 5 = "Take
+the stop as given"; Step 6 = "Condition once more" (Figure 2); Steps 7 and 8 =
+"What the searches found" (Figure 3); Step 9 = "Ten years, and the ordering never
+flips" (Figure 4); Step 10 = "What can be said, and what cannot", with the
+infra-marginality objection under "The argument about this method".
+
+**One of three labs in the discrimination unit**, alongside redlining and jury
+selection. They are interchangeable and were built to be run in parallel — split
+the room, then have each group explain its inference to the others. **The
+comparison is the payoff:** three different ways of establishing the same kind
+of claim, with different weaknesses.
+
+**This one is the most technically elegant and the most contested.** Prepare for
+a live argument.
+
+Every number below was run against the data file.
+
+***
+
+# The session in one sentence
+
+The comparison everyone reaches for proves nothing, and a second comparison —
+which never needs to know who was driving — implies that officers searched Black
+drivers on evidence that would not have been enough for a white driver.
+
+***
+
+# The findings
+
+```{r headline}
+o <- d[order(-d$search_rate), c("race", "search_rate", "hit_rate")]
+o$search_rate <- round(o$search_rate, 2); o$hit_rate <- round(o$hit_rate, 1)
+o
+```
+
+- Black drivers searched in **15.52%** of stops, white in **3.14%** — **4.9×**.
+- Contraband found in **9.2%** of searches of Black drivers, **24.2%** of white.
+- Asian/Pacific Islander: searched least (1.81%), highest hit rate (36.1%).
+- The pattern is monotone across five groups.
+
+***
+
+# The three things to get said
+
+**1. Steps 3-5 are a trap, and students must fall in it first.** The
+stop-share comparison (Step 3) and then the search-rate comparison (Step 5) are
+what every news story reports, and they genuinely prove nothing — the
+denominator does not exist. **Do not skip to the good part.** A student who
+cannot articulate why "Black drivers are searched five times as often" is
+insufficient has not understood why Step 6 is clever.
+
+**2. The outcome test's move is conditioning** (Step 6). Once a search has happened, the
+question "what did the officer find?" is answerable and the missing denominator
+is irrelevant. **Make somebody state the logic out loud**: a lower bar means more
+searches on weaker evidence, and weaker evidence means fewer finds. It is a
+short argument and it does a great deal of work.
+
+**3. Give the objection its due, then weigh it** (Step 10). Infra-marginality is real:
+average hit rates can differ under an identical bar if the underlying
+distributions differ. Students who like the conclusion will want to wave it away
+and should not be allowed to. Then make them notice the burden it carries here —
+it has to explain the Black and Hispanic results *and* the reverse for
+Asian/Pacific Islander drivers, monotonically, across 905,070 stops.
+
+**The line for the board:** you cannot see the standard, but you can see what it
+let through.
+
+***
+
+# Handling the room
+
+This is charged material and the class will contain people with very different
+priors and, possibly, very different personal experience of traffic stops.
+Three things that help:
+
+- **Keep it on the inference.** The question on the table is what this table can
+  and cannot establish. That is a question everyone can argue about on equal
+  terms, which a conversation about policing in general is not.
+- **Do not let the data settle a question it cannot reach.** It says nothing
+  about any individual officer, and nothing about San Francisco today.
+- **Name the alternative explanations yourself, before a student has to.** It
+  changes the temperature of the room when the objections are on the board as
+  part of the lesson rather than as dissent.
+
+***
+
+# Walking the ten steps
+
+Timings assume 45 minutes on this lab. **The whole design is that the answer
+arrives at Step 7**, after two comparisons have been shown to fail — so do not
+let the room race ahead.
+
+| Step | What it does | Minutes | Watch for |
+|---|---|---|---|
+| **1** What one record is | Establishes that race is the officer's perception and that `contraband_found` exists only when a search happened | 4 | Somebody will want to compare this race variable to the census. Head it off here. |
+| **2** How many | 905,070 stops, 1.6% searched | 2 | — |
+| **3** Stops by race | The table every news story reports | 3 | **Let them draw the wrong conclusion out loud.** It is needed for Step 4 to land. |
+| **4** Why it fails | The denominator does not exist and cannot be built | **7** | The single most important step. Do not rush it. |
+| **5** Search rates | Conditioning on the stop; 15.52% vs 3.14% | 4 | Students think this is the finding. It is not. |
+| **6** The move | State the logic before showing the number | **6** | **Make somebody say it out loud**, then have the room predict Step 7. |
+| **7** Hit rates | 9.2% vs 24.2% | 3 | The reveal. Let it sit. |
+| **8** Both at once | Monotone across five groups | 5 | The Asian/PI point is what makes it hard to explain away. |
+| **9** Every year | Ordering holds 10/10 | 4 | Levels wobble hugely; only the ordering is stable. Say so. |
+| **10** What you can say | Plus infra-marginality | 7 | Do not let students who like the conclusion wave the objection away. |
+
+**Step 6 is the pivot and deserves the prediction.** Ask the room to vote —
+higher, lower, or the same — before running Step 7. Roughly half a class
+predicts "higher," reasoning that more searching means more finding. Having
+committed to a wrong prediction is what makes the result memorable.
+
+**If you are short on time**, compress Steps 1-3 and protect Steps 4, 6 and 10.
+The two comparisons that fail and the objection that survives are the lesson;
+the numbers are just what makes it concrete.
+
+***
+
+# Option A — Did it change?
+
+## Verified output
+
+```{r a}
+y$hit <- 100 * y$contraband_found / pmax(y$searched, 1)
+out <- do.call(rbind, lapply(sort(unique(y$year)), function(yr) {
+  b <- y[y$year == yr & y$race == "black", ]; w <- y[y$year == yr & y$race == "white", ]
+  if (!nrow(b) || !nrow(w)) return(NULL)
+  data.frame(year = yr, black = round(b$hit, 1), white = round(w$hit, 1),
+             gap = round(w$hit - b$hit, 1))
+}))
+out
+```
+
+**The gap never closes.** It runs from 10.6 to 21.3 points across ten years,
+with no trend.
+
+**3/4:** Plots it and reports that the disparity persists.
+
+**4/4:** Notices that the Black hit rate *rises* at the end — 7.6% in 2013 to
+13.1% and 16.0% in 2015–16 — which is what you would expect if searches were
+becoming more selective. Then checks the search rate to see whether fewer
+searches were being made, rather than asserting a reform from one column.
+
+**4/4, best:** Observes that the white hit rate moves around just as much
+(19.3% to 30.7%) with no story attached, so year-to-year wobble is large
+relative to any trend, and ten points is not many. **Refusing to read a trend
+into a noisy series is the right answer here**, and it is the same restraint the
+prediction-market lab asked for.
+
+***
+
+# Option B — Equalise the bar
+
+## Verified output
+
+```{r b}
+b <- d[d$race == "black", ]; w <- d[d$race == "white", ]
+hyp <- round(b$stops * (w$searched / w$stops))
+c(searches_actual   = b$searched,
+  searches_at_white_rate = hyp,
+  fewer_searches    = b$searched - hyp,
+  contraband_actual = b$contraband_found,
+  contraband_if_hit_rate_held = round(hyp * b$contraband_found / b$searched))
+```
+
+Searching Black drivers at the white rate means **4,786 searches instead of
+23,622 — 18,836 fewer, an 80% reduction.** Holding the hit rate constant, finds
+fall from 2,183 to about 442.
+
+**3/4:** Does the arithmetic and states the trade — far fewer searches, less
+contraband found.
+
+**4/4:** Spots that **holding the hit rate constant is exactly the wrong
+assumption**, and that the lab's own argument says so. If the extra searches
+were the weakest ones, cutting them removes the searches least likely to find
+anything, so the hit rate should *rise* and the loss should be far smaller than
+1,741. A student who says the calculation is an upper bound on the cost has
+understood the outcome test better than the calculation does.
+
+**4/4, best:** Asks what the 18,836 searches cost the people searched, and notes
+that the data records the finds and not the cost — so any cost-benefit framing
+is measuring one side of the ledger because that is the side somebody wrote
+down. **That is the course's recurring point about what gets recorded.**
+
+***
+
+# Option C — The other direction
+
+No verified output beyond the main table; grade the reasoning.
+
+**3/4:** Applies the test consistently — a high hit rate and a low search rate
+imply a *higher* bar for Asian and Pacific Islander drivers.
+
+**4/4:** Is uncomfortable with it and says why. The same logic that indicts the
+department for Black drivers implies unusually *favourable* treatment here, and
+students should notice they are more willing to believe the first than the
+second. **Applying a method only where you like the answer is the failure mode
+this whole unit is about.**
+
+**4/4, best:** Notes that "asian/pacific islander" pools very different
+populations, that the group is a small share of searches, and that the hit rate
+is therefore less stable — so the honest reading is a wide interval, not a
+finding. Precision about which conclusions the sample supports is the skill.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is distinguishing the two comparisons and
+  explaining why one survives the missing denominator.
+- **A 2** is reporting the search-rate gap as the finding, after Steps 3-5 have
+  explained why it is not.
+- **Also a 2**, from the other direction: "this proves nothing because
+  correlation is not causation." The outcome test is not a correlation.
+- **Reward anyone who states infra-marginality accurately**, whichever
+  conclusion they draw from it.
+
+## Anticipated questions
+
+- *"Doesn't this just show more crime?"* — No, and this is the question the
+  outcome test exists to answer. More crime in a group would produce a *higher*
+  hit rate, not a lower one. Have this answer ready; it will come up.
+- *"Why San Francisco?"* — Because the file is complete and public. Stanford has
+  dozens of jurisdictions; the finding is not unique to this one.
+- *"Is this still true?"* — Unknown from here. The data ends in 2016.
+- *"Who decides what counts as contraband?"* — Officers, and it varies. A real
+  limitation worth naming: the outcome variable is itself a discretionary
+  judgement, which is the same problem as EAVS's rejection reasons.
+
+## Connections
+
+- **The other two labs in this unit** — redlining (a documented intent, testing
+  whether it still shows) and jury selection (a control group inside the file).
+  **Have the groups compare which inference they trust most.**
+- **RPV** — aggregate patterns, individual conclusions, and the gap between them.
+- **EAVS** — discretion recorded as a category, and what that hides.

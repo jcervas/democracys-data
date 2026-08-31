@@ -1,0 +1,216 @@
+---
+title: "Data Session 8 Key, part 1: You Are the Sample"
+subtitle: "84-355 Democracy's Data | Session 8 — Surveys, two ways | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+b <- read.csv("data/ces2024_benchmarks.csv", stringsAsFactors = FALSE)
+b$shift <- b$pct_weighted - b$pct_unweighted
+```
+
+All code is given to students. Grade the interpretation.
+
+***
+
+# ⚠ Before you teach this
+
+**Replace `data/class_responses_EXAMPLE.csv`.** Export the first-day CES
+replication from Google Forms, recode to CES numeric codes (listed in
+`data/build-data.R`), and save as `data/class_responses.csv` with two columns,
+`variable` and `code`, one row per student per question. The lab picks up the
+real file automatically and prints a warning while the placeholder is in use.
+
+**The placeholder numbers are invented.** Everything in the CES columns is real;
+nothing in the class column is, until you replace the file.
+
+***
+
+**Where this sits.** Session 8 runs two surveys side by side: this one (a single
+instrument, up close) and the CPS turnout lab (one question, sixty years). Part 1
+closes the loop opened on the first day of class — students took the CES
+replication before they knew what a survey was for, and now they meet the
+instrument it was copied from.
+
+Every CES number below was run against the 2024 Common Content, n = 60,000.
+
+***
+
+# The session in one sentence
+
+The class is not the country, most of the reasons are boring, the interesting
+one cannot be separated from the boring ones — and the survey we are comparing
+against has itself been adjusted by nineteen points on the question that matters
+most.
+
+***
+
+# The findings
+
+```{r headline}
+head(b[order(-abs(b$shift)),
+       c("variable", "category", "pct_unweighted", "pct_weighted", "shift")], 5)
+```
+
+- **Voter registration moves 91.5% → 72.5% when weighted. Nineteen points**, the
+  largest adjustment in the file.
+- Strong Democrats **27.6% → 21.9%**.
+- Following news "most of the time" **51.2% → 46.4%**.
+- With n ≈ 19, the class's own margin of error is about **±22 points.**
+
+***
+
+# The three things to get said
+
+**1. The weighted and unweighted columns are the same 60,000 people.** Students
+skate past this. Stop and make somebody say what a weight *is*: a number
+attached to a respondent saying how many people like them the sample should have
+had. **Every CES figure ever quoted at them has been through this**, and the raw
+column is what the researchers actually collected.
+
+**2. What the nineteen points are correcting is self-selection, not error.**
+Nobody lied about being registered. People who agree to join an online political
+panel are simply far more likely to be registered than people who do not. **The
+adjustment is a confession about the sample**, and it is published openly, which
+is more than most polls do.
+
+**3. Nineteen people cannot detect anything.** Do the arithmetic on the board:
+±22 points. Then connect it to the other half of the session — the CPS has
+60,000 respondents and *still* got turnout wrong, because its error was bias,
+not sampling. **Sample size and bias are different problems and neither fixes
+the other.** If students leave with one sentence, this is the one.
+
+**The line for the board:** a bigger sample makes you more precise about
+whatever your sample happens to be.
+
+***
+
+# Handling the room
+
+**Do not let this become a session about how unusual CMU students are.** That is
+true, boring, and unfalsifiable here — we have no other classroom. The
+interesting content is entirely about *the instrument*.
+
+**Anticipate the good question:** "if the class is unrepresentative, why bother?"
+The answer is that the class is not the object of study — the **comparison** is.
+Students learn what a benchmark is by having their own answers benchmarked, and
+they will read the next poll differently for it.
+
+***
+
+# Option A — A different variable
+
+Grade on whether the student sorts the difference into the right bin:
+
+- **Structural**: education, age. Certain, uninteresting, requires no data.
+- **Political**: party, ideology, news attention. Interesting, confounded.
+- **Noise**: anything under about twenty points, given n ≈ 19.
+
+**4/4** requires naming which bin and why. **A student who reports a
+fifteen-point gap as a finding has failed Part 4** and should be marked
+accordingly however fluent the writing.
+
+***
+
+# Option B — Collapse the categories
+
+## Verified output
+
+```{r bb}
+p   <- b[b$variable == "pid7", ]
+grp <- ifelse(p$code %in% 1:3, "Democrat",
+       ifelse(p$code == 4,     "Independent",
+       ifelse(p$code %in% 5:7, "Republican", "Not sure")))
+aggregate(cbind(pct_unweighted, pct_weighted) ~ grp, data = cbind(p, grp), sum)
+```
+
+**Collapsed, the raw CES sample is D+13.5. Weighted it is D+1.9.** The
+adjustment moves the headline partisan balance by more than eleven points.
+
+**3/4:** Collapses correctly and reports that the class's cells were too small
+to read at seven categories.
+
+**4/4:** Says what collapsing hid. Seven-point party ID separates **leaners**
+from independents, and leaners vote like partisans — so the "Independent" column
+shrinks from 13.2% to a much smaller genuinely-unaffiliated group once you know
+the breakdown. Collapsing makes the number stable and throws away the
+distinction the seven-point scale exists to capture.
+
+**4/4, best:** Notices this is a general trade — smaller cells are noisier and
+more informative — and connects it to the class's n. With nineteen students you
+*must* collapse to say anything, and collapsing is exactly what makes the
+comparison less interesting. **There is no sample size at which this design
+works well**, which is a real conclusion.
+
+***
+
+# Option C — Which column is the right comparison?
+
+No single correct answer; grade the argument.
+
+**The case for unweighted:** the class survey has no weights, so comparing it to
+a weighted estimate compares an adjusted number to an unadjusted one. Like to
+like means raw to raw.
+
+**The case for weighted:** the question students actually care about is "how
+does this room differ from the country," and the weighted column is the best
+available estimate of the country. The unweighted column is an estimate of
+nothing — it describes CES panellists.
+
+**3/4:** Picks a side with a reason.
+
+**4/4:** Recognises that the two comparisons answer **different questions** —
+raw-to-raw asks "how do our respondents differ from their respondents," and
+class-to-weighted asks "how does this room differ from America." Both are
+legitimate; they are not interchangeable.
+
+**4/4, best:** Points out that neither is available for the class, because a
+class of nineteen **cannot be weighted to anything** — there is no target
+population it is a sample of. The class is a census of itself. That reframing is
+the most sophisticated answer available.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is refusing to treat a class-vs-country difference
+  as a finding without addressing the margin of error.
+- **A 2** is a list of differences with no account of which are real.
+- **Reward anyone who asks whether the class answered honestly** in a room where
+  the instructor could see their screen. That is a genuine mode effect and it is
+  not in the lab.
+
+## Anticipated questions
+
+- *"Is the CES a random sample?"* — No. It is an opt-in online panel matched to a
+  target sample and then weighted. Say this plainly; students assume "60,000"
+  implies rigour, and size is not design.
+- *"Why is registration weighted down so hard?"* — Because panel members are
+  unusually engaged. The weights push the sample back toward CPS/ACS benchmarks
+  for the adult population.
+- *"Could we weight our class?"* — To what? There is no population of which this
+  room is a sample. Good question, useful answer.
+- *"Are our answers anonymous?"* — Say what is actually true of your Google Form
+  setup **before** the first day, not now.
+
+## Connections
+
+- **Session 3 (ACS margins)** — the first appearance of published uncertainty.
+- **Session 8 part 2 (CPS)** — same session: a huge probability sample that is
+  still wrong. Teach these two back to back and name the contrast.
+- **Session 9 (polls, models, markets)** — *next week*, and this is the
+  groundwork: students who understand weighting will understand house effects.
+- **Session 6 (voter files)** — the CES asks whether you are registered; the
+  voter file *records* it. Self-report against administrative record, again.

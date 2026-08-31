@@ -1,0 +1,462 @@
+---
+title: "Which Rung?"
+subtitle: "84-355 Democracy's Data | Levels of aggregation in election data"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE,
+                      warning = FALSE, fig.width = 7.2, fig.height = 4.2)
+options(scipen = 999)
+
+# Formatting helpers for the inline numbers in the prose below. Every figure in
+# this lab is read out of the CSV that produced it, so nothing here can drift
+# away from the data the chunks print.
+n  <- function(x) format(round(x), big.mark = ",")
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+V  <- function(d, k, col = "value", key = names(d)[1]) d[[col]][d[[key]] == k]
+num <- function(x) abs(as.numeric(gsub("[^0-9-]", "", x)))
+LS <- function(k, col) lst[[col]][lst$level == k]
+EE <- function(k, col) ee[[col]][ee$level == k]
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `levels-of-aggregation-brief.Rmd` first.** This lab runs the same
+> numbered steps with the code exposed. The brief tells you what the question is
+> and why it is hard; this shows you where each number came from — and in Step 6
+> it *runs* the method that fails, rather than reporting that it failed.
+
+***
+
+# Which unit is your claim about?
+
+> *"Turnout was up in the suburbs."*
+
+Every sentence like that names a level of aggregation without saying so. The
+suburbs are made of precincts, which are made of ballots, and they sit inside
+counties, districts, states and a country. **Six of those seven levels are
+available to you. One almost never is.**
+
+This lab walks a single election up the ladder and shows what each step costs.
+
+# Step 1 — The ladder
+
+```{r ladder}
+ld <- read.csv("data/ladder.csv", stringsAsFactors = FALSE)
+ld[, c("rung", "level", "units_nationally", "units_in_georgia", "a_row_is")]
+```
+
+**`r n(ld$units_nationally[ld$level == "ballot"])` ballots.
+`r n(ld$units_nationally[ld$level == "precinct"])` precincts.
+`r n(ld$units_nationally[ld$level == "election jurisdiction"])` election
+jurisdictions. `r n(ld$units_nationally[ld$level == "county"])` counties.
+`r n(ld$units_nationally[ld$level == "congressional district"])` congressional
+districts. `r n(ld$units_nationally[ld$level == "state"])` states. One nation.**
+
+Read the `published_for` column too — it is the column that decides what you can
+actually do.
+
+```{r ladder-pub}
+ld[, c("level", "published_for")]
+```
+
+# Step 2 — The bottom rung, which barely exists
+
+Alaska runs ranked-choice elections. To run them it must publish a **cast vote
+record**: one row per ballot, carrying every ranking on it.
+
+```{r cvr}
+cf <- read.csv("data/cvr_facts.csv", stringsAsFactors = FALSE)
+cf
+```
+
+**`r n(V(cf, "ballots in the file"))` ballots.
+`r n(V(cf, "distinct ranking sequences"))` distinct ranking sequences.**
+`r pc(V(cf, "bullet-voting rate among ballots that ranked anyone (%)"))`% of
+voters who ranked anyone ranked exactly one candidate and stopped, which is why
+so few distinct sequences cover so many ballots.
+
+Now the numbers that matter for this lab:
+
+```{r second}
+c2 <- read.csv("data/cvr_second.csv", stringsAsFactors = FALSE)
+c2 <- c2[c2$second != "(no second choice)", ]
+head(c2[order(-c2$ballots), ], 8)
+```
+
+**`r n(V(cf, "ranked Begich first and Peltola second"))` Alaskans ranked Begich
+first and Peltola second — a Republican first and a Democrat second, on one
+ballot.** `r n(V(cf, "ranked Peltola first and Begich second"))` did the reverse.
+
+No total, at any level above this one, contains those numbers. They are
+properties of a *pair* of marks on one piece of paper, and adding the paper up
+destroys the pair.
+
+# Step 3 — One rung up
+
+```{r coverage}
+BALLOTS <- ld$units_nationally[ld$level == "ballot"]
+AK      <- cf$value[cf$quantity == "ballots in the file"]
+c(alaska_cvr_ballots = AK, all_2024_ballots = BALLOTS,
+  pct_of_national = round(100 * AK / BALLOTS, 3))
+```
+
+**The whole Alaska file is `r pc(100 * AK / BALLOTS, 3)`% of the ballots cast in
+2024.** There is no
+national cast-vote-record file. If you want to say something about the country,
+you must leave the bottom rung.
+
+# Steps 4 and 5 — Climb, and watch what holds
+
+One election, the 2024 presidential vote in Georgia, read at four levels:
+
+```{r levels}
+lst <- read.csv("data/level_stats.csv", stringsAsFactors = FALSE)
+lst
+```
+
+**The vote-weighted mean does not move — `r pc(LS("precinct", "mean_dem_share"), 2)`%
+across precincts, `r pc(LS("county", "mean_dem_share"), 2)`% across counties,
+`r pc(LS("state", "mean_dem_share"), 2)`% for the state.** The district row reads
+`r pc(LS("congressional district", "mean_dem_share"), 2)` because the district
+file carries percentages and no vote counts, so that one mean is unweighted. The
+spread collapses: the standard deviation of Democratic share falls from
+`r pc(LS("precinct", "sd_dem_share"), 2)` points across
+`r n(LS("precinct", "units"))` precincts to `r pc(LS("county", "sd_dem_share"), 2)`
+across `r n(LS("county", "units"))` counties. `variance_retained_pct` says that
+**`r pc(LS("county", "variance_retained_pct"))`% of the precinct-level variation
+survives the trip to counties**, so
+`r pc(100 - LS("county", "variance_retained_pct"))`% of it does not.
+
+Does the arithmetic hold?
+
+```{r consistency}
+cs <- read.csv("data/consistency.csv", stringsAsFactors = FALSE)
+cs[, c("comparison", "from", "against", "difference")]
+```
+
+Summing all `r n(ld$units_in_georgia[ld$level == "precinct"])` precincts
+reproduces the county file **exactly**. Against a different compiler the same
+Georgia counties are `r num(cs$difference[2])` votes off, and the whole country's
+counties land `r n(num(cs$difference[4]))` votes short of the certified national
+total — `r pc(abs(cs$pct_difference[4]), 4)`% low.
+
+Part of the reason is that a rung is not a rung everywhere:
+
+```{r notcounties}
+nc <- read.csv("data/not_counties.csv", stringsAsFactors = FALSE)
+nc
+```
+
+**Alaska has no counties.** The national county file carries
+`r nc$rows_that_are_not_counties[nc$state == "Alaska"]` state house districts in
+their place, and DC contributes
+`r nc$rows_that_are_not_counties[nc$state == "District of Columbia"]` wards.
+
+And one rung cannot be reached by adding at all — precinct returns record no
+congressional district. But it is the only rung that can answer this:
+
+```{r seatvote}
+sv <- read.csv("data/seat_vote.csv", stringsAsFactors = FALSE)
+sv
+```
+
+**Georgia's median congressional district is
+`r pc(V(sv, "Georgia: median district share", key = "measure"))`% Democratic
+while the state is
+`r pc(V(sv, "Georgia two-party Democratic share, from the precincts", key = "measure"))`%.**
+Trump won `r pc(V(sv, "Trump's share of the national popular vote (%)", key = "measure"))`%
+of the national popular vote and
+`r pc(V(sv, "Trump's share of the electoral college (%)", key = "measure"))`% of
+the electoral college. Neither fact is visible from any other level.
+
+> **Predict before you run Step 6.** Georgia publishes its precinct returns
+> broken out by vote method. Step 6 deletes that breakdown, keeps only each
+> precinct's two margins, and runs the standard method used in voting-rights
+> litigation to recover what share of mail voters chose Biden. **Write down your
+> guess — and write down the largest value the answer could possibly take.**
+
+# Step 6 — Run the method that fails
+
+First the truth, which Georgia published:
+
+```{r truth}
+mt <- read.csv("data/method_truth.csv", stringsAsFactors = FALSE)
+mt
+TRUE_MAIL <- 100 * mt$by_mail[mt$candidate == "Joseph R. Biden"] / sum(mt$by_mail)
+TRUE_NOT  <- 100 * mt$not_by_mail[mt$candidate == "Joseph R. Biden"] /
+                   sum(mt$not_by_mail)
+round(c(dem_share_of_mail_votes = TRUE_MAIL,
+        dem_share_of_everything_else = TRUE_NOT), 2)
+```
+
+Now throw the crosstab away. Keep only what every other state publishes — one
+row per precinct, two margins — and fit Goodman's ecological regression:
+
+```{r goodman}
+ep <- read.csv("data/eco_precinct.csv", stringsAsFactors = FALSE)
+head(ep[, c("unit", "votes", "mail_pct", "dem_pct")], 4)
+
+fit <- lm(dem_pct ~ mail_pct, data = ep, weights = ep$votes)
+b <- coef(fit)
+round(c(estimate_at_0_pct_mail = b[[1]],
+        estimate_at_100_pct_mail = b[[1]] + 100 * b[[2]]), 1)
+```
+
+**`r pc(b[[1]] + 100 * b[[2]])`%.**
+
+The regression, run on real precinct returns with a respectable method, says
+that `r pc(b[[1]] + 100 * b[[2]])`% of Georgia's mail voters chose Biden. The
+truth is `r pc(TRUE_MAIL)`%. Nothing in
+the aggregate data announces the failure — the fit is fine and the line runs
+through the middle of the cloud.
+
+```{r eco-d3, echo=FALSE, results='asis', eval=knitr::is_html_output()}
+set.seed(3)
+z <- ep[sample(nrow(ep), 1200), ]
+pts <- paste(sprintf('[%.1f,%.1f,%.2f]', z$mail_pct, z$dem_pct,
+                     sqrt(z$votes / max(ep$votes))), collapse = ",")
+cat(sprintf('
+<div id="eco" style="margin:1.1em 0"></div>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+(function(){
+const P=[%s],G0=%.2f,G1=%.2f,T0=%.2f,T1=%.2f;
+const W=760,H=380,L=52,R=180,TOP=32,B=42;
+const svg=d3.select("#eco").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
+  .attr("style","max-width:100%%;height:auto;font:12px inherit");
+const x=d3.scaleLinear().domain([0,100]).range([L,W-R]);
+const y=d3.scaleLinear().domain([-30,210]).range([H-B,TOP]);
+const T=(a,b,s,o)=>{const t=svg.append("text").attr("x",a).attr("y",b)
+  .attr("text-anchor",(o&&o.a)||"start").attr("font-size",(o&&o.s)||"11px")
+  .attr("fill",(o&&o.c)||"#444");if(o&&o.b)t.attr("font-weight","600");return t.text(s);};
+svg.append("rect").attr("x",L).attr("y",y(100)).attr("width",W-R-L)
+  .attr("height",y(0)-y(100)).attr("fill","#f4f4f4");
+T(L+6,y(100)-5,"no share can be above this line",{s:"10px",c:"#999"});
+[-25,0,25,50,75,100,125,150,175,200].forEach(v=>{
+  svg.append("line").attr("x1",L).attr("x2",W-R).attr("y1",y(v)).attr("y2",y(v))
+    .attr("stroke",v===0||v===100?"#bbb":"#eee");
+  T(L-7,y(v)+3.5,v,{a:"end",s:"9.5px",c:"#aaa"});});
+[0,25,50,75,100].forEach(v=>T(x(v),H-B+15,v,{a:"middle",s:"9.5px",c:"#aaa"}));
+svg.append("g").selectAll("circle").data(P).join("circle")
+  .attr("cx",d=>x(d[0])).attr("cy",d=>y(d[1])).attr("r",d=>1+3.2*d[2])
+  .attr("fill","#2c7fb8").attr("fill-opacity",0.22);
+const ln=(a,b,c,dash)=>svg.append("line").attr("x1",x(0)).attr("y1",y(a))
+  .attr("x2",x(100)).attr("y2",y(b)).attr("stroke",c).attr("stroke-width",2.6)
+  .attr("stroke-dasharray",dash||null);
+ln(T0,T1,"#4d9221"); ln(G0,G1,"#C41230","7,4");
+[[T1,"#4d9221","the truth: "+T0.toFixed(1)+"%% to "+T1.toFixed(1)+"%%"],
+ [G1,"#C41230","Goodman: "+G0.toFixed(1)+"%% to "+G1.toFixed(1)+"%%"]]
+ .forEach(d=>{svg.append("circle").attr("cx",x(100)).attr("cy",y(d[0])).attr("r",4.5)
+   .attr("fill",d[1]);T(x(100)+9,y(d[0])+4,d[2],{c:d[1],b:1,s:"11.5px"});});
+svg.append("circle").attr("cx",x(0)).attr("cy",y(T0)).attr("r",4.5).attr("fill","#4d9221");
+svg.append("circle").attr("cx",x(0)).attr("cy",y(G0)).attr("r",4.5).attr("fill","#C41230");
+T(8,18,"%s Georgia precincts, 2020",{b:1,s:"12.5px",c:"#222"});
+T(L,H-8,"share of the precinct\\u2019s votes cast by mail (%%)",{s:"10.5px",c:"#888"});
+})();
+</script>
+', pts, b[[1]], b[[1]] + 100 * b[[2]], TRUE_NOT, TRUE_MAIL, n(nrow(ep))))
+```
+
+```{r eco-static, echo=FALSE, eval=!knitr::is_html_output(), fig.height=3.6}
+par(mar = c(3.4, 3.6, 2.0, 9.4))
+plot(NA, xlim = c(0, 100), ylim = c(-30, 210), axes = FALSE, ann = FALSE)
+rect(0, 0, 100, 100, col = "#f4f4f4", border = NA)
+abline(h = c(0, 100), col = "#bbb")
+axis(1, seq(0, 100, 25), cex.axis = 0.62, col = "#bbb", col.axis = "#888",
+     tck = -0.012, mgp = c(2, 0.3, 0))
+axis(2, seq(-25, 200, 25), las = 1, cex.axis = 0.6, col = "#bbb",
+     col.axis = "#888", tck = -0.012, mgp = c(2, 0.45, 0))
+set.seed(3); z <- ep[sample(nrow(ep), 1200), ]
+points(z$mail_pct, z$dem_pct, pch = 19,
+       cex = 0.18 + 1.0 * sqrt(z$votes / max(ep$votes)),
+       col = adjustcolor("#2c7fb8", 0.22))
+segments(0, TRUE_NOT, 100, TRUE_MAIL, col = "#4d9221", lwd = 2.4)
+segments(0, b[[1]], 100, b[[1]] + 100 * b[[2]], col = "#C41230", lwd = 2.4, lty = 2)
+points(c(0, 100, 0, 100), c(TRUE_NOT, TRUE_MAIL, b[[1]], b[[1]] + 100 * b[[2]]),
+       pch = 19, cex = 1.1, col = c("#4d9221", "#4d9221", "#C41230", "#C41230"))
+text(102, b[[1]] + 100 * b[[2]], sprintf("Goodman: %.1f%% to %.1f%%",
+     b[[1]], b[[1]] + 100 * b[[2]]), adj = 0, cex = 0.62, font = 2,
+     col = "#C41230", xpd = NA)
+text(102, TRUE_MAIL, sprintf("the truth: %.1f%% to %.1f%%", TRUE_NOT, TRUE_MAIL),
+     adj = 0, cex = 0.62, font = 2, col = "#4d9221", xpd = NA)
+text(3, 106, "no share can be above this line", adj = 0, cex = 0.55, col = "#999")
+title(sprintf("%s Georgia precincts, 2020", n(nrow(ep))),
+      cex.main = 0.84, adj = 0, line = 0.6)
+mtext("share of the precinct's votes cast by mail (%)", side = 1, cex = 0.58,
+      col = "#888", line = 1.7)
+mtext("Democratic share of the precinct's votes (%)", side = 2, cex = 0.58,
+      col = "#888", line = 2.3)
+```
+
+Both lines pass through the same cloud. **They differ only in slope, and the
+slope is the whole answer.** Precincts that mailed heavily were Democratic
+precincts, and Democratic precincts were more Democratic among mail voters *and*
+election-day voters alike. The regression charges that entire between-precinct
+difference to the method of voting.
+
+# Step 7 — Do it again one rung higher
+
+```{r county}
+ec <- read.csv("data/eco_county.csv", stringsAsFactors = FALSE)
+b2 <- coef(lm(dem_pct ~ mail_pct, data = ec, weights = ec$votes))
+round(c(precinct_level = b[[1]] + 100 * b[[2]],
+        county_level   = b2[[1]] + 100 * b2[[2]],
+        the_truth      = TRUE_MAIL), 1)
+```
+
+**Coarser units, worse answer: `r pc(b2[[1]] + 100 * b2[[2]])`%.** The full
+comparison, with Duncan and Davis's assumption-free bounds alongside:
+
+```{r eco-table}
+ee <- read.csv("data/eco_estimates.csv", stringsAsFactors = FALSE)
+ee
+```
+
+The bounds are the honest thing the aggregate *can* support. They are also nearly
+useless — `r pc(EE("precinct", "bound_lower"))`% to
+`r pc(EE("precinct", "bound_upper"))`% — and they get wider, not narrower, one
+rung up: `r pc(EE("county", "bound_lower"))`% to
+`r pc(EE("county", "bound_upper"))`%.
+
+Is the county correlation a fact about voters or about county lines? Regroup the
+same precincts into the same number of *random* groups, 500 times:
+
+```{r maup}
+mp <- read.csv("data/maup_null.csv", stringsAsFactors = FALSE)
+mp
+```
+
+**Random groups leave the correlation where it was
+(`r pc(mp$correlation[3], 3)` against `r pc(mp$correlation[1], 3)` ungrouped).
+Real counties push it to `r pc(mp$correlation[2], 3)`, which none of the 500
+draws reached.** The lift comes from these
+particular lines — Openshaw's modifiable areal unit problem, which `areal-units`
+takes on by itself.
+
+# Step 8 — The same failure, where it counts
+
+```{r rpv}
+rp <- read.csv("data/rpv_check.csv", stringsAsFactors = FALSE)
+rp
+```
+
+`rpv` runs this on the question ecological inference is actually used for:
+**Goodman says
+`r pc(V(rp, "Goodman's ecological regression on the same precincts (%)"))`% of
+Black voters took a Democratic ballot; the voter file says
+`r pc(V(rp, "the truth: Democratic share of Black voters (%)"))`%.** Same method,
+same impossibility, smaller margin. `vote-dilution`
+takes the same county on into the first *Gingles* precondition.
+
+# Steps 9 and 10 — What the aggregate is for, and how to choose
+
+```{r decision}
+dc <- read.csv("data/decision.csv", stringsAsFactors = FALSE)
+dc[, c("question", "right_rung")]
+```
+
+```{r why}
+dc[, c("right_rung", "why", "the_trap")]
+```
+
+# Step 11 — What you can now say
+
+**You can say** that election data comes on a ladder, that the arithmetic of
+climbing is exact, and that each step destroys something specific —
+`r pc(100 - LS("county", "variance_retained_pct"))`% of the variation between
+precincts, and every pair of marks that sat on one ballot.
+
+**You can say it sharper than "aggregate data is risky,"** because you have a
+case with an answer key: `r pc(b[[1]] + 100 * b[[2]])`% against a published
+`r pc(TRUE_MAIL)`%.
+
+**You cannot say** which rung is correct in general. You can name the rung, say
+why, and check whether the answer survives being asked one rung up.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Break the regression differently.** `eco_precinct.csv` has a `votes`
+column. Re-run Goodman's regression *unweighted*, then weighted, then on the
+largest 500 precincts only, then on the smallest 500. Report the four estimates
+of the Democratic share of mail voters. Which one is closest to
+`r pc(TRUE_MAIL)`%, and does
+that tell you anything you could have known without the answer key?
+
+**Option B — Find the level where the answer flips.** Aggregate `eco_precinct.csv`
+into groups of increasing size — 500 groups, 159, 50, 10 — and plot the Goodman
+estimate against the number of units. Where does it cross 100%? Say what that
+curve means for anyone choosing a unit of analysis.
+
+**Option C — Pick a question, defend a rung.** Choose a research question that is
+*not* in `decision.csv`. Say which rung you would use, what you would lose from
+the rung below, and what you would risk at the rung above. Then find the number
+in this lab that best supports your choice.
+
+**Option D — Your own question.**
+`r length(list.files("data", pattern = "[.]csv$"))` files,
+`r nrow(ld)` levels, three elections.
+
+# What this lab cannot tell you
+
+- **How often Goodman fails this badly.** One state, one contest, one variable.
+  We know it *can* be `r pc(EE("precinct", "error_by_mail"))` points wrong and
+  give no warning; we do not know the distribution.
+- **What a cast vote record would show for an ordinary election.** Alaska's
+  exists because the count is ranked. Nothing here says what one would reveal
+  about a plurality race.
+- **Whether King's method fixes it.** Not run here. `rpv` discusses it;
+  neither lab runs it.
+- **Anything about individual voters.** Every file here except the Alaska
+  sequences is already an aggregate, and the Alaska file was aggregated to
+  ranking sequences before it was committed.
+- **Where the units are.** No boundaries, no maps. `precinct-geography` and
+  `census-geography` are the labs about the shapes.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- The secret ballot destroys individual-level data on purpose. Should cast vote
+  records be public anyway?
+- Goodman's regression has been used as evidence in federal voting-rights cases
+  since the 1980s, and here it returns 194%. What should a court do with that?
+- Name a claim you have read in the news this term and say which rung it was
+  made at. Was it the right one?
+
+***
+
+### Where the data came from
+
+Every input is a CSV already committed to another lab in this course; nothing was
+downloaded for this one. `data/build-data.R` re-derives every number above.
+
+- **Alaska cast vote record, 2024 US House** — `cast-vote-records/data/sequences.csv`,
+  `r n(V(cf, "ballots in the file"))` ballots collapsed to
+  `r n(V(cf, "distinct ranking sequences"))` ranking sequences by that lab's build.
+- **Georgia precinct returns, 2020 and 2024, with the vote-method breakdown** —
+  `ga-precinct-returns/data/`, from the Secretary of State.
+- **County returns for every state, 2024** — `data-sources/data/`.
+- **Presidential results by congressional district, 2024** —
+  `redistricting/data/`.
+- **National and state results, 1864–2024** — `historical-campaigns/data/`.
+- **Unit counts** (`r n(ld$units_nationally[ld$level == "precinct"])` precincts,
+  `r n(ld$units_nationally[ld$level == "election jurisdiction"])` jurisdictions,
+  `r n(ld$units_nationally[ld$level == "ballot"])` voters) —
+  `eavs/data/`, the EAC's Election Administration and Voting Survey.
+- **Houston County, Georgia primary with reported race** — `rpv/data/`.

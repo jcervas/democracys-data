@@ -1,0 +1,436 @@
+---
+title: "The Cost of Producing One Additional Vote"
+subtitle: "What it costs to produce one additional vote, and who decided what the price list contains"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("gotv-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Before the 1998 election, two political scientists divided roughly thirty thousand registered voters in New Haven into groups. Some were knocked on, some were telephoned, some were mailed, some were left alone. Afterwards they looked up in the public voter file who had actually turned out. Nobody was asked what they had done; the state already knew. **Gerber and Green (2000)** found that door-to-door canvassing raised turnout substantially, direct mail slightly, and phone calls not at all.
+
+That is an unusual kind of claim in this field. Most statements about what campaigns accomplish are inferences from observational data — this campaign spent more and won, so spending works. Mobilization is different, because since the late 1990s it has been studied by **randomized field experiment**, with an outcome that is administrative rather than self-reported. Hundreds of those experiments followed New Haven.
+
+This chapter is about what somebody eventually made of them: a table of `r nrow(g)` rows that puts a dollar figure on an additional vote. And the table is the thing to be careful about. Every other file in this course was produced because somebody was obliged to produce it — a filing, a return, a census. **This one was not.** The `r nrow(g)` rows are not observations. They are conclusions, drawn by two researchers reading a literature, and no agency publishes them, corrects them, or can be asked what a row means.
+
+So there are two questions here at once. What does it cost to produce a vote? And where did this table come from, and who decided what went into it? The second turns out to be the harder one.
+
+## Buying participation is a purchasing decision
+
+Turnout is not distributed randomly. If you can buy participation at a known price, then who participates becomes partly a purchasing decision made by campaigns — and campaigns buy votes they expect to be cast for them.
+
+That cuts two ways and the direction is disputed. Mobilization is cheapest among people who almost voted anyway, and those people are already the more educated, older, more rooted part of the electorate. A tactic that is efficient in this table may therefore **widen** the participation gaps it appears to close. **Gerber, Green and Larimer (2008)** showed how far the levers go: mailings that showed recipients their own and their neighbors' voting records raised turnout by around eight percentage points, an effect far larger than any ordinary appeal, and one that works through social pressure rather than persuasion. Whether that is mobilization or coercion is a real question, and the same table would price both.
+
+## A literature that somebody finished reading
+
+The file this chapter reads was typed out of a book. Green and Gerber's *Get Out the Vote*, fifth edition, prints cost and effectiveness figures for the main mobilization tactics across two pages; those two pages are transcribed by hand into a table, two further columns derived from them, giving the result out. There was no download, no API, no parser and no encoding to guess at. Sides and his co-authors reproduce the same figures in their own textbook, and the citation here goes to Green and Gerber instead because they are the people who ran a large share of the experiments being summarized.
+
+That makes this the one file in the course whose underlying evidence is **causal**, and it is worth being clear why that matters enough to accept everything else about it. Almost every other number in this book is a record of something that happened: a filing, a return, a count. None of them can say what would have happened otherwise. These can, because since New Haven the tactics have been assigned at random and the outcome looked up in the public voter file — nobody is asked whether they voted, so nobody has to be believed. A price per additional vote is a counterfactual quantity, and there is nowhere else in this course it could have come from.
+
+What arrived, though, is not the experiments. It is somebody's conclusions about them. A row here is a *tactic*, which is a category the compilers invented rather than a thing that was measured, and each row averages over experiments that differed in year, state, electorate, script, contact rate and election type. That compression is real, and it is what the two source pages contain.
+
+But it is not what the *book* contains, and this is the thing to be most careful about in the whole chapter. Behind Table 12-1 sit three appendices — one for canvassing, one for direct mail, one for phone calls — which between them list **229 individual experiments with a standard error on every one**, and publish a 95 percent confidence interval for every pooled estimate that feeds the table. Which experiments stand behind `r cnt(CAN)` contacts per vote, how many of them, and how far apart their answers were, are all recorded — seventeen pages later.
+
+So the uncertainty was never unavailable. **It was dropped at the transcription step**, by the compilers when they wrote the summary table and again by us when we typed the summary table into a file. That is a more uncomfortable finding than "the source has no error bars," and a more useful one, because it is the ordinary case. Summary tables are what people read. The appendix is where the doubt goes to be technically disclosed and practically ignored.
+
+This version of the file therefore carries the appendix figures alongside the printed ones: `effect_pp` with `ci_low` and `ci_high`, and `n_studies`. Seven of the `r nrow(g)` rows have a published interval. Two of those intervals contain zero.
+
+So the honest answer to whether this data needed cleaning is that it was never dirty. Nothing was imputed, nothing was reweighted, nothing was parsed, and the tactics with no measurable effect were deliberately kept rather than dropped, because a chapter about cost-effectiveness that quietly deletes the ineffective options has answered its own question before asking it. But the risk did not disappear; it moved. A hand-transcribed table cannot be re-fetched and diffed against its source, and the only audit available is to open the book at the cited pages and read.
+
+That audit has now been done, and it found two things. **One was a typing error**: volunteer phone calls cost `r d(cpv(VOL))` per vote in the book, and this file carried $46 for four years. Every figure downstream of the cheapest rate was wrong by that much. There is no checksum for reading a number off a page, which is the argument this chapter has always made; here is the instance.
+
+**The other was not our mistake.** It is discussed below, and it is the reason this file now has `r nrow(g)` rows instead of eight.
+
+## There is no raw file
+
+Every other chapter in this book begins with something a computer downloaded. This one begins with a book on a desk, open at two pages. There is no export, no endpoint, no archive — the numbers exist in print and nowhere else, and the first machine-readable version of them in the entire chain is somebody's typing.
+
+So the raw material here is this, as it sits in the file, wrapped to fit this page and with the `reliability` column left out to save room:
+
+```
+tactics <- data.frame(
+  tactic = c("Door-to-door canvassing", "Leaflets left on doors",
+             "Direct mail, from a campaign", "Direct mail, nonpartisan",
+             "Phone calls, volunteer", "Phone calls, commercial telemarketer",
+             "Robocalls", "Robocalls, excluding social-pressure studies",
+             "Email", "Text messages", "Election festivals",
+             "Television GOTV", "Radio GOTV"),
+  unit = c("conversation", "leaflet dropped", "mailer sent", "mailer sent",
+           "conversation", "conversation", "number targeted",
+           "number targeted", "message sent", "number targeted",
+           "precinct", "media market", "media market"),
+  # ---- read off Table 12-1, pp. 172-73 ----
+  contacts_per_vote = c(17, 189, NA, 260, 36, 106, 425, NA, NA, 381,
+                        NA, NA, NA),
+  cost_per_vote     = c(57, NA, NA, 130, 45, 106, 64, NA, NA, 133,
+                        85, NA, NA),
+  effective   = c(TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE,
+                  FALSE, TRUE, TRUE, FALSE, FALSE),
+  # ---- read off appendices A, B and C, pp. 189-204 ----
+  effect_pp   = c(4.0, NA, 0.085, 0.384, 2.78, 0.94, 0.235, 0.143,
+                  NA, 0.26, 1.0, 0.5, 1.0),
+  ci_low      = c(2.8, NA, -0.065, 0.117, 1.74, 0.52, 0.037, -0.037,
+                  NA, NA, NA, NA, NA),
+  ci_high     = c(5.2, NA, 0.235, 0.650, 3.83, 1.36, 0.433, 0.323,
+                  NA, NA, NA, NA, NA),
+  n_studies   = c(59, NA, NA, 65, 32, 22, 9, 7, NA, NA, 7, NA, NA)
+)
+```
+
+**That is the whole acquisition.** Nine vectors, `r nrow(g)` entries each, keyed in by hand — the first five from the summary table on pages 172–73, the last four from three appendices seventeen to thirty pages further on. And it is worth noticing how little separates it from what comes out:
+
+```{r clean-gotv}
+```
+
+Two columns were added and nothing else happened. One is a division: `cost_per_contact` is `cost_per_vote` over `contacts_per_vote`. The other, `contacts_per_vote_pooled`, is `100 / effect_pp` — what the appendix's pooled estimate implies about contacts per vote, put there so it can be set beside what the table prints. **The cleaning step in this chapter is two divisions**, and every other number came out of a human eye moving between a page and a keyboard.
+
+That is not a lesser pedigree than a download; it is a different set of risks. A parser fails loudly and a scrape fails on a schedule. A transcription fails once, silently, and stays wrong until somebody opens the book again. There is no checksum for reading a number off a page.
+
+### What was decided
+
+**The ineffective tactics were kept.** `r sum(!g$effective)` of the `r nrow(g)` rows have no measurable turnout effect, and the temptation is to leave them out of a file about cost-effectiveness. Keeping them is the chapter's central honesty: `r sum(!g$effective)` of the `r nrow(g)` things campaigns actually spend money on do not appear to work, and a table containing only the `r sum(g$effective)` that do would have answered the question before asking it. Notice what that costs in the scan, though — `r pc(100 * sum(is.na(g$cost_per_vote)) / nrow(g), 1)`% of `cost_per_vote` is missing, and any tool that drops incomplete rows silently restores exactly the bias the decision was made to avoid.
+
+**`unit` was added, because "contact" is not one thing.** Footnote b to Table 12-1 defines it separately for every row: talking to the voter for canvassing and live calls, *attempting* to reach one for robocalls (they usually reach voicemail), a piece sent for mail, a leaflet dropped for leaflets — and for festivals, television and radio, an entire precinct or media market. The printed table puts all of these in one column headed "effectiveness per contact." Without `unit`, `r cnt(CAN)` and `r cnt("Robocalls")` look like the same kind of number, and they are not: one counts conversations, the other counts phones dialled.
+
+**Two columns are derived.** `cost_per_contact` is `cost_per_vote` over `contacts_per_vote`. Dividing `NA` by `NA` gives `NA`, which is the right answer and is right by luck rather than by design: nothing in the arithmetic knows that a blank means *no measurable effect* rather than *not recorded*. `contacts_per_vote_pooled` is `100 / effect_pp`, and it exists to be disagreed with — see below.
+
+**A boolean was made out of a sentence, and the sentence is now kept too.** The book reports reliability in prose, and the prose is not binary: "Yes, large number of studies" for canvassing, but "Results vary widely across seven studies" for festivals and "Average effect cannot be large" for e-mail. `effective` flattens all of that to `TRUE`/`FALSE`. This version keeps the book's own wording in a `reliability` column beside it, so that the flattening is visible rather than merely alleged. Compare the two columns and you can see exactly what the boolean cost.
+
+**And one of those flags is a disagreement, not a translation.** Election festivals are marked `FALSE` here even though Table 12-1 prints a price for them, because "results vary widely across seven studies" is a statement about dispersion, not a finding of reliability, and there is no appendix behind the row to settle it. Reasonable people would code that `TRUE`. **The consequence is not cosmetic**: at `r d(cpv("Election festivals"))` a vote, festivals would otherwise be the cheapest tactic in the file, ahead of volunteer phone banking at `r d(cpv(VOL))`. So a single reader's judgment about a single sentence decides what the table says the cheapest way to buy a vote is. The reasoning is written down in the build script, which is the only real defence against this kind of thing — not that the call was right, but that it is findable and reversible.
+
+**The intervals were dropped by the source's own summary, not by the source.** This is the correction that most changes the chapter. `r cnt(CAN)` contacts per vote is a synthesis of hundreds of randomized experiments and it arrives in Table 12-1 as a two-digit integer with nothing around it. But the book **does** publish the uncertainty: appendix A gives 59 canvassing experiments with a standard error on each and a pooled estimate of 4.0 points, 95% CI 2.8 to 5.2; appendix B gives 130 mail experiments; appendix C gives the phone experiments and every pooled interval. So the right thing to say is not that the file has no column for uncertainty — it now has three — but that **a summary table thirty pages ahead of its own appendix is where the doubt gets lost**, and almost nobody reads in the other direction. That is a claim about how research becomes data, and it is checkable, which the older and stronger-sounding claim was not.
+
+## One row is a difference between two groups
+
+```{r one-record}
+```
+
+Read the first row precisely, because almost everyone reads it wrong.
+
+**"One additional vote per 17 contacts" does not mean that one of the seventeen voted.** It means that among people who were spoken to at the door, turnout was higher by about one vote per seventeen people **than in an otherwise identical group that was not spoken to.** Most of the seventeen were going to vote anyway. The number is a difference between two groups, and it exists only because somebody randomized.
+
+Note also the denominator. It is people **contacted** — spoken to — not doors approached. Most doors do not open.
+
+Now the more important observation: **this row is not an observation.** No campaign is described here, no election, no city, no year. The row is a summary of many experiments, compressed into two integers by someone who read them.
+
+## The whole file
+
+There is no sample here. This is the entire dataset.
+
+First, what the summary table on pages 172–73 supplies:
+
+```{r whole-file}
+```
+
+And then what the three appendices supply for the rows they cover:
+
+```{r whole-file-appendix}
+```
+
+`r nrow(g)` rows and `r ncol(g)` columns, counting the two this lab derives. You have now seen all of it.
+
+Read the two tables against each other before going on. The first is what a campaign would be handed. The second is what stands behind it — and it is blank for `r sum(is.na(g$effect_pp))` rows, thin for several more, and in one place disagrees with the first.
+
+**Compare that to every other file in this course.** The campaign-finance data is a legal filing; the census is a constitutional obligation; the voter file is maintained by a state. Each has a custodian who can be asked why a record says what it says. This table has authors instead — Green and Gerber — and the only way to interrogate it is to read a book and then read the experiments the book cites. What that means is the last argument in this chapter, and the largest.
+
+## The blank cells are the finding
+
+```{r ineffective}
+```
+
+`r nrow(x)` of `r nrow(g)` tactics are flagged as having no measurable effect. **But look at the last two columns: most of them are not blank at all.**
+
+Two of the prices need explaining, because the book did not print either. The robocall variant is priced because this lab worked it out from the book's own unit cost. **Election festivals are the opposite case: the book *does* print `r d(cpv("Election festivals"))` a vote, and this lab still flagged the row `FALSE`** — a disagreement discussed above and recorded in the build script. Every other price here is genuinely absent from the source.
+
+This is the sharpest thing in the file. Table 12-1 prints an asterisk in the cost column for these rows and explains it in a footnote — *"cost-effectiveness is not calculated for tactics that are not proven to raise turnout."* Fair enough. But the effectiveness column, and the appendices behind it, still carry numbers: leafleting is **one vote per `r cnt("Leaflets left on doors")` voters reached**, television is **0.5 points**, radio is **1 point**, and advocacy mail — the row the book describes as having "no detectable effect" — is **0.085 points, with a 95 percent confidence interval from −0.065 to 0.235**.
+
+**Those cells are not missing data. They are results, and they are results of a particular shape.** The experiments were run, they cost money, and they produced small positive point estimates whose intervals include zero. That is a much more specific finding than "it does not work," and it is a completely different claim from "we do not know" — yet all three look identical once they become `NA`.
+
+Notice what the advocacy mail row does to the usual advice. Twenty-four separate studies stand behind it. The estimate is positive. It is also so small that a campaign would need to send roughly twelve hundred mailers to produce one vote, and the data cannot rule out that the true number is negative. Reporting that as `FALSE` is defensible. Reporting it as *nothing* is not.
+
+A student who dropped the incomplete rows would have deleted the findings most likely to change how a campaign spends, and then reported on the cost-effectiveness of the tactics that survived — which is to say, on nothing.
+
+Think about how much of what arrives in your mailbox each October is on that list.
+
+## One row where the table contradicts itself
+
+Everything so far has treated the source as reliable and the transcription as the risky step. Now the other case.
+
+Here is the robocalls row exactly as Table 12-1 prints it, in the effectiveness column:
+
+> One vote per **425 landlines targeted**, without social pressure messages.
+
+And here is appendix C, page 204, in full:
+
+> Across nine distinct studies of robocalls, meta-analysis produces an average
+> intent-to-treat effect of **0.235** percentage points, with a 95 percent
+> confidence interval ranging from 0.037 to 0.433. This estimate drops to
+> **0.143** with a confidence interval ranging from **−0.037 to 0.323** if we
+> exclude the two studies that use social pressure messages.
+
+Do the arithmetic the book does everywhere else — contacts per vote is 100 divided by the effect in percentage points:
+
+```{r robo-fork}
+```
+
+**The 425 in the table is computed from the estimate that *includes* the social pressure studies.** The estimate that actually excludes them — the one the table's own sentence says it is reporting — is 0.143, which implies `r cnt("Robocalls, excluding social-pressure studies")` targeted numbers per vote, and whose confidence interval contains zero.
+
+So the number and the qualifier attached to it come from two different calculations, thirty pages apart, in the same book. Both are printed. Neither is wrong on its own. Together they are inconsistent.
+
+**This decides the `effective` column, and it decides it both ways.** At 0.235 the interval excludes zero, and "Yes, large number of studies" is fair. At 0.143 it does not, and the honest entry would be the same *"not significantly greater than zero"* that leafleting, television and radio receive. The flag is `TRUE` or `FALSE` depending on which of two adjacent sentences you follow.
+
+Notice how much rides on it. At the printed rate, robocalls cost `r d(cpv("Robocalls"))` per vote and sit mid-table. At the caption's rate they cost `r d(cpv("Robocalls, excluding social-pressure studies"))` — **more than commercial telemarketing**, for an effect that may be nothing at all.
+
+Two things follow, and the second is the point of the chapter.
+
+First, the earlier version of this lab was right to be suspicious of this row and wrong about why. It said the published literature disagrees with the book. It does not need to: **the book disagrees with itself**, and you can establish that without leaving the source.
+
+Second — and this is why a compilation is a different kind of object from a filing — there is nobody to ask. If a census table contradicted its own appendix you could file a query with the agency that published it and get an erratum. Here the only remedy is to notice, write it down, and carry both numbers. Which is what this file does: the fork is row `r which(g$tactic == "Robocalls, excluding social-pressure studies")`, and it is there so that nobody downstream has to take the summary table's word for it.
+
+## Two denominators, and a column that is not evidence
+
+The file has a third numeric column: cost per contact.
+
+```{r derived}
+```
+
+**The last two columns are identical, because the fourth was computed from the second and third.** It is arithmetic, not information. The file looks like it carries three measurements per tactic; it carries two.
+
+This matters because the two real columns have **different denominators**. `contacts_per_vote` is effectiveness per *conversation*. `cost_per_vote` is price per *vote*. A tactic can win on one and lose on the other, and the words "effective" and "cheap" get used as though they meant the same thing.
+
+## They do not rank the same way
+
+```{r ranks}
+```
+
+**The most effective tactic is `r ec$tactic[which.min(ec$contacts_per_vote)]` (`r min(ec$contacts_per_vote)` contacts per vote). The cheapest is `r ec$tactic[which.min(ec$cost_per_vote)]` (`r d(min(ec$cost_per_vote))` per vote). They are different tactics.**
+
+These `r nrow(ec)` are every tactic this file treats as working *and* prices per conversation or per piece. Two exclusions are worth naming, because a ranking is only as honest as its entry criteria.
+
+**Election festivals are excluded, and the call is ours.** The book prints a cost per vote for them — `r d(cpv("Election festivals"))` on Election Day, roughly $40 at early voting sites — which by the table's own asterisk convention means the authors considered them proven. But the reliability column for that row does not say yes in any form: it says *results vary widely across seven studies*, the only entry in the table that reports dispersion instead of delivering a verdict, and there is no appendix to appeal to. This lab marks it `FALSE`. **That disagrees with the book**, and it matters: at `r d(cpv("Election festivals"))` festivals would have been cheaper than anything on this list.
+
+**Television and radio are excluded for the ordinary reason**, plus a second one: they are measured per media market, so even if they worked they could not be ranked against a conversation.
+
+Watch what just happened. A tactic can drop out of a comparison because it does not work, because it is measured in the wrong unit, or **because somebody read an ambiguous sentence and made a call**. All three look identical once the ranking is printed.
+
+And there is a reason, visible in the derived column above:
+
+```{r cpc}
+```
+
+**Ranked by how much one conversation costs, these `r nrow(ec)` tactics come out in exactly the reverse of their effectiveness order — with no exceptions** (the rank correlation is `r pc(cor(ec$contacts_per_vote, ec$cost_per_contact, method = "spearman"), 0)`). A doorstep conversation is the most persuasive contact anyone has measured and also the most expensive one to obtain. Nothing here is free; the table is a schedule of exchange rates, not a list of tricks.
+
+Three rankings of the same `r nrow(ec)` rows, side by side. Every line crossing between the first two columns is that exchange rate; the third column is the one a campaign actually spends against.
+
+```{r slope-prep, include=FALSE}
+```
+
+```{r slope-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r slope-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+**Figure 1. The same `r nrow(ec)` tactics, ranked three ways, and no two orders agree.** Each line follows one tactic across three rankings: how few conversations it takes to produce a vote, how little one conversation costs, and how little one vote costs. Between the first two columns every line crosses every other — the rank correlation is exactly `r pc(cor(ec$contacts_per_vote, ec$cost_per_contact, method = "spearman"), 0)` — so the most persuasive contact is also reliably the most expensive one to obtain. The third column is the one a campaign actually spends against, and it scrambles the order again. The `r nrow(x)` tactics with no measurable effect appear in none of the three columns — including election festivals, which the book prices at `r d(cpv("Election festivals"))` and which would have led the third column had this lab read its reliability sentence the other way. **None of the ranks carry an interval** — `r sum(!is.na(ec$ci_low))` of these `r nrow(ec)` rows have one published in an appendix, and neighbouring ranks would not survive it.
+
+## Spending the money
+
+You are running a mobilization program with **`r d(BUDGET)`** and nine weeks, and the instruction is to produce the most additional votes.
+
+```{r spend}
+```
+
+**`r d(BUDGET)` spent entirely on `r e$tactic[which.max(votes_all_in)]` buys about `r n(max(votes_all_in))` additional votes.** The worst effective tactic buys `r n(min(votes_all_in))` — a factor of `r pc(max(votes_all_in) / min(votes_all_in), 1)` between the best and worst choice you could make with the same money.
+
+Run it the other way, since campaigns think in targets rather than budgets:
+
+```{r targets}
+```
+
+Those are the sums that decide statewide races, and they are not campaign-budget sums. They are the budgets of entire national organizations.
+
+> **Before you read on, make a prediction.** The table says a vote costs
+> `r d(min(e$cost_per_vote))` if you buy it through volunteer phone banking, and
+> the arithmetic above says `r d(BUDGET)` at that rate buys
+> `r n(max(votes_all_in))` additional votes. So: a campaign hands
+> `r d(BUDGET)` to a field director and says *buy votes at
+> `r d(min(e$cost_per_vote))` each*. **What happens?** Write down how many votes
+> you expect the field director to come back with, and why that number is not
+> `r n(max(votes_all_in))`.
+
+## The cheapest tactic is not for sale
+
+Look again at the name of the cheapest row: *`r VOL`*.
+
+**You cannot buy a volunteer.** A campaign with forty volunteers has forty volunteers regardless of its bank balance. The `r d(min(e$cost_per_vote))` figure prices the phones, the list and the office — everything except the labor, which arrives or does not arrive for reasons that have nothing to do with the budget.
+
+So volunteer phone banking is not a price. It is a **capacity**, and it runs out. Suppose a campaign has some number of volunteer hours available all cycle, at `r CALLS` completed conversations an hour, and spends whatever the volunteers cannot absorb on canvassing instead:
+
+```{r constrained}
+```
+
+**The crossover is at about `r n(crossover)` volunteer hours.** Below it, the campaign runs out of volunteers before it runs out of money and the headline `r d(min(e$cost_per_vote))` rate is unreachable. At `r n(2000)` hours — a serious volunteer operation — the campaign produces `r n(mix(2000))` votes, not the `r n(max(votes_all_in))` the table advertises.
+
+Notice what that does to the advice. Below the crossover, **fifty more volunteers are worth more than fifty thousand more dollars**, because marginal money buys canvassing at `r d(cpv(CAN))` while marginal volunteer time buys votes at `r d(cpv(VOL))`. Above it, extra volunteers sit idle. This is why field directors are measured on recruitment rather than on calls: they are managing the binding constraint, and it is usually not the budget.
+
+The same arithmetic drawn over every possible volunteer supply, with the whole `r d(BUDGET)` spent in each case:
+
+```{r cross-prep, include=FALSE}
+```
+
+```{r cross-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r cross-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+**Figure 2. The advertised rate is a ceiling almost nobody reaches.** Every possible volunteer supply is on the horizontal axis and the whole `r d(BUDGET)` is spent in each case. The red band is votes bought by volunteer phoning; the blue band above it is money doing the work the volunteers could not, at canvassing prices. The dashed line at `r n(CAP)` votes is what the table's cheapest rate advertises, and the two bands only reach it at the vertical line — `r n(HX)` volunteer hours, where the binding constraint stops being people and starts being money. To the left of that line, which is where essentially every real campaign sits, the blue band is the gap between the published price and the attainable one.
+
+**A published average that is true in aggregate and unattainable in practice is worth being suspicious of.** This one is unattainable for almost every real campaign.
+
+## What is inside the dollar sign
+
+Push once more on the same point. The `r d(cpv(VOL))` figure treats volunteer time as worth nothing. Price an hour of it at some wage and recompute — the extra cost per contact is the wage divided by `r CALLS` conversations an hour.
+
+```{r wage}
+```
+
+**At about `r d2(breakeven)` an hour the two tactics cost the same, and above it canvassing is the cheaper way to buy a vote.** That is a low wage. Value a volunteer's hour at anything a job would pay and the headline ranking in Figure 1's third column reverses.
+
+This is not a criticism of the underlying research, which is explicit about what its cost figures include — strikingly so. Footnote b to Table 12-1 defines a contact separately for every row, states that the average household is assumed to hold **1.5 voters**, notes that no within-household spillover is assumed for mail, and says that the canvassing figure assumes nonpartisan messaging aimed at voters **whose baseline probability of voting is between 30 and 50 percent**, with **40 percent of the effect spilling over to housemates**. It even gives a second canvassing price — **about $83 per vote across all canvassing studies, including spillovers** — against the `r d(cpv(CAN))` printed in the row above it.
+
+So the definition exists, and it is one paragraph long, and it is where nobody looks. **A cost column travels without its footnote.** By the time these numbers reach a spreadsheet, `r d(cpv(CAN))` and `r d(cpv(VOL))` sit in the same column looking equally like prices, and the sentence explaining that one of them assumes a particular target list and a particular spillover rate has not come along.
+
+That is the general lesson, and it is worth stating plainly because it will recur in every chapter of this course: **the assumptions that make a number meaningful are almost never stored in the same place as the number.** Here they survive one page away. In most files they do not survive at all.
+
+```{r d3-budget, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r static-bars, eval=!knitr::is_html_output(), fig.height=3.9}
+```
+
+**Figure 3. The ranking is stable in the budget and fragile in one assumption.** Votes bought with `r d(BUDGET)`, one bar per tactic, drawn twice: once with volunteer time costed at nothing, as the file costs it, and once with an hour of it valued at $15. Changing the budget — anywhere from a city council race to a statewide program — moves the scale and never the order, because every tactic scales linearly. Changing the wage does what the budget cannot: $15 is above the breakeven of `r d2(breakeven)` an hour, so volunteer phoning drops from the top of the list to below canvassing. An assumption the file does not record is worth more than any amount of money.
+
+## Where the table came from
+
+Every number so far has been read off a file. Now ask how the file was made.
+
+```{r provenance}
+```
+
+The second column only covers canvassing, direct mail and phone calls — the three tactics with appendices. For text messages, festivals, television and radio the answers are still "not recorded," and those are `r sum(is.na(g$n_studies) & g$effective)` of the `r sum(g$effective)` rows the lab treats as effective.
+
+So the file is not uniformly thin. **It is thin in a pattern**, and the pattern is that the tactics the authors themselves have studied longest are the ones you can interrogate. That is what you would expect, and it is worth naming: a compilation inherits the shape of its compilers' attention.
+
+**The `effective` column is the sharpest case.** It is a `TRUE`/`FALSE` flag, and what stands behind it is a significance test — a continuous quantity, with a standard error, converted into a yes-or-no by a conventional threshold. Two tactics could sit either side of that line while differing hardly at all in their estimated effect. The file gives you the verdict and discards the evidence.
+
+**Robocalls are the case in point**, and the section above works it through: the flag is `TRUE` at `r cnt("Robocalls")` targeted numbers per additional vote, the book's own appendix supplies a second estimate matching the table's stated scope under which the interval contains zero, and the boolean has already decided for you which of those it is. A `TRUE`/`FALSE` column cannot represent a source that disagrees with itself; it can only pick a side silently.
+
+And a compilation from published work inherits whatever decided what got published. This is not hypothetical for this literature. **Gerber, Green and Nickerson (2001)** proposed a test for publication bias — if journals favor significant findings, then because significance is harder to reach in small samples, published effect sizes should *shrink as sample size grows* — and they tested it **on the voter mobilization experiments.** The pattern was there. The literature this table summarizes is one where publication bias has been looked for and found.
+
+That is the file-drawer problem, named by **Rosenthal (1979)**: the studies that found nothing are disproportionately the ones nobody ever sees. **Franco, Malhotra and Simonovits (2014)** measured it directly, following a cohort of social-science studies from design onward, and found that null results were far less likely to be written up at all than strong results — most were never even drafted.
+
+So the honest reading of the blank cells is not "these `r nrow(x)` tactics do not work." It is **"these `r nrow(x)` tactics were found not to work, in the experiments that were run, by the people who ran them."**
+
+One qualification, and it runs in the compilers' favour. Each appendix says its entries were gathered from what the research teams reported, **"whether published or unpublished,"** and Table B-1 does carry unpublished manuscripts alongside journal articles. So this compilation was deliberately built to reach past the published record — by, among others, the same authors who first demonstrated publication bias in this literature. It does not follow that the file drawer is empty. Unpublished work still has to be findable, and the people best placed to supply it are the ones already in the authors' network. But the estimates here are not simply inheriting the journals' selection, and the earlier version of this chapter implied that they were.
+
+What survives is narrower and still uncomfortable: **the compilation is as complete as its compilers' reach**, and there is no way to audit that reach from inside the file.
+
+## What the argument is really about
+
+**The first argument is about this file's status as data.** Every other chapter in this course begins with records somebody was compelled to create. This one begins with a literature. There is no sampling frame, no inclusion criterion you can inspect, no custodian to appeal to, and no possibility of recount. Its authority rests entirely on the quality of two researchers' reading of a field they largely built — which is a real form of authority, and a different one. **The right question of a compilation is not "is it accurate?" but "what did it leave out, and who decided?"** For this table the question has teeth, and the publication-bias evidence above is why.
+
+**The second is about turnout versus persuasion.** Every number here is a turnout effect, measured against the public voter file, because that is the outcome you can verify for hundreds of thousands of people at low cost. Whether a contact changed anyone's *choice* requires survey data and is far harder to establish. **Kalla and Broockman (2018)**, pooling 49 field experiments, found the average persuasive effect of campaign contact in general elections to be close to zero. So the tactics with blank cells are not obviously irrational purchases — a mail program may be a fundraising instrument, a signal to donors, or list-building — but the case that they persuade is weaker than the case that they do not mobilize.
+
+**The third is about scale.** Everything here is a trial estimate, and trials are small, well-supervised, and run by people who care. **Enos and Fowler (2018)** went the other way: they compared targeted and untargeted states in 2012 and estimated that the full weight of two presidential campaigns raised turnout by about 7 to 8 percentage points where it was concentrated — evidence that mobilization at industrial scale does move aggregate turnout, and by a lot. The open question is whether that aggregate effect is the per-contact effects in this table multiplied up, or something else: saturation, media, the ambient sense that an election is happening where you live.
+
+## What `r nrow(g)` rows of a literature can testify to
+
+The strength of this evidence is that it is experimental, which is rare in this field and is the entire reason the table can speak about *effects* rather than associations. The outcome is administrative rather than self-reported — turnout is looked up in the voter file, so nobody has to be believed. And the compilation was made by the researchers who ran a large share of the experiments in it, which is the best available reason to trust the judgment calls inside it.
+
+Its limits each constrain a different sentence, and there are more of them than usual because of what the file is. **It is a literature, not a dataset**: nobody was required to produce it, nobody can be asked to correct it, and the unit of analysis is a *tactic*, a category the compilers invented. **The uncertainty is partial and unevenly distributed** — seven of the `r nrow(g)` rows carry a published interval, six do not, and the boolean that fronts the whole file is a significance test compressed to one bit. **The headline canvassing figure is a best-case figure**: `r cnt(CAN)` contacts per vote is the estimate for targets whose baseline turnout falls between 30 and 50 percent, while the all-studies pooled estimate implies `r g$contacts_per_vote_pooled[g$tactic == CAN]`. **One row contradicts its own caption** — robocalls, above. **Provenance is uneven**: for canvassing, mail and phones there are study lists, years, places and standard errors in the appendices; for text messages, festivals, television and radio there is nothing. **Costs move even where effects do not** — wages, postage and phone charges have all changed a great deal, and the file carries no date on which its dollars are denominated. **One column is derived from two others** and adds nothing. **Averages across heterogeneous experiments are applied as though they were constants**, and the arithmetic here is linear with no diminishing returns in it, so every "votes bought" figure above is an extrapolation from an average. And everything here is **turnout only**: nothing measures whose side the additional voter is on, and a campaign that efficiently mobilizes the wrong neighborhood has helped its opponent.
+
+Two of the assumptions in this chapter's arithmetic are the book's own rather than ours, which is worth saying because earlier versions of this brief apologised for them. **`r CALLS` completed conversations an hour** is Table 12-1's figure, not a guess — it is how the book gets from $20 an hour to `r d(cpv(VOL))` a vote. So is the $24 an hour and six contacts an hour behind canvassing. What remains genuinely ours is the choice to hold them fixed while varying everything else.
+
+Three questions remain genuinely open. How much of the file drawer is missing is the sharpest, and it is not idle — the answer determines whether the surviving estimates are biased upward enough to change a spending decision. Whether trial effects survive at scale is unresolved in both directions, with the pooled experiments pointing one way and the aggregate campaign comparisons another. And whether mobilization narrows or widens participation gaps is the question the table is least equipped to answer, because the tactics in it work best on the people who nearly voted anyway.
+
+What can be said, then, is narrower than the table looks and more useful. Effectiveness and cost-efficiency are different axes that rank these tactics differently, so a campaign optimizing the wrong one buys the wrong thing. A negative result is a result, and `r nrow(x)` of the most heavily purchased campaign tactics in America are on that list. The cheapest per-conversation rate in the table is a capacity rather than a price: unreachable below roughly `r n(crossover)` volunteer hours, and not the cheapest at all once volunteer time is valued above about `r d2(breakeven)` an hour. And the cheapest price printed anywhere in the source is not on the list of things this lab ranks: election festivals, at `r d(cpv("Election festivals"))` a vote, sit below every per-conversation tactic and are excluded here on a reading of one sentence.
+
+What cannot be said is what any of this would cost a particular campaign, in a particular state, this year: there are no dates, no places and no populations to support it, and for the four rows without appendices no uncertainty either. Nor can it be said that the blank rows are useless — what was established is that their effect *on turnout* could not be distinguished from zero, which is much narrower than it looks, and for several of them the book prints a point estimate anyway. And it cannot be said that the printed figures are simply the answers: one of them is a best-case targeting scenario, and one of them contradicts the sentence it sits next to.
+
+## Sources
+
+**Data**
+
+- Green, D. P. and Gerber, A. S. (2024). *Get Out the Vote: How to Increase Voter
+  Turnout*, 5th ed. Brookings Institution Press, ISBN 978-0-8157-4062-9. These
+  numbers are in a printed book and nowhere else. There is no file to
+  download, which is why everything in `gotv_tactics.csv` was typed in by hand;
+  the two derived columns are described above. Specifically:
+    - **Table 12-1, pp. 172–73** — the twelve tactics, their effectiveness per
+      contact, the reliability wording and the cost per vote. Footnote b, p. 173,
+      defines what a "contact" is for each row and states the costing
+      assumptions.
+    - **Appendix A, pp. 189–93** — meta-analysis of door-to-door canvassing.
+      Table A-1 lists 59 experiments with a standard error on each; Table A-2
+      gives pooled CACEs with 95% confidence intervals by baseline turnout.
+    - **Appendix B, pp. 195–99** — meta-analysis of direct mail. Table B-1 lists
+      130 experiments; p. 196 gives the pooled estimates and intervals for
+      nonpartisan, advocacy and social-pressure mail.
+    - **Appendix C, pp. 201–04** — meta-analysis of phone calls. Table C-1 lists
+      the experiments by call type; p. 204 gives pooled estimates and intervals
+      for volunteer calls, commercial calls and robocalls, including the two
+      robocall estimates discussed above.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`gotv_tactics.csv`](data/derived/gotv_tactics.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `gotv_tactics.csv` has both `cost_per_vote` and `n_studies`. Sort by each.
+  Do the cheapest tactics have the most evidence behind them, or the least?
+- `ci_low` and `ci_high` bracket every estimate. Which tactics have a range
+  that includes zero? Are any of them still sold as though they work?
+- `contacts_per_vote` says how many contacts buy one extra vote. Pick a tactic
+  and work out what a campaign with $50,000 could buy.
+
+**Academic literature**
+
+- Enos, R. D. and Fowler, A. (2018). "Aggregate Effects of Large-Scale Campaigns
+  on Voter Turnout." *Political Science Research and Methods* 6(4): 733–751.
+- Franco, A., Malhotra, N. and Simonovits, G. (2014). "Publication Bias in the
+  Social Sciences: Unlocking the File Drawer." *Science* 345(6203): 1502–1505.
+- Gerber, A. S. and Green, D. P. (2000). "The Effects of Canvassing, Telephone
+  Calls, and Direct Mail on Voter Turnout: A Field Experiment." *American
+  Political Science Review* 94(3): 653–663.
+- Gerber, A. S., Green, D. P. and Larimer, C. W. (2008). "Social Pressure and
+  Voter Turnout: Evidence from a Large-Scale Field Experiment." *American
+  Political Science Review* 102(1): 33–48.
+- Gerber, A. S., Green, D. P. and Nickerson, D. (2001). "Testing for Publication
+  Bias in Political Science." *Political Analysis* 9(4): 385–392.
+- Imai, K. (2005). "Do Get-Out-the-Vote Calls Reduce Turnout? The Importance of
+  Statistical Methods for Field Experiments." *American Political Science Review*
+  99(2): 283–300.
+- Kalla, J. L. and Broockman, D. E. (2018). "The Minimal Persuasive Effects of
+  Campaign Contact in General Elections: Evidence from 49 Field Experiments."
+  *American Political Science Review* 112(1): 148–166.
+- Rosenthal, R. (1979). "The File Drawer Problem and Tolerance for Null Results."
+  *Psychological Bulletin* 86(3): 638–641.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

@@ -1,0 +1,329 @@
+---
+title: "Data Session 7 Key, part 1: Guessing Who People Are"
+subtitle: "84-355 Democracy's Data | Session 7 — Surnames and BISG | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+sn <- read.csv("data/census_surnames.csv", stringsAsFactors = FALSE)
+co <- read.csv("data/county_race.csv", stringsAsFactors = FALSE,
+               colClasses = c(fips = "character"))
+grp  <- c("pctwhite","pctblack","pctapi","pctaian","pct2prace","pcthispanic")
+grp6 <- c("white","black","api","aian","twoplus","hispanic")
+natl <- colSums(co[, grp6] * co$pop) / sum(co$pop)
+look <- function(nm) sn[sn$name == toupper(nm), ]
+bisg <- function(name, fips) {
+  s <- look(name)
+  p <- c(s$pctwhite,s$pctblack,s$pctapi,s$pctaian,s$pct2prace,s$pcthispanic)/100
+  p[is.na(p)] <- 0
+  g <- as.numeric(co[co$fips == fips, grp6])
+  u <- p * g / natl
+  setNames(round(100 * u / sum(u), 1), grp6)
+}
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(x, big.mark = ",", trim = TRUE)
+big <- sn[sn$count > 1000, ]
+n90 <- sapply(grp, function(v) sum(big[[v]] > 90, na.rm = TRUE))
+# how decisive is a name, for how many people
+mx <- suppressWarnings(apply(sn[, grp], 1, max, na.rm = TRUE))
+mx[!is.finite(mx)] <- NA
+tot_ppl  <- sum(sn$count)
+dec_90   <- 100 * sum(sn$count[!is.na(mx) & mx > 90]) / tot_ppl
+amb_n    <- sum(sn$count[!is.na(mx) & mx < 60])
+amb_one  <- tot_ppl / amb_n
+# suppression by bucket
+sn$bucket <- cut(sn$count, breaks = c(0, 200, 500, 1000, 5000, 1e7),
+                 labels = c("<200", "200-500", "500-1k", "1k-5k", ">5k"))
+supp     <- 100 * tapply(is.na(sn$pctblack), sn$bucket, mean)
+supp_pk  <- max(supp); supp_pk_b <- names(supp)[which.max(supp)]
+supp_all <- 100 * mean(is.na(as.matrix(sn[, grp])))
+supp_col <- sapply(grp, function(v) 100 * tapply(is.na(sn[[v]]), sn$bucket, mean))
+pk_bkt   <- apply(supp_col, 2, function(x) rownames(supp_col)[which.max(x)])
+# Bronx rescue
+bronx <- function(nm) {
+  s <- look(nm)
+  before <- max(c(s$pctwhite, s$pctblack, s$pctapi, s$pcthispanic), na.rm = TRUE)
+  after  <- max(bisg(nm, "36005"))
+  c(before = before, after = after, gain = after - before)
+}
+BR <- sapply(c("SMITH","WILLIAMS","JOHNSON","LEE","NGUYEN","GARCIA"), bronx)
+# Williams across the six counties
+WPL <- c("Allegheny PA" = "42003", "Bronx NY" = "36005", "Honolulu HI" = "15003",
+         "El Paso TX" = "48141", "Los Angeles CA" = "06037", "Manhattan NY" = "36061")
+WM  <- t(sapply(WPL, function(f) bisg("WILLIAMS", f)))
+rownames(WM) <- names(WPL)
+w_blk_lo <- min(WM[, "black"]); w_blk_hi <- max(WM[, "black"])
+w_blk_lo_nm <- rownames(WM)[which.min(WM[, "black"])]
+w_blk_hi_nm <- rownames(WM)[which.max(WM[, "black"])]
+```
+
+All Part 6 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+BISG works — well enough that courts rely on it — and it works by attaching a
+population-level probability to an individual person, which is both its utility
+and the thing that should never be forgotten about it.
+
+***
+
+# The findings
+
+```{r headline}
+big <- sn[sn$count > 1000, ]
+sapply(grp, function(v) sum(big[[v]] > 90, na.rm = TRUE))
+rbind(look("WASHINGTON"), look("JEFFERSON"), look("LINCOLN"))
+rbind(SMITH_Allegheny = bisg("SMITH","42003"), SMITH_Bronx = bisg("SMITH","36005"))
+rbind(LEE_Allegheny = bisg("LEE","42003"), LEE_Honolulu = bisg("LEE","15003"))
+```
+
+1. **The asymmetry.** Of surnames held by more than 1,000 people,
+   **`r nn(n90[["pctwhite"]])`** are more than 90% white;
+   **`r nn(n90[["pctblack"]])`** are more than 90% Black. A
+   `r round(n90[["pctwhite"]] / n90[["pctblack"]], -1)`-fold gap for a group that
+   is an eighth of the country.
+2. **Smith flips.** `r pc(look("SMITH")$pctwhite)`% white nationally →
+   **`r pc(bisg("SMITH","36005")[["black"]])`% Black** in the Bronx.
+3. **Lee flips the other way.** `r pc(look("LEE")$pctapi, 0)`% API by name →
+   `r pc(bisg("LEE","42003")[["api"]])`% API in Allegheny,
+   **`r pc(bisg("LEE","15003")[["api"]], 0)`%** in Honolulu.
+4. **A third of the file is suppressed** — `r pc(supp_all)`% of cells, and the
+   Black column is withheld `r pc(supp[["<200"]])`% of the time among names held
+   by fewer than 200 people. **The gradient is not monotone**: suppression
+   *peaks* at `r pc(supp_pk)`% in the `r supp_pk_b` bucket and only then
+   collapses, to `r pc(supp[[">5k"]])`% above five thousand bearers.
+
+***
+
+# The three things to get across
+
+**The asymmetry is history, not a data defect.** Enslaved people took or were
+given the surnames of enslavers. Black and white Americans have shared a surname
+stock for 160 years, which is exactly why surname-only inference fails for Black
+Americans and works well for recent immigrant groups. Students often assume the
+method is *biased against* Black Americans in a design sense; it is more precise
+to say the signal is genuinely absent, for reasons that are themselves the
+subject of the Voting Rights Act.
+
+**Washington and Jefferson are the exceptions, and Lincoln is not.** Black share
+of the name: `r pc(look("WASHINGTON")$pctblack)`%,
+`r pc(look("JEFFERSON")$pctblack)`%, and `r pc(look("LINCOLN")$pctblack)`%.
+Worth pausing on: nobody organised this. It is millions of
+individual decisions after emancipation, still legible in a 2010 file.
+
+**Geography does most of the work.** This is the point students most often miss.
+For ambiguous names — which is most American names — the county is carrying the
+inference, not the surname. That has an uncomfortable implication: BISG is
+substantially a method for guessing race from address.
+
+***
+
+# Option A — One name, many places
+
+## Verified output
+
+```{r a}
+pl <- c("42003","36005","15003","48141","06037","36061")
+o <- t(sapply(pl, function(f) bisg("WILLIAMS", f)))
+rownames(o) <- c("Allegheny PA","Bronx NY","Honolulu HI","El Paso TX",
+                 "Los Angeles CA","Manhattan NY")
+o
+```
+
+Williams — `r pc(look("WILLIAMS")$pctwhite)`% white /
+`r pc(look("WILLIAMS")$pctblack)`% Black by name alone — ranges across these six
+counties from **`r pc(w_blk_lo)`% Black in `r w_blk_lo_nm`** to
+**`r pc(w_blk_hi)`% Black in `r w_blk_hi_nm`**, with Allegheny at
+`r pc(WM["Allegheny PA", "black"])`%. In El Paso it becomes
+`r pc(WM["El Paso TX", "hispanic"])`% Hispanic; in Honolulu it lands at
+`r pc(WM["Honolulu HI", "twoplus"])`% two-or-more-races, which is a real
+feature of Hawaii's population and not an error.
+
+**The scale of the problem, now computed in Part 1.** For **`r pc(dec_90)`% of
+Americans** a surname is nearly decisive — one group above 90%. For
+**`r nn(amb_n)` people, about one in `r round(amb_one)`**, no group reaches even
+60%, so the name settles nothing. Williams is the
+`r c("first","second","third")[look("WILLIAMS")$rank]` most common surname in the
+country, held by `r pc(look("WILLIAMS")$count / 1e6, 2)` million people; this is
+not an edge case.
+
+Say the consequence plainly: BISG is not uniformly good or uniformly bad. It is
+excellent for Nguyen, useless for Williams, and **the people it fails on are not
+a random sample of the country** — they are concentrated among exactly the
+surnames that are shared across Black and white America for historical reasons
+this course has already covered.
+
+## What a good answer says
+
+**3/4:** Reports the range and identifies which counties move it most.
+
+**4/4:** Answers the court question honestly. For Williams, nearly all the
+discrimination between outcomes is coming from the address, because the name
+itself is a coin flip. A student who says "if I told you only the name you would
+learn almost nothing, and if I told you only the county you would learn most of
+what the model outputs" has understood what BISG actually is.
+
+**4/4, best:** notices the discomfort and states it precisely — the method infers
+race from residential geography, and residential geography in America is
+segregated. The estimate is accurate *because* of segregation. That is worth
+saying out loud, and it is a fair thing for a court to be told.
+
+**Common stumble:** treating a high probability as a certainty about a named
+individual. Push on this in feedback every time.
+
+***
+
+# Option B — Which names does geography rescue?
+
+## Verified output
+
+```{r b}
+for (nm in c("SMITH","WILLIAMS","JOHNSON","LEE","NGUYEN","GARCIA","WASHINGTON")) {
+  s <- look(nm)
+  before <- max(c(s$pctwhite,s$pctblack,s$pctapi,s$pcthispanic), na.rm = TRUE)
+  after  <- max(bisg(nm, "36005"))
+  cat(sprintf("%-12s %5.1f%% -> %5.1f%%  (%+.1f)\n", nm, before, after, after - before))
+}
+```
+
+In the Bronx the large gains are Williams
+`r sprintf("%+.1f", BR["gain","WILLIAMS"])` and Johnson
+`r sprintf("%+.1f", BR["gain","JOHNSON"])`. **Read Smith carefully**: the
+leading share only moves `r sprintf("%+.1f", BR["gain","SMITH"])`, but the
+*group* it belongs to flips, from `r pc(BR["before","SMITH"])`% white nationally to
+`r pc(BR["after","SMITH"])`% Black in the Bronx — the number is nearly unchanged
+and the answer is completely different. Nguyen
+(`r sprintf("%+.1f", BR["gain","NGUYEN"])`) and Garcia
+(`r sprintf("%+.1f", BR["gain","GARCIA"])`, into an already-decisive
+`r pc(BR["after","GARCIA"])`%) are not rescued, because neither needed rescuing.
+
+## What a good answer says
+
+**3/4:** Reports that ambiguous names gain and decisive names do not.
+
+**4/4:** Explains it as Bayes' rule behaving correctly — a sharp prior is hard to
+move, a flat prior is easy. Then makes the inference that matters: **the names
+that need help are the common ones**, and common names cover most Americans.
+Nguyen and Garcia are precise but describe a minority of the population; Smith,
+Johnson and Williams are three of the five most common surnames in the country
+and are all essentially uninformative on their own.
+
+**4/4, best:** connects to Session 3 (§203). Both labs are about a method that works worst
+for the population it most needs to serve.
+
+***
+
+# Option C — The cost of suppression
+
+## Verified output
+
+```{r c}
+sn$bucket <- cut(sn$count, breaks = c(0,200,500,1000,5000,1e7),
+                 labels = c("<200","200-500","500-1k","1k-5k",">5k"))
+round(100 * tapply(is.na(sn$pctblack), sn$bucket, mean), 1)
+c(names_under_1000 = sum(sn$count < 1000),
+  share = round(100 * mean(sn$count < 1000), 1))
+```
+
+Suppression of the Black column runs **`r pc(supp[["<200"]])`%** for names held
+by fewer than 200 people, then **rises** to `r pc(supp[["200-500"]])`% and peaks
+at **`r pc(supp_pk)`% in the `r supp_pk_b` bucket** before collapsing to
+`r pc(supp[["1k-5k"]])`% and `r pc(supp[[">5k"]])`%. **It is not a smooth
+decline, and the printed table above says so** — do not let the shape be
+described as one, in your own comments or a student's.
+**`r pc(100 * mean(sn$count < 1000))`%** of all surnames in the file are held by
+fewer than 1,000 people.
+
+If a student asks *why* the hump is there, the honest answer is that the file
+does not say. The Bureau publishes the suppression flag, not the rule that
+generated it, and published cells include exact zeros — so the pattern cannot be
+reverse-engineered from what we have. What *is* checkable, and worth showing, is
+that the peak sits in a different bucket for each column: the Hispanic column is
+worst at `r pk_bkt[["pcthispanic"]]`, the Black column at
+`r pk_bkt[["pctblack"]]`, the American Indian column at `r pk_bkt[["pctaian"]]`.
+Whatever the rule is, it does not act on how rare the name is alone.
+
+## What a good answer says
+
+**3/4:** Reads the bucket table and notes that most names in the file are rare.
+Reporting the `<200` figure alone is a 3, not a 4 — it is the headline number
+and it is not the worst one.
+
+**4/4:** Answers the neutrality question properly. Suppression is applied by a
+neutral rule — small cells get hidden — but it does not *land* neutrally. Recent
+immigrant communities, small national-origin groups, and Native American families
+are disproportionately the holders of rare surnames. A rule can be neutral in
+form and unequal in effect, which is a distinction this course has now met three
+times (the Electoral College, §203's coverage thresholds in Session 3, and here).
+
+**4/4, best:** proposes what a court should be told — not "the method is
+unreliable," but specifically that the *precision varies systematically, and not
+monotonically, with the rarity of the name*, and that any estimate should carry
+that caveat by subgroup.
+
+***
+
+# Option D — Their own question
+
+Students looking up family names is the most engaged this lab gets. Expect
+questions about names that "feel wrong"; usually the answer is that the name is
+rare and half its columns are suppressed.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is holding utility and limitation together. A paper
+  that concludes "this is racist pseudoscience" and one that concludes "this is
+  a validated method" are both 2s. The method is genuinely relied upon in
+  litigation *and* is genuinely a guess; the assignment is to say both.
+- **Watch for individual-level claims.** "This tells us Mr Smith is Black" is
+  wrong and should be corrected explicitly.
+
+## Anticipated questions
+
+- *"Isn't this racial profiling?"* — Take the question seriously; it is the right
+  question. The answer is that the alternative is not neutrality but blindness:
+  without some estimate of race, no §2 vote-dilution claim can be brought and no
+  lending discrimination can be detected. The method exists because the records
+  that would answer honestly do not exist. Whether that trade is acceptable is
+  worth ten minutes of class.
+- *"Why not just ask people?"* — Some states do collect race on registration.
+  Coverage is partial, non-response is high and non-random, and most states
+  collect nothing. Worth noting which states do.
+- *"Is my name's estimate right?"* — For rare names, often not, and the
+  suppressed columns are why.
+- *"Does the real method do better?"* — Yes. `wru` adds first names, age, sex,
+  party, and block-level geography. Better in degree, not in kind.
+- *"Why didn't we use `wru`?"* — Because the arithmetic is three lines and worth
+  seeing. Also because the package needs a Census API key, and this course does
+  not ask students to obtain credentials.
+
+## Connections forward
+
+- **Session 14 (RPV and ecological inference)** is the payoff. BISG estimates *who
+  the voters are*; ecological inference estimates *how groups voted*. Chained
+  together they are the standard evidentiary basis of a §2 case — and the errors
+  compound. Say so explicitly on 1 December.
+- **Session 3 (§203)** — both labs are about legal consequences resting on
+  statistical estimates, and both have the same structure: a method least
+  reliable exactly where it matters most.
+- **Session 2 (the decennial census)** — the suppression rules students meet here are
+  disclosure avoidance, the same concern that produced differential privacy in
+  the 2020 Census.

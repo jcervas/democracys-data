@@ -1,0 +1,330 @@
+---
+title: "Data Session 13: The Ballots Themselves"
+subtitle: "84-355 Democracy's Data | Alaska's cast vote record"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number come from?
+
+> *"He won in the final round after transfers."*
+
+Every session so far has used **totals** — how many people voted for X. Totals
+are what elections publish, because the ballot is secret and a total is what is
+left once you throw the ballots away.
+
+Alaska does not throw them away.
+
+Since adopting ranked-choice voting, Alaska publishes its **cast vote record**:
+one row per scanned ballot, showing every ranking on it. No name, no address —
+but the actual choices, one voter at a time. It is the closest thing to a public
+record of individual votes that exists in this country, and almost nowhere else
+has one.
+
+**Today we recount an election from the ballots up**, and then check our answer
+against the state's.
+
+The contest is the 2024 race for Alaska's single seat in the U.S. House:
+**Mary Peltola**, the Democratic incumbent, against **Nick Begich**, with two
+minor candidates. Voters could rank up to four.
+
+# Part 1 — What one row is
+
+```{r load}
+s <- read.csv("data/sequences.csv", stringsAsFactors = FALSE)
+
+nrow(s)
+sum(s$ballots)
+head(s, 6)
+```
+
+**340,778 ballots, collapsed into 926 distinct ranking sequences.** Every
+different *pattern* of ranking that any Alaskan produced, and how many people
+produced it.
+
+Read the first two rows. The most common ballot in Alaska was **"Begich, and
+nobody else"** — 121,602 of them. The second most common was **"Peltola, and
+nobody else"** — 86,278.
+
+```{r bullets}
+ranks_used <- rowSums(s[, grep("^rank", names(s))] != "")
+blank <- sum(s$ballots[ranks_used == 0])
+one   <- sum(s$ballots[ranks_used == 1])
+voted <- sum(s$ballots) - blank
+
+c(blank_on_this_race = blank,
+  ranked_only_one = one,
+  pct_of_voters = round(100 * one / voted, 1))
+```
+
+**Given four rankings, 65% of Alaskans used one.**
+
+That is the first real finding, and it is a fact about ranked-choice voting that
+neither its advocates nor its opponents advertise. The system's whole promise is
+that you can express a second preference without wasting your vote. Two-thirds
+of voters declined.
+
+```{r ranks-plot}
+u <- tapply(s$ballots, ranks_used, sum)
+barplot(u, names.arg = names(u), col = "#2c7fb8",
+        xlab = "number of candidates ranked", ylab = "ballots")
+```
+
+# Part 2 — Who ranked whom
+
+```{r pairs}
+top <- aggregate(ballots ~ rank1 + rank2, data = s[s$rank2 != "", ], sum)
+top <- top[order(-top$ballots), ]
+head(top, 6)
+```
+
+The most common pair is **Peltola then Hafner** — 39,684 ballots — followed by
+**Begich then Howe**, 24,386. Voters who bothered with a second choice mostly
+moved from a major candidate to a minor one.
+
+```{r crossover}
+maj <- c("Begich, Nick", "Peltola, Mary S.")
+cross <- top[top$rank1 %in% maj & top$rank2 %in% maj, ]
+cross
+```
+
+Two things in that table, and the second one is not what we went looking for.
+
+**First, the crossover.** 10,771 ballots ranked Peltola then Begich, and 6,663
+ranked Begich then Peltola — **17,434 in all, about 5% of the electorate.**
+Ranked-choice voting is supposed to reward candidates who can be somebody's
+second choice across the divide. One voter in twenty took the offer.
+
+**Second, look at rows three and four.** **2,455 ballots rank Begich first and
+Begich second.** Another 1,049 do the same for Peltola. The same person, twice.
+
+```{r dupes}
+dup <- top[as.character(top$rank1) == as.character(top$rank2), ]
+c(begich = dup$ballots[dup$rank1 == "Begich, Nick"],
+  peltola = dup$ballots[dup$rank1 == "Peltola, Mary S."],
+  all_candidates = sum(dup$ballots))
+```
+
+**3,790 ballots in all name the same candidate twice.**
+
+Nothing stopped them: the scanner records the marks it sees, and a voter who
+wants to make very sure can fill the same column twice. **The tabulator ignores
+the duplicate** and moves on to the next distinct name — so these ballots count
+normally — but the behaviour is in the record, and you would never see it in a
+total. **This is what individual-level data buys you.**
+
+Which brings the argument back to the two-thirds. If ranking one candidate and
+stopping is *confusion* — people not understanding the offer at the top of the
+ballot — then the rate should be about the same whichever candidate they marked.
+Confusion has no reason to prefer a front-runner.
+
+> **Before you run the next chunk, commit to an answer.** It splits that
+> `r round(100 * one / voted, 1)`% by who the voter put first. **Do Begich's
+> voters and Hafner's voters look alike?** Write down two things: whether the
+> gap between them is small — within a few points, which is what confusion
+> would give you — or large; and if it is large, whose supporters stopped after
+> one ranking more often.
+
+```{r bullet-by-cand}
+cands <- c("Begich, Nick", "Peltola, Mary S.", "Howe, John Wayne", "Hafner, Eric")
+
+bul <- data.frame(
+  first_choice = sub(",.*", "", cands),
+  voters = sapply(cands, function(c_) sum(s$ballots[s$rank1 == c_])),
+  pct_bullet = sapply(cands, function(c_)
+    round(100 * sum(s$ballots[s$rank1 == c_ & ranks_used == 1]) /
+                sum(s$ballots[s$rank1 == c_]), 1)),
+  row.names = NULL)
+
+bul <- bul[order(-bul$voters), ]
+bul
+```
+
+> **They do not look alike at all.** `r bul$pct_bullet[1]`% of Begich's voters
+> ranked nobody else; `r bul$pct_bullet[nrow(bul)]`% of Hafner's did. The gap is
+> `r round(bul$pct_bullet[1] - bul$pct_bullet[nrow(bul)])` points wide, and it
+> runs the opposite way from the guess most people write down when they assume
+> the smallest candidate's supporters were the most lost. The pattern runs
+> cleanly down the ballot: the bigger your candidate, the likelier you were to
+> stop after one.
+>
+> **That is not confusion. It is arithmetic voters appear to have done.** If
+> your candidate is the front-runner, a second ranking only ever gets read if
+> your first choice is eliminated — and your first choice is not going to be
+> eliminated. If your candidate is polling at one percent, a second ranking is
+> the only part of your ballot that will do anything. There is a second reading
+> this file cannot separate from the first — **campaign instruction**, since
+> "rank one and stop" is a documented tactic in these races — and either way it
+> is something no published total would ever show you.
+
+# Part 3 — Count it yourself
+
+Instant-runoff is simple enough to write out. Count everyone's top *continuing*
+choice; if nobody has a majority, eliminate the lowest and look again at those
+ballots' next choice; repeat.
+
+```{r irv}
+cols <- grep("^rank", names(s), value = TRUE)
+
+irv <- function(dat, eliminated = character(0)) {
+  pick <- rep(NA_character_, nrow(dat))
+  for (i in seq_len(nrow(dat))) {
+    for (cl in cols) {
+      v <- dat[i, cl]
+      if (v == "") next
+      if (v == "OVERVOTE") break          # an overvote stops the ballot
+      if (v %in% eliminated) next
+      pick[i] <- v; break
+    }
+  }
+  tapply(dat$ballots, pick, sum)
+}
+
+elim <- character(0)
+for (round in 1:5) {
+  cnt <- sort(irv(s, elim), decreasing = TRUE)
+  active <- sum(cnt)
+  cat(sprintf("\nRound %d  (continuing ballots: %s)\n", round,
+              format(active, big.mark = ",")))
+  print(round(100 * cnt / active, 2))
+  if (cnt[1] > active / 2) { cat("  WINNER:", names(cnt)[1], "\n"); break }
+  elim <- c(elim, names(cnt)[length(cnt)])
+  cat("  eliminate:", names(cnt)[length(cnt)], "\n")
+}
+```
+
+**Begich wins with 51.22%.** You just recounted a congressional election from
+the ballots.
+
+# Part 4 — Check it against the state
+
+```{r official}
+o <- read.csv("data/official_rounds.csv", stringsAsFactors = FALSE)
+o[o$round == "Round 3", ]
+```
+
+Alaska's official final round: **Begich 51.22%, Peltola 48.78%.** Ours matched
+to two decimal places.
+
+The **counts** do not match exactly — ours are about 150 ballots higher out of
+322,000, or 0.05%. That gap is not a mistake to fix; it is the lab's real
+lesson. The state's tabulator applies rules ours does not, published on the
+front page of its own report: *exclude unresolved write-ins*, *exhausted on two
+or more ranks skipped*, and a specific treatment of overvotes.
+
+**A different, defensible rule about skipped rankings changes the count.** It
+did not change the winner here. In a closer race it could.
+
+# Part 5 — Where the losers' votes went
+
+```{r transfers}
+tr <- read.csv("data/official_transfers.csv", stringsAsFactors = FALSE)
+tr
+```
+
+```{r transfer-plot}
+h <- tr[tr$eliminated == "Howe, John Wayne", ]
+barplot(h$ballots, names.arg = h$transferred_to, col = "#C41230",
+        ylab = "ballots", main = "Where Howe's 13,871 ballots went")
+```
+
+When John Wayne Howe was eliminated, his 13,871 ballots split: **4,817 to
+Begich, 2,724 to Peltola, and 6,295 exhausted.**
+
+**Forty-five percent of his voters had ranked nobody else.** Their ballots left
+the count entirely. By the final round **7,595 ballots were exhausted** — people
+who turned up, voted, and had no say in the decisive round, because the
+candidate they backed was gone and they had named no alternative.
+
+That is the trade at the heart of ranked-choice voting. It lets you express more
+than one preference. It does not make you.
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Abolish the runoff.** Who wins under plain plurality — just
+`rank1`? Compare to the RCV winner and say which result better reflects what
+Alaskans wrote on their ballots. Both answers are defensible; the argument is
+the work.
+
+**Option B — Exhaustion by candidate.** For each first-choice candidate, what
+share of their voters ranked *only* them? (Group `s` by `rank1` and compare
+`ranks_used == 1` to the rest.) Whose supporters were most likely to bullet
+vote, and what does that suggest about how each campaign told people to vote?
+
+**Option C — A different overvote rule.** The `irv()` function stops a ballot at
+an overvote. Change it to *skip* the overvoted rank and continue to the next one
+(`if (v == "OVERVOTE") next`). How many ballots does that rescue, and does
+anything change? Then say which rule you would write into law.
+
+**Option D — Your own question.** 926 sequences, 340,778 ballots, four
+candidates.
+
+# What this lab cannot tell you
+
+- **Who any of these people are.** No names, no addresses. But a cast vote
+  record is still individual-level: in a small precinct an unusual ranking can
+  narrow down who cast it, which is why the file you have been given is
+  collapsed to sequences and counts, with precinct and tabulator identifiers
+  removed.
+- **The certified result.** Alaska says plainly that the CVR **excludes ballots
+  counted by hand** and does not show what write-in voters actually wrote. Our
+  340,778 is not the official turnout for this contest.
+- **Why anyone ranked as they did.** A ballot records a choice and nothing about
+  a reason. Whether 65% bullet voting means satisfaction, confusion, distrust of
+  the system, or a campaign telling people to "rank the red" is not in here —
+  Session 8's survey data is where that question goes.
+- **Whether RCV is good.** One race, one state, one year. What this shows is
+  what the mechanism *does* to a set of ballots, which is a narrower and more
+  useful thing than an opinion about the system.
+
+# On the discussion board
+
+By **Mon, Nov 30, 11:59 p.m.** — Thursday is Thanksgiving, so this week's post
+runs long. A sentence or two is enough.
+
+Three that would make good posts:
+
+- Given four rankings, two-thirds of Alaskans used one. What do you make of
+  that?
+- 6,295 of Howe's voters had their ballots exhausted before the decisive round.
+  Were they disenfranchised, or did they choose that?
+- Our count matched the official percentages exactly and the raw counts by 150
+  ballots, because of a rule about skipped rankings. Who should decide that
+  rule?
+
+***
+
+### Where the data came from
+
+State of Alaska, 2024 General Election, **cast vote record**, published by the
+Division of Elections as a Dominion JSON export — 2,043 files, 1.58 GB,
+one record per scanned ballot.
+<https://www.elections.alaska.gov/results/24GENR/CVR_Export_20241130154411.zip>
+
+Official round-by-round results and transfer detail are transcribed from the
+state's own **RCV Detailed Report**,
+<https://www.elections.alaska.gov/results/24GENR/RCV-USRep.pdf>
+
+**The committed file contains no individual ballots.** 340,778 records were
+collapsed to 926 distinct ranking sequences with counts, and every precinct and
+tabulator identifier was dropped, before anything was saved. The build is in
+`data/build-data.py` — Python rather than R, because base R has no JSON parser
+and the source is 1.58 GB of JSON.

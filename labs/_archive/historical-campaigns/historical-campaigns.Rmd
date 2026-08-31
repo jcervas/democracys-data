@@ -1,0 +1,494 @@
+---
+title: "Lab 4: A Century and a Half of Campaigns"
+subtitle: "84-355 Democracy's Data | Week 4"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+```
+
+# Before we start
+
+Chapter 3 is about how American campaigns changed: from party-run operations to
+candidate-run ones, from conventions to primaries, from newspapers to television
+to whatever we are in now.
+
+This lab looks at the other half of that story. Campaigns did not transform in a
+vacuum — they transformed on a **map that was itself transforming**. For most of
+the period we are about to look at, a third of the country was not contested at
+all. No amount of television changes a campaign's behaviour as much as a state
+becoming winnable.
+
+We have 41 presidential elections, 1864 to 2024, state by state. Everything is
+base R. Work in order — later chunks use objects made earlier.
+
+***
+
+# Part 1: 160 years in one table
+
+```{r read}
+pres <- read.csv("data/pres_states_1864_2024.csv", stringsAsFactors = FALSE)
+dim(pres)
+head(pres)
+```
+
+Nearly two thousand rows: one per state per election. `democrat` and
+`republican` are percentages of the total vote in that state.
+
+How many elections, and how many states in each?
+
+```{r coverage}
+length(unique(pres$year))
+range(pres$year)
+head(table(pres$year), 6)
+tail(table(pres$year), 3)
+```
+
+Twenty-five states in 1864, fifty-one now. That is not a data problem — it is the
+country growing. But it means **every comparison across time is a comparison
+between different sets of states**, and we will have to keep saying so.
+
+Look again at 1864: twenty-five states. There were thirty-six in the Union that
+year.
+
+> **Eleven states are missing from 1864 because they were in armed rebellion.**
+> The file does not say so. It just has fewer rows. This is the first thing to
+> understand about historical data: absence is never annotated.
+
+***
+
+# Part 2: Why we will work in two-party shares
+
+Last week's lab found that third-party votes go missing from election files.
+This file has the same problem, and is honest enough that we can measure it:
+
+```{r other-na}
+sum(is.na(pres$other))
+nrow(pres)
+```
+
+Most rows have no third-party number at all. So `democrat + republican` will not
+add to 100, and the gap is not meaningful:
+
+```{r sums}
+p24 <- pres[pres$year == 2024, ]
+summary(p24$democrat + p24$republican)
+```
+
+The fix is the standard one for historical comparison: ignore everyone else and
+ask what share of the **two-party** vote each side won.
+
+```{r two-party}
+pres$d2 <- 100 * pres$democrat / (pres$democrat + pres$republican)
+round(head(pres$d2), 1)
+```
+
+This is a real choice with a real cost. In 1912, 1968 and 1992 — Roosevelt,
+Wallace, Perot — a two-party share hides most of what happened. Keep that in
+mind when those years look strange later.
+
+## When a missing value is a historical fact
+
+Nineteen rows have no Democratic or no Republican share at all:
+
+```{r na-rows}
+absent <- pres[is.na(pres$d2), c("year", "state_abbrev", "democrat",
+                                 "republican", "winner")]
+absent
+```
+
+These are not gaps. Each one records a state where a major party **had no line on
+the ballot**. In 1892 the Populists fused with the Democrats across the mountain
+west, so there was no separate Democratic ticket. In 1912 the Progressives kept
+Taft off California's ballot entirely.
+
+And then:
+
+```{r alabama}
+absent[absent$state_abbrev == "AL", ]
+```
+
+> **In 1948 and again in 1964, there was no Democratic slate on the Alabama
+> ballot.** In 1948 the Dixiecrats replaced it; in 1964 Alabama Democrats
+> refused to pledge to Johnson. A voter who wanted to vote for Harry Truman, or
+> for Lyndon Johnson, could not do it.
+>
+> The ballot is not a neutral instrument. Hold on to this — it is the whole
+> subject of Part 3.
+
+***
+
+# Part 3: The longest-running fact in American politics
+
+Define the eleven states of the Confederacy. This is a choice, and you should see
+it being made:
+
+```{r south}
+south <- c("AL", "AR", "FL", "GA", "LA", "MS", "NC", "SC", "TN", "TX", "VA")
+pres$region <- ifelse(pres$state_abbrev %in% south, "South", "Rest of country")
+```
+
+Now average the Democratic two-party share in each region, election by election:
+
+```{r region-means}
+reg <- aggregate(d2 ~ year + region, data = pres, FUN = mean, na.rm = TRUE)
+wide <- reshape(reg, idvar = "year", timevar = "region", direction = "wide")
+names(wide) <- c("year", "rest", "south")
+wide$gap <- round(wide$south - wide$rest, 1)
+head(wide, 4)
+```
+
+Plot both lines:
+
+```{r south-plot, fig.width = 8, fig.height = 5.5}
+plot(wide$year, wide$south, type = "l", lwd = 2.5, col = "#2166AC",
+     ylim = c(20, 95), xlab = "", ylab = "Democratic share of two-party vote (%)",
+     main = "The Solid South, and its end")
+lines(wide$year, wide$rest, lwd = 2.5, col = "#B2182B")
+abline(h = 50, lty = 3, col = "grey50")
+abline(v = 1964, lty = 2, col = "grey30")
+text(1966, 90, "1964", pos = 4, cex = 0.85, col = "grey30")
+legend("bottomleft", legend = c("11 Confederate states", "Rest of country"),
+       col = c("#2166AC", "#B2182B"), lwd = 2.5, bty = "n", cex = 0.9)
+```
+
+> **Pause and read that.** For eighty years the blue line sits far above the red
+> one — the South voting 70, 80, sometimes 85 percent Democratic while the rest
+> of the country split near even. Then the lines cross, and stay crossed.
+
+When exactly?
+
+```{r crossover}
+wide[wide$year >= 1948 & wide$year <= 1976, c("year", "south", "rest", "gap")]
+```
+
+The gap peaks around **+42 points in 1924**. It is still nearly +18 in 1948. It
+goes negative for the first time in **1964** — the year the Civil Rights Act
+passed, when Johnson won a national landslide and Goldwater carried the Deep
+South.
+
+It does not vanish overnight. Carter, a Georgian, pulls it back positive in 1976
+(+6.8) and it holds in 1980 (+5.5). **From 1984 onward it is negative in every
+single election**, and by 2024 it is −7.4.
+
+By 2024 the South is about 7 points *more* Republican than the rest of the
+country. The sign has flipped and stayed flipped.
+
+## A dead man wins two states
+
+While we are here, look at who the file says won in 1960:
+
+```{r who-won-1960}
+table(pres$winner[pres$year == 1960])
+pres[pres$year == 1960 & pres$winner == "Harry S. Truman",
+     c("year", "state_abbrev", "democrat", "republican", "other", "winner")]
+```
+
+**Harry Truman was not a candidate in 1960.** He had left office eight years
+earlier.
+
+What actually happened is more interesting than a typo. Alabama and Mississippi
+ran slates of **unpledged electors** — Democrats who appeared on the ballot
+promising *not* to support the national ticket, hoping a close election would let
+the South bargain over civil rights. Mississippi's unpledged slate won outright.
+Whoever compiled this file needed a name for that slate and reached for a
+Democrat, and Truman is what came out.
+
+> This is a Week 2 problem wearing 1960 clothes. Somebody made a judgement call
+> while assembling a file, wrote nothing down, and the judgement is now sitting
+> in your data looking like a fact. Notice that it did **not** corrupt the
+> numbers we have been using — the vote shares are fine. Only the label is
+> wrong. Bad data is rarely uniformly bad, which is exactly what makes it
+> dangerous.
+
+***
+
+# Part 4: How different are the states from one another?
+
+If every state voted alike, the spread between them would be zero. If the country
+were made of separate political worlds, the spread would be large. Standard
+deviation across states, election by election:
+
+```{r spread}
+spread <- aggregate(d2 ~ year, data = pres, FUN = sd, na.rm = TRUE)
+names(spread)[2] <- "sd"
+spread$sd <- round(spread$sd, 2)
+tail(spread, 5)
+```
+
+```{r spread-plot, fig.width = 8, fig.height = 5}
+plot(spread$year, spread$sd, type = "b", pch = 19, lwd = 2, col = "#4D4D4D",
+     xlab = "", ylab = "SD of state Democratic share (points)",
+     main = "How far apart the states are")
+abline(v = 1960, lty = 2, col = "grey40")
+text(1962, 20, "1960: the states\nnever agreed more", pos = 4, cex = 0.8,
+     col = "grey30")
+```
+
+The most-alike year and the least-alike years:
+
+```{r spread-extremes}
+head(spread[order(spread$sd), ], 3)
+head(spread[order(-spread$sd), ], 3)
+```
+
+The spread was enormous in the era of the Solid South — the South was voting
+differently from everyone else, and that shows up as huge variance. It collapses
+to a minimum of **5.8 in 1960**. And then it climbs again, roughly doubling by
+2024.
+
+Careful here. That one number is made of parts. Some of the distance between
+states is a whole region differing from the rest of the country; the rest is
+states differing from their own neighbours. The next chunk splits the spread
+into those two pieces.
+
+> **Before you run it, write two numbers down.** In 1924, with the Solid South
+> intact, **what percentage of all the state-to-state variation was simply the
+> South differing from everyone else? And what is that percentage in 2024?** The
+> standard deviations invite you to think the country has gone half the way
+> back, in which case the second number ought to be a solid fraction of the
+> first. Commit to two percentages — not "high" and "lower".
+
+```{r decomp}
+between <- function(y) {
+  s  <- pres[pres$year == y & !is.na(pres$d2), ]
+  g  <- s$region == "South"
+  gm <- tapply(s$d2, g, mean); nn <- table(g); tot <- mean(s$d2)
+  100 * sum(nn * (gm - tot)^2) / sum((s$d2 - tot)^2)   # between-region share
+}
+
+pb <- sapply(c(1924, 2024), between)
+names(pb) <- c("1924", "2024")
+round(pb, 1)
+```
+
+> **`r round(pb[["1924"]], 1)`% in 1924, and `r round(pb[["2024"]], 1)`% in
+> 2024.** The first number is usually written down too low and the second far
+> too high — most people put 2024 in the thirties or forties, on the
+> reasonable-sounding logic that a spread half the way back ought to be half a
+> regional story. It is not. The states are further apart today than in 1960,
+> but *not* for the 1920s reason. Then, one region was voting unlike the rest.
+> Now `r round(100 - pb[["2024"]], 1)`% of the spread is states differing from
+> their own neighbours, everywhere, along lines no regional label captures —
+> this is the sorting you have heard called polarization. The same statistic,
+> two completely different worlds.
+>
+> A number going up does not tell you why.
+
+***
+
+# Part 5: The vanishing battleground
+
+Here is the fact that matters most for how campaigns behave. Count the states
+within five points of an even split:
+
+```{r close}
+pres$close <- abs(pres$d2 - 50) < 5
+nclose <- aggregate(close ~ year, data = pres, FUN = sum, na.rm = TRUE)
+tail(nclose, 6)
+```
+
+```{r close-plot, fig.width = 8, fig.height = 5}
+plot(nclose$year, nclose$close, type = "h", lwd = 6, col = "#8C6BB1",
+     xlab = "", ylab = "States within 5 points of 50-50",
+     main = "Competitive states, 1864-2024")
+points(nclose$year, nclose$close, pch = 19, col = "#54278F")
+```
+
+```{r close-numbers}
+nclose[nclose$year %in% c(1960, 1976, 2000, 2012, 2020, 2024), ]
+```
+
+Thirty-three competitive states in 1960. Thirteen in 2024 — out of fifty-one, and
+with far more states in the union than in 1960.
+
+**This is the sentence to take away from the lab.** A campaign in 1960 had to
+think about most of the country. A campaign in 2024 has to think about a dozen
+states, and can safely ignore the rest. Nothing in Chapter 3 about consultants or
+television explains as much about modern campaign behaviour as this does.
+
+We will see the consequence directly in Week 6, when we look at where candidates
+actually go.
+
+***
+
+# Part 6: What this data cannot tell you
+
+Three limits, stated plainly, because you should be able to state them yourself
+by now.
+
+**The set of states changes.** Comparing the spread in 1864 (25 states) to 2024
+(51) is comparing different objects. The trend is real but the early numbers are
+noisier than they look.
+
+```{r states-per-year}
+range(table(pres$year))
+```
+
+**Two-party share hides third parties.** 1912, 1968 and 1992 all look tamer here
+than they were.
+
+```{r third-party-years}
+pres[pres$year == 1912 & pres$state_abbrev %in% c("CA", "SD", "WA"),
+     c("year", "state_abbrev", "democrat", "republican", "other", "winner")]
+```
+
+Theodore Roosevelt won California, South Dakota and Washington in 1912. He does
+not appear in our `d2` column at all — he is inside `other`, or missing entirely.
+
+**Shares are not votes.** Every number here is a percentage. A five-point margin
+in Wyoming and a five-point margin in California are the same number and
+nothing like the same event.
+
+***
+
+# Part 7: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change, or nothing at all. Run it,
+look at it, and tell me what it means.
+
+Pick **one**.
+
+***
+
+### Option A — Move the line
+
+Part 3 used the eleven Confederate states. That was a choice. Here it is again
+with a different one — the eleven plus the border states that permitted slavery
+but did not secede.
+
+```{r opt-a, fig.width = 8, fig.height = 5.5}
+# Change this list and re-run. Try adding "KY","MO","MD","WV","OK","DE".
+my_south <- c("AL","AR","FL","GA","LA","MS","NC","SC","TN","TX","VA")
+
+pres$my_region <- ifelse(pres$state_abbrev %in% my_south, "South", "Rest")
+r <- aggregate(d2 ~ year + my_region, data = pres, FUN = mean, na.rm = TRUE)
+w <- reshape(r, idvar = "year", timevar = "my_region", direction = "wide")
+names(w) <- c("year", "rest", "south")
+
+plot(w$year, w$south, type = "l", lwd = 2.5, col = "#2166AC", ylim = c(20, 95),
+     xlab = "", ylab = "Democratic two-party share (%)",
+     main = paste("The South as", length(my_south), "states"))
+lines(w$year, w$rest, lwd = 2.5, col = "#B2182B")
+abline(h = 50, lty = 3, col = "grey50"); abline(v = 1964, lty = 2, col = "grey30")
+
+w$gap <- round(w$south - w$rest, 1)
+w[w$year %in% c(1924, 1948, 1960, 1964, 1976, 2024), ]
+```
+
+**Write about:** how much does the story depend on which states you call
+Southern? Does the 1964 crossover move, sharpen, or blur — or hold exactly where
+it was? Report what you actually find, including "almost nothing changed" if that
+is the answer.
+
+Then the real question, whichever way it went: a finding that survives a change
+in its own definition is worth more than one that does not. Did this one survive?
+And what should you now think of anyone — a journalist, a campaign, a
+professor — who reports "the South" as a single number without telling you which
+states they meant?
+
+***
+
+### Option B — Pick a state and follow it
+
+```{r opt-b, fig.width = 8, fig.height = 5}
+this_state <- "MS"                # <- change to any two-letter abbreviation
+
+s <- pres[pres$state_abbrev == this_state, ]
+s <- s[order(s$year), ]
+
+plot(s$year, s$d2, type = "b", pch = 19, lwd = 2, col = "#2166AC",
+     ylim = c(0, 100), xlab = "", ylab = "Democratic two-party share (%)",
+     main = paste("Presidential voting in", this_state))
+abline(h = 50, lty = 3, col = "grey50")
+lines(wide$year, wide$rest, lwd = 1.5, col = "grey60", lty = 2)
+legend("topright", c(this_state, "Rest of country"),
+       col = c("#2166AC", "grey60"), lwd = 2, lty = c(1, 2), bty = "n", cex = 0.85)
+
+s[s$year %in% c(1948, 1960, 1964, 1972, 2024), c("year", "d2", "winner")]
+```
+
+**Write about:** narrate the line. Where does your state break from the national
+pattern, and when does it rejoin? Try Mississippi, then try Vermont — which ran
+the same journey in the opposite direction. Then say what a campaign would have
+concluded about your state in 1950, and in 2024. Are those the same campaign?
+
+***
+
+### Option C — When did the battleground shrink?
+
+```{r opt-c, fig.width = 8, fig.height = 5}
+margin <- 5                       # <- change this threshold and re-run
+
+pres$is_close <- abs(pres$d2 - 50) < margin
+nc <- aggregate(is_close ~ year, data = pres, FUN = sum, na.rm = TRUE)
+tot <- as.data.frame(table(pres$year)); names(tot) <- c("year", "n")
+nc$year <- as.numeric(nc$year); tot$year <- as.numeric(as.character(tot$year))
+nc <- merge(nc, tot, by = "year")
+nc$pct <- round(100 * nc$is_close / nc$n, 1)
+
+plot(nc$year, nc$pct, type = "b", pch = 19, lwd = 2, col = "#54278F",
+     ylim = c(0, 80), xlab = "", ylab = "% of states that are competitive",
+     main = paste("States within", margin, "points of even"))
+
+nc[nc$year %in% c(1960, 1976, 1992, 2008, 2024), ]
+```
+
+**Write about:** this version uses the *share* of states rather than the count,
+which is the fairer comparison when the number of states keeps changing. Does the
+decline still hold? Now change `margin` to 2 and to 10 — does the story survive
+all three thresholds, or only some? A finding that appears at one cut-off and
+vanishes at another is worth less, and you should say so if that is what you see.
+
+***
+
+### Option D — Ask your own question
+
+Something in here is bound to look wrong. 1912 and 1968 are strange for real
+reasons. Vermont and Mississippi swapped places. Follow whatever nags at you.
+Re-running an existing chunk with a different state or year is plenty.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can look at 160 years of election results and say something
+true about how campaigning changed.
+
+***
+
+## Where the data came from
+
+**State returns, 1864–2024** — Jason Timm, *PresElectionResults*
+(<https://github.com/jaytimm/PresElectionResults>), state series compiled from
+per-election sources resting ultimately on Dave Leip's *Atlas of U.S.
+Presidential Elections* and the official state canvasses.
+
+**National popular and electoral vote** — the same compilation, in
+`data/pres_national.csv`. Not used above; it is there for Option D.
+
+Two warnings the source deserves. Nineteenth-century "popular vote" totals rest
+on state records of wildly varying quality, and in much of the South after 1877
+they rest on elections conducted under systematic disenfranchisement — a
+90 percent Democratic share in 1900 Mississippi is an accurate count of a vote
+that most adults in Mississippi were prevented from casting. The number is real.
+What it measures is not what it appears to measure.
+
+The script that downloaded, checked and wrote these files is `data/build-data.R`.
+It prints its own sanity checks, including the nineteen rows where a major party
+was absent from the ballot.

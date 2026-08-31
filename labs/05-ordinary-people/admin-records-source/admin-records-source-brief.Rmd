@@ -1,0 +1,153 @@
+---
+title: "Records Made While Doing Something Else"
+subtitle: "Three institutions that wrote a person down, and the denominator none of them supplies"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("admin-records-source-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Everything in this part so far has been a record the electoral system keeps about a person. A voter file records a registration; the EAVS records what a jurisdiction did with a ballot. The person in those files applied for something, or at least turned up.
+
+The last three chapters of this part use records of a completely different kind. A driver was pulled over. A juror was removed from a panel. A neighbourhood was graded for mortgage risk. **Nobody applied, nobody consented, nobody was sampled**, and in no case was the institution measuring anything: it was policing, prosecuting, or pricing loans, and the file is the paperwork left behind.
+
+## What an institution writes down, and what it does not
+
+```{r rectab}
+```
+
+Read the last column of the build's own table — the one this chapter is really about:
+
+```{r silenttab}
+```
+
+Each file counts the events an institution acted on. **None of them counts the population those events were drawn from**, because counting that population was nobody's job. Nobody at the roadside was recording the drivers who went past.
+
+That single property decides almost everything you can do with this kind of data. An administrative record arrives as a **numerator**: the top number of a fraction, with nothing underneath it.
+
+Any claim about a *rate* needs a denominator, a bottom number to divide by. Stops per driver, strikes per juror, disadvantage per resident. That bottom number is not in the file and has to be brought in from somewhere else. **Choosing it is not a preliminary to the analysis. It is the analysis.**
+
+> **Before you read on, commit to a number.** Black drivers in this file are
+> stopped at some multiple of the rate White drivers are. Three different
+> official denominators are available, all published by the Census Bureau, all
+> defensible. **Write down how far apart you think the answer can be** —
+> a few per cent? Half again? Twice? Then keep reading.
+
+## The denominator that cannot exist
+
+Start with the traffic stops, because they are the hardest case and the honest one. The comparison everybody reaches for is stops per resident. Here it is, computed three ways, from the same `r nn(as.numeric(gsub(",", "", ck$value[ck$check == "Stops in the policing file"])))` stops and three different population counts:
+
+```{r dentab}
+```
+
+The disparity runs from **`r p2(LO$disparity_ratio)`×** to **`r p2(HI$disparity_ratio)`×**, a spread of `r p2(SPREAD)`×, depending on nothing but which published denominator you divide by. All three are Census Bureau products. All three are defensible in a sentence. Residents is the obvious choice. Adults 18 and over is more defensible, since children do not drive. People who drive to work is the most defensible of all, and it is still wrong, because it misses everyone driving for any other reason.
+
+And none of them is the number you actually want, which is **who was on that road, at that hour, driving in a way that could attract a stop**. No agency collects it. There is no survey of it. It is not a hard number to find; it is a number that does not exist.
+
+This is the trap in its purest form. The file is real, the stops are real, and the disparity is real. And the most natural sentence you could write about it is a sentence about a denominator you chose: "Black drivers are stopped at `r p2(LO$disparity_ratio)` times the rate of White drivers."
+
+## The move that needs no denominator
+
+There is a way out, and it is worth seeing because it generalises.
+
+Ask a different question. Not *who gets stopped*, which needs a population, but *what happened to the people the officer already decided to search*. Both of those numbers are events the institution recorded. The population never enters.
+
+```{r hittab}
+```
+
+Black drivers are searched at **`r p1(SB)`%** against **`r p1(SW)`%** for White drivers — which is a rate over stops, and stops are in the file, so that comparison is sound. Then the turn: **searches of White drivers turn up contraband `r p1(HW)`% of the time, and searches of Black drivers `r p1(HB)`%.**
+
+A search is a decision made under a standard of suspicion. If the same standard were being applied, the searches would succeed at about the same rate. Searching a group far more often and finding contraband far less often is evidence about the threshold, and **it required no denominator at all** — only two columns the institution had already written down.
+
+## The denominator that is already in the file
+
+The jury chapter has the same problem and a luckier solution.
+
+A prosecutor may strike a juror for almost any reason except race, and the reason is rarely written down. So the numerator, jurors struck, is recorded. The thing you would want to divide by is not. **What would a race-neutral strike rate even look like?**
+
+It turns out the file answers that itself, because the state is not the only party striking jurors:
+
+```{r contab}
+```
+
+The state struck **`r p1(SB_)`%** of eligible Black jurors and **`r p1(SW_)`%** of eligible White ones. On its own that is a ratio without a baseline. But the defense, drawing from the very same panels in the very same trials, struck **`r p1(DW_)`%** of eligible White jurors and **`r p1(DB_)`%** of Black ones — very nearly the mirror image.
+
+**The control group was in the file the whole time.** Two parties, the same pools, opposite incentives. Neither figure means much alone; together they are close to an experiment the court ran without intending to.
+
+## The denominator that is a choice of unit
+
+The redlining maps look like the easy case, and they are the subtlest.
+
+Here the population *is* available — the census counts everyone in a graded area. The question is not what to divide by but **what to compare with what**.
+
+```{r unittab}
+```
+
+Pool every graded area in the country and D-graded areas come out **`r p1(POOL)`** points more Black than A-graded ones. Hold the city fixed, compute the gap inside each of the `r nn(NCIT)` cities, and the median is **`r p1(WITH)`** points.
+
+Pooling does not exaggerate here. **It understates.** The reason is that a national pool compares Cleveland's D areas against Berkeley's A areas. Those cities differ for a hundred reasons that have nothing to do with a 1930s grade. The comparison the maps invite is *within* a city, because that is the level at which the grade was applied.
+
+The pooled figure also conceals the most interesting thing in the file: **`r nn(REV)` of the `r nn(NCIT)` cities reverse**, with A-graded areas more Black than D-graded ones. A single national number cannot report a reversal. It can only average it away.
+
+## What this chapter cannot tell you
+
+**It cannot tell you that any of these institutions discriminated.** Every finding here is about rates and thresholds. A hit-rate gap is evidence about the standard applied to a search; it is not a finding about any officer, and no row in any of these files records an intention.
+
+**It cannot supply the missing denominators.** The driving population does not exist as data, and nothing in this chapter conjures it. What the chapter offers is the alternative: change the question to one the file can answer.
+
+**It cannot tell you these three records are representative of their kind.** Stop data comes from agencies that chose to publish it. The jury file is one county's trials. The HOLC maps cover the cities the agency graded. Institutions that keep worse records are missing from all three, and their absence is not random.
+
+**And it cannot be checked against a truth.** Unlike the voter file, which the state will confirm, or a survey, which can be validated against a record, there is no register of stops-that-should-have-happened. Everything here is internal evidence.
+
+## Sources
+
+Nothing in this chapter was downloaded. Every figure is read from the derived tables three other chapters already built, which is why re-running any of them re-runs this argument:
+
+- [`policing`](../policing/policing-brief.html) — `by_race.csv`,
+  `acs_denominators.csv`. Stop, search and contraband counts, with three
+  American Community Survey denominators for the same population.
+- [`jury-selection`](../jury-selection/jury-selection-brief.html) —
+  `strikes.csv`, `trials.csv`. Peremptory strikes by side and race, over
+  `r nn(as.numeric(gsub(",", "", ck$value[ck$check == "Trials in the jury file"])))`
+  trials.
+- [`redlining`](../redlining/redlining-brief.html) — `cities.csv`. A- and
+  D-graded population and racial composition, city by city.
+
+The three chapters carry the full account of what each archive is and what it
+cost to get. The archives themselves are the Stanford Open Policing Project
+(<https://openpolicing.stanford.edu/data/>), the jury data APM Reports
+released with *In the Dark* season 2
+(<https://github.com/APM-Reports/jury-data>) and *Mapping Inequality* at the
+Digital Scholarship Lab, University of Richmond
+(<https://dsl.richmond.edu/panorama/redlining/>). This chapter's subject is
+what the three records have in common rather than any one of them.
+
+Every figure above is recomputed from those tables, and checked against the values asserted in `checks.csv`. The table is printed here verbatim.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`control.csv`](data/derived/control.csv), [`denominators.csv`](data/derived/denominators.csv), [`hit_rates.csv`](data/derived/hit_rates.csv), [`records.csv`](data/derived/records.csv), [`unit.csv`](data/derived/unit.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `records.csv` says what each record was `written_by`, `in_order_to`, and what it is `silent_about`. Read the silent column for all three. What do these institutions have in common?
+- `denominators.csv` computes a disparity two ways, with `disparity_ratio`. Change the denominator and watch the answer move. Which denominator would you defend in court?
+- `hit_rates.csv` has `search_rate` and `hit_rate` by race. Compare them. Which of the two needs a denominator, and which does not?
+- `control.csv` compares rates within the same side of a case. Explain why comparing within a side avoids the problem the other tables have.
+
+```{r checks}
+```

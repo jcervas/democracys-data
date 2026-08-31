@@ -1,0 +1,331 @@
+---
+title: "Key: Which Rung?"
+subtitle: "84-355 Democracy's Data | Levels of aggregation | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", message = FALSE, warning = FALSE)
+options(scipen = 999)
+
+D   <- "data"
+ld  <- read.csv(file.path(D, "ladder.csv"),        stringsAsFactors = FALSE)
+cf  <- read.csv(file.path(D, "cvr_facts.csv"),     stringsAsFactors = FALSE)
+lst <- read.csv(file.path(D, "level_stats.csv"),   stringsAsFactors = FALSE)
+ee  <- read.csv(file.path(D, "eco_estimates.csv"), stringsAsFactors = FALSE)
+mp  <- read.csv(file.path(D, "maup_null.csv"),     stringsAsFactors = FALSE)
+rp  <- read.csv(file.path(D, "rpv_check.csv"),     stringsAsFactors = FALSE)
+dc  <- read.csv(file.path(D, "decision.csv"),      stringsAsFactors = FALSE)
+ep  <- read.csv(file.path(D, "eco_precinct.csv"),  stringsAsFactors = FALSE)
+ec  <- read.csv(file.path(D, "eco_county.csv"),    stringsAsFactors = FALSE)
+
+# ---- render every data.frame in this document as a TABLE, not code output ----
+knit_print.data.frame <- function(x, ...) {
+  n <- names(x); n <- gsub("_", " ", n)
+  n <- sub("^(.)", "\\U\\1", n, perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = n, row.names = FALSE), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+
+goodman <- function(d, w = d$votes) {
+  b <- coef(lm(dem_pct ~ mail_pct, d, weights = w)); b[[1]] + 100 * b[[2]]
+}
+TRUTH <- ee$truth_by_mail[1]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure.** The brief (`levels-of-aggregation-brief.Rmd`) and the lab
+(`levels-of-aggregation.Rmd`) run the *same numbered steps* — the brief in prose
+with figures, the lab with the code exposed. **Students should read the brief
+first.** Step numbers below refer to both.
+
+**Where it goes in the term.** After `census-geography` (which units nest) and
+`precinct-geography` (what happens when a unit moves). Those two are about the
+shapes; this one is about **which shape to use**, and it is the one that
+generalises beyond elections. It can be run any time after Session 14, and it
+sets up `rpv` so completely that running it the session before turns the
+RPV lab into a confirmation rather than a surprise.
+
+**It reuses seven other labs' data and downloads nothing.** If a student asks
+where the files came from, the answer is "from work you have already done," which
+is worth saying out loud.
+
+Every number below was run against the committed files.
+
+***
+
+# The session in one sentence
+
+Election data comes on a ladder from the ballot to the nation; every step up buys
+coverage and comparability, permanently destroys the ability to link things that
+co-occurred below, and creates a new opportunity to be confidently and
+impossibly wrong.
+
+***
+
+# The findings
+
+```{r headline}
+f1 <- function(x, k) formatC(x, format = "f", digits = k, big.mark = ",")
+data.frame(
+  finding = c("ballots in the Alaska cast vote record",
+              "... as a share of all 2024 ballots (%)",
+              "ranked Begich first and Peltola second",
+              "Georgia two-party Dem share, the state total (%)",
+              "precinct-level variation surviving at county level (%)",
+              "Goodman's answer for Georgia's mail vote (%)",
+              "the truth Georgia published (%)",
+              "Goodman at county level (%)"),
+  value = c(f1(cf$value[1], 0),
+            f1(100 * cf$value[1] / ld$units_nationally[1], 3),
+            f1(cf$value[cf$quantity == "ranked Begich first and Peltola second"], 0),
+            f1(lst$mean_dem_share[lst$level == "state"], 2),
+            f1(lst$variance_retained_pct[lst$level == "county"], 1),
+            f1(ee$est_by_mail[1], 1), f1(TRUTH, 1), f1(ee$est_by_mail[2], 1)))
+```
+
+- **`r format(cf$value[1], big.mark=",")` ballots** in the only individual-level
+  American election file in this course — **0.215%** of the national total.
+- **`r format(cf$value[cf$quantity=="ranked Begich first and Peltola second"], big.mark=",")`
+  Alaskans ranked a Republican first and a Democrat second.** Unknowable from any
+  precinct total.
+- **The vote-weighted mean survives the climb; 30.1% of the variation does not.**
+- **Goodman's ecological regression returns 194.0% where the truth is 64.5%**,
+  and **233.4%** one rung higher.
+- **Real counties push the correlation to 0.760; none of 500 random regroupings
+  of the same precincts reached it.**
+
+***
+
+# The three things to get said
+
+**1. The secret ballot is the reason the problem exists.** Students arrive
+assuming individual-level data is missing because nobody bothered to collect it.
+It is missing **on purpose**, and the purpose is good. Say this before Step 6, so
+that when the method fails they read it as the price of an institution rather
+than as a technical embarrassment.
+
+**2. Aggregation is not zooming out.** The photograph analogy is the one they
+have. Break it: a photograph you zoom out of can be zoomed back in. Once you add
+`r format(cf$value[cf$quantity=="ranked Begich first and Peltola second"], big.mark=",")`
+Begich-then-Peltola ballots into a precinct total, **no amount of cleverness gets
+them back.** The information is not hidden; it is gone.
+
+**3. The answer of 194% is not a bug and not a fluke.** It is what a
+between-unit relationship looks like when you read it as a within-unit one.
+Precincts that mailed heavily were Democratic precincts, and Democratic precincts
+were more Democratic among mail voters *and* election-day voters. The regression
+cannot tell those apart, so it puts the whole difference on the method of voting.
+
+**The line for the board:** *the number you get depends on the unit you chose,
+and nothing in the data will tell you that you chose wrong.*
+
+***
+
+# The move that makes this session land
+
+**Take the prediction seriously.** Before Step 6, make the room write down two
+numbers: their guess for the Democratic share of Georgia's mail vote, and the
+largest value that answer could possibly take. Everyone writes 100 for the
+second. Then run the chunk.
+
+The whole session turns on ninety seconds of that. They have just written down a
+constraint the method violates, and they wrote it themselves.
+
+If you want a second beat: ask what they would have concluded had Georgia *not*
+published the crosstab. The honest answer is "we would have believed it, adjusted
+to something under 100, and published."
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1–3** | The ladder; the Alaska ballots; what one rung up costs | 10 | The Begich-then-Peltola number. It only exists at the bottom. |
+| **4** | One election at four levels; the mean holds, the spread collapses | 8 | 48.90% at precinct, county and state. Aggregation does exactly what it promises. |
+| **5** | The residuals; Alaska has no counties; the district rung | 8 | A rung is not a rung everywhere. 44 rows of the county file are not counties. |
+| **6** | **The pivot.** Truth 64.5%; Goodman 194.0% | 14 | Take the prediction first. The two lines share a cloud and differ only in slope. |
+| **7** | County level: 233.4%. The random-regrouping null | 10 | Coarser is worse, and the lift comes from *these* lines, not from coarseness. |
+| **8–10** | The RPV case; what the aggregate is for; the decision table | 12 | The decision table is the deliverable. Spend real time on it. |
+
+**Step 6 is the pivot**, and it is stronger than the usual ecological-fallacy
+demonstration because there is an answer key. Robinson's 1930 example asks
+students to take the individual-level truth on faith. This one publishes it in
+the row above.
+
+**If you are short on time**, cut Step 5's district material and protect Steps 6,
+7 and 10. Step 10 is what they will actually use again.
+
+***
+
+# Option A — Break the regression differently
+
+## Verified output
+
+```{r a}
+o <- ep[order(-ep$votes), ]
+a <- data.frame(
+  variant = c("unweighted", "weighted by votes", "largest 500 precincts",
+              "smallest 500 precincts"),
+  goodman_estimate = round(c(goodman(ep, rep(1, nrow(ep))), goodman(ep),
+                             goodman(head(o, 500)), goodman(tail(o, 500))), 1))
+a$distance_from_truth <- round(a$goodman_estimate - TRUTH, 1)
+a
+```
+
+**All four are impossible.** The best of them, the largest 500 precincts, is
+still 121 points above a truth of `r TRUTH`%.
+
+**3/4:** Reports the four numbers and notes that weighting barely matters.
+
+**4/4:** Says *why* weighting barely matters — the bias is in the slope, not in
+how the units are counted, so re-weighting the same misspecification cannot
+rescue it. Notices that the smallest precincts are the worst (215.6%), which is
+the opposite of the usual instinct that finer units are safer.
+
+**4/4, best:** Answers the question the option actually asks — *does the ranking
+tell you anything you could have known without the answer key?* **No.** Nothing
+in the four fits distinguishes them; the diagnostics are fine for all four. The
+only reason we can say which is least bad is that Georgia published the crosstab,
+and for the racially polarized voting question no state ever does.
+
+***
+
+# Option B — Find the level where the answer flips
+
+## Verified output
+
+```{r b}
+set.seed(84355)
+merge_counties <- function(k) {
+  o2 <- ec[order(ec$dem_pct), ]
+  cm <- rep(seq_len(k), each = ceiling(nrow(o2) / k))[seq_len(nrow(o2))]
+  z <- aggregate(cbind(votes, dem, mail) ~ cm, data.frame(o2, cm), sum)
+  z$mail_pct <- 100 * z$mail / z$votes; z$dem_pct <- 100 * z$dem / z$votes
+  goodman(z)
+}
+b <- data.frame(units = c(nrow(ep), 159, 80, 40, 20, 10, 5),
+                goodman_estimate = round(c(goodman(ep), sapply(
+                  c(159, 80, 40, 20, 10, 5), merge_counties)), 1))
+b$still_impossible <- b$goodman_estimate > 100
+b
+```
+
+**It never crosses 100%.** The estimate gets *worse* as the units get coarser —
+`r round(merge_counties(5))`% at five units — and it is above 100 at every level
+we can build.
+
+**3/4:** Produces the series and reports that the estimate rises with coarseness.
+
+**4/4:** States the answer to the question as asked: **the crossing point does
+not exist.** There is no unit at which this method returns a possible number, so
+"choose a coarser unit" and "choose a finer unit" are both wrong answers; the
+problem is the method's assumption, not the resolution.
+
+**4/4, best:** Notices that the merging *rule* matters as much as the number of
+units — merging counties by similarity of Democratic share (as above) makes it
+worse monotonically, while merging them at random does not. **That is Openshaw's
+zoning effect, discovered by the student rather than read.** A student who
+compares two merging rules and says so has done the best available version of
+this option.
+
+***
+
+# Option C — Pick a question, defend a rung
+
+No verified output; grade the reasoning. The decision table is the model.
+
+```{r c}
+dc[c(3, 6, 8), c("question", "right_rung", "the_trap")]
+```
+
+**3/4:** Names a rung and gives a reason that is about the question rather than
+about convenience.
+
+**4/4:** Does all three things the option asks — what is lost from the rung below,
+what is risked at the rung above, and a number from this lab that supports the
+choice. The most commonly available number is the 30.1% of variation that
+disappears going precinct-to-county.
+
+**4/4, best:** Picks a question where the right answer is *not* the finest
+available unit, and defends it. Ballot rejection rates are the cleanest case: the
+jurisdiction is the right rung not because it is convenient but because
+**rejection is an administrative act performed by that office**, and a
+precinct-level rejection rate would be measuring something that does not happen
+at precincts.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating the rung as a *choice with consequences*
+  rather than as a property of the file they were handed.
+- **A 2** is "you should use the smallest unit available." That is the instinct
+  the lab is designed to break, and Option A's smallest-500 result is the
+  counterexample to hand back.
+- **A 2** is also "ecological inference is unreliable, so don't use it." Courts
+  use it; there is nothing else. The 4/4 position is that it is unreliable *and*
+  necessary, and that the honest response is to report the bounds alongside.
+- **Reward anyone who reconsiders an earlier lab.** Any claim they made this term
+  at county or precinct level is now open to the question of whether the rung was
+  right.
+
+## Anticipated questions
+
+- *"Then how does anyone do voting-rights cases?"* — With ecological inference,
+  under oath, with experts on both sides. **`rpv` is that lab.** The
+  honest summary: the bounds are correct and nearly useless, the point estimates
+  are useful and sometimes impossible, and courts have accepted the latter since
+  *Gingles* (1986).
+- *"Why doesn't Goodman just constrain the answer to 0–100?"* — Constrained
+  versions exist and King's method is essentially that plus a model. Constraining
+  the output does not fix the assumption; it hides the symptom that told us the
+  assumption failed. **The 194% is the most useful thing the method produced.**
+- *"Is the 194% because of the third-party votes in the denominator?"* — No. The
+  denominator is all presidential votes at both ends, truth and estimate alike,
+  so the comparison is like-for-like. Two-party denominators move both numbers a
+  little and change nothing.
+- *"Couldn't we just get cast vote records everywhere?"* — Some states publish
+  them; Texas issued emergency guidance in June 2024 telling officials to redact
+  more, after a voter was linked to a ballot. This is a live legal fight, not an
+  oversight.
+- *"Why is Alaska missing from the county file?"* — Alaska has no counties. The
+  file substitutes 37 state house districts and DC substitutes 7 wards. Good
+  moment to point back at `census-geography`.
+- *"Why is the mean of the 14 district shares not the state share?"* — Because
+  the district file carries percentages and no vote counts, so that mean is
+  unweighted. Say so; it is also the lab's own listed weakness.
+
+## Connections
+
+- **`census-geography`** — which units nest. That lab is about *containers*, this
+  one about *choosing among them*. Run that first.
+- **`precinct-geography`** — what happens when a unit moves between elections.
+  Supplies the trap in the "neighbourhood swing" row of the decision table.
+- **`cast-vote-records`** — the bottom rung, in full. This lab borrows its
+  file and points out that it was itself aggregated before being committed.
+- **`ga-precinct-returns`** — supplies the Georgia returns and the vote-method
+  breakdown that makes the pivot possible.
+- **`areal-units`** — the modifiable areal unit problem on its own. Step 7's
+  random-regrouping null is that lab's question, met in passing.
+- **`rpv`** — the payoff. Ecological inference exists *because* the ladder
+  starts at the precinct. Run this lab first and the RPV session needs no setup.
+- **`vote-dilution`** — where Step 8's failure lands in a courtroom. Same county,
+  next question.
+- **`data-sources`** — the 11-vote and 10,874-vote disagreements in Step 5
+  are that lab's finding, met again one rung higher.
+- **`eavs`** — supplies the national unit counts and the "election
+  jurisdiction" rung, which is the one students have never heard of.

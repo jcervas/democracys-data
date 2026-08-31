@@ -1,0 +1,308 @@
+---
+title: "Validated Turnout Against Self-Reported Turnout"
+subtitle: "Counted ballots against what people said they did, 1964-2024"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("validated-turnout-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+`r cnt(g(2016, "gap_people"))` people told the United States Census Bureau that they had voted in 2016. The states counted the ballots, and those people are not in the count — `r pc(g(2016, "gap_pct"))`% more voters than there were ballots cast for president.
+
+Almost no survey can be checked this way. You ask people what they believe, and there is no register of beliefs to compare the answers against. **Turnout is the exception**: the Census Bureau asks about 60,000 households whether they voted, and the states count the ballots. Two numbers, measuring the same event, produced by institutions that never consult each other.
+
+## The instrument that produces the unemployment rate
+
+The Current Population Survey is the instrument that produces the American unemployment rate. After every federal election the Bureau attaches a **Voting and Registration Supplement** to it and asks whether the respondent voted. The result is the most-cited turnout statistic in the country, and it is the source of nearly every published claim about turnout by race, age or education.
+
+Nobody verifies the answers. The Bureau records what people said, weights it up to the adult population, and publishes.
+
+Two numbers meet in this chapter and one of them is being used to grade the other, so it is worth saying plainly where each was obtained. The survey half is about as direct as a source gets. The agency that ran the survey is the agency that published the table. That table is Table A-1 of a historical time series kept on the Bureau's own server, and the build script downloads the workbook unattended.
+
+Nothing stands between the interviews and the file except the Bureau's own weighting, which means counting some answers more than others so the sample matches the country. That is a large exception, and it gets its own treatment below.
+
+**The benchmark half is nothing like that, and the phrase "actual votes" flatters it.** No federal agency records the national popular vote for president; the United States does not have one, and the chapter that opens this book is about that absence. So the counted-ballot column here is read out of a sibling chapter's folder. That chapter took it from a public code repository kept by one individual. The repository assembled its series from encyclopedia articles on each election, which in turn rest on a privately maintained atlas of returns, and on the official state canvasses underneath that.
+
+Four sets of hands, and only the last is a government. Every gap computed below is a survey estimate minus a number that arrived at the end of that chain.
+
+The chain is not obviously wrong. Recent national totals are among the most-checked figures in American public life, and the independent compilations of them agree. But **the word "actual" is doing work that the record behind it does not quite pay for**. The file kept here shows two tidy columns side by side, with no hint that one of them was measured and the other assembled.
+
+## A workbook built to be looked at
+
+The survey half arrives as `hst_vote01.xlsx`, and it is a spreadsheet in the older sense: a thing formatted for a person to read on a page, not for a program to parse. Here are its first eight rows and first four columns, with each cell truncated to fit:
+
+```{r rawcps}
+```
+
+**There is no header row.** There is a header *region*, rows 4 through 7, and the column names are spread across it. `Year` is on row 4. But the two things column C might mean are on row 6: a percentage of the total population, or of the citizen population. They sit under a spanning label on row 4 that is itself split across columns.
+
+Every `NA` in that block is a merged cell that has been unmerged by the reader: the label was written once, across several columns, and only the leftmost one survives. **A file that looks perfectly clear on screen has no machine-readable structure at all.**
+
+Three rows above that are not data either. Row 1 is an accessibility note, row 2 is the table's title, row 3 is a units declaration, and row 7 is a stub heading for the block of rows beneath it. Ask R to read this workbook with `col_names = TRUE` and it will take row 1, a sentence about screen readers, as the names of sixteen columns. Then it treats the real header as data.
+
+So the build does not name columns at all. It reads the sheet with `col_names = FALSE` and searches the first column for the literal string `Total, Percent Voted`, the stub heading on row 7. It starts one row below that, and stops at the first row whose label is not a four-digit year. Everything else is taken by fixed column position.
+
+That works, and it is fragile in two specific ways worth naming. **It depends on the Bureau not inserting a column**, because nothing in the file would announce it if they did. The values would shift one place, and this chapter's turnout series would quietly become something else.
+
+And **it depends on a sentence fragment not being reworded.** Change `Total, Percent Voted` to `Total, percent voted` and the build finds nothing. `start` is `NA`, and the whole series comes back empty rather than wrong. That is the better of the two failures, and it is luck rather than design.
+
+One more thing is visible in the sheet and survives into the data. The 2016 white non-Hispanic figure is stored as `64.09999999999`, not `64.1` — the ordinary residue of binary floating point in a published federal table. It rounds away harmlessly here, and it is a reminder that a number in a government workbook is a *stored* value, not an exact one.
+
+Here is what the corner above becomes:
+
+```{r cleancps}
+```
+
+One row per presidential election, named columns, numbers as numbers. And two of those columns did not come from the workbook at all. `actual_votes` is the counted-ballot series read out of a sibling chapter's folder, and `actual_rate` is computed here from it. So **this tidy table is a join between a federal survey and the end of a four-link chain of private compilations**, sitting side by side with nothing in the file to mark which is which. That is the observation the previous section made in prose; it is worth seeing as a row.
+
+## A measure that is biased by a few points is the dangerous kind
+
+Turnout figures are not decorative. **They are the numerator, the top number of the fraction, in arguments about whether the system works.** They are entered as evidence in voting-rights litigation, and the published gaps between racial groups are the basis for most claims about unequal participation.
+
+If the measure is off, it is off in a direction. A measure that is biased by a few points is far more dangerous than one that is obviously broken, because it is still used.
+
+## Two explanations that produce identical data
+
+There is a genuine, live dispute here, and it is not about arithmetic.
+
+One camp holds that surveys **over-report** turnout because voting is socially desirable and non-voters are reluctant to say so. The other holds that the apparent over-report comes mostly from **who answers surveys at all**. People who agree to a government interview are unusually civic, so a survey of respondents is a survey of voters even when everyone tells the truth.
+
+Both explanations produce exactly the data below, and the argument between them is unsettled.
+
+## One row is one presidential election
+
+Start with a single row. Each row of `cps_turnout.csv` is **one presidential election**.
+
+```{r one-record}
+```
+
+Two of those six columns deserve suspicion immediately.
+
+**"Said they voted" is not published.** The Bureau's Table A-1 gives percentages and one count. The number of self-reported voters is *derived* — voting-age population multiplied by the published percentage. It is arithmetic on the Bureau's own figures, not an estimate of ours, but it is a calculation somebody chose to do, and calculations chosen by somebody are where errors live.
+
+**"Ballots for president" is not the electorate.** It is votes cast for president. People vote and skip the top of the ticket, so the true number of ballots is slightly higher. Every gap below is therefore a **slight overstatement**, and it is better to know that now than to discover it later.
+
+## How many, and over what
+
+```{r scope}
+```
+
+Note the fourth row. **Rates cannot be computed for the first four elections**, because the Bureau did not publish a citizen-population basis before 1980. That absence is not a nuisance, and a later section is about what it does to anyone who quietly drops the blank rows.
+
+## The year everybody quotes
+
+```{r y2016}
+```
+
+**`r cnt(g(2016, "gap_people"))` people** told the Census Bureau they had voted in an election in which they do not appear. That is `r pc(g(2016, "gap_pct"))`% more voters than there were ballots, and about `r pc(g(2016, "gap_people") / (g(1964, "reported_voters") / 100), 0)`% the size of the entire reported electorate of `r Y1`.
+
+It is a striking number and it is the one that gets quoted. It is also one election, which is to say no evidence at all.
+
+## Was 2016 unusual?
+
+One election proves nothing. Here is every one in the file.
+
+```{r all-years}
+```
+
+```{r band-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r band-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. What people said, and what was counted, `r Y1` to `r Y2`.** The upper line is the number of Americans the Census Bureau's survey implies said they voted; the lower line is ballots cast for president. The shaded wedge between them is the gap. Both series roughly doubled over sixty years. The wedge did not. The widest year is `r cps$year[which.max(cps$gap_people)]`, at `r mn(max(cps$gap_people))` million people.
+
+`r sum(cps$gap_people > 0)` of `r nrow(cps)` elections show more self-reported voters than ballots. The largest absolute gap is **`r mn(max(cps$gap_people))` million in `r cps$year[which.max(cps$gap_people)]`**; the largest proportional gap is **`r pc(max(cps$gap_pct))`% in `r cps$year[which.max(cps$gap_pct)]`**.
+
+The only election in which the survey came in *below* the ballot count is **`r paste(cps$year[cps$gap_people < 0], collapse = ", ")`**.
+
+## The conclusion that arrives first
+
+At this point the sentence is available, and almost everyone writes it: *people lie about voting.*
+
+It is not absurd. Voting is socially desirable, the interviewer is a representative of the federal government, and admitting you did not vote is mildly embarrassing. Over-reporting is real and it is documented.
+
+**But notice what that explanation predicts.** If the gap is driven by the social pressure to have voted, it should be roughly stable. Social pressure does not swing by a factor of four across forty years. Or the gap should *grow*, as voting becomes more moralised in a polarised era.
+
+> **Before you read on, commit to a prediction.** Over the six decades in this
+> file, does the gap between what people say and what the ballots show get
+> **larger**, stay **flat**, or get **smaller**? Write down one of the three.
+
+## The gap over time
+
+```{r era}
+```
+
+Three averages hide sixteen elections. Here is every one of them, one dot, stacked so none hides another.
+
+```{r bee-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+```{r bee-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Every election as its own dot, grouped by era.** One dot per presidential election, `r nrow(cps)` in all, placed by how far the survey electorate exceeded the ballot count. The three clouds are separate eras, and they do not overlap much: the earliest elections sit well to one side of the most recent ones. The era averages in the table above are a consequence of that movement, not a separate finding.
+
+```{r gap-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r gap-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The gap, election by election, `r Y1` to `r Y2`.** The vertical axis is how far the survey electorate exceeded the ballot count, as a percentage of ballots. Dashed segments are era averages: `r pc(em[1])`% through the 1960s and 1970s, `r pc(em[2])`% through the 1980s and 1990s, `r pc(em[3])`% since 2000. The line crosses zero at the right-hand end.
+
+**The gap shrank.** It ran at roughly `r pc(em[1])`% through the 1960s and 1970s, `r pc(em[2])`% through the 1980s and 1990s, and `r pc(em[3])`% since 2000. On the percentage-point measure the survey overstated turnout by **`r pc(g(1988, "over_report_pp"))` points in 1988** and by **`r pc(g(2020, "over_report_pp"), 2)` points in 2020** — that is, it *understated* it.
+
+Nobody set out to fix this. There was no reform, no methodological correction announced, no working group. The most-warned-about failure in survey research quietly went away over forty years.
+
+**That breaks the explanation everybody reaches for first.** Whatever is producing the gap, it is not a constant of human vanity. Social pressure to have voted did not fall by three quarters between 1972 and 2020, and if anything a polarized era should have raised it.
+
+## Three things live inside one number
+
+The gap is a difference between two quantities, and at least three distinct mechanisms can move it. **The file cannot separate them.**
+
+```{r mechanisms}
+```
+
+Consider the second row seriously. Survey response rates collapsed over exactly the period the gap shrank. If the people who still answer government surveys are disproportionately voters, the raw sample drifts toward voters. The Bureau's weights correct for age, sex, race and region. They do not correct for how civic-minded somebody is, because nobody holds a population total for that.
+
+**Weighting is a choice, and different defensible choices give different answers.** That is not a defect peculiar to the CPS. The General Social Survey, for one, ships several weight variables, `wtssall` and `wtssps` among them. They cover different year ranges and rest on different assumptions, and the published percentage moves depending on which one an analyst picks. Nothing on the face of a reported number tells you that decision was made.
+
+## The denominator is made of the same survey
+
+A turnout rate is a fraction, and so far we have been arguing about the top of it. Look at the bottom.
+
+```{r denominator}
+```
+
+Same ballots, same year, **`r pc(r_cit)`% or `r pc(r_vap)`%** — `r pc(r_cit - r_vap)` points apart, depending only on whether non-citizens sit in the denominator, the bottom number the ballots are divided by.
+
+And the choice has not cost the same amount in every year.
+
+```{r dumb-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r dumb-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Identical ballot counts, two denominators.** Each rod joins the same year's turnout rate computed over all voting-age adults to the same rate computed over voting-age citizens. The rod was `r pc(den_min$sp)` points long in `r den_min$year` and `r pc(den_max$sp)` points long in `r den_max$year`. The denominator is not a fixed convention but a growing one, and what is growing is the non-citizen population rather than turnout.
+
+Then notice where the citizen figure comes from. **The CPS estimates it.** The "actual" turnout rate in this file is a certified ballot count divided by a survey estimate. Neither side of the comparison is fully independent of the instrument being tested, and there is no version of this exercise in which that is not true.
+
+## Where the data stops, and why
+
+```{r missing}
+```
+
+The rate columns are empty before 1980 and the counts are not. That is not a gap in our file; it is a gap in the source. **The Bureau began publishing a citizen basis when the distinction between residents and citizens became large enough to matter.** The missingness is itself a fact about the country.
+
+It also sets a trap. An analyst who quietly dropped the blank rows would see a series beginning in 1980 at its historical maximum and declining ever since, and would write a story about the 1980s as a turning point. **The counts, which go back to `r Y1`, say the level was already high and roughly flat.** Dropping missing rows is never neutral; it silently chooses a start date.
+
+## The table this is all actually used for
+
+```{r by-race}
+```
+
+```{r slope-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r slope-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. Reported turnout by race, five elections.** One line per group, as the Census Bureau publishes them: the share of citizens in each group who told the survey they voted. The spread between the highest and lowest group was `r pc(rg_sp(min(rg$year)))` points in `r min(rg$year)` and `r pc(rg_sp(max(rg$year)))` points in `r max(rg$year)`. **Every line here is a self-report**, and inherits everything established above about self-reports.
+
+In `r Y2`, reported turnout ran from **`r pc(g(Y2, "pct_white_nh"))`%** among White non-Hispanic citizens to **`r pc(g(Y2, "pct_hispanic"))`%** among Hispanic citizens — a spread of `r pc(g(Y2,"pct_white_nh") - g(Y2,"pct_hispanic"))` points.
+
+Every caveat above applies to each of these numbers, and applies **unequally**. There is no reason to assume over-reporting is the same size in every group, and if it is not, the gaps between the columns are wrong by an unknown amount in an unknown direction. The Asian and Hispanic figures also rest on much smaller subsamples and are therefore less precise; the table publishes no margin of error at all — nothing saying how far off the figures could be.
+
+## The decline is more informative than the level
+
+Self-reported turnout has consistently exceeded the counted ballots — by `r mn(mean(cps$gap_people))` million people on average across `r nrow(cps)` elections, and by `r cnt(g(2016, "gap_people"))` people in the year everybody quotes. That much is arithmetic.
+
+The sharper statement is the one the sequence above earns. The excess has fallen from about `r pc(em[1])`% of the electorate to about `r pc(em[3])`%, nobody repaired it, and the decline carries more information than the level does. A level can be explained by a permanent feature of human nature. A decline of that size cannot.
+
+What cannot be said is why. Nothing here establishes that people lie, or how much of the gap is lying rather than weighting or construction. Nothing here separates better respondents, different weights, genuinely rising turnout, and a changing pool of people willing to answer a government survey at all. And nothing licenses treating the by-group figures as if their errors were the same size in every column — which is exactly how they are usually read.
+
+## Where the argument is
+
+**The obvious fix is to check the answers against the voter file**, and the literature that does this is where the fight is.
+
+**Ansolabehere and Hersh (2012)** matched a large survey to a commercial national voter file. They concluded that self-reported turnout is badly inflated, that misreporters differ systematically from real voters, and that the "electorate" surveys describe is not the one that voted.
+
+**Berent, Krosnick and Lupia (2016)** attacked the premise. Matching a respondent to a government record is itself an inference: names change, addresses change, records are purged, and a failed match looks exactly like a liar. They argue that much of the measured "over-report" is match failure rather than misreporting, and that validation studies therefore overstate the problem.
+
+This is not a technicality. **The two papers disagree about whether the instrument or the audit is broken**, and the data cannot arbitrate, because every audit requires its own instrument.
+
+**Hur and Achen (2013)** add a third mechanism specific to this file. The CPS showed an apparent 2008 turnout *decline* in an election where turnout rose. They trace that to rising non-response, combined with a long-standing Census coding decision about respondents who do not answer the voting question.
+
+Their recommendation is blunt. Users should reweight the Voting Supplement so that it reproduces the actual state vote counts. That amounts to conceding that the survey's own turnout estimate should not be used as an estimate of turnout.
+
+**Groves (2006)** supplies the general result behind the three mechanisms. Non-response bias is not a function of the non-response *rate*; it depends on the covariance between responding and the thing being measured. A survey with a 5% response rate can be nearly unbiased about one variable and hopeless about another. That is why "response rates have collapsed" is not by itself an argument, and why the shrinking gap in Figure 3 is genuinely hard to interpret.
+
+**And on the denominator**, McDonald and Popkin (2001) showed that the widely reported post-1972 "decline in turnout" was largely an artifact of dividing by voting-age population rather than by the population actually eligible to vote. Figure 4 is a small version of their argument.
+
+## What a checkable survey can testify to
+
+The strength of this comparison is that it exists at all. A very large random sample of roughly 60,000 households, larger than any public poll, run by an agency with a legal mandate. It asks a comparable question after every federal election, for six decades, against an outcome that is independently and completely recorded. Almost no survey question in the world can be audited this way, which is why this one is worth reading carefully rather than quoting.
+
+Six things narrow it. "Actual votes" here are **presidential votes rather than ballots cast**, so every gap above is slightly too large. The **self-reported voter counts are derived**: the Bureau publishes percentages, and the counts are arithmetic on them.
+
+**The denominator comes from the same survey** being tested, which is not a fixable problem but a built-in one. **The weights are opaque at this level**: published percentages are visible, the adjustment that produced them is not. **No margin of error is published for the by-group figures**, which are the numbers most often quoted and rest on the smallest subsamples. And the file covers **presidential years only**, so midterms are absent, and there is every reason to expect the gap behaves differently in them.
+
+Four questions stay open. Whether over-claiming or non-response drives the gap is the central one, and the three mechanisms above can be listed but not ranked from this file. Whether validation studies measure lying or measure record linkage is unresolved in the literature — Ansolabehere and Hersh against Berent, Krosnick and Lupia, with no arbiter available, because every audit needs its own instrument. Why the gap shrank has at least three live candidates: real turnout rose sharply over the same period, response rates fell, and Census coding practice changed, and any of the three could produce Figure 3. And whether the by-group gaps are the right size is both the most consequential question in the file and the least checkable one.
+
+The `r cnt(g(2016, "gap_people"))` people who said they voted in 2016 and do not appear in the count are still `r cnt(g(2016, "gap_people"))` people. What has changed by the end of this chapter is the confidence with which anyone can say what they were doing.
+
+## Sources
+
+**Data**
+
+- U.S. Census Bureau, Current Population Survey, *Voting and Registration
+  Supplement*, Table A-1, November `r Y1`–`r Y2`.
+  <https://www.census.gov/data/tables/time-series/demo/voting-and-registration/voting-historical-time-series.html>
+- Counted ballots: national presidential vote totals, `r Y1`–`r Y2`, from the
+  compiled historical series of state and national returns.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`cps_turnout.csv`](data/derived/cps_turnout.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `cps_turnout.csv` has `cps_rate` and `actual_rate` side by side, with `over_report_pp` between them. Follow that column across the years. Is the over-report steady, or growing?
+- The same file carries reported turnout by race. Compare the groups. If every group over-reports by a different amount, what happens to a published gap between them?
+- `cps_turnout.csv` distinguishes `vap_thousands` from `citizen_vap`. Recompute a turnout rate on each denominator. How much of a turnout debate is really a denominator debate?
+- Pick a year and work out how many people said they voted but did not. Then decide which is the more useful number to publish: what people did, or what they say they did.
+
+**Academic literature**
+
+- Ansolabehere, S. and Hersh, E. (2012). "Validation: What Big Data Reveal About
+  Survey Misreporting and the Real Electorate." *Political Analysis* 20(4):
+  437–459.
+- Berent, M. K., Krosnick, J. A. and Lupia, A. (2016). "Measuring Voter
+  Registration and Turnout in Surveys: Do Official Government Records Yield More
+  Accurate Assessments?" *Public Opinion Quarterly* 80(3): 597–621.
+- Groves, R. M. (2006). "Nonresponse Rates and Nonresponse Bias in Household
+  Surveys." *Public Opinion Quarterly* 70(5): 646–675.
+- Hur, A. and Achen, C. H. (2013). "Coding Voter Turnout Responses in the Current
+  Population Survey." *Public Opinion Quarterly* 77(4): 985–993.
+- McDonald, M. P. and Popkin, S. L. (2001). "The Myth of the Vanishing Voter."
+  *American Political Science Review* 95(4): 963–974.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

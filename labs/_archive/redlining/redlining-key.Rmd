@@ -1,0 +1,296 @@
+---
+title: "Key: Lines Drawn in 1937"
+subtitle: "84-355 Democracy's Data | Redlining | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", dpi = 96, fig.retina = 1)
+options(scipen = 999)
+tr <- read.csv("data/tracts.csv", stringsAsFactors = FALSE,
+               colClasses = c(GEOID = "character"))
+ci <- read.csv("data/cities.csv", stringsAsFactors = FALSE)
+g  <- aggregate(cbind(total, black) ~ grade, data = tr, sum)
+g$pct <- 100 * g$black / g$total
+# the HOLC geometry the brief and the lab now draw, so the numbers quoted below
+# are read from the same built files rather than typed
+MX <- read.csv("data/fig_mix.csv", stringsAsFactors = FALSE,
+               colClasses = c(GEOID = "character"))
+HM <- read.csv("data/fig_holc_meta.csv", stringsAsFactors = FALSE)
+asg <- MX[MX$centre_grade != "", ]
+mis <- asg[asg$centre_grade != asg$modal_grade, ]
+drp <- MX[MX$centre_grade == "" & MX$graded > 0, ]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`redlining-brief.Rmd`) is now a
+chapter, "Hazardous": it is organised by argument under prose headings and
+carries four numbered D3 figures rather than numbered steps — Figure 1, Cleveland
+as the HOLC graded it in 1939; Figure 2, a window of that city with 2020 tracts
+laid over the 1939 areas; Figure 3, how much of each tract is really one grade;
+Figure 4, the within-city A-to-D gap for every city. The lab (`redlining.Rmd`) is
+unchanged and still runs Steps 1–10 with the code exposed. **Students should read
+the brief first.** **Step numbers below refer to the lab.** The chapter covers the
+same ground in the same order, so each block of lab Steps has a heading facing it:
+Steps 1–3 = "Best, Still Desirable, Definitely Declining, Hazardous" and "Two
+geographies that were never meant to meet" (Figures 1 and 2), with "The cost of
+the rule, measured" (Figure 3); Steps 4–5 = "The answer that arrives first is the
+wrong one"; Steps 6–7 = "Holding the city fixed" (Figure 4); Steps 8–9 = "The
+cities that run the other way" and "Did the maps do anything, or only record what
+was already there?"; Step 10 = "What the ground can testify to".
+
+**The maps are now in the documents.** The chapter opens on the appraisal sheet
+for area D9 quoted verbatim — the *Clarifying Remarks*, the *Infiltration of*
+line, and the appraiser's own count of 0% Black residents — and Figure 1 then
+draws the real 1939 HOLC map of Cleveland in the HOLC's own four colours.
+Figure 2 lays the 2020 tract boundaries over the same polygons and shows the rule
+failing on a named tract. The lab draws the Cleveland map too. All of it comes
+from Mapping Inequality's digitised polygons via `data/build-brief-figures.R`.
+**You no longer have to pull the maps up on a projector — but do it anyway if the
+room is engaged, and read a second area description aloud.**
+
+
+**One of three labs in the discrimination unit**, alongside policing and jury
+selection. Run in parallel, then compare.
+
+**This one is different from the other two in a way worth naming out loud.**
+There, the discriminatory intent is unrecorded and has to be inferred. Here the
+intent is written on the document — HOLC appraisers named Black residents as a
+reason for a low grade. What has to be shown is not intent but **persistence**,
+and that turns out to be the harder problem.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+The comparison that gets published says the 1937 maps barely matter; doing it
+one city at a time says they matter enormously; and the cities where it reverses
+explain why both are true.
+
+***
+
+# The findings
+
+```{r headline}
+round(setNames(g$pct, g$grade), 1)
+c(pooled_gap_D_minus_A = round(g$pct[4] - g$pct[1], 1),
+  mean_within_city_gap = round(mean(ci$gap), 1),
+  cities = nrow(ci),
+  cities_reversed = sum(ci$gap < 0))
+```
+
+- Pooled: D-graded tracts **25.6%** Black, A-graded **16.7%** — a gap of 8.9
+  points, ratio 1.5.
+- **Mean within-city gap: 14.5 points.** Median 11.4.
+- Cleveland **+46.9**, Chicago **+33.4**, Pittsburgh **+29.9**.
+- **6 of 33 cities run backwards**, Philadelphia among them.
+
+***
+
+# The three things to get said
+
+**1. Step 4 is designed to disappoint, and students must feel that.** A ratio of
+1.5 looks like weak evidence for a famous claim, and some will be ready to
+conclude the redlining story is overstated. **Let them sit with it for a
+minute.** The reveal in Step 6 only works if Step 4 was believed.
+
+**2. The pooling problem is the transferable lesson.** Adding cities together
+compares a D tract in Chicago against an A tract in Los Angeles — cities with
+different racial compositions for reasons unrelated to HOLC grades. **This is
+the aggregation problem the course has met three times** (EAVS jurisdictions,
+precinct units, ecological inference), arriving with the largest consequence:
+the pooled estimate is barely half the within-city one.
+
+**3. The reversals are evidence, not noise.** Six cities run backwards, and the
+explanation is mid-century white flight — the "Best" 1937 neighbourhoods in
+Philadelphia and Detroit are exactly the ones that later became majority Black.
+**A student who wants to drop those cities is doing the wrong thing**, and
+saying so is the most useful thirty seconds in the session.
+
+**The line for the board:** an average over places is not a finding about any
+place.
+
+***
+
+# Handling the room
+
+Less volatile than the other two labs — the intent is documented, so there is
+nothing to argue about on that front. Two risks instead:
+
+- **Overclaiming causation.** The maps recorded existing segregation as well as
+  entrenching it. The lab says so; enforce it. "Redlining caused this" is not
+  supported and is not necessary.
+- **Fatalism.** Ninety-year-old lines still visible can read as immovable. The
+  reversals are the antidote — in some cities the pattern did not persist, and
+  the reason was that everything else changed.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | Two sources 80 years apart; the join that has to be built; one record | 10 | **Point-in-polygon is an assumption.** Say so before any result. The close-up in the brief, Figure 2, shows it failing; use it. |
+| **4-5** | The pooled comparison, and what is wrong with it | 10 | 16.7% vs 25.6% is deliberately underwhelming. Let it disappoint. |
+| **6-7** | Within cities; then every city at once | 12 | **The pivot.** Cleveland: 21.3 vs 68.1 in one housing market. |
+| **8-9** | The six reversals, and what they mean for the claim | 10 | Philadelphia is gentrification, not absence of effect. Small-denominator cities are noise. |
+| **10** | What you can say — and what needs Aaronson et al. | 6 | Association within cities, yes. Causation, not from this design. |
+
+**Steps 4-6 are the pivot.** The pooled national comparison must be believed for a minute before it is broken. The lesson is the unit of comparison, not the number.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Weight by population
+
+## Verified output
+
+```{r a}
+c(pooled_gap        = round(g$pct[4] - g$pct[1], 1),
+  mean_of_city_gaps = round(mean(ci$gap), 1),
+  median_city_gap   = round(median(ci$gap), 1))
+```
+
+**Pooling gives 8.9 points. Averaging within-city gaps gives 14.5** — 63%
+larger. The median city is 11.4.
+
+**3/4:** Computes both and reports that the within-city figure is bigger.
+
+**4/4:** Answers the second half — which should a newspaper print — and defends
+it. The strongest case is for the within-city average, because the question
+"does a 1937 grade predict who lives there now" is a question *about
+neighbourhoods within a housing market*, and the pooled number answers a
+different question nobody asked.
+
+**4/4, best:** Notices that the mean of city gaps weights Joliet equally with
+Chicago, which is its own distortion, and proposes a population-weighted mean of
+within-city gaps as the estimator that answers the question without either
+defect. **Recognising that both published numbers are wrong in different
+directions is the strongest available answer.**
+
+***
+
+# Option B — B and C
+
+## Verified output
+
+```{r b}
+full <- names(which(tapply(tr$grade, tr$city, function(x) length(unique(x))) == 4))
+s <- tr[tr$city %in% full, ]
+gg <- aggregate(cbind(total, black) ~ grade + city, data = s, sum)
+gg$pct <- 100 * gg$black / gg$total
+c(cities_with_all_four = length(full))
+round(tapply(gg$pct, gg$grade, mean), 1)
+```
+
+Within the 32 cities that have all four grades, the mean tract composition rises
+monotonically: **A 12.7, B 20.1, C 23.5, D 27.6.**
+
+**3/4:** Adds B and C and observes they fall between A and D.
+
+**4/4:** Says why a smooth gradient matters. If only the extremes differed, you
+would suspect the A and D areas were simply different kinds of places —
+downtown against suburb. **A monotone gradient across four grades is much harder
+to produce by accident**, and it is the strongest single piece of evidence in
+the lab.
+
+**4/4, best:** Notices the steps are uneven — the A-to-B jump is 7.4 points and
+C-to-D is 4.1 — and asks whether the grades were equally spaced in whatever they
+were measuring. They were not: HOLC's categories were qualitative, and treating
+A/B/C/D as an interval scale is an assumption nobody has justified. **Same
+lesson as DW-NOMINATE: the number is a model.**
+
+***
+
+# Option C — Attack the join
+
+No verified output; grade the reasoning.
+
+**3/4:** Names centroid-in-polygon as an approximation and observes tracts get
+misassigned.
+
+**4/4:** Produces two mechanisms that could generate the Step 6 result without any lasting
+HOLC effect. The best two: **(i)** D-graded areas were downtown, and downtown
+tracts are small, so a centroid rule assigns them differently from sprawling
+suburban A tracts — the join could be picking up geography, not grade; **(ii)**
+tract boundaries are themselves drawn partly along the same physical features
+(highways, rivers, rail) that the graders used, so the two are correlated by
+construction.
+
+**4/4, best:** Says what would settle it — area-weighted allocation rather than
+centroids, so a tract split between grades contributes proportionally — and
+notes that this is precisely the published crosswalk we could not download. **A
+student who arrives at "the fix exists and is behind a login" has understood
+something true about the field.**
+
+**The measured version, if you need it.** The brief reports it under "The cost of
+the rule, measured", the section Figure 3 sits in:
+`r nrow(mis)` of `r nrow(asg)` tracts in Cleveland and Philadelphia carry a
+grade that is not the grade covering most of them, `r nrow(drp)` overlapping
+tracts are dropped outright, and the median Cleveland tract has
+`r round(median(MX$own_share[MX$city=="Cleveland" & MX$centre_grade!=""]))`% of
+its graded land under the grade it was given. **A student who says "the rule is
+probably fine" can be shown a number.** What none of it settles is the direction
+of the resulting bias, and saying so is worth a mark.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is explaining *why* pooling destroyed the finding,
+  not just noticing that it did.
+- **A 2** is "redlining still affects neighbourhoods today," which is the
+  conclusion they arrived with.
+- **Also a 2**: treating the reversals as errors or dropping them.
+- **Reward anyone who distinguishes persistence from causation** without
+  prompting.
+
+## Anticipated questions
+
+- *"Did redlining cause segregation?"* — Partly, and it also recorded
+  segregation that already existed. The honest answer is that this data cannot
+  separate the two, and that the best research on it uses boundary
+  discontinuities rather than the comparison we made.
+- *"Why only six states?"* — Because we downloaded tract-level census data for
+  six. The crosswalk itself covers 215 cities; extending it is a download, not a
+  method change.
+- *"Isn't this just income?"* — Very likely entangled with it. We have race and
+  not income; a student who wants income should be told the ACS has it and the
+  join already exists.
+- *"Are the maps online?"* — Yes, Mapping Inequality, with the original
+  appraisal text, and the brief now draws Cleveland's from those very polygons.
+  **Read the D9 sheet the chapter opens with out loud.** The written justification is more
+  persuasive than any table here, and it takes ninety seconds. Note what it
+  says about a neighbourhood that was, on the appraiser's own form, 0% Black:
+  the grade is about who might arrive.
+- *"How wrong is the centroid rule?"* — Measurably. In the two cities the brief
+  draws, `r nrow(mis)` of `r nrow(asg)` tracts get a grade that is not the grade
+  covering most of their land, and `r nrow(drp)` more tracts overlap a graded
+  area and are dropped because their centre point missed. **That is Option C's
+  answer arriving as a picture rather than as a worry**, and a student who has
+  seen Figures 2 and 3 should be held to a higher standard on it.
+
+## Connections
+
+- **The other two labs in this unit** — jury selection (a control group in the
+  file) and policing (conditioning to escape a missing denominator).
+  **Ask which inference the room would most want to defend, and why.**
+- **Session 2 (census)** — the tract data, and the race categories.
+- **Session 14 (precincts)** — the identical allocation problem: units drawn by
+  different people for different purposes, joined by an assumption.
+- **EAVS** — the first time pooling across incomparable units broke an average.

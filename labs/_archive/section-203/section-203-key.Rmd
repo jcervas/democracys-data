@@ -1,0 +1,235 @@
+---
+title: "Data Session 3 Key: A Threshold in the Law"
+subtitle: "84-355 Democracy's Data | Session 3 — The ACS and its margins | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+det <- read.csv("data/sect203_determined.csv", stringsAsFactors = FALSE)
+cty <- read.csv("data/sect203_counties.csv", stringsAsFactors = FALSE)
+cty$lo <- cty$VACLEP - cty$MVACLEP
+cty$hi <- cty$VACLEP + cty$MVACLEP
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Section 203 draws a sharp legal line across an estimate that is not sharp, and
+the Census Bureau's own file tells you exactly which counties fall in the gap.
+
+***
+
+# The findings
+
+```{r headline}
+cv <- det[det$FLAG_COV == 1, ]
+c(coverage_rows = nrow(cv), jurisdictions = length(unique(cv$S203_GEOID)),
+  spanish_rows = sum(cv$LANGUAGE == "Hispanic"))
+
+s10 <- cty[cty$lo < 10000 & cty$hi > 10000, ]
+s10[order(-s10$VACLEP),
+    c("NAMELSAD","LANGUAGE","VACLEP","MVACLEP","FLAG10","FLAG5","FLAG_COV")]
+```
+
+- **334 jurisdictions**, 391 coverage determinations; **235** are for Spanish.
+- **Eight counties** have a margin of error straddling the 10,000 threshold.
+  **Four covered, four not.**
+- **51 counties** straddle the 5% threshold.
+
+## The pair to teach
+
+**Philadelphia County**, Chinese: estimate **10,150**, margin **±450** →
+**covered**, clearing the line by 150.
+
+**Solano County, California**, Spanish: estimate **9,943**, margin **±377** →
+**not covered**, missing by 57.
+
+Both intervals contain 10,000. The survey cannot distinguish these counties. The
+law treats one as legally obliged to translate its ballots and the other as free
+not to.
+
+Note for class: **Kings County, California** is in the straddle list and *is*
+covered, but through the 5% test (`FLAG5 == 1`), not the 10,000 test. Students who
+notice this have read the flags carefully and should be praised for it — it is
+the difference between "covered" and "covered by the rule we are discussing."
+
+***
+
+# Option A — Move the threshold
+
+## Verified output
+
+```{r a}
+real <- cty$VACLEP > 10000 & cty$FLAG_EDU == 1
+for (th in c(7500, 9000, 10000, 12500, 15000)) {
+  now <- cty$VACLEP > th & cty$FLAG_EDU == 1
+  cat(sprintf("threshold %6d: qualifying %4d   added %3d   dropped %3d\n",
+              th, sum(now), sum(now & !real), sum(real & !now)))
+}
+```
+
+| threshold | qualifying | added vs. real rule | dropped |
+|---|---|---|---|
+| 7,500 | 163 | 33 | 0 |
+| 9,000 | 145 | 15 | 0 |
+| **10,000** | **130** | — | — |
+| 12,500 | 101 | 0 | 29 |
+| 15,000 | 86 | 0 | 44 |
+
+*(This table was transcribed from an earlier build that still included
+non-county rows, and read 194 / 175 / 161 / 139 / 122. The chunk above always
+printed the right numbers. Run the chunk; do not trust a typed table.)*
+
+## What a good answer says
+
+**3/4:** Reports that the count moves substantially and that a modest change in
+the number changes coverage for dozens of counties.
+
+**4/4:** Confronts the arbitrariness honestly. Nothing in the data justifies
+10,000 over 9,000. It is a round number, chosen by Congress in 1975, applied
+nationally to counties ranging from a few thousand people to ten million. A
+student who says "there is no natural break in this distribution at 10,000" and
+checks that claim has done the work.
+
+**4/4, best:** resists the easy conclusion that arbitrary means bad. Any
+bright-line rule is arbitrary at the margin; the alternative — case-by-case
+judgement about who deserves translated ballots — has its own and probably worse
+failure modes. The real criticism is not that the line is arbitrary but that the
+statute treats an *estimate* as if it were a *count*. That is a fixable defect;
+arbitrariness is not.
+
+***
+
+# Option B — Who is closest to the line?
+
+## Verified output
+
+```{r b}
+b <- cty[abs(cty$VACLEP - 10000) <= 1500, ]
+b <- b[order(b$VACLEP - 10000), ]
+c(counties_in_band = nrow(b), covered = sum(b$FLAG_COV == 1),
+  error_bars_crossing_the_line = sum(b$lo < 10000 & b$hi > 10000))
+b[, c("NAMELSAD","LANGUAGE","VACLEP","MVACLEP","FLAG_COV")]
+```
+
+## What a good answer says
+
+**3/4:** Names the counties and languages and counts the crossing intervals.
+
+**4/4:** Takes the clerk's position seriously. The honest answer is that a
+county 57 short with a margin of 377 has no way to know whether it is legally
+obliged, and the statute gives it no mechanism to find out. Translating ballots
+voluntarily costs money it may not have; not translating risks litigation. A
+student who identifies that the *uncertainty itself* imposes a cost on
+jurisdictions — separate from the cost of translation — has found something
+genuinely worth writing about.
+
+**4/4, best:** proposes a fix and reasons about its cost. Options include
+covering any jurisdiction whose confidence interval crosses the threshold
+(expands coverage, more expensive, errs toward access), or covering only those
+whose *lower bound* clears it (contracts coverage, errs toward cost). Naming the
+direction of the error is the point.
+
+***
+
+# Option C — Which languages sit closest to disappearing?
+
+## Verified output
+
+```{r c}
+langs <- aggregate(cbind(VACLEP, MVACLEP) ~ LANGUAGE,
+                   data = cty[cty$FLAG_COV == 1, ], FUN = median)
+counts <- as.data.frame(table(cty$LANGUAGE[cty$FLAG_COV == 1]))
+names(counts) <- c("LANGUAGE", "counties")
+lt <- merge(counts, langs, by = "LANGUAGE")
+lt$moe_pct <- round(100 * lt$MVACLEP / lt$VACLEP, 1)
+head(lt[order(lt$counties), c("LANGUAGE","counties","VACLEP","MVACLEP","moe_pct")], 12)
+```
+
+## What a good answer says
+
+**3/4:** Notices the single-county languages are overwhelmingly Native American
+and that their margins are proportionally larger.
+
+**4/4:** Explains the mechanism — the ACS margin of error shrinks with sample
+size, so small populations get proportionally huge uncertainty. The languages
+with the fewest speakers are measured worst. Then draws the consequence: the
+groups whose language rights are most precarious are also the ones the
+instrument can least reliably detect.
+
+**4/4, best:** answers the Alaska question the right way round. The AIAN and ANRC
+provisions are not a favour; they are a **correction for a known defect in the
+measurement**. Congress knew the ACS could not resolve a village of 400, so it
+stopped asking it to. A student who frames the special provision as
+methodological rather than political has understood both the statute and the
+survey.
+
+***
+
+# Option D — Their own question
+
+Allegheny County is worth a look. So is the largest uncovered limited-English
+population in the file — students are often surprised at how large it is.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **This lab rewards precision about consequences.** The move that earns a 4 is
+  connecting a statistical fact (a margin of error) to a legal fact (an
+  obligation on a county) without overstating either. Students who write "so
+  Section 203 is broken" without saying what specifically is broken have not
+  done it.
+- **Reward students who distinguish the tests.** `FLAG10`, `FLAG5` and
+  `FLAG_EDU` are separate conditions and several counties qualify on one and not
+  another.
+
+## Anticipated questions
+
+- *"Is this a scandal?"* — Not exactly. Every bright-line rule has a margin. The
+  defensible criticism is narrower and more interesting: the statute is written
+  as if the input were a census count when it is a survey estimate, and the file
+  publishes the uncertainty that the rule then ignores.
+- *"Why 'Hispanic' rather than 'Spanish'?"* — The statute defines language
+  minority groups by heritage categories, not by language spoken. That is a
+  genuine oddity worth a minute; the covered obligation is to provide Spanish
+  materials.
+- *"Bristol Bay is covered with three people?"* — Yes, via the Alaska Native
+  provisions, where determination is made on the Native village rather than the
+  borough. Part 5.
+- *"When does this change?"* — Determinations are every five years; **the next
+  is due in 2026**, using more recent ACS data. Counties in the straddle band may
+  flip for purely statistical reasons. This is live, not historical.
+- *"Does anyone challenge these?"* — Yes. Coverage determinations and compliance
+  are both litigated. Worth mentioning your own expert-witness work here if you
+  want the room's attention.
+
+## Connections forward
+
+- **Session 2 (the decennial census)** is the direct prerequisite: this lab is what the ACS
+  is *for*, legally speaking. The margins of error students meet abstractly in
+  Session 2 acquire a legal consequence here.
+- **Session 7 (surnames and BISG)** — another case of inferring group membership
+  from imperfect data, with the same tension between usefulness and error.
+- **Session 14 (RPV and precinct maps)** — VRA §2 litigation depends on estimates
+  of racially polarized voting that carry their own uncertainty, and courts
+  treat those estimates as facts too. Same structural problem, higher stakes.
+- **Session 1 (election returns)** — the provenance lesson, now with legal force. A `1` in a column is
+  an obligation on a county government.

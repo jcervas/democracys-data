@@ -1,0 +1,197 @@
+---
+title: "Lab 10b: A Quarter of a Million Dollars and Nine Weeks"
+subtitle: "84-355 Democracy's Data | What actually gets people to vote"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7, fig.height = 4.5)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# The question
+
+You are running a mobilization program. You have **$250,000** and nine weeks.
+How do you spend it to produce the most additional votes?
+
+This is a real question with a real answer, because unlike almost everything
+else in this course, mobilization has been tested experimentally. Since the late
+1990s, campaigns and researchers have run hundreds of randomised field
+experiments: assign some voters to be contacted, some not, then check the public
+voter file to see who actually turned out. Green and Gerber collect the results.
+
+Chapter 12 gives you their summary as a table. Today you spend against it.
+
+# Part 1 — What works
+
+```{r load}
+g <- read.csv("data/gotv_tactics.csv", stringsAsFactors = FALSE)
+g
+```
+
+Three columns matter.
+
+- `contacts_per_vote` — how many people you must actually *speak to* to produce
+  one additional vote. Lower is better.
+- `cost_per_vote` — what that additional vote costs, all in.
+- `effective` — whether the experiments found any measurable effect at all.
+
+**Start with the last column.** Three tactics have no measurable effect on
+turnout: mail sent by a campaign, email, and leaflets left on doors. Not "a
+small effect" — no effect that the experiments could distinguish from zero.
+
+```{r nothing}
+g[!g$effective, c("tactic", "effective")]
+```
+
+Think about how much of what arrives in your mailbox each October is on that
+list.
+
+# Part 2 — Effective and cheap are different things
+
+```{r ranking}
+e <- g[g$effective, ]
+data.frame(tactic = e$tactic,
+           rank_by_effect = rank(e$contacts_per_vote),
+           rank_by_cost   = rank(e$cost_per_vote))
+```
+
+Door knocking is the most effective thing anyone has measured — one extra vote
+for every 17 conversations — and it is *not* the cheapest way to buy a vote.
+Volunteer phone banks are.
+
+```{r plot-tradeoff}
+plot(e$contacts_per_vote, e$cost_per_vote,
+     pch = 19, cex = 1.4, col = "#C41230",
+     xlab = "Contacts needed per additional vote  (lower = more effective)",
+     ylab = "Cost per additional vote ($)",
+     main = "", xlim = c(0, 460), ylim = c(0, 145))
+text(e$contacts_per_vote, e$cost_per_vote, labels = e$tactic,
+     pos = c(4, 4, 4, 2, 2), cex = 0.7)
+grid(col = "grey85", lty = 3)
+```
+
+If effectiveness and cost told the same story, the points would sit on a rising
+line. They do not.
+
+# Part 3 — Spend the money
+
+```{r budget}
+BUDGET <- 250000                      # <- this is the number you will change
+
+spend_all_on <- function(tactic_name) {
+  row <- g[g$tactic == tactic_name, ]
+  if (!row$effective) return(0)
+  floor(BUDGET / row$cost_per_vote)
+}
+
+votes <- sapply(e$tactic, spend_all_on)
+res <- data.frame(tactic = e$tactic, votes_if_all_in = votes)
+res[order(-res$votes_if_all_in), ]
+```
+
+Spending the entire budget on the single best-value tactic buys about
+**`r format(max(sapply(e$tactic, function(t) { r <- g[g$tactic==t,]; floor(250000/r$cost_per_vote) })), big.mark=",")`**
+additional votes.
+
+Hold that number against something real: in 2024 the presidential margin in
+Wisconsin was about 29,000 votes, in Michigan about 80,000, and in Pennsylvania
+about 120,000.
+
+# Part 4 — The constraint that changes everything
+
+The table prices volunteer phone calls at $46 a vote — but volunteers are not
+money. You cannot buy them, and a campaign that has 40 volunteers has 40
+volunteers no matter how large its budget.
+
+```{r constrained}
+VOLUNTEER_HOURS <- 2000     # total volunteer hours available all cycle
+CALLS_PER_HOUR  <- 25       # completed conversations per hour
+
+vol_contacts <- VOLUNTEER_HOURS * CALLS_PER_HOUR
+vol_votes    <- floor(vol_contacts / g$contacts_per_vote[g$tactic == "Phone calls, volunteer"])
+vol_cost     <- vol_votes * g$cost_per_vote[g$tactic == "Phone calls, volunteer"]
+
+cat("Volunteer capacity:", format(vol_contacts, big.mark = ","), "conversations\n")
+cat("  -> produces about", format(vol_votes, big.mark = ","), "votes\n")
+cat("  -> costs about $", format(vol_cost, big.mark = ","), "\n", sep = "")
+cat("  -> leaves $", format(BUDGET - vol_cost, big.mark = ","), " unspent\n", sep = "")
+
+leftover  <- BUDGET - vol_cost
+next_best <- g[g$tactic == "Door-to-door canvassing", ]
+cat("\nSpending the remainder on canvassing adds",
+    format(floor(leftover / next_best$cost_per_vote), big.mark = ","), "votes\n")
+cat("TOTAL:", format(vol_votes + floor(leftover / next_best$cost_per_vote), big.mark = ","), "votes\n")
+```
+
+This is why campaigns are obsessed with volunteers, and why field organisers
+are measured on recruitment rather than on calls.
+
+# Part 5 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — A different budget.** Change `BUDGET` in Part 3 to $25,000 (a
+state legislative race) or $5,000,000 (a competitive Senate race). Does the best
+strategy change, or only the scale? What does that tell you about whether money
+buys elections?
+
+**Option B — Volunteer supply.** Change `VOLUNTEER_HOURS` in Part 4. Find
+roughly the point where volunteers stop being the binding constraint and money
+starts. Above that point, what should a campaign do with an extra $50,000 —
+and below it, what should it do with fifty more volunteers?
+
+**Option C — Take the "no effect" tactics seriously.** Campaigns spend heavily
+on mail and email anyway. Give one *good* reason a competent campaign might
+buy something that does not raise turnout. (There are several. Turnout is not
+the only thing a campaign is trying to do.) Then say what evidence would tell
+you whether that reason is right.
+
+**Option D — Your own question.** Something the table can answer.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** — that evening or the next day, while it is fresh.
+No length requirement — a sentence or two is enough, so long as it shows you
+engaged with what we did. Any *one* of the usual four: something that surprised
+you, something we missed, something you do not understand, or an answer to a
+classmate. One post is full credit, and it can be about anything we looked at
+this week — this lab is the obvious candidate, but it is not the only one.
+
+If you want a starting point, three that would make good posts:
+
+- Chapter 12 explains participation through ability, motivation and opportunity.
+  Which one does door-knocking act on? Which does an easier registration law act
+  on? They are not substitutes.
+- If mobilization mostly moves people who were nearly voting anyway, does it
+  narrow the participation gaps the chapter documents, or widen them?
+- Every number here is an *average* from experiments run on particular voters in
+  particular places. Name one reason the average might not hold for a campaign
+  you would actually run.
+
+***
+
+### Where these numbers come from
+
+Donald P. Green and Alan S. Gerber, *Get Out the Vote: How to Increase Voter
+Turnout*, 5th ed. (Brookings Institution Press, 2024), 172–73. Sides et al.
+reproduce them as Table 12.1.
+
+Two cautions the summary table cannot carry. **"Contacted" is doing a lot of
+work** — most doors do not open and most calls are not answered, so the cost
+figures already price in the failures, but the effectiveness figures do not.
+And these are **turnout** effects, not persuasion: they tell you how to make
+someone vote, not how to make them vote for you. A campaign that mobilises the
+wrong neighbourhood efficiently has helped its opponent.

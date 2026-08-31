@@ -1,0 +1,258 @@
+---
+title: "Data Session 12, part 2: Building a Score From Scratch"
+subtitle: "84-355 Democracy's Data | The Supreme Court's votes, 1946–2023"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Where did that number come from?
+
+> *"The most conservative Court since the 1930s."*
+
+This morning you used DW-NOMINATE: a number that places each member of Congress
+on a left–right line, computed from roll calls. You took the number as given.
+
+**Today you build one.**
+
+The Supreme Court is the easiest place to do it. Nine people, every vote
+recorded, every case public, and a database going back to 1946 that has counted
+all of it. And unlike Congress, the number of people is small enough that you
+can see the whole thing at once.
+
+There *are* published scores for the Court — Martin-Quinn is the standard one.
+We are not using them, for a reason worth stating: **a published score is the
+answer, and this session is about how the answer gets made.**
+
+# Part 1 — What one row is
+
+```{r load}
+ag <- read.csv("data/agreement.csv", stringsAsFactors = FALSE)
+jj <- read.csv("data/justices.csv",  stringsAsFactors = FALSE)
+
+nrow(jj)
+jj
+```
+
+Ten justices sat between the 2020 and 2023 terms. For each we have how many
+cases they voted in, what share of their votes the database codes as
+**conservative**, and how often they were **in the majority**.
+
+Note that Breyer and Jackson have about half as many cases as the others —
+Breyer retired during the window and Jackson replaced him. That will matter in
+Part 4.
+
+# Part 2 — Who agrees with whom
+
+The raw material for any ideal-point score is embarrassingly simple: **how often
+does each pair of people vote the same way?**
+
+```{r agreement}
+head(ag[order(-ag$pct), c("a", "b", "pct", "cases")], 5)
+head(ag[order( ag$pct), c("a", "b", "pct", "cases")], 5)
+```
+
+**Kavanaugh and Roberts agreed 96.2% of the time.** Kagan and Sotomayor, 92.3%.
+At the other end, **Thomas and Sotomayor agreed 53.0%** — barely better than a
+coin.
+
+That is the whole dataset. Forty-five numbers, one per pair. **No ideology has
+been supplied to it.** Nobody has told this table who is liberal.
+
+Except one of the forty-five is not a number at all:
+
+```{r missing}
+ag[ag$cases == 0, ]
+```
+
+**Breyer and Jackson never sat on a case together** — she replaced him. Their
+agreement is not low or high; it is **undefined**, and no amount of data will
+fix it. Hold that thought for thirty seconds.
+
+# Part 3 — The score falls out
+
+Now the move that makes DW-NOMINATE, Martin-Quinn, and every other ideal-point
+score work. Take the agreement rates as a measure of **closeness**, treat
+disagreement as **distance**, and ask: if these ten people had to be arranged
+along a single line so that people who agree sit near each other, what line
+would that be?
+
+```{r scaling}
+js <- sort(unique(c(ag$a, ag$b)))
+M <- matrix(NA_real_, length(js), length(js), dimnames = list(js, js))
+diag(M) <- 1
+for (i in seq_len(nrow(ag))) {
+  if (ag$cases[i] == 0) next          # Breyer and Jackson: no shared cases
+  r <- ag$agree[i] / ag$cases[i]
+  M[ag$a[i], ag$b[i]] <- r
+  M[ag$b[i], ag$a[i]] <- r
+}
+
+# The scaling cannot take a hole. We fill the one missing pair with the average
+# agreement across every other pair -- which is a GUESS, and the most
+# conservative one available: it assumes nothing about whether they would have
+# agreed. Part 6 Option B asks what happens if you refuse to guess.
+M[is.na(M)] <- mean(M[upper.tri(M)], na.rm = TRUE)
+
+score <- cmdscale(as.dist(1 - M), k = 1)[, 1]
+round(sort(score), 3)
+```
+
+**That fill is a modeling decision, made by us, in one line.** Option B has you
+remove it, and when you do, **two adjacent pairs swap places** — Thomas and
+Alito, and Roberts and Kavanaugh. Published scores make dozens of choices like
+this one. The difference is that ours is visible and reversible.
+
+```{r scale-plot}
+o <- sort(score)
+plot(o, rep(0, length(o)), pch = 19, cex = 1.6, col = "#2c7fb8",
+     yaxt = "n", ylab = "", xlab = "position recovered from agreement alone",
+     ylim = c(-1, 1), xlim = range(o) * 1.25)
+text(o, 0.25, names(o), srt = 45, adj = 0, cex = 0.75)
+abline(h = 0, col = "grey70")
+```
+
+**Read the order.** Thomas, Alito, Gorsuch, Barrett, Roberts, Kavanaugh — then a
+gap — then Jackson, Kagan, Breyer, Sotomayor.
+
+That is the ideological ordering of the Roberts Court as every court reporter in
+America would give it. **It came out of forty-five agreement rates.** We never
+told the model that Thomas is conservative, that these are political questions,
+or even that the people are judges.
+
+```{r validate}
+jj$score <- score[jj$justice]
+round(cor(jj$score, jj$pct_conservative), 3)
+```
+
+**Correlation −0.975** with each justice's share of conservative votes — a
+variable the scaling never saw. That is what an ideal-point score *is*: a
+summary of agreement that turns out to line up with something we already had a
+word for.
+
+**And notice the gap.** The six on the left span **0.145**. The distance from
+Kavanaugh to Jackson is **0.224**, larger than the entire conservative bloc.
+**This is not a spectrum with people spread along it. It is two clusters.**
+
+# Part 4 — The number that surprises people more
+
+```{r majority}
+jj[order(-jj$pct_in_majority), c("justice", "pct_conservative", "pct_in_majority")]
+```
+
+```{r maj-plot}
+plot(jj$score, jj$pct_in_majority, pch = 19, col = "#C41230", cex = 1.3,
+     xlab = "position (left = conservative here)", ylab = "% of the time in the majority")
+text(jj$score, jj$pct_in_majority, jj$justice, pos = 3, cex = 0.65)
+```
+
+**Kavanaugh is in the majority 95.5% of the time. Roberts, 94.3%.** The lowest
+are Sotomayor at 70.7% and Breyer at 72.1% — and, on the other side, Thomas at
+79.3%.
+
+The two justices nearest the middle of that line win almost every case. The
+justices at either end lose most often. **"Moderate" here is not a description
+of anyone's opinions — it is a description of how often you are on the winning
+side**, and it is a mechanical consequence of where you sit.
+
+# Part 5 — Seventy-eight terms
+
+```{r long}
+bt <- read.csv("data/by_term.csv", stringsAsFactors = FALSE)
+c(terms = nrow(bt), from = min(bt$term), to = max(bt$term))
+```
+
+```{r long-plot}
+plot(bt$term, bt$pct_conservative, type = "l", col = "grey60",
+     xlab = "term", ylab = "% of decisions coded conservative")
+lines(bt$term, filter(bt$pct_conservative, rep(1/5, 5), sides = 2),
+      col = "#C41230", lwd = 2)
+abline(h = 50, lty = 3)
+```
+
+The same database goes back to **1946**, so the long series is free. The red line
+is a five-term moving average.
+
+**Before believing any story you see in it**, notice what is being plotted: the
+share of decisions the database's coders labelled conservative. That is a human
+judgement, applied case by case, for seventy-eight years, by people following a
+codebook. It is a good codebook. It is still a judgement, and it is the thing the
+whole series is made of.
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Two dimensions.** Change `k = 1` to `k = 2` in the scaling and plot
+both. Does the second dimension separate anybody the first one merged? If it
+does, what might it be picking up — and how would you tell that from noise?
+
+**Option B — Refuse to guess.** Part 3 filled the Breyer–Jackson hole with the
+average. Instead, drop **both** of them from `ag` and re-run the scaling on the
+eight justices who overlap completely. Does the order of those eight change?
+What does the comparison tell you about how much the fill was doing?
+
+**Option C — The close cases.** `close_cases.csv` has the 30 one-vote decisions
+in this window and who was in the majority for each. Count how often each
+justice was in the majority *in those cases only*, and compare to Part 4. Does
+the middle still win when it is close?
+
+**Option D — Your own question.** 45 pairs, 10 justices, 78 terms.
+
+# What this lab cannot tell you
+
+- **Whether "conservative" means the same thing across seventy-eight years.**
+  The codebook is consistent; the politics are not. A 1962 case coded
+  conservative and a 2022 one may have almost nothing in common.
+- **Why anyone voted as they did.** Agreement is not agreement *about reasons*.
+  Two justices can reach the same result from incompatible doctrines, and this
+  data cannot see the difference — which is most of what law professors argue
+  about.
+- **That the line is real.** We *chose* one dimension and it fit well. That does
+  not prove judicial disagreement is one-dimensional; it proves a single
+  dimension explains much of the variation in these votes, in this window.
+- **What Martin-Quinn would say.** The published scores use a more careful model
+  that lets positions move over time. Ours is a snapshot, and it cannot show
+  anyone changing.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- We recovered the standard left–right ordering of the Court without ever
+  mentioning ideology. Is that impressive, or is it circular?
+- The two justices in the middle win 95% of cases and the ones at the ends lose
+  a third of them. Should that bother anybody?
+- Every number in Part 5 depends on a coder deciding what "conservative" means.
+  Does that make the series useless, or just human?
+
+***
+
+### Where the data came from
+
+**The Supreme Court Database**, Washington University in St. Louis, 2024 release
+01, justice-centered by citation — every justice's vote in every case since
+1946. <http://scdb.wustl.edu/data.php>
+
+Note the protocol: **the site serves over `http` only**, and `https` fails.
+
+Agreement and scaling use the **2020–2023 terms**, and cases where the database
+records no ideological direction are excluded, because "voted the same way" is
+undefined without a direction to compare. The build is in `data/build-data.R`.

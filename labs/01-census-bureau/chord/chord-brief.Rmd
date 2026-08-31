@@ -1,0 +1,185 @@
+---
+title: "Everybody Moved, Almost Nobody Left"
+subtitle: "A year of interstate migration drawn as a chord diagram, and the aggregation you have to perform before a circle will hold it"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("chord-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+In the year the American Community Survey last measured it, `r n(BETWEEN)` people in the United States lived in a different state than they had lived in twelve months earlier. Another `r n(WITHIN_ST)` moved within their own state and `r n(ABROAD)` arrived from abroad.
+
+The between-state moves are published as a matrix: `r NUNIT` origins by `r NUNIT` destinations, `r n(NPAIR)` ordered pairs, each with an estimate and a margin of error, which says how far off that estimate could be. It is the cleanest flow data in American demography and it is almost impossible to look at. A map can draw one state's arrows at a time, which is what the [migration chapter](../migration/migration-brief.html) does. A table has `r n(NPAIR)` rows.
+
+A **chord diagram** is the form built for exactly this shape of data: a square grid of flows between the same set of things. It will not take `r n(NPAIR)` ribbons. Getting the matrix small enough to draw is most of the work in this chapter, and it is where the arguing should happen.
+
+## One row is an ordered pair
+
+```{r one-row}
+```
+
+```{r varmap}
+```
+
+**Direction is a column, not a sign.** `r BA` to `r BB` and `r BB` to `r BA` are two different rows holding two different numbers, and the whole chapter turns on the fact that both are large.
+
+## Getting `r n(NPAIR)` pairs down to `r n(DRIB)`
+
+The states are grouped. This chapter uses the Census Bureau's own **nine divisions**, with Puerto Rico carried as a tenth group. The Bureau's divisions cover only the fifty states and the District of Columbia, and `r n(PROUT)` people left Puerto Rico for a state that year.
+
+```{r grouptab}
+```
+
+The assignment is read from this book's [regional-shift chapter](../regional-shift/regional-shift-brief.html) rather than retyped. That chapter checks its map against the Bureau's own published region totals for every decade since 1910, and a second hand-typed copy here would be checked by nothing.
+
+The grouping is still not a fact about the country. **The Bureau's divisions were fixed in 1910.** They put Delaware and Florida in one group, Maryland in the South, Missouri in the Midwest, and Texas with Arkansas and Oklahoma.
+
+Every sentence in this chapter about "the South" is a sentence about that list of states. A different list, by climate or cost of living or which party carried the state, would produce a different figure from identical data.
+
+Two things are lost on the way in, and both are worth naming before any of it is drawn.
+
+**`r n(NSUPP)` of the `r n(NPAIR)` state pairs are not published at all.** The Census releases an `N` instead of a number when too few sampled households made that move. Aggregation adds them as zeros, because there is nothing else to add, and the true totals are therefore slightly low. `matrix.csv` carries a count of suppressed pairs in every cell so that a group flow assembled mostly out of them cannot pass itself off as a measurement.
+
+**`r n(DSUPP)` of the `r n(DCELL)` division-to-division cells contain at least one suppressed state pair.** Suppression is not confined to a corner of the grid. It is spread thinly through almost all of it, which is why the count travels with every cell rather than being reported once as a total. Three cells come out at exactly zero, all of them flows to Puerto Rico.
+
+**Margins of error are added in quadrature**, which is the Bureau's own instruction for a sum of published estimates: the margin on a total is the square root of the sum of the squared margins. It assumes the errors are independent. Cells from a single survey are not quite independent, so the margins below are approximate, and if they are wrong they are too small.
+
+> **Before you read on, commit to a number.** Roughly `r mil(BETWEEN)` Americans
+> changed state in a year. **What share of them do you think crossed a Census
+> division boundary** — left the Northeast for the South, say — rather than
+> moving to a neighbouring state inside the same division? Write down a
+> percentage.
+
+## The figure
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=6.4}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. A year of interstate migration, `r YR`.** Each segment of the rim is one Census division, sized by how many people **left** it. The ribbon joining two divisions has a different width at each end. Its width where it meets a rim is how many people that division sent, so **the taper of a ribbon is the net flow**. Ribbons take the colour of whichever division sent more. Click a rim segment to isolate it; the buttons switch to the four-region grouping and drop the within-division ribbons.
+
+## Answer to the prediction
+
+**`r p1(WPCT)`% of interstate moves do not cross a division boundary.** Of `r n(WD + BD)` moves in the grid, `r n(WD)` were to another state in the same division: New York to New Jersey, Virginia to Maryland, Ohio to Michigan. They are the fat lens-shaped ribbons sitting on the rim in Figure 1. The button that hides them is worth pressing twice: with them gone, the circle looks busier and the country looks more mobile than it is.
+
+That is the first thing aggregation does. Every one of those moves was a real change of state, in a matrix built to record changes of state, and grouping turns them into a shape that reads as *staying put*.
+
+## Gross, and the very small difference between two grosses
+
+Now the chapter's actual finding, which is what the taper of the ribbons is showing.
+
+```{r pairtab}
+```
+
+The largest exchange in the country is `r BA` with `r BB`: `r n(BAB)` people one way, `r n(BBA)` the other, `r n(BG)` in total and a net of `r n(BN)`. The net is real and it is large: `r p1(BNP)`% of the exchange, comfortably clear of its margin. It is also the *most* directional big exchange in the country, and **`r p1(100 - BNP)`% of the movement between those two divisions still cancelled out.**
+
+That is the typical case, not the extreme one. **Across all `r n(DP)` pairs of divisions the median net is `r p1(MNP)`% of the gross flow**, and adding every pair together gives the same answer. `r p1(ONP)`% of all movement between divisions is net. The other `r p1(100 - ONP)`% is two people passing each other in opposite directions.
+
+Some pairs cancel almost exactly. `r CA` and `r CB` exchanged `r n(CG)` people and the net was `r n(abs(CN))`, against a margin of error of `r n(CM)` — a difference of `r p1(100 * abs(CN) / CG)`% of the flow, and statistically indistinguishable from zero. `r TA` and `r TB` exchanged `r n(TG)`, a third of a million people, for a net of `r n(TN)` with a margin of `r n(TM)`.
+
+**Only `r n(DPS)` of the `r n(DP)` division pairs have a net larger than its own margin of error.** Group up to the four regions and it is `r n(RPS)` of `r n(RP)`. A net is a difference between two survey estimates and it inherits the uncertainty of both, which is why a net of twenty thousand people can be nothing at all.
+
+## What the circle will not tell you
+
+A chord diagram is very good at one thing: showing the shape of a whole flow grid at a glance. It is bad at the thing readers most often want from it, which is a number. Figure 2 is the same data as a matrix, which is what Figure 1 was drawn from and what it cannot replace.
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=5.6}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The same matrix, as a matrix.** Thousands of people moving from the row's division to the column's, shaded on a log scale; the diagonal is moves that changed state without leaving the division. Hover any cell for the estimate, its margin of error, and how many suppressed state pairs are inside it. The button switches to net flow — and blanks every pair whose net is smaller than its own margin of error.
+
+Press it. **Most of the matrix goes blank**, and what is left is a small number of genuinely directional exchanges sitting in a field of churn. That is the honest picture of American migration, and no chord diagram can draw it, because a ribbon has no way to say *this taper is not distinguishable from parallel*.
+
+The trade runs both ways. The grid cannot show you that the Pacific division sends people almost everywhere while the East South Central division mostly trades with its neighbours. You would have to read sixty numbers and hold them in your head. Figure 1 hands you that in a second and will not tell you a single value.
+
+## Why any of this matters
+
+```{r nettab}
+```
+
+House seats are apportioned by population, and population moves. The `r n(LDIV)` divisions losing people on net hold `r n(LSEAT)` seats between them; the `r n(WDIV)` gaining hold `r n(WSEAT)`. `r TLOSE` loses `r p1(abs(TLP))` people per thousand residents a year and `r TGAIN` gains `r p1(TGP)`, and a decade of that is what the [apportionment chapter](../apportionment/apportionment-brief.html) is looking at when the seat totals are recomputed.
+
+The rates are small, and that is the point worth carrying away. Nothing in Figure 1 looks like an exodus. **A net of five people per thousand per year is invisible in any single year and reorganises the House of Representatives over a decade**, which is why this data is published annually and read cumulatively.
+
+> **A second prediction.** The four-region grouping puts the whole Northeast in
+> one segment and the whole South in another, and the net between them is
+> `r n(NESN)` out of `r n(NESG)` exchanged. **Would grouping into four regions
+> instead of nine divisions make the nets look larger or smaller as a share of
+> gross flow, and why?** Answer before you press the region button on Figure 1 —
+> then look at South and West, which exchanged `r n(SWG)` people for a net of
+> `r n(abs(SWN))` running toward the West, which is not the direction the usual
+> story about the Sun Belt would lead you to guess.
+
+## What this chapter cannot tell you
+
+**The grouping is doing more work than the data.** Nine divisions is `r n(DRIB)` ribbons; fifty-two units would be `r n(NPAIR)` and unreadable. Every finding above would change if the states were grouped differently: how much cancels, which pairs stand out, what counts as "within". And the Census divisions are a 1910 committee decision, not a natural kind. A grouping by metropolitan area, by cost of living, or by which party carried the state would produce a different circle from identical numbers.
+
+**A year is not a trend.** This is a single ACS release. The `r p1(WPCT)`% of moves that stay inside a division and the `r p1(MNP)`% median net are both one year's estimate. The [migration chapter](../migration/migration-brief.html) shows the long CPS series, in which the American mobility rate has been falling for decades.
+
+**`r n(NSUPP)` state pairs are missing and were added as zeros.** They are the smallest flows, so the totals here are slightly low, and the shortfall is not evenly spread. It falls on the pairs between small states, which means the rim segments for the least populated divisions are the least trustworthy.
+
+You cannot recover the missing cells from the published state totals either. The ACS estimates its cells and its margins separately, and they do not add up. So the row residuals run from about −8,400 to +1,900 people, mixing suppression with ordinary estimation noise. A residual is what is left over when the parts are subtracted from the total.
+
+**The margins in quadrature assume independence.** They are the Bureau's own recommended approximation, they are used here on cells from a single survey, and they are more likely too narrow than too wide. Read "clears its own margin" as the weakest version of that claim, not the strongest.
+
+**A move is not a decision, and this file records neither reasons nor returns.** Somebody who left Pennsylvania for Florida and came back the following year appears twice, in opposite directions, and contributes nothing to any net. That is not an error in the data; it is what the data is. The word for it is churn, and it is `r p1(100 - MNP)`% of what the median pair of divisions did to each other.
+
+## Sources
+
+- U.S. Census Bureau. *State-to-State Migration Flows*, American Community
+  Survey `r YR` one-year estimates, table T13. Captured, parsed and committed by
+  this corpus's [migration chapter](../migration/migration-brief.html), which
+  documents the fetch and the `r n(NSUPP)` suppressed pairs. The figures here
+  read that chapter's published output rather than re-parsing the spreadsheet.
+  <https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2024/state-to-state-migration/State_to_State_Migration_Table_2024_T13.xlsx>
+- U.S. Census Bureau. *Geographic Areas Reference Manual*, chapter 6, on the
+  four regions and nine divisions. The state-to-division assignment is not
+  retyped here: it is read from this corpus's
+  [regional-shift chapter](../regional-shift/regional-shift-brief.html), which
+  builds it from that manual and then refuses to build unless its own state
+  populations aggregate to the Bureau's published region totals in every decade
+  from 1910. `states.csv` writes the assignment out again so it
+  can be checked state by state.
+- U.S. Census Bureau. *2020 Census Apportionment Results*, as committed by this
+  corpus's [apportionment chapter](../apportionment/apportionment-brief.html).
+  <https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html>
+- U.S. Census Bureau (2020). *Understanding and Using American Community Survey
+  Data: What All Data Users Need to Know*, Appendix 3, on aggregating estimates
+  and their margins of error — the source of the quadrature rule used here.
+- Krzywinski, Martin et al. (2009). "Circos: an information aesthetic for
+  comparative genomics." *Genome Research* 19(9): 1639–1645. The paper that
+  made the chord diagram a standard form, and the source of the layout in
+  Figure 1.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`arcs.csv`](data/derived/arcs.csv), [`groups.csv`](data/derived/groups.csv), [`matrix.csv`](data/derived/matrix.csv), [`pairs.csv`](data/derived/pairs.csv), [`states.csv`](data/derived/states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `pairs.csv` has `a_to_b`, `b_to_a`, `gross`, `net` and `net_pct_of_gross`. Sort by the last one. Which pairs are a genuine one-way move, and which are two large flows that almost cancel?
+- `net_sig` says whether a net flow can be told apart from zero. Count the ones that survive. What is left of the story about Americans moving between regions?
+- `matrix.csv` records how many cells were `suppressed` in each grouping. Does suppression fall evenly, or does it land on particular kinds of place?
+- `states.csv` maps each state to both a division and a region. Regroup the flows by region instead of division. Does the picture change, and would you have known if you had only ever seen one of them?
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

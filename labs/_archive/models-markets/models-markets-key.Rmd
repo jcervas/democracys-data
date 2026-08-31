@@ -1,0 +1,232 @@
+---
+title: "Data Session 9 Key, part 2: What Is a 70% Chance?"
+subtitle: "84-355 Democracy's Data | Session 9 — Polls, models, and markets | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+d <- read.csv("data/polymarket_resolved.csv", stringsAsFactors = FALSE)
+d$p30 <- suppressWarnings(as.numeric(d$p30))
+b <- cut(d$p7, breaks = seq(0, 1, 0.1), include.lowest = TRUE)
+
+# Every figure quoted below is read back out of the file, at the same precision
+# the chunk beside it prints, so the prose cannot drift from a rebuild.
+pc  <- function(x, k = 1) formatC(x, format = "f", digits = k)
+BR  <- function(x) pc(mean((x$p7 - x$outcome)^2), 4)
+BAND <- function(lo, hi) mean(d$outcome[d$p7 > lo & d$p7 <= hi])
+MHI <- function() m[m$volume >  median(m$volume), ]
+MLO <- function() m[m$volume <= median(m$volume), ]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** The back half of Session 9, five days before the country
+votes. Part 1 took a poll apart; this asks what happens when a poll becomes a
+probability. It is the last session before the election and it sets up **Nov 5**,
+where four forecasts get graded at once: the base rate from Oct 20, the poll
+average, the market, and each student's own written prediction.
+
+**Timing matters here.** Teach this *before* the election, never after. The whole
+point is that students commit to a view of what a probability means while the
+answer is still unknown.
+
+Every number below was run against the data file.
+
+***
+
+# The session in one sentence
+
+A single probability cannot be wrong, so we check `r nrow(d)` of them at once — and the
+market turns out to be honest where the money is and shaky where it is thin.
+
+***
+
+# The findings
+
+```{r headline}
+c(markets   = nrow(d),
+  brier     = round(mean((d$p7 - d$outcome)^2), 4),
+  brier_50  = round(mean((0.5 - d$outcome)^2), 4),
+  hi_band   = round(mean(d$outcome[d$p7 > 0.9]), 3),
+  low_band  = round(mean(d$outcome[d$p7 > 0.1 & d$p7 <= 0.2]), 3))
+```
+
+- **Brier `r pc(mean((d$p7 - d$outcome)^2), 4)`**, against
+  `r pc(mean((0.5 - d$outcome)^2), 2)` for always saying 50% and
+  `r pc(mean((mean(d$outcome) - d$outcome)^2), 4)` for the base rate.
+- Priced 0.9–1.0 → happened **`r pc(100 * BAND(0.9, 1))`%**. Priced 0.8–0.9 →
+  **`r pc(100 * BAND(0.8, 0.9))`%**. Very good.
+- Priced 0.1–0.2 → happened **`r pc(100 * BAND(0.1, 0.2))`%**, about double.
+  Marginal: p =
+  `r {kk <- d$p7 > 0.1 & d$p7 <= 0.3; pc(binom.test(sum(d$outcome[kk]), sum(kk), mean(d$p7[kk]))$p.value, 3)}`
+  pooled across 0.1–0.3, on `r sum(d$p7 > 0.1 & d$p7 <= 0.3)` markets, from
+  **`r sum(table(b) >= 5)`** bands tested.
+- **`r pc(100 * mean(d$p7 < 0.10))`% of markets were priced under 0.10.**
+
+***
+
+# The three things to get said
+
+**1. Start with the thing that cannot be done.** Ask the room how they would
+tell whether "72%" was right. Let them flounder for a minute — the honest answer
+is that they cannot, from one case. **This is the single most useful idea in the
+session**, and it reframes every post-election argument they have ever heard.
+
+**2. Calibration is the answer, and it needs volume.** Not "was the forecast
+right" but "of the things you called 70%, did 70% happen." Then note what that
+requires: hundreds of resolved questions, which elections do not supply and
+markets do. **The reason we are using Polymarket is not that it is better than
+538 — it is that it leaves a checkable record.**
+
+**3. Then make them doubt the interesting result.** The low-band miscalibration
+is exactly the kind of finding a student will want to write up. All
+`r sum(table(b) >= 5)` bands were tested; one significant result is what chance
+produces. **Do not let them
+conclude "markets underprice longshots"** — Option B shows what is actually
+going on, and it is better.
+
+**The line for the board:** you cannot grade a forecast, only a forecaster.
+
+***
+
+# Option A — A different moment
+
+## Verified output
+
+```{r a}
+k <- !is.na(d$p30)
+c(n = sum(k),
+  brier_7d  = round(mean((d$p7[k]  - d$outcome[k])^2), 4),
+  brier_30d = round(mean((d$p30[k] - d$outcome[k])^2), 4))
+```
+
+**Brier `r pc(mean((d$p7[k] - d$outcome[k])^2), 4)` at seven days,
+`r pc(mean((d$p30[k] - d$outcome[k])^2), 4)` at thirty**, on the
+`r sum(k)` markets that carry a thirty-day price. The market gets meaningfully
+better as resolution approaches.
+
+**3/4:** Reports that the 30-day forecast is worse.
+
+**4/4:** Says why that is reassuring rather than interesting — information
+arrives over time, so a forecaster who was *equally* good a month out would be
+suspicious, not impressive. **A forecast that never improves is not using
+anything.**
+
+**4/4, best:** Notices this cuts against Part 4's framing. Seven days out was
+chosen arbitrarily and flatters the market; the honest way to describe a
+forecaster is a curve over time, not one number. **Asking "as of when?" is the
+same "compared to what?" instinct the course has been drilling since Session 4.**
+
+***
+
+# Option B — Only the big markets
+
+## Verified output
+
+```{r b}
+med <- median(d$volume)
+for (lab in c("above", "below")) {
+  x <- if (lab == "above") d[d$volume > med, ] else d[d$volume <= med, ]
+  cat(sprintf("  %-6s median volume  n=%3d   Brier %.4f\n",
+              lab, nrow(x), mean((x$p7 - x$outcome)^2)))
+}
+m <- d[d$p7 > 0.1 & d$p7 < 0.9, ]
+cat("\n  mid-range markets only (0.1-0.9):\n")
+for (lab in c("above", "below")) {
+  x <- if (lab == "above") m[m$volume > median(m$volume), ] else m[m$volume <= median(m$volume), ]
+  cat(sprintf("  %-6s n=%3d   priced %.3f   happened %.3f\n",
+              lab, nrow(x), mean(x$p7), mean(x$outcome)))
+}
+```
+
+**This is the best option in the lab and it resolves Part 4.**
+
+Overall: high-volume Brier **`r BR(d[d$volume > med, ])`**, low-volume
+**`r BR(d[d$volume <= med, ])`**. More money, better prices.
+
+Restricted to the mid-range where calibration actually bites: **high-volume
+markets priced `r pc(mean(MHI()$p7), 3)` and happened
+`r pc(mean(MHI()$outcome), 3)` — near perfect. Low-volume markets priced
+`r pc(mean(MLO()$p7), 3)` and happened `r pc(mean(MLO()$outcome), 3)` — off by
+`r pc(100 * (mean(MLO()$outcome) - mean(MLO()$p7)))` points.**
+
+**3/4:** Reports that busier markets score better.
+
+**4/4:** Connects it to Part 4 — the apparent longshot bias is concentrated in
+thinly traded markets, so "markets underprice longshots" is the wrong lesson.
+**"Thin markets are noisy" is the right one**, and it is what anybody who has
+thought about prices would predict.
+
+**4/4, best:** Draws the general moral: the market is not one forecaster but
+hundreds of forecasters of wildly varying quality, pooled by us into a single
+table. **We manufactured the anomaly by averaging over things that should not
+have been averaged** — which is the ecological-inference problem from a
+different direction, and worth naming if Session 14 is on the horizon.
+
+***
+
+# Option C — Score yourself
+
+No verified output; grade the honesty and the method.
+
+**3/4:** Produces five probabilities and a Brier score.
+
+**4/4:** Wrote the numbers down *before* looking, says so, and notices that five
+questions is far too few to distinguish their skill from luck — the same
+sample-size problem as the class survey in Session 8.
+
+**4/4, best:** Notices they will be tempted to pick questions they already know
+the answer to, and describes how they avoided it. **Recognising your own
+selection effect is the skill this course is actually teaching.**
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating a significant result as a hypothesis
+  rather than a conclusion — the multiple-comparisons point in Part 4.
+- **A 2** is "prediction markets are accurate" or "prediction markets are
+  biased." Both overclaim from the same table.
+- **Reward anyone who asks what the forecasters themselves publish.** The answer
+  — that model outputs are not downloadable — is a genuine finding about the
+  industry.
+
+## Anticipated questions
+
+- *"Isn't betting on elections illegal?"* — Kalshi is CFTC-regulated and offers
+  election contracts; Polymarket's US status has changed more than once. Say the
+  legal position is contested and moving, and do not assert a current answer you
+  have not checked that week.
+- *"Why not use 538?"* — Because you cannot check it. **No downloadable file of
+  model probabilities exists**, so there is nothing to score. Worth dwelling on:
+  the most-quoted forecasts in America publish claims, not evidence.
+- *"Do markets beat models?"* — Unanswerable from this data, and be firm about
+  that. We have one side of the comparison.
+- *"Isn't this just gambling?"* — Yes, and the fact that it produces
+  well-calibrated probabilities is exactly what makes it interesting.
+- *"Are these political markets?"* — Not all. Sport, crypto and Fed decisions
+  are in the sample. We are testing the mechanism, not the electorate.
+
+## Connections
+
+- **Session 9 part 1 (polls)** — a share is not a probability; this is the
+  bridge.
+- **Oct 20 (the midterm base rate)** — students wrote a prediction. **Remind
+  them today that it will be scored on Nov 5.**
+- **Session 10 (Nov 5)** — four forecasts get graded: base rate, poll average,
+  market, and their own. **This session is the one that tells them what
+  "graded" can even mean.**
+- **Session 5 (ads)** — the other place where the interesting evidence is not
+  published.

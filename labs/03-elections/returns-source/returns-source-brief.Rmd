@@ -1,0 +1,132 @@
+---
+title: "What Election Returns Can and Cannot Show"
+subtitle: "Complete, official, and permanently silent about who did it"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("returns-source-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The three sources before this one all describe people: what they say, how many they are, what an office has recorded about them. This one describes an **outcome**. An election return is the official statement of who won, and it is the only source in this book that reports the thing the whole apparatus exists to produce.
+
+It is complete rather than sampled. It is certified rather than compiled. And it is, by constitutional design, permanently silent about the one question everyone wants to ask it.
+
+## The ballot is secret, and that is the whole limit
+
+No election return anywhere links a vote to a voter. This is not a gap in the record-keeping that better record-keeping would close; it is the point of the secret ballot, and every return is a **total** by construction.
+
+So any claim about *which kinds of people* voted which way is a guess across a gap the data cannot cross. Did suburban women swing? Did mail voters break for one side? Usually that inference is made from aggregate returns, by looking at how places that differ in composition also differ in result.
+
+Almost nothing in political data lets you check that inference, because the truth is unavailable in principle. Here it is available. Georgia's cast vote records report, ballot by ballot, how mail ballots were actually marked, which means the standard method can be run on the aggregate returns and then graded.
+
+```{r ecotab}
+```
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.0}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The share of mail voters who chose the Democrat.** Two estimates from aggregate returns, and the counted answer from cast vote records. The shaded region is the range a percentage is allowed to occupy; the dashed line is 100%. Two of these three bars end outside it.
+
+**`r p1(EP)`% from the precincts. `r p1(EC)`% from the counties. The truth is `r p1(TR)`%.**
+
+The estimates are not close, and more importantly they are not *possible*. A percentage above one hundred is not a wrong answer of the ordinary kind; it is a signal that the method has been asked a question the data cannot answer. And the method returns it without complaint, formatted like a result.
+
+Note also which one is worse. The county estimate, built from `r nn(COUNTIES)` larger units, is further from the truth than the precinct estimate built from `r nn(PRECS)` smaller ones. **Aggregating further makes the inference worse, not better** — there is less variation left to work with, and what remains is increasingly the variation between places rather than between people.
+
+> **Before you read on, commit to a view.** You read that "mail voters broke
+> 2-to-1 for the Democrat," sourced to county-level returns. **What would you
+> need to see before believing it**, and is there any level of geographic
+> detail that would settle it?
+
+## The ladder, and why every rung is one-way
+
+```{r ladtab}
+```
+
+`r nn(BALLOTS)` ballots become `r nn(PRECS)` precinct returns become `r nn(COUNTIES)` county returns become fifty-one state returns become one national number. Each step upward is a sum, and **a sum cannot be undone**. Knowing that a county split 55–45 tells you nothing about which of its precincts did what, and knowing a precinct's totals tells you nothing about any ballot in it.
+
+Almost every published claim about American elections lives on rung 3 or above, and almost every interesting question about voters lives on rung 0. That distance is the subject of the [levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html); this chapter's point is narrower — the ladder is a property of the instrument, not a choice the analyst made.
+
+## There is no national election return
+
+The United States has no national vote counter. Elections are run by states, and in practice by several thousand counties and municipalities, each certifying its own result under its own law. What exists nationally is **compilation**.
+
+```{r srctab}
+```
+
+The last row is the one to watch. A national file assembled by a university or a newsroom is enormously useful, and several chapters here depend on one. It is also under **no obligation whatever**. It exists because somebody chose to build it, it is corrected if and when the compiler decides, and it can stop.
+
+What does that cost in practice? Add up every county in the country and compare the sum to the certified national total.
+
+```{r nattab}
+```
+
+**The county sums fall `r nn(abs(NDIFF))` Democratic votes short of the certified national figure**, and a comparable distance short on the Republican side. That is a small fraction of `r nn(NTOT)`, about a hundredth of one per cent, and it is not evidence of anything sinister. Jurisdictions report at different grains, some states do not report by county at all, and overseas and federal ballots are handled differently from place to place.
+
+But it means there is no single number to check against. The certified national total is itself a sum of certifications, and the "national returns" in any file you download are one compiler's reconciliation of thousands of local documents.
+
+Look at the Georgia rows too. Summing `r nn(2701)` precincts gives exactly the same total as the state's own county file — internally consistent, to the vote. Compare the *same state's* returns as published by the state against the same returns inside a national compilation and they differ by `r nn(abs(GA11[1]))` votes. Eleven votes is nothing, and it is also proof that the two files are not the same object.
+
+> **A second prediction.** A recount changes a state's certified total after a
+> national compilation has already been published. **What should the compiler
+> do, and how would a user of the file six months later know it happened?**
+
+## What this chapter cannot tell you
+
+The ecological grading uses one state, one election, and one contrast — mail against in-person voting in Georgia in 2020. Ecological inference is not always this bad, and there are methods more careful than the one graded here that would not return an impossible number. What the exhibit establishes is narrower and, for a reader, more useful: the failure mode is real, it is large, it does not announce itself, and the ordinary approach walks straight into it.
+
+**Nothing here is about fraud, and nothing here suggests any.** Certified returns are the most audited numbers in this book — recounts, canvasses, and litigation all attach to them. The discrepancies shown are between *compilations*, not between counts, and they are the size you would expect from thousands of offices reporting at different grains.
+
+This chapter also does not address the several numbers an election produces before it produces a final one. Election-night returns, canvassed returns, certified returns, and amended returns are different objects with the same name, and choosing among them is its own decision — the subject of the [election-night](../election-night/election-night-brief.html) and [Georgia precinct returns](../ga-precinct-returns/ga-precinct-returns-brief.html) chapters.
+
+Finally, precincts are not stable. They are renamed, split, merged and renumbered between elections, so a precinct-level comparison across two elections is comparing units that may not be the same ground. That is the [precinct-geography chapter's](../precinct-geography/precinct-geography-brief.html) subject, and it is a reason the finest available grain is not always the most useful one.
+
+## Sources
+
+- Georgia Secretary of State. Certified precinct-level returns and cast vote
+  records, 2020 general election, via this book's
+  [levels-of-aggregation](../levels-of-aggregation/levels-of-aggregation-brief.html)
+  and [Georgia precinct returns](../ga-precinct-returns/ga-precinct-returns-brief.html)
+  chapters. <https://results.sos.ga.gov/>
+- National county-level compilation, via this book's
+  [data-sources](../data-sources/data-sources-brief.html) chapter.
+  <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
+- Clerk of the U.S. House of Representatives. *Statistics of the
+  Congressional Election*, biennial.
+  <https://clerk.house.gov/Votes/ElectionStatistics>
+- Federal Election Commission. *Federal Elections*, biennial.
+  <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>
+- King, Gary (1997). *A Solution to the Ecological Inference Problem:
+  Reconstructing Individual Behavior from Aggregate Data.* Princeton
+  University Press.
+- Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
+  Individuals." *American Sociological Review* 15(3): 351–357.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`ecological.csv`](data/derived/ecological.csv), [`ladder.csv`](data/derived/ladder.csv), [`national.csv`](data/derived/national.csv), [`sources.csv`](data/derived/sources.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `ladder.csv` gives each rung the number of units nationally and who publishes it. Find the rung where publication stops. What is the finest thing you can actually get for the whole country?
+- `ecological.csv` shows an estimate that came out impossible, with the truth beside it. Work out how far off it was. Then say what made the estimate impossible rather than merely wrong.
+- `sources.csv` lists who publishes what and what each is `obliged_to` do. Find the publisher with the finest grain and the one with the widest reach. Are they ever the same body?
+- `national.csv` compares two sums of the same votes. They agree exactly. Work out what would have had to happen for them to disagree.
+

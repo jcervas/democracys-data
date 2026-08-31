@@ -1,0 +1,268 @@
+---
+title: "Data Session 1 Key: Where Election Data Comes From"
+subtitle: "84-355 Democracy's Data | Session 1 — Election returns | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+cty <- read.csv("data/pres2024_counties.csv",
+                colClasses = c(county_fips = "character"), stringsAsFactors = FALSE)
+old <- read.csv("data/pres2020_counties.csv",
+                colClasses = c(county_fips = "character"), stringsAsFactors = FALSE)
+st  <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+agg <- aggregate(cbind(votes_dem, votes_gop, total_votes) ~ state_name, data = cty, FUN = sum)
+cmp <- merge(agg, st, by.x = "state_name", by.y = "state")
+cmp$dh <- round(100 * cmp$votes_dem / cmp$total_votes - cmp$harris, 2)
+cmp$implied_total <- round(cmp$votes_dem / (cmp$harris / 100))
+cmp$missing     <- cmp$implied_total - cmp$total_votes
+cmp$missing_pct <- round(100 * cmp$missing / cmp$implied_total, 2)
+sw <- merge(old[, c("county_fips","state_name","county_name","votes_dem","votes_gop")],
+            cty[, c("county_fips","votes_dem","votes_gop")],
+            by = "county_fips", suffixes = c("_20","_24"))
+sw$r20 <- 100 * sw$votes_gop_20 / (sw$votes_gop_20 + sw$votes_dem_20)
+sw$r24 <- 100 * sw$votes_gop_24 / (sw$votes_gop_24 + sw$votes_dem_24)
+sw$swing <- round(sw$r24 - sw$r20, 2)
+
+# Every figure quoted below is read back out of these objects, so a rebuild of
+# the county files cannot leave a typed number stranded in the prose.
+pc <- function(x, k = 2) formatC(x, format = "f", digits = k)
+n  <- function(x) format(round(x), big.mark = ",")
+sg <- function(x, k = 2) sprintf(paste0("%+.", k, "f"), x)
+ab <- setNames(st$abbrev, st$state)
+ST <- function(s, col) cmp[[col]][cmp$state_name == s]
+REM <- function() cmp[order(-abs(cmp$d2)), ]     # states the two-party test misses
+bq <- cmp[order(-cmp$missing_pct), ]             # worst-documented states first
+up <- sw[order(-sw$swing), ]                     # largest Republican swings
+dn <- sw[order(sw$swing), ]                      # largest Democratic swings
+CO <- function(d, i) sub(" County$", "", d$county_name[i])
+SWG <- function(d, i) sprintf("%s %s %s", CO(d, i), ab[d$state_name[i]],
+                              pc(d$swing[i]))
+dc20 <- old$total_votes[old$county_fips == "11001"]
+dc24 <- cty$total_votes[cty$county_fips == "11001"]
+```
+
+All code in Part 7 is given to students. They are not writing it. What you grade
+is the interpretation underneath.
+
+Every number in this key has been run against the actual data files.
+
+***
+
+# The lab in one sentence
+
+There is no official national election-returns file, so every county-level
+dataset in circulation was assembled by someone — and the four ways that assembly
+goes wrong (silent type coercion, missing third parties, name joins, and units
+that changed between years) are all visible in a single afternoon.
+
+Students should leave unable to accept a county-level table at face value again.
+
+***
+
+# Option A — Test the diagnosis
+
+## Verified output
+
+```{r a}
+cmp$h2_cty <- 100 * cmp$votes_dem / (cmp$votes_dem + cmp$votes_gop)
+cmp$h2_st  <- 100 * cmp$harris    / (cmp$harris    + cmp$trump)
+cmp$d2     <- round(cmp$h2_cty - cmp$h2_st, 2)
+
+c(median_all_party = median(abs(cmp$dh)), median_two_party = median(abs(cmp$d2)))
+c(agree_all_party  = sum(abs(cmp$dh) < 0.05), agree_two_party = sum(abs(cmp$d2) < 0.05))
+head(cmp[order(-abs(cmp$d2)), c("state_name","dh","d2","missing_pct")], 5)
+```
+
+**The prediction holds, and decisively.** Median gap falls from
+`r pc(median(abs(cmp$dh)))` to **`r pc(median(abs(cmp$d2)))`**.
+States agreeing within 0.05 points rise from **`r sum(abs(cmp$dh) < 0.05)` to
+`r sum(abs(cmp$d2) < 0.05)` of `r nrow(cmp)`**.
+
+Only two states remain: **`r REM()$state_name[1]`** ($`r sg(REM()$d2[1])`$) and
+**`r REM()$state_name[2]`** ($`r sg(REM()$d2[2])`$).
+
+## What a good answer says
+
+**3/4:** Reports that the gap collapsed and the agreeing-states count jumped, and
+concludes the denominator diagnosis was right.
+
+**4/4:** Notices the two survivors are survivors for *different* reasons.
+Alaska's `missing_pct` is `r pc(ST("Alaska", "missing_pct"))`%, by far the worst
+in the country — it is the same disease, not yet fully cured, because Alaska's
+file is missing so much that even the two-party counts wobble. Ohio's
+`missing_pct` is `r pc(ST("Ohio", "missing_pct"))`%, essentially clean, so
+its residual is ordinary rounding in a source that publishes percentages to two
+decimals. Same symptom, two causes. A student who separates them is doing real
+diagnostic work.
+
+**4/4, the version to hope for:** points out that this test *could have failed*
+and did not, and that this is what makes it evidence rather than decoration. If
+the county file's Harris counts had themselves been wrong, removing third parties
+would have changed nothing.
+
+**Common stumble:** reporting "the medians are both about zero, so both methods
+are fine." That misses that the all-party median was already small — the
+informative number is the *count* of agreeing states,
+`r sum(abs(cmp$dh) < 0.05)` versus `r sum(abs(cmp$d2) < 0.05)`.
+
+***
+
+# Option B — Rank the states by data quality
+
+## Verified output
+
+```{r b}
+head(cmp[order(-cmp$missing_pct), c("state_name","missing_pct","total_votes")], 8)
+round(cor(cmp$missing_pct, log(cmp$total_votes)), 3)
+```
+
+Worst: **`r bq$state_name[1]` `r pc(bq$missing_pct[1])`%**,
+**`r bq$state_name[2]` `r pc(bq$missing_pct[2])`%**, then
+`r paste(sprintf("%s %s", bq$state_name[3:8], pc(bq$missing_pct[3:8])), collapse = ", ")`.
+
+Correlation with log(total votes) is
+**$`r pc(cor(cmp$missing_pct, log(cmp$total_votes)), 3)`$** — essentially nothing.
+
+## What a good answer says
+
+**3/4:** Names the worst states, reads the correlation correctly as near-zero,
+and concludes size does not explain incompleteness.
+
+**4/4:** Resists inventing a pattern. Alaska and New York are outliers with
+different stories — Alaska because its whole reporting geography is unusual and
+its file is the most broken in the set, New York because it has a large and
+genuinely well-organised third-party ecosystem (Working Families, Conservative)
+whose ballots the compiler dropped. After those two, the tail is small and
+unstructured. "These are 51 separate administrative decisions, not a pattern" is
+the correct answer and should be rewarded, not treated as a failure to find
+something.
+
+**4/4 bonus:** connects to the Bolts reading — the states that are hardest to
+track are not the ones you would predict, which is exactly the article's
+complaint. Whoever compiles these files is making choices nobody audits.
+
+**Common stumble:** "Alaska is worst because it is rural/small." Wyoming is the
+only state that cast fewer votes than Alaska, and it is far less affected
+(`r pc(ST("Wyoming", "missing_pct"))`% against
+`r pc(ST("Alaska", "missing_pct"))`%); North Dakota and Vermont, which feel
+small, both cast *more* ballots than Alaska. Push back on this in feedback.
+
+***
+
+# Option C — Where did the country move, and who is missing?
+
+## Verified output
+
+```{r c}
+head(sw[order(-sw$swing), c("state_name","county_name","swing")], 5)
+head(sw[order(sw$swing),  c("state_name","county_name","swing")], 5)
+c(f2024 = nrow(cty), f2020 = nrow(old), matched = nrow(sw))
+setdiff(cty$state_name, sw$state_name)
+sw[sw$county_fips == "11001", c("county_name","r20","r24","swing")]
+```
+
+Largest Republican swings: **`r SWG(up, 1)`**, **`r SWG(up, 2)`**,
+**`r SWG(up, 3)`**, **`r SWG(up, 4)`**, **`r SWG(up, 5)`**.
+
+Largest Democratic swings: **`r CO(dn, 1)` `r ab[dn$state_name[1]]`
+$`r pc(dn$swing[1])`$**, `r CO(dn, 2)` `r ab[dn$state_name[2]]` $`r pc(dn$swing[2])`$,
+`r CO(dn, 3)` `r ab[dn$state_name[3]]` $`r pc(dn$swing[3])`$,
+`r CO(dn, 4)` `r ab[dn$state_name[4]]` $`r pc(dn$swing[4])`$,
+`r CO(dn, 5)` `r ab[dn$state_name[5]]` $`r pc(dn$swing[5])`$. Note the asymmetry
+— the Republican tail is `r pc(up$swing[1] / abs(dn$swing[1]), 1)` times longer
+than the Democratic one.
+
+Join arithmetic: `r n(nrow(cty))` units in 2024, `r n(nrow(old))` in 2020,
+**`r n(nrow(sw))` matched**.
+
+**Alaska and Connecticut are absent entirely** — Alaska because the compiler
+silently renumbered its districts from `029xx` to `020xx`, Connecticut because
+the state replaced counties with planning regions and the codes share nothing.
+
+**The DC row:** all of DC in 2020 (`r n(dc20)` votes) against **Ward 1** in 2024
+(`r n(dc24)` votes, about `r pc(100 * dc24 / dc20, 0)`% of the same city), both
+carrying code `11001`, producing a tidy $`r pc(sw$swing[sw$county_fips == "11001"])`$
+swing — a sign opposite to the median county's
+$`r pc(median(sw$swing))`$, which is exactly why nothing flags it.
+
+## What a good answer says
+
+**3/4:** Describes the border-county and Bronx pattern, and names Alaska,
+Connecticut, and the DC row as problems.
+
+**4/4:** Draws the inference that matters — the failures are *invisible in the
+output*. Two states vanish without an error message, and the DC row does not look
+wrong; it looks like every other row. A student who says "I would not have caught
+this if the lab hadn't told me, and that is the point" has understood the lab.
+
+**4/4, best version:** asks what a national story built on this table would have
+claimed, and whether it would have been wrong. Mostly it would *not* have been —
+the Texas border swing is real and would survive. So the honest conclusion is
+uncomfortable: the file is broken in ways that happen not to change this
+particular headline, which is luck rather than method.
+
+**Common stumble:** treating the DC row as a small error to be dropped. It is not
+about DC. It is about the fact that a join can succeed loudly and mean nothing.
+
+***
+
+# Option D — Their own question
+
+Grade the question, not the ambition. Re-running an existing chunk on a different
+state with a sharp observation is a 4. A new figure with no argument is a 2.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code. A chunk that failed to run is an
+  office-hours problem, not a grade.
+- **The distinctive skill this lab teaches is negative** — knowing what a dataset
+  *cannot* support. Reward students who reach "this analysis is not possible with
+  these files, and here is the check that shows it." Say so explicitly in
+  feedback, because most students arrive believing a null answer is a failed one.
+- **Watch for false pattern-finding**, especially in Option B. Confident stories
+  about a correlation of $`r pc(cor(cmp$missing_pct, log(cmp$total_votes)))`$
+  should be marked down, gently, with an explanation.
+
+## Anticipated questions
+
+- *"Which file is right?"* — Neither is authoritative. The state file comes from
+  a compilation of official returns and is closer to certified totals; the county
+  file was scraped from Fox News's results pages, as its own README admits. The
+  useful answer is that "right" depends on the question, and the compiler's
+  choices are documented nowhere except in the discrepancies.
+- *"Why not just use official data?"* — There is no national official source.
+  That is the Bolts reading's entire argument, and this is the week to make the
+  connection explicit.
+- *"Did anyone publish anything wrong because of this?"* — Almost certainly, and
+  quietly. Good Option D territory.
+- *"Is the DC thing a bug in the lab?"* — No. It is in the source data, and it is
+  the most important thing in the lab.
+
+## Connections forward
+
+- **Data provenance** recurs in **Session 2** — the Census is the one place the US
+  does have an official national enumeration, and that session is about what it
+  costs to build one.
+- **Geographic units changing under you** is the modifiable areal unit problem,
+  formally introduced in the `census-geography/` lab and again in **Session 14**.
+  Connecticut is the live example; refer back to it by name.
+- **Ecological inference** in **Session 14** depends entirely on trusting a
+  county-to-precinct join. Students who did Option C will understand why that
+  assumption deserves scrutiny.
+- The **Bolts** article assigned this week is the argument; this lab is the
+  demonstration. Ask on Tuesday who is harmed when election data is this hard to
+  assemble — the answer, per the article, is voting-rights litigants, and that
+  points straight at **Session 3 (§203)**.

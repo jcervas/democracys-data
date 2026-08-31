@@ -1,0 +1,225 @@
+---
+title: "Five Thousand Maps Nobody Drew"
+subtitle: "What computer-drawn districts say about competition and race, and the one chamber that draws no lines at all"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("neutral-maps-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+In the `r max(hc_year$year)` House elections, `r n(dfx("seats"))` districts held a two-candidate race. Only `r n(dfx("in_45_55"))` of them, about `r pc(100 * as.numeric(dfx("in_45_55")) / as.numeric(dfx("seats")))`%, finished within five points of a 50-50 split. Another `r n(dfx("uncontested"))` districts had no second candidate on the ballot at all. Put those together and most seats in the House of Representatives are not really contests. They are formalities, decided months earlier by whoever drew the district lines.
+
+That is the finding of two other chapters in this book. [**Uncontested House Races**](../house-competition/house-competition-brief.html) counts the district-elections where nobody ran against the incumbent at all, seventy years running. [**Distributions**](../distributions/distributions-brief.html) takes the `r max(hc_year$year)` election and shows that almost no district looks like the "average" district. Vote shares pile up at the safe ends and leave a thin, easily missed cluster in the competitive middle. Neither chapter asks why the districts sort themselves that way. This one does.
+
+The answer starts with the district lines. A House seat is competitive or safe because of the same thing that decides which candidates even bother to run in it: **where the boundary was drawn.** The Constitution leaves that decision to the states, and most of them leave it to their legislatures, once a decade. If the lines themselves are the lever, you would like to know what a map looks like when nobody is pulling it. This chapter builds five thousand of them, per state, and compares.
+
+## Where the data comes from, and what it is for
+
+The **ALARM Project** at Harvard, a research group that studies redistricting, publishes a **50-State Redistricting Simulations** collection on the Harvard Dataverse, a public archive for research data. For every state with more than one congressional district, it supplies two things side by side. One is the map that state actually enacted after the 2020 census. The other is 5,000 alternative maps, drawn by a computer program that never saw a voter's party or a resident's race. The program had to satisfy three rules: equal population between districts, districts that are one connected shape, and districts that are not needlessly sprawling. This chapter calls that computer-drawn set the **neutral maps**.
+
+Those three rules are not the whole of what a real map must satisfy, and a later section is about the difference.
+
+**Who is in it, and how they got there.** Every congressional district in the 44 states that have more than one, twice over. Once as the state enacted it, and 5,000 times as a Markov chain Monte Carlo algorithm drew it. That algorithm, described in McCartan and Imai (2023), is a method for sampling redistricting plans that satisfy legal requirements while giving no plan an unfair head start over any other. Six states have only one House seat and so nothing to simulate: Alaska, Delaware, North Dakota, South Dakota, Vermont, and Wyoming. They sit outside every number in this chapter.
+
+**Who it was made for.** Researchers and litigators who need to know whether an enacted map is unusual. A map is easy to defend by pointing at its own lines; it is much harder to defend against 5,000 maps that followed the same rules and came out looking different.
+
+**What it costs to get.** Nothing. The Dataverse listing is public, and each state's file downloads with one request, no account required.
+
+**What has already been done to it.** The simulation itself: population, contiguity, and compactness are the only constraints the algorithm was given. That is what the whole argument leans on, and it is also the argument's weakest joint. Everything else is computed fresh in `data/build-data.R`, not supplied by the file: competitiveness, and who a district's residents are by race.
+
+> **Before you scroll, make two predictions.** If Congress's district lines
+> were drawn by a process blind to party, would there be more competitive
+> seats than there are today, or about the same number? And do you expect
+> that to hold in literally every state, or only most of them?
+
+## Forty-four states, five thousand maps each
+
+A district counts as **competitive** here if its simulated two-party vote share lands within some number of points of an even 50-50 split. The two-party share is the Democratic share of votes cast for the two major parties, ignoring everyone else on the ballot. A tighter threshold, like 2.5 points, catches only the closest seats. A looser one, like 10 points, catches everything with a plausible path to flipping in a good year for either party. This chapter checks all four.
+
+For each state and threshold, `data/build-data.R` counts the competitive districts in the enacted map, then counts them again in every one of the 5,000 neutral maps and averages the result. That average is not a real map. No single neutral plan looks exactly like it. But it is what "typical" means, for a map that was not trying to protect anyone.
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Neutral maps produce more competitive districts, at every threshold checked.** Across `r fx("n_states")` states and `r fx("n_districts")` districts, the enacted maps hold `r fx("enacted5")` districts within 5 points of even; the neutral maps average `r fx("neutral5")`, about `r pc(as.numeric(fx("pct_neutral5")) / as.numeric(fx("pct_enacted5")), 2)` times as many. The gap does not depend on where the 5-point line gets drawn — it holds at 2.5 points and it holds at 10.
+
+That consistency matters. A single threshold could be an artifact of exactly where it falls. Four thresholds moving the same direction, by comparable margins, is a state of the country's district lines, not a choice about where to draw a cutoff.
+
+## One state, a long way from typical
+
+Averages hide the states doing most of the work. `data/build-data.R` also keeps the count by state, which makes it possible to ask where the national gap is concentrated rather than assume it is spread evenly.
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Texas carries the largest gap of any state.** Its enacted map holds `r fx("tx_enacted5")` districts within 5 points of even, out of 38. The neutral maps average `r fx("tx_neutral5")` — more than four times as many. No other state's gap comes close. Illinois and California sit next on the list, so the pattern is not one-sided, though states with Republican-controlled legislatures dominate the largest gaps. Illinois was drawn by its legislature; California was drawn by an independent commission, which the next section returns to.
+
+## The lines and who gets represented
+
+Competitiveness is one thing a map controls. Who a district's residents are, and whether they can elect a candidate of their choosing, is another. Section 2 of the **Voting Rights Act** (VRA) forbids district lines that dilute a racial minority's ability to elect its preferred candidates. That is the 1982 version of the section. As enacted in 1965 it restated the Fifteenth Amendment, and a plaintiff had to prove discriminatory intent. Congress replaced that with a test about results, and the [vote-dilution chapter](../../06-putting-data-together/vote-dilution/vote-dilution-brief.html) follows what happened next.
+
+In April 2026 the Supreme Court's *Louisiana v. Callais* decision narrowed that protection. A legislature must now weigh race-conscious redistricting against nearly every other consideration first, including its own partisan aims, before Section 2 can require it at all.
+
+The neutral maps make it possible to ask a sharper question than "did this state's map dilute Black representation." They make it possible to ask what happens to Black representation once a state's legislature stops trying to preserve it. Suppose it tries instead to win as many seats for its own party as the lines can be made to yield.
+
+This section is restricted to the `r fx("gop_n_states")` states Republicans controlled after the 2020 census: TX, FL, GA, NC, SC, TN, AL, MS, LA, AR, MO, KS, OK, IA, NE, IN, OH, KY, WV, and UT. A Republican-favoring gerrymander is a map drawn to lock in seats for one party, by packing and splitting up opposing voters. That is only a live possibility where Republicans hold the pen. Applying the same test to a Democratic-controlled state would be asking about a map nobody there has any reason to draw.
+
+A district counts as **Black-plurality** here if Black voting-age population is the largest of every racial and ethnic group reported for it, larger than white, Hispanic, Asian, and every other category on its own. That is a stricter test than "Black voters outnumber white voters," which can be true in a district where Hispanic voters outnumber both. An earlier version of this chapter's build script used exactly that looser test, and it misclassified several genuinely Hispanic-plurality districts, in Texas and California among other states, as Black. An independent source caught the error: Wikipedia's own tally of majority-minority congressional districts, compared against the resulting national count here. Whatever question you ask of data like this, it pays to have a second source to check the answer against.
+
+For each of the 20 states, `data/build-data.R` counts Black-plurality districts three ways: in the enacted map, averaged across the 5,000 neutral maps, and in one more map besides. Thousands of those 5,000 maps are usually tied for that state's highest possible Republican seat count, not a close call. The third count takes whichever of those tied maps has the fewest Black-plurality districts. That is not a real gerrymander a legislature has drawn. It is the most adversarial map available inside an ensemble that was never told to be adversarial about race, only about party. If Black representation falls even there, a legislature trying on purpose could very plausibly do worse.
+
+**Kenny and colleagues (2026)** run the harder version of this question, with a real seat-maximizing search across all fifty states, and reach the same shape of answer.
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Georgia is the only state that keeps any Black-plurality seat under a maximized gerrymander.** Across the 20 states, the enacted maps hold `r fx("black_actual")` Black-plurality districts. The neutral maps average `r fx("black_neutral")`. The most adversarial map available in the simulations holds `r fx("black_gerry")`, a cut of about `r fx("black_pct_cut")`%. Every state with exactly one such district today loses it entirely: `r fx("single_seat_states")`. Georgia's four fall to two, and nowhere else does even a single seat survive.
+
+Two different stories sit inside that one bar chart. In Alabama and Louisiana, the neutral maps rarely produce a Black-plurality district on their own — their court-ordered seats exist because a judge required them, not because the state's geography makes them likely by chance. In Georgia, Black residents are numerous and concentrated enough that neutral maps produce Black-plurality districts on their own, most of the time. A maximized gerrymander still cuts that number in half. Concentration protects a group from *accidental* erasure. It does not protect them from a map drawn on purpose to erase them.
+
+## Three rules, against everything a real map has to obey
+
+The neutral maps followed three rules. A real map has to follow more, and the gap is the strongest objection to everything above.
+
+Two of the three are federal and hard. Districts must be nearly equal in population, and that is enforced almost to the person. The Voting Rights Act limits how lines may treat racial minorities. Compactness, the third rule the algorithm was given, is not federal at all.
+
+**Everything else is state law, and it differs by state.** Most states require **contiguity**, meaning a district is one connected piece. Many require respect for county and city boundaries. Many require keeping **communities of interest** together, without defining them tightly. Some require preserving the **cores of prior districts**, which is a rule that protects incumbents by protecting the shape they were elected in. A few states now require a plan to be competitive, or to neither favour nor disfavour a party or a person.
+
+Those criteria conflict with one another, and only a handful of states rank them. So a legislature drawing a real map is trading rules off, and the algorithm was never asked to make any of those trades.
+
+**That cuts both ways, and it is worth being clear which way.** A state can point at a neutral map and say it split a county the state's own constitution protects, and the state would be right. It does not follow that the gaps in Figures 1 and 2 are explained by county lines. Nothing here measures how much of each state's gap the extra rules could account for, and this chapter cannot settle it.
+
+The point has stopped being academic. In *Louisiana v. Callais* (2026) the Supreme Court held that a map offered to show what could have been drawn must meet **all** the state's legitimate objectives, its stated political goals included. It must meet them as well as the state's own map does. Nothing in a 5,000-map ensemble built on three rules can clear that. The [vote-dilution chapter](../../06-putting-data-together/vote-dilution/vote-dilution-brief.html) works through what the decision changed.
+
+## Who is actually holding the pen
+
+This chapter keeps saying which party drew a state's map. For a quarter of the states with a map to draw, no party did.
+
+```{r whotab}
+```
+
+**In `r WD("Commission draws it")` states the congressional lines go to a commission, and its map becomes law without the legislature voting on it.** Another `r WD("Commission advises, legislature adopts")` have a commission that proposes and a legislature that disposes. In `r WD("Legislature, with a back-up commission")` more, a commission wakes up only if the legislature fails or misses its deadline. The remaining `r WD("Legislature")` are the plain case the phrase "the legislature drew it" describes.
+
+One state is on its own. **Iowa's maps are drafted by nonpartisan legislative staff**, and the General Assembly may accept or reject the first two sets but not amend them. It is often called a commission and it is not one.
+
+That matters for the section above, because Iowa sits in this chapter's list of `r fx("gop_n_states")` states where Republicans "held the pen" after 2020. In Iowa nobody held it in the sense that list means. Utah is in that list too and had an advisory commission, and Ohio's congressional process is a hybrid that requires bipartisan support or hands the map to a commission. **Party control of a legislature is a rough proxy for who drew a map, and for at least three of those twenty states it is the wrong answer.**
+
+The table also invites a comparison, and Figure 2 half-answers it. Most of the commission-drawn states sit close to their neutral ensembles, several of them slightly below. **California is the exception, and a large one:** its commission-drawn map is third on the national gap list, behind only Texas and Illinois.
+
+So a commission is not a machine for producing the neutral map. It is a different set of people, applying the same conflicting criteria, in a state whose geography does most of the work either way. Nine states is a small number to draw a rule from, and this chapter does not draw one.
+
+## What neutral maps and gerrymanders cannot tell you
+
+The neutral maps are a counterfactual, not a forecast. No legislature is proposing to hand redistricting to an algorithm that has never seen a voter's address book or a district's history, and the comparison in this chapter says nothing about whether they should. It says only how far the enacted maps sit from what "no one steering" looks like — which is a measurement, not a policy recommendation.
+
+The "maximized gerrymander" column is a lower bound sampled from an ensemble that was built for a different purpose. The algorithm behind the 5,000 maps was never told to be adversarial about race; it was only asked to satisfy ordinary redistricting rules. Whatever Black representation survives even the worst of those 5,000 maps is not the floor a legislature trying on purpose would find. A real gerrymander, drawn by people who know exactly which precincts to move, can very plausibly do worse than the worst neutral draw.
+
+Both counts also freeze the state of the law at the moment the underlying plans were drawn. Alabama's and Louisiana's enacted counts already carry a hand correction, for maps ordered after this dataset's own snapshot. Tennessee is not corrected the same way. Its 2022 map never had a Black-plurality district under this chapter's test to begin with, even before the state made a later, separate move: dismantling a Memphis-based majority-Black district in 2026. The law and the maps keep moving. This chapter's numbers are a snapshot, not a forecast of where either will land next.
+
+## The chamber with no lines to draw
+
+Everything in this chapter is possible because a legislature draws the House map. Every ten years, sometimes more often, a state redraws its congressional districts. Every one of those redrawings is a chance to help or hurt a party or a community. The Senate has no such moment. Its "districts" are the fifty states themselves. A state's boundary has not moved to help a political party since West Virginia split from Virginia in 1863, during the Civil War, for reasons that had nothing to do with a modern redistricting fight.
+
+That does not make Senate seats evenly competitive. It makes them competitive or safe for a completely different reason: **which state you happen to live in**, not which precincts a mapmaker chose to put on your side of a line.
+
+```{r sen-facts}
+```
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Every Senate seat up in 2026, by how its state voted for president in 2024.** No line was drawn to produce this spread. It is the states themselves, whichever way they lean. `r CLOSE` of the `r nrow(senate)` seats up sit within 5 points either way, genuinely competitive on this measure, at a rate the House rarely reaches at all.
+
+The reason is not that the Senate map is neutral. It is that the Senate has no map to gerrymander. Wyoming and California each get two senators regardless of population. That imbalance is one the Constitution locked in, and political scientists call it **malapportionment**. Nobody redraws Wyoming to make it redder, because Wyoming is not a set of lines a legislature gets to move. It is a state.
+
+That is the whole difference this chapter has been circling. A House district is competitive or safe because of a choice a state legislature made, redrawn on a schedule and, as recent cycles show, sometimes off it. A Senate seat is competitive or safe because of a choice nobody currently in office made at all — where the state's own lines happen to sit, fixed since it joined the union. Both chambers can be unrepresentative. Only one of them got that way because someone drew it that way on purpose.
+
+## Sources
+
+**Data**
+
+- ALARM Project, **50-State Redistricting Simulations**, Harvard Dataverse,
+  doi:10.7910/DVN/SLCD3E. Enacted plans and 5,000 neutral simulated plans per
+  state, for every state with more than one congressional district.
+  <https://doi.org/10.7910/DVN/SLCD3E>
+- This book's own chapters on uncontested and unevenly distributed House
+  elections, read directly for the opening primer rather than recomputed
+  here: [`by_year.csv`](../house-competition/data/derived/by_year.csv) from
+  [house-competition](../house-competition/house-competition-brief.html), and
+  [`facts.csv`](../distributions/data/derived/facts.csv) from
+  [distributions](../distributions/distributions-brief.html). Both carry their
+  own citations to the Clerk's volumes and to Gary Jacobson's House elections
+  data.
+- [`senate_2026_landscape.csv`](../election-night/data/derived/senate_2026_landscape.csv)
+  from [election-night](../election-night/election-night-brief.html), this
+  book's own chapter on the 2026 Senate map, read directly for Figure 4.
+- National Conference of State Legislatures, *Redistricting Law 2020*
+  (Denver: NCSL, October 2019), Exhibit 5.1 and the Iowa note on p. 91,
+  keyed in for the table of who draws each congressional map. Chapter 4 of
+  the same volume supplies the redistricting criteria a real map has to
+  satisfy.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`black_by_state.csv`](data/derived/black_by_state.csv), [`black_national.csv`](data/derived/black_national.csv), [`competitive_by_state.csv`](data/derived/competitive_by_state.csv), [`competitive_national.csv`](data/derived/competitive_national.csv), [`who_draws.csv`](data/derived/who_draws.csv), [`who_draws_states.csv`](data/derived/who_draws_states.csv), [`senate_2026_landscape.csv`](../election-night/data/derived/senate_2026_landscape.csv), [`by_year.csv`](../house-competition/data/derived/by_year.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `competitive_by_state.csv` puts `enacted` against `neutral_mean` for every state. Sort by the gap. Which states' maps are furthest from what a neutral process produces?
+- `competitive_national.csv` repeats the comparison at several `threshold` values. Does the conclusion survive changing what counts as competitive?
+- `black_by_state.csv` compares `actual_black` districts against `neutral_black_mean` and `gerry_black`. Find the states where the enacted map produces more than neutrality would, and the states where it produces fewer.
+- `who_draws_states.csv` says who holds the pen in each state. Join it to the competitiveness gap. Do commissions actually produce different maps?
+
+**Cases**
+
+- *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), on what an illustrative
+  map must now achieve to count as evidence.
+
+**Academic literature**
+
+- McCartan, C. and Imai, K. (2023). "Sequential Monte Carlo for Sampling
+  Balanced and Compact Redistricting Plans." *The Annals of Applied
+  Statistics* 17(4): 3300–3323.
+- Kenny, C. T., Zhou, B., Simko, T., and Imai, K. (2026). "Weakening the
+  Voting Rights Act Reduces Minority Representation and Electoral
+  Competition." Working paper. An independent, more thoroughly optimized
+  version of this chapter's second question, run across all 50 states with a
+  genuine seat-maximizing search algorithm rather than a best-of-5,000
+  selection. Under an all-out partisan gerrymander, its published estimate is
+  a national decline of roughly half in minority-opportunity districts, the
+  same shape of result this chapter finds restricted to the 20 states where
+  a Republican gerrymander was a live possibility.
+
+**Further reading**
+
+- Mayhew, D. (1974). *Congress: The Electoral Connection*. Yale University
+  Press.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

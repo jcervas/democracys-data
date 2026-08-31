@@ -1,0 +1,244 @@
+---
+title: "Data Session 6 Key: The File With Your Name On It"
+subtitle: "84-355 Democracy's Data | Session 6 — Voter registration files | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+s  <- read.csv("data/schema.csv", stringsAsFactors = FALSE)
+rp <- read.csv("data/race_party.csv", stringsAsFactors = FALSE, check.names = FALSE)
+st <- read.csv("data/status.csv", stringsAsFactors = FALSE)
+to <- read.csv("data/turnout.csv", stringsAsFactors = FALSE, check.names = FALSE)
+lost <- read.csv("data/lost.csv", stringsAsFactors = FALSE)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** Data Session 6, and it exists because of an ordering
+mistake in the old schedule: BISG was being taught before students had ever seen
+a voter file. **This session introduces the source; Session 7 infers from it;
+Session 14 tries to recover from aggregates what this file states outright.**
+Same county throughout, deliberately — three sessions, one file, escalating
+distance from the truth.
+
+**Say the arc out loud at the start and again at the end.** It is the spine of
+the back half of the course.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+The most consequential dataset in American campaigning is a routing table for
+poll workers, it has no party column worth the name, and it forgets people —
+13,803 of them since 2020.
+
+***
+
+# The findings
+
+```{r headline}
+c(voters        = 127560,
+  columns       = nrow(s),
+  ballot_cols   = sum(s$purpose == "Which ballot you get"),
+  inactive      = sum(st$voters[st$status == "INACTIVE"]),
+  lost_2020     = lost$voters_no_longer_in_file[lost$election == "2020 general"])
+```
+
+- **21 of 53 columns** exist to decide which ballot you get.
+- **70% of the file** has no usable party signal — Georgia has no party
+  registration.
+- **9,386 inactive** registrants, removed for postal reasons, not for anything
+  they did.
+- **13,803 people voted in 2020 and are not in the 2026 file.**
+- 2024 turnout: **White 69.2, Black 55.1, Asian 55.2, Hispanic 47.7** — and
+  every one of those is computed on the wrong denominator, on purpose.
+
+***
+
+# The three things to get said
+
+**1. The file is a routing table, not a description of the electorate.** This is
+the framing that makes everything else make sense. Twenty-one columns place you
+in overlapping districts — water board, fire district, "Combo" — because a clerk
+must hand you one specific ballot. Researchers are *scavenging* an
+administrative artifact. Ask the room what a file built *for* research would
+look like instead, and how you would ever get one.
+
+**2. "Registered Democrat" is not a thing in Georgia.** Students arrive certain
+that party registration is universal; roughly half the country has none. The
+`Last Party Voted` column looks like party ID and is not — it is the last
+primary ballot requested, blank for 40,663 people. **This is the single most
+useful factual correction in the session**, because the misreading is everywhere
+in campaign journalism.
+
+**3. The file has no memory, and the forgetting is not random.** Part 4 is the
+finding to spend time on. The 13,803 missing 2020 voters are disproportionately
+people who move — renters, younger voters, lower-income voters — so any
+retrospective analysis is biased in a predictable direction. **Ask what a
+researcher who did not check would have concluded.**
+
+**The line for the board:** the data is not wrong, it is answering a different
+question than the one you asked.
+
+***
+
+# Part 5 — the denominator, which is the teachable error
+
+```{r p5}
+to$rate <- round(100 * to$`2024 general` / to$in_file_2026, 1)
+to[to$in_file_2026 > 1000, c("race", "in_file_2026", "2024 general", "rate")]
+```
+
+**Do not let students write these down as turnout rates.** They are a 2024
+numerator over a 2026 denominator. Three separate problems, and students should
+be able to name all three:
+
+1. People who voted in 2024 and have since left are in **neither** number.
+2. People who registered in 2025–26 are in the denominator and **could not have
+   voted**.
+3. "Registered" is itself ambiguous — 127,560 or 118,174, a 7.4% swing, decided
+   by the inactive flag.
+
+The correct denominator is the file as it stood in November 2024. **Nobody kept
+it.** Most states overwrite. That is the honest ending: the right analysis is
+not merely hard here, it is impossible after the fact, which is why serious work
+uses archived snapshots and why those are expensive.
+
+***
+
+# Option A — Active voters only
+
+## Verified output
+
+```{r a}
+act <- 118174 / 127560
+data.frame(race = to$race, rate_all = to$rate,
+           rate_if_scaled = round(to$rate / act, 1))[to$in_file_2026 > 1000, ]
+```
+
+**3/4:** Recomputes and notes every rate rises by about 8%.
+
+**4/4:** Notices the flaw in the scaling — inactive voters are **not** spread
+evenly across groups, so applying one countywide ratio is itself an assumption.
+The file has the group-level counts; a student who says "I would want inactive
+broken down by race before believing any of this" has the right instinct. (We
+did not build that table. **Good — let them find the limit.**)
+
+**4/4, best:** Connects it to Part 3. Being marked inactive is triggered by
+returned mail and change-of-address records, which track residential mobility,
+which tracks age, tenure and income. So the inactive flag is *correlated with
+the thing being measured*. Dropping inactives does not clean the data, it tilts
+it.
+
+***
+
+# Option B — The midterm drop
+
+## Verified output
+
+```{r b}
+to$drop <- round(100 * (1 - to$`2022 general` / to$`2024 general`), 1)
+to[to$in_file_2026 > 1000, c("race", "2022 general", "2024 general", "drop")]
+```
+
+**3/4:** Reports that turnout fell for every group between the presidential and
+midterm election, and identifies which fell furthest.
+
+**4/4:** Refuses to call it a fact about voters. The 2022 column is matched
+against a 2026 file that has already lost **5,677** of that election's voters,
+and the 2024 column has lost only 3,798 — so **the two columns are not measured
+on comparable populations.** Part of any apparent difference is decay, not
+behaviour.
+
+**4/4, best:** Proposes the fix — you would need the file as it stood in each
+November, and then notes that this makes the comparison a data-availability
+problem rather than a political one. That is the correct and slightly deflating
+answer.
+
+***
+
+# Option C — The categories
+
+## Verified output
+
+```{r c}
+o <- to[to$race %in% c("OTHER", "UNKNOWN"), ]
+o$rate <- round(100 * o$`2024 general` / o$in_file_2026, 1)
+o[, c("race", "in_file_2026", "2024 general", "rate")]
+```
+
+**9,923 people** are OTHER or UNKNOWN — more than the Hispanic and Asian counts
+combined — and UNKNOWN records **29.7%** turnout, the lowest of any group.
+
+**3/4:** Offers a voter-side explanation (these voters are less engaged) and a
+form-side one (the category is a residue of the form).
+
+**4/4:** Argues the form side is more likely and says why. UNKNOWN largely means
+*the race field was never filled in*, which happens with particular registration
+channels — motor-voter, third-party drives, older records — and those channels
+correlate with everything. A student who says "this is not a group of people, it
+is a group of **records**" has it.
+
+**4/4, best:** Notices this is Session 2's finding again from the other side.
+There, 94.5% of "Some Other Race" census respondents were Hispanic — a real
+population failing a category. Here it is mostly a missing-data artefact wearing
+the same label. **Same word, two completely different phenomena**, and only
+knowing how the data was collected tells them apart.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is naming the file's purpose and reasoning from
+  it. Any student who writes "this file was built to hand people ballots, so…"
+  and completes the sentence correctly has understood the session.
+- **A 2** is reporting the turnout gap as a finding about voters without
+  touching the denominator problem, after Part 5 has spelled it out.
+- **Reward discomfort about the privacy question.** Their names are in a file
+  like this, it is public, and it is sold. There is no clean answer and they
+  should not be given one.
+
+## Anticipated questions
+
+- *"Is my own registration public?"* — Yes, in every state, though what is
+  released varies. Pennsylvania sells a statewide file. Do not dodge this; it
+  makes the session land.
+- *"Why does Georgia record race?"* — Section 5 of the Voting Rights Act
+  required covered jurisdictions to demonstrate that changes did not have a
+  discriminatory effect, which requires knowing who voters are. The coverage
+  formula was struck down in *Shelby County* (2013); the practice remained.
+- *"Can campaigns see how I voted?"* — **No.** They can see *that* you voted, and
+  which primary ballot you requested. The difference matters enormously and is
+  the whole premise of Session 14.
+- *"Is this legal to use in class?"* — It is a public record. Note that we
+  committed no individual rows, and say why.
+- *"Why not just use the whole state?"* — Size, and because Sessions 7 and 14
+  reuse this county. Repetition across three sessions is doing pedagogical work.
+
+## Connections
+
+- **Session 2 (census)** — where the block demographics come from, and the same
+  one-box race problem.
+- **Session 5 (money and message)** — the targeting operations were aimed at
+  these rows.
+- **Session 7 (surnames and BISG)** — *next week*, and it needs this file. Most
+  states do not record race, so people infer it. **Say the handoff explicitly.**
+- **Session 8 (surveys)** — the CPS *asks* people whether they voted and gets a
+  different answer. Administrative record vs self-report, same quantity.
+- **Session 14 (RPV)** — will try to recover the party-by-race numbers from
+  Part 2 using only precinct aggregates, and will get them wrong by nine points.
+  **Show Part 2's table again that day.**

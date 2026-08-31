@@ -1,0 +1,217 @@
+---
+title: "Lab 11a: The Most Reliable Thing in American Politics"
+subtitle: "84-355 Democracy's Data | The midterm penalty, 1858–2026"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.4)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# The question
+
+**In two weeks the country votes.** Before it does, we are going to write down
+what *should* happen — because there is a pattern here so regular that you can
+forecast a midterm knowing nothing about the candidates, the issues, the money,
+or the year.
+
+**The president's party loses House seats at the midterm.** That is it. That is
+the whole rule.
+
+Today you find out how reliable it is, how big it is, and whether it is still
+true. **Then you commit to a number, in writing, before a single vote is
+counted.** On **Nov 5** we open this lab again, put the real result in, and find
+out how the rule did.
+
+That order is the whole point. A prediction made after the fact is not a
+prediction, and by Nov 5 you will not be able to remember what you would have
+guessed — nobody ever can. So write it down today.
+
+# Part 1 — The data
+
+```{r load}
+h <- read.csv("data/house_midterms.csv", stringsAsFactors = FALSE)
+str(h)
+tail(h[, c("election_year", "seats", "dem", "rep", "pres_party",
+           "midterm", "pres_party_change")], 6)
+```
+
+One row per House election since 1858. `pres_party` is the party of the sitting
+president at that election; `pres_party_change` is how many seats that party
+gained or lost compared with the previous election.
+
+**A warning about where this came from.** The Week 7 lab has a file listing
+every House member's party for every Congress, and it looks like counting those
+rows would give you seat totals. It does not. Members who die, resign or are
+replaced mid-term appear next to their replacements, so that file "has" 449
+members in a 435-seat chamber. Seats and people are different units. These
+numbers come from the House's own official party-division table instead.
+
+# Part 2 — How reliable is it?
+
+```{r reliability}
+m <- h[h$midterm & !is.na(h$pres_party_change), ]
+
+cat("Midterm elections in the data:", nrow(m), "\n")
+cat("President's party LOST seats in", sum(m$pres_party_change < 0),
+    sprintf("(%.0f%%)\n", 100 * mean(m$pres_party_change < 0)))
+cat("Mean change:  ", round(mean(m$pres_party_change), 1), "seats\n")
+cat("Median change:", median(m$pres_party_change), "seats\n")
+```
+
+Almost nothing in political science is this consistent. Hold that against the
+polling lab: a poll of 1,000 people gets you within a few points if you are
+lucky. This gets you the direction of a national election, nine times in ten,
+from a rule you can say in one sentence.
+
+```{r plot-history}
+plot(m$election_year, m$pres_party_change, type = "h", lwd = 3,
+     col = ifelse(m$pres_party_change < 0, "#C41230", "#2c7fb8"),
+     xlab = "", ylab = "Seat change, president's party", main = "")
+abline(h = 0, lwd = 1)
+points(m$election_year, m$pres_party_change, pch = 19, cex = 0.6,
+       col = ifelse(m$pres_party_change < 0, "#C41230", "#2c7fb8"))
+grid(col = "grey88", lty = 3)
+```
+
+# Part 3 — The exceptions
+
+Five midterms went the other way. They are worth knowing by name.
+
+```{r exceptions}
+m[m$pres_party_change >= 0,
+  c("election_year", "pres_party", "pres_party_change")]
+```
+
+```{r worst}
+head(m[order(m$pres_party_change),
+       c("election_year", "pres_party", "pres_party_change")], 5)
+```
+
+**1866 is not what it looks like.** Congress was refusing to seat delegations
+from the former Confederacy, so the chamber that year is not comparable to the
+one before it. Any pattern that includes Reconstruction is measuring an argument
+about who counts as a state, not an ordinary election.
+
+# Part 4 — Is the penalty shrinking?
+
+Chapter 10 argues congressional elections have been nationalised, which should
+make the midterm penalty *bigger* — if a House vote is really a vote about the
+president, the president's party should suffer more when he is unpopular. But
+the raw numbers seem to say the opposite.
+
+```{r era-seats}
+m$era <- cut(m$election_year, c(1857, 1900, 1950, 1980, 2000, 2030),
+             labels = c("1858-1900", "1902-1950", "1952-1980",
+                        "1982-2000", "2002-2024"))
+aggregate(pres_party_change ~ era, m, function(x) round(mean(x), 1))
+```
+
+Now look again, in a unit that survives the comparison.
+
+```{r era-pct}
+m$pct <- 100 * m$pres_party_change / m$seats
+aggregate(pct ~ era, m, function(x) round(mean(x), 1))
+```
+
+**The House had 226 seats in 1866 and 435 today.** Losing 40 seats out of 226 is
+not the same event as losing 40 out of 435, and the first table quietly compares
+them as though it were. The second table divides by chamber size. The story
+changes — not completely, but enough that you would say something different.
+
+# Part 5 — And 2026?
+
+Today this prints the historical distribution and nothing else, because the
+election has not happened. **That is what a forecast looks like from the
+inside:** a range, a centre, and no answer.
+
+**Write your number down now** — in the box below, on the board post, anywhere
+you will still have it on Nov 5. One number: how many House seats the
+president's party gains or loses. You are allowed to just use the median. You
+are also allowed to depart from it, but if you do, say why in one sentence.
+
+```{r twenty-six}
+# Left as NA until the seats are called on Nov 5, when we reopen this lab and
+# put the real number in. Until then the chunk prints the historical
+# distribution only -- which is all anybody actually has before an election.
+CHANGE_2026 <- NA        # <- seat change for the president's party in 2026
+
+cat("Historical midterm distribution (president's party seat change):\n")
+print(summary(m$pres_party_change))
+cat("\nAs a share of the chamber:\n")
+print(round(summary(m$pct), 1))
+
+if (!is.na(CHANGE_2026)) {
+  pctile <- 100 * mean(m$pres_party_change <= CHANGE_2026)
+  cat("\n2026:", CHANGE_2026, "seats\n")
+  cat("That is worse than", round(pctile), "% of midterms since 1858.\n")
+} else {
+  cat("\n2026: not entered yet. Put the number in and re-run.\n")
+}
+```
+
+# Part 6 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Drop Reconstruction.** In Part 2, use `m <- m[m$election_year >= 1878, ]`
+before computing the summary. I told you 1866 was not a comparable election.
+Now find out whether excluding it actually changes any conclusion — and be ready
+for the answer to be no. If a bad case turns out not to matter, that is worth
+knowing, and it tells you something about how much one observation can move an
+average built from forty-one.
+
+**Option B — First term or second?** A president's *second* midterm is supposed
+to be worse than his first — the "six-year itch." Add
+`m$second <- m$election_year %% 4 == 2` is not the test; you need to know when
+each presidency began. Using the list in `data/build-data.R`, check a handful by
+hand and say whether the folk wisdom survives.
+
+**Option C — Change the eras.** The cut points in Part 4 are mine and they are
+arbitrary. Move them. Does the "shrinking penalty" conclusion hold under
+different boundaries, or did I choose the boundaries that produce it?
+
+**Option D — Your own question.** 84 elections, one row each.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** — that evening or the next day, while it is fresh.
+No length requirement; a sentence or two is enough, so long as it shows you
+engaged with what we did. Any *one* of the usual four: something that surprised
+you, something we missed, something you do not understand, or an answer to a
+classmate.
+
+Three that would make good posts:
+
+- We just forecast a national election from one sentence and got the direction
+  right 88% of the time. What does that say about everything else campaigns do?
+- Part 4 gave two different answers depending on whether we counted seats or
+  shares. Which is the honest one, and how would you have known before seeing
+  both?
+- Chapter 10 says elections are nationalising. Does the midterm penalty support
+  that, contradict it, or fail to speak to it?
+
+***
+
+### Where these numbers come from
+
+Office of the Historian, U.S. House of Representatives, *Party Divisions of the
+House of Representatives, 1789 to Present*,
+<https://history.house.gov/Institution/Party-Divisions/Party-Divisions/>. The
+party of the president at each election is a lookup table written by hand in
+`data/build-data.R`; it is the one part of this lab not machine-read from a
+source, so it is the part most likely to contain a mistake. Check it if a year
+looks wrong.

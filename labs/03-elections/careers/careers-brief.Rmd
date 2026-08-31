@@ -1,0 +1,148 @@
+---
+title: "How Long a Congressional Career Lasts"
+subtitle: "Two-thirds of the newest careers have not finished, and the arithmetic that counts them anyway"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("careers-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Ask how long a congressional career lasts and the obvious move is to take everybody who has ever served, count the Congresses, and average. Voteview's membership file makes that a one-line calculation over `r n(NCAR)` careers.
+
+The answer it gives is wrong, and it is wrong in a direction that reverses the finding. Done that way the record says careers have been **collapsing** since the 1990s. Done properly it says the opposite: careers today are the **longest they have ever been**.
+
+The difference is entirely about what to do with the people who have not finished yet.
+
+## A career you cannot see the end of
+
+`r n(NON)` of the `r n(NCAR)` careers in this file belong to members who were still serving in the `r LASTC`th Congress, or `r p1(PCTON)`% of them. Their careers have a beginning and a length so far, and no end. In the language of the method that handles this, they are **censored**: the record stops before the event does.
+
+Censoring is not missing data. Nothing failed to be recorded. The member is there and the years are there. The fact the analysis wants, how long the career lasted, has simply not happened yet.
+
+```{r one-row}
+```
+
+Two members of the same entering class. The first served `r e$tenure` Congress`r if (e$tenure > 1) "es"` and left; that career is `r e$tenure` long and always will be. The second has served `r g$tenure` so far and may serve twenty more. **Recording the second as a career of length `r g$tenure` is a claim about the future, not a measurement.**
+
+```{r varmap}
+```
+
+## One entering class
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=5.2}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. `r n(ENTN)` members, one entering class, `r yr(ENTRY)`.** Each bar is a career and every bar starts at the same place, because everybody here began together. A bar that ends in a tick is finished. A bar that ends in an arrow is not: `r n(ENTON)` of these `r n(ENTN)` members were still serving in the `r LASTC`th Congress. Hover any bar for the member.
+
+Now the question the chapter is about. **What is the average career length of this class?** The bars that end can be averaged. The arrows cannot — and they are not a small remainder to be swept up, because they are systematically the *long* ones. A career still running at fifteen years is exactly the kind of career that will be long.
+
+> **Before you read on, commit to a view.** You have to publish one number for
+> the average career length of this entering class. **Do you drop the arrows,
+> or count them at their current length?** Both are defensible in a sentence,
+> and both are wrong in a way you can name.
+
+## Two wrong answers, and where they lead
+
+Take every career that began in the 104th Congress or later. That is `r n(MODN)` of them, of which `r n(MODON)` (`r p1(MODPCT)`%) are still running. Compute the median three ways.
+
+```{r naivetab}
+```
+
+Counting the unfinished careers at their current length says `r MODALL`. Dropping them says `r MODEND`. The estimator that handles them says **`r MODKM`**. The two shortcuts do not bracket the right answer; they are both below it, because both of them, in different ways, throw away the evidence that careers get long.
+
+That error compounds into a false trend. Here is every entering cohort in the file, with how much of it is unfinished and the average length of the careers that *have* ended:
+
+```{r cohorttab}
+```
+
+Read the last column down the page and it looks like a finding: careers grew steadily to about six Congresses by the 1980s and then fell off a cliff, to `r p1(LAST_CO$mean_ended)` in the newest cohort. Read the column beside it and the finding evaporates. **`r p1(LAST_CO$pct_ongoing)`% of that cohort has not finished**, and the only careers available to average are the ones that ended early. The apparent collapse is a measurement artifact with a name: the longer a career runs, the less likely the record has seen it end.
+
+## Counting the unfinished ones
+
+The Kaplan–Meier estimator does one thing, and it is worth stating in a sentence because the arithmetic is four lines long. It walks up the lengths in order. At each length where at least one career ended, it asks how many careers were *still running at that point*, and what share of them ended right there. The survival curve is those shares multiplied together.
+
+An unfinished career sits in the risk set for every length up to where the record stops, and then leaves without ever being counted as an ending. It is used as evidence exactly as far as it is evidence.
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. The share of careers still running, after each number of Congresses.** The dashed line is a half. Where a curve crosses it is the median career length: `r MH` for the House, `r MS` for the Senate, `r MKM` overall. Hovering gives the estimate and, beside it, **the number of careers still at risk** — which is the honest way to read the right-hand end, where the curve is computed from very few people.
+
+The House curve falls fastest at the start. Roughly a third of House careers are over after a single Congress, which is a fact about how many members arrive in a wave and leave in the next one. The Senate curve starts lower and flattens: a six-year term is a higher floor.
+
+## Careers by era, once the unfinished ones are counted
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The same estimator, four eras, by the Congress in which the career began.** The legend carries each era's number of careers and how many are unfinished. The newest curve rests on a group that is `r p1(LAST_CO$pct_ongoing)`% incomplete, and a reader is entitled to know that before believing it.
+
+The curves separate in the order the ordinary account of Congress would predict, and the modern one is the *highest*. A career begun since the 104th Congress has a median length of **`r MODKM` Congresses**, against `r OLDKM` for one begun between the 50th and the 79th. Careers roughly doubled.
+
+Set that beside the table earlier in this chapter, the one whose last column falls to `r p1(LAST_CO$mean_ended)`. The two are computed from the same rows. One counts the unfinished careers as evidence for as long as they are evidence. The other cannot see them at all.
+
+> **A second prediction.** Suppose the file gained one more Congress, so the
+> `r LASTC + 1`st appeared and some current members left. **Which of Figure 3's
+> four curves would move most**, and in which direction? Say why in terms of
+> the risk set rather than in terms of politics.
+
+## What this chapter cannot tell you
+
+**A career is a member in one chamber, which is a decision.** Somebody who served in the House and then the Senate appears here as two careers, not one. `r n(NCAR)` careers belong to `r n(NMEM)` people. Counting a person once, across chambers, answers a different question and would carry every senator's House years into the Senate curve.
+
+**Tenure is Congresses served, not the span from first to last.** `r n(NGAP)` careers have a gap in them, because the member left and came back. Counting the span would credit them with time out of office. The alternative convention would lengthen exactly those careers and no others.
+
+**The estimator assumes the unfinished careers are like the finished ones at the same length**, which is the one assumption it cannot check and the one this chapter is resting on. Members who are still serving may differ from members who left after the same number of Congresses: safer seats, better health, a different era of politics. If they do, the curve is wrong in a direction nothing in the file reveals. Kaplan–Meier is not a way of knowing the future. It is a way of not pretending the future has already happened.
+
+**Nothing here says why a career ended.** Retirement, defeat, a run for another office and death are one event in this file. The [retirements](../retirements/retirements-brief.html) and [primary-defeats](../primary-defeats/primary-defeats-brief.html) chapters take that question up, and neither can be answered from the membership file alone — which is exactly the limitation the retirements chapter opens by naming.
+
+Finally, the `r LASTC`th Congress is the newest in the file, and every unfinished career is unfinished *relative to it*. Rebuild this chapter after the next election and every number in it moves, not because the past changed but because the record saw more of it.
+
+## Sources
+
+- Lewis, Jeffrey B., Keith Poole, Howard Rosenthal, Adam Boche, Aaron Rudkin
+  and Luke Sonnet. *Voteview: Congressional Roll-Call Votes Database.*
+  `HSall_members.csv`, 1st–`r LASTC`th Congresses. <https://voteview.com/>
+- Kaplan, E. L. and Paul Meier (1958). "Nonparametric Estimation from
+  Incomplete Observations." *Journal of the American Statistical Association*
+  53(282): 457–481.
+- The estimator is written out in four lines of base R and checked against
+  `survival::survfit` every time it runs; it fails rather
+  than publishing a curve that disagrees with the reference implementation.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`careers.csv`](data/derived/careers.csv), [`cohorts.csv`](data/derived/cohorts.csv), [`km.csv`](data/derived/km.csv), [`naive.csv`](data/derived/naive.csv), [`timeline.csv`](data/derived/timeline.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `naive.csv` shows two wrong ways to count career length and what each assumes. Work out which direction each error runs. Which one would a journalist be more likely to publish?
+- `careers.csv` flags every career as `ongoing` or finished. Count the ongoing ones. Then compute the median tenure with them and without them, and see how far apart the answers are.
+- `km.csv` handles the unfinished careers properly, one time period at a time. Read `surv` down the column. At what point in a career does the risk of it ending drop away?
+- `cohorts.csv` groups careers by when they started and reports `pct_ongoing`. Which cohorts can you say anything reliable about, and which are still being written?
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

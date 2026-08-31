@@ -1,0 +1,262 @@
+% ============================================================
+% Lab-brief PDF theme — a wider variant of the syllabus PDF theme.
+% Print counterpart to brief.css.
+%
+% syllabus-preamble.tex sets a 4.6in text block with a 1.8in margin
+% column, which is right for a reference document. A brief is carried
+% by figures, and its figures come off the R device 6.3-6.9in wide.
+% At 4.6in the wide ones were scaled to 67-73% and the paired
+% cartograms stopped working: 51 state abbreviations below print
+% legibility. This file widens the page and stops the scaling.
+%
+% Nothing in syllabus-preamble.tex is modified. Everything below is
+% either a re-issue (geometry) or a layer on top.
+%
+% USE (from F26/labs/<lab>/, i.e. four levels below _teaching/):
+%
+%   pdf_document:
+%     latex_engine: xelatex
+%     includes:
+%       in_header:
+%         - ../../course-meta.tex
+%         - ../../../../_syllabus-template/brief-preamble.tex
+%
+% course-meta.tex MUST come first. syllabus-preamble.tex declares the
+% running head with \providecommand{\courseName}{\@title}; if the
+% course file has already defined \courseName the \providecommand is a
+% no-op and the head reads DEMOCRACY'S DATA. Drop it and \@title takes
+% over, and a brief's title is a 45-character sentence set in 8pt caps
+% across the top of every page. Nothing below changes that mechanism —
+% the include order is the whole of it.
+%
+% Listing syllabus-preamble.tex explicitly in in_header, between
+% course-meta.tex and this file, also works: the guard below sees it
+% is already loaded and does not load it twice.
+% ============================================================
+
+% ---- pull in the shared theme ------------------------------
+% pandoc pastes in_header files into the preamble rather than \input-ing
+% them, so this file cannot know where it was pasted from. Try the
+% depths a course actually uses, and no-op if the YAML already listed
+% syllabus-preamble.tex ahead of us (\ddfullwidth is its fingerprint).
+\makeatletter
+\newif\ifdd@basefound \dd@basefoundfalse
+\@ifundefined{ddfullwidth}{%
+  \def\dd@trybase#1{%
+    \ifdd@basefound\else
+      \IfFileExists{#1syllabus-preamble.tex}{%
+        \dd@basefoundtrue
+        \input{#1syllabus-preamble.tex}%
+      }{}%
+    \fi}%
+  \dd@trybase{../../../../../_syllabus-template/}% labs/<NN-part>/<lab>/ (usual)
+  \dd@trybase{../../../../_syllabus-template/}%  labs/<lab>/   (unfiled chapters)
+  \dd@trybase{../../../_syllabus-template/}%     labs/
+  \dd@trybase{../../_syllabus-template/}%        course root
+  \dd@trybase{../_syllabus-template/}%
+  \dd@trybase{}%                                 same directory
+  \ifdd@basefound\else
+    \@latex@error{brief-preamble.tex could not find syllabus-preamble.tex.
+      List it in the YAML in_header, before this file}\@ehd
+  \fi
+}{\dd@basefoundtrue}
+\makeatother
+
+% ---- page ---------------------------------------------------
+% Re-issued, not edited in place. geometry takes the last word, so
+% naming only what changes leaves left/top/bottom/headheight as the
+% syllabus set them.
+%
+%   left 1.0in | text 5.30in | sep 0.30in | margin 1.50in | 0.40in
+%   \--------------------- 8.5in letter ---------------------/
+%
+% right = 2.2in is the measure decision: 5.3in of text instead of
+% 4.6in. marginparwidth comes down from 1.8in to 1.5in to pay for it.
+% That is not a rounding choice — \ddfullwidth is textwidth + sep +
+% marginparwidth, and everything the syllabus theme sets to
+% \ddfullwidth (the title rule, the stat grid, and every longtable)
+% grows with it. At the inherited 1.8in the full width would be 7.4in
+% and those blocks would finish 0.1in from the paper edge, off the
+% printable area of most printers. At 1.5in it is 7.1in, finishing
+% 0.4in in — still wide, still on the paper.
+\geometry{
+  right          = 2.2in,
+  marginparwidth = 1.5in
+}
+
+% \ddfullwidth is measured \AtBeginDocument by syllabus-preamble.tex.
+% Re-measure after it, so the value reflects the geometry above however
+% geometry chooses to apply itself. Registered second, so it runs second.
+\AtBeginDocument{%
+  \setlength{\ddfullwidth}{\dimexpr\textwidth+\marginparsep+\marginparwidth\relax}%
+}
+
+% Same problem, other file: syllabus-preamble.tex runs the red head rule
+% across the margin column with
+%   \fancyhfoffset[R]{\dimexpr\marginparsep+\marginparwidth\relax}
+% and fancyhdr freezes that offset the moment it is issued — under the
+% syllabus's 1.8in margin, i.e. 2.1in. Left alone, the rule would finish
+% 0.3in past the content it is supposed to cap. Re-issue it late, once
+% geometry has settled, so head rule and \ddfullwidth end on the same
+% vertical.
+\AtBeginDocument{%
+  \fancyhfoffset[R]{\dimexpr\marginparsep+\marginparwidth\relax}%
+}
+
+% ---- figures at their natural size --------------------------
+% The whole point of the file.
+%
+% pandoc's template defines
+%   \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+% and then \setkeys{Gin}{width=\maxwidth,...}, so every graphic is
+% clamped to the text column. The briefs' figures are 6.3-6.9in wide,
+% which is why a 4.6in column shrank them to two-thirds.
+%
+% Clamp at \ddfullwidth (7.1in) instead. This is a template default,
+% not a per-figure override: figures narrower than the full width are
+% untouched — the tile cartogram comes off the device at 4.21in and
+% stays at 4.21in — and the wide ones run out into the margin column,
+% which is where Tufte puts wide material anyway and which is dead
+% space beside a figure regardless.
+%
+% Measured on electoral-map-brief, six figures, natural -> placed:
+%   6.278 -> 6.278   4.208 -> 4.208   6.750 -> 6.750
+%   6.319 -> 6.319   6.736 -> 6.736   6.847 -> 6.847
+% All six at 100%. The same six at the syllabus's 4.6in measure sat
+% at 67-73% except the cartogram, which was already narrow enough.
+%
+% CAVEAT, and it is the one thing to watch in a brief that uses the
+% margin apparatus: a figure occupying the margin column and a
+% \marginpar raised at the same vertical position do not know about
+% each other, and LaTeX will not move either of them. The same is
+% already true of the widened longtables in syllabus-preamble.tex, so
+% this is not a new hazard, but it is a wider one. If a brief has both
+% wide figures and sidenotes, keep the notes away from the figures —
+% attach them to the paragraph before or the paragraph after.
+%
+% Deferred to \AtBeginDocument for two reasons: pandoc's \def comes
+% later in the preamble than in_header on some template versions, and
+% \ddfullwidth has no value until then.
+\makeatletter
+\AtBeginDocument{%
+  \def\maxwidth{%
+    \ifdim\Gin@nat@width>\ddfullwidth\ddfullwidth\else\Gin@nat@width\fi}%
+}
+
+% A graphic wider than the text column would be an Overfull \hbox on
+% every figure — six of them here, indistinguishable in the log from
+% the real ones. Park anything oversized in a box of exactly \linewidth
+% and let it hang out to the right: same position on the page, no
+% warning, and the log stays readable.
+%
+% Only oversized graphics are wrapped, so an ordinary inline image and
+% the margin figures (\includegraphics[width=\marginparwidth] inside
+% \ddmarginnote, where \linewidth is already the margin width) go
+% through untouched.
+%
+% The signature covers \includegraphics*[keys]{file}, which is what
+% knitr and pandoc emit. graphicx's archaic two-optional-argument form,
+% \includegraphics[llx,lly][urx,ury]{file}, is not supported here; no
+% brief has ever used it, and neither generator can produce it.
+%
+% Defined at top level and \let into place at \begin{document}: a macro
+% carrying #1 cannot be written inside \AtBeginDocument without its
+% parameters being mangled (syllabus-preamble.tex hits the same wall
+% swapping \footnote). The swap itself has to wait, because graphicx is
+% loaded by pandoc's template and \includegraphics must exist to be saved.
+\newsavebox{\ddgraphicbox}
+\NewDocumentCommand{\ddwrapped@includegraphics}{s O{} m}{%
+  \sbox\ddgraphicbox{%
+    \IfBooleanTF{#1}
+      {\ddorig@includegraphics*[#2]{#3}}
+      {\ddorig@includegraphics[#2]{#3}}}%
+  \ifdim\wd\ddgraphicbox>\linewidth
+    \makebox[\linewidth][l]{\usebox\ddgraphicbox}%
+  \else
+    \usebox\ddgraphicbox
+  \fi}
+\AtBeginDocument{%
+  \NewCommandCopy{\ddorig@includegraphics}{\includegraphics}%
+  \let\includegraphics\ddwrapped@includegraphics
+}
+\makeatother
+
+% ---- long bare URLs -----------------------------------------
+% The one genuine overfull in the prototype: a source list carrying
+% <https://github.com/jaytimm/PresElectionResults>. hyperref will break
+% a URL after a punctuation character, and that URL has none after the
+% host, so it sets as a single 3.9in box. At 4.6in it fitted in a line
+% of its own; inside a list item, after "compilation (", it did not,
+% and juts 27.7pt.
+%
+% \sloppy is the wrong tool here: the theme is \RaggedRight, so
+% \rightskip already carries infinite stretch and there is nothing for
+% \sloppy to loosen — the overfull is an unbreakable box, not a badly
+% distributed line. What is needed is permission to break the box, so
+% add the letters and the digits to url.sty's break list. Breaks are
+% still *preferred* at the punctuation; these are only used when no
+% punctuation break will do.
+%
+% Deferred: hyperref (which loads url) is pulled in by pandoc after
+% every in_header file.
+%
+% Result on electoral-map-brief: seven Overfull \hbox warnings, and
+% the URL is not one of them. All seven are by design and all seven
+% are the same 130.05-130.09pt, which is \ddfullwidth - \linewidth
+% (7.1in - 5.3in = 1.8in = 130.1pt) to within rounding:
+%   1 x \maketitle's \rule{\ddfullwidth}{2pt} under the masthead
+%   6 x longtable, widened to \ddfullwidth by syllabus-preamble.tex
+%       (three tables, each reported twice — head and body)
+% A number that is not 130pt is a real overfull and worth reading.
+\makeatletter
+\AtBeginDocument{%
+  \@ifundefined{UrlBreaks}{}{%
+    \g@addto@macro\UrlBreaks{%
+      \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m%
+      \do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z%
+      \do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M%
+      \do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z%
+      \do\0\do\1\do\2\do\3\do\4\do\5\do\6\do\7\do\8\do\9}%
+  }%
+}
+\makeatother
+
+% ---- what is deliberately NOT here --------------------------
+% opts_chunk$set(dev = 'png', dpi = 150). The syllabus sets it in its
+% own setup chunk and it must not follow the theme across: brief PDF
+% figures are vector, and that line would rasterise every one of them.
+% The briefs' own dpi = 96, fig.retina = 1 drives the HTML PNG device
+% only and should stay exactly as it is.
+%
+% Section numbering. It is a property of the document, not of the
+% theme — see the note at the foot of brief.css. Briefs open at `##`.
+
+% ---- AI prompt box ------------------------------------------
+% Print counterpart of .ai-prompt in brief.css, driven by ai_prompt()
+% in syllabus-helpers.R. #1 is the tone (rebuild | frozen), #2 the
+% fixed title. Same construction as ddnote — a rule, not a fill; the
+% colorbox-inside-framed instability documented above applies here
+% too. The frozen tone swaps the accent rule for the amber gap rule,
+% which also survives grayscale print by weight alone (5pt at mono
+% small size is unmistakably the prompt box).
+% \obeylines keeps the prompt's line structure — the CHECK YOUR WORK
+% list is one line per number, and merging them into a paragraph
+% would garble it. \raggedright\sloppy because escaped URLs do not
+% hyphenate.
+\makeatletter
+\newcommand{\dd@aitonefrozen}{frozen}
+\newenvironment{ddaiprompt}[2]
+  {\par\vspace{0.9em}%
+   \def\dd@aitone{#1}%
+   \ifx\dd@aitone\dd@aitonefrozen
+     \def\FrameCommand{\textcolor{ddgap}{\vrule width 5pt}\hspace{11pt}}%
+   \else
+     \def\FrameCommand{\textcolor{cmured}{\vrule width 5pt}\hspace{11pt}}%
+   \fi
+   \MakeFramed{\advance\hsize-\width\FrameRestore}%
+   {\ddMono\fontsize{8}{10}\selectfont
+    \ifx\dd@aitone\dd@aitonefrozen\color{ddgap}\else\color{cmured}\fi
+    \MakeUppercase{#2}\par}\vspace{0.5em}%
+   \ddMono\fontsize{9}{12.5}\selectfont\color{ddink}\raggedright\sloppy\obeylines}
+  {\endMakeFramed\par\vspace{0.9em}}
+\makeatother

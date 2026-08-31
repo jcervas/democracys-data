@@ -1,0 +1,63 @@
+I want to rebuild a public dataset from its original source, without any
+starting files. Please do the following and show your work.
+
+THE SOURCE. A YouGov survey of 1,000 American adults, fielded in March
+2015 for Douglas Ahler and Gaurav Sood. YouGov does not publish it, and
+you cannot have it. What you can have is the copy of part of it the two
+authors deposited so their results could be checked: the replication
+archive for "The Parties in Our Heads: Misperceptions About Party
+Composition and Their Consequences", The Journal of Politics 80(3),
+2018, on Harvard Dataverse at doi:10.7910/DVN/CLMQ8E. Seventeen files,
+all public, no account and no key. You want four of them:
+
+  pcomp_yougov_data   1,000 respondents from a March 2015 YouGov study,
+                      one row each, with eight estimates, a case weight
+                      and party identification
+  fig_1_data_actual   the true share of each group in each party, with a
+                      standard error on each
+  fig_1_data_perc     the published perceived means, to check yourself
+                      against
+  codebook            what every column holds
+
+HOW TO FETCH THEM. List the files with the Dataverse API:
+https://dataverse.harvard.edu/api/datasets/:persistentId/?persistentId=doi:10.7910/DVN/CLMQ8E
+That returns JSON with a numeric id for each file. Download one with
+https://dataverse.harvard.edu/api/access/datafile/ followed by the id.
+
+The catch is silent and it will cost you an afternoon if you miss it.
+That address answers 303, not 200, and hands back a redirect to
+storage. A client that does not follow redirects writes a zero-byte
+file and reports success. Follow redirects, then check the file size
+before you parse anything.
+
+WHAT TO BUILD.
+1. One row per person per item: 8,000 answers, each with the case
+   weight and the group and party it belongs to.
+2. The weighted mean of each item, which is what the paper published.
+   Weight, or you will be close and wrong.
+3. The median of each item beside that mean, and the gap from the true
+   share computed both ways.
+4. How round the answers are: the share ending in a zero, the share
+   ending in a zero or a five, and the share that are exactly 50.
+5. The eight items split by the respondent's own party, from pid7, so
+   you can compare what people say about their own party against what
+   they say about the other one. Note that pid7 is in the file and not
+   in the codebook; set the two against each other and you will find
+   three columns described and absent, and six present and undescribed.
+
+CHECK YOUR WORK. The copies this book used were fetched in August 2026.
+If your rebuild matches them, you should find:
+- 1,000 respondents and 8,000 answers, every one between 0 and 100
+- your weighted means landing on the published ones to five decimal
+  places; the worst of the eight items here first differs from the
+  published figure in the sixth decimal place
+- an average gap of 19.8 points measured from the mean and 14.0
+  measured from the median
+- 61.1% of answers ending in a zero, 91.6% ending in a zero or a five,
+  and 8.9% of them exactly 50
+- the largest single gap on the Republican $250,000-and-over item: a
+  true share of 2.19% against a mean guess of 38.25%
+- people overestimating their own party by 17.7 points and the other
+  party by 24.6, counting leaners as partisans
+This archive was deposited in 2017 and has not changed since, so a
+number that does not match is yours rather than theirs.

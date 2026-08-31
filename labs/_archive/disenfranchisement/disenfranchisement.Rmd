@@ -1,0 +1,232 @@
+---
+title: "Four Million People Who Are Not in the Denominator"
+subtitle: "84-355 Democracy's Data | Felony disenfranchisement, 2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.8)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `disenfranchisement-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"Turnout was 63% of eligible voters."*
+
+You have computed turnout rates in this course several times. Every one of them
+was a fraction, and every fraction has a denominator, and **somebody decided who
+goes in it.**
+
+Today we look at the four million people that decision is about.
+
+**Every state except Maine, Vermont and the District of Columbia takes the vote
+away from at least some people with felony convictions.** The rules vary
+enormously — some restore it at release, some at the end of parole, some after
+probation, some never without a governor's pardon — and the result is that
+whether you can vote depends on which side of a state line you were convicted
+on.
+
+# Steps 1-3 — A PDF source, the check that validates it, and one record
+
+```{r load}
+s <- read.csv("data/states.csv",   stringsAsFactors = FALSE)
+n <- read.csv("data/national.csv", stringsAsFactors = FALSE)
+
+nrow(s)
+n
+```
+
+One row per state, and one for the country. The columns split the
+disenfranchised population by where they are in the correctional system:
+**prison, parole, felony probation, jail, and post-sentence.**
+
+**4,049,978 Americans could not vote in 2024 because of a felony conviction —
+1.70% of the voting-eligible population.**
+
+# Steps 4-5 — The national total, and the column holding two fifths of it
+
+> **Predict before you look.** Roughly four million adult citizens cannot vote
+> because of a felony conviction. **What share of them do you think are
+> currently in prison or jail?** Write down a number.
+
+```{r post}
+c(total = n$total,
+  post_sentence = n$post_sentence,
+  pct_of_disenfranchised = round(100 * n$post_sentence / n$total, 1))
+```
+
+```{r post-plot}
+v <- c(n$prison, n$parole, n$probation, n$jail, n$post_sentence)
+names(v) <- c("prison", "parole", "probation", "jail", "post-sentence")
+barplot(sort(v), horiz = TRUE, las = 1, cex.names = 0.85,
+        col = c(rep("#2c7fb8", 4), "#C41230"),
+        xlab = "people disenfranchised, 2024")
+```
+
+**1,616,437 of them — 40% — have completed their sentences entirely.**
+
+Not in prison. Not on parole. Not on probation. They have served the sentence a
+court gave them, in full, and they still cannot vote. **The largest single
+category of disenfranchised Americans is people who are no longer being
+punished by any other means.**
+
+That is not a fact about crime. It is a fact about **what each state decided to
+do afterwards**, and it is the reason the totals below vary so wildly.
+
+# Steps 6-7 — The range across states, and the whole country at once
+
+```{r states}
+head(s[, c("state", "total", "post_sentence", "pct")], 8)
+tail(s[, c("state", "total", "pct")], 6)
+```
+
+```{r state-plot}
+t10 <- head(s, 12)
+par(mar = c(4, 9, 1, 2))
+barplot(rev(t10$pct), horiz = TRUE, names.arg = rev(t10$state), las = 1,
+        cex.names = 0.8, col = "#C41230",
+        xlab = "% of the voting-eligible population disenfranchised")
+abline(v = n$pct, lty = 2)
+```
+
+**Tennessee 7.68%. Florida 6.13%. Alabama 5.95%.** In Tennessee, roughly **one
+adult in thirteen** cannot vote.
+
+At the other end, **Maine and Vermont disenfranchise nobody at all** — people
+vote from prison — and their rate is zero.
+
+```{r drivers}
+s$pct_post <- round(100 * s$post_sentence / pmax(s$total, 1), 1)
+head(s[order(-s$total), c("state", "total", "post_sentence", "pct_post", "pct")], 8)
+```
+
+Look at what drives the high rates. Florida disenfranchises 961,757 people and
+**729,858 of them are post-sentence.** Tennessee, 300,166 of 399,684. The states
+at the top of the table are not the states with the most crime. **They are the
+states that keep the penalty running after the sentence ends.**
+
+# Steps 8-9 — Check the denominator too
+
+Now return to where we started.
+
+```{r denom}
+c(national_rate = n$pct,
+  tennessee = s$pct[s$state == "Tennessee"],
+  florida = s$pct[s$state == "Florida"])
+```
+
+A turnout rate is votes divided by *some* population. Three are in common use:
+
+- **Voting-age population (VAP)** — everyone 18+. Includes non-citizens and
+  everyone disenfranchised.
+- **Citizen voting-age population (CVAP)** — removes non-citizens. **Still
+  includes all four million people here.**
+- **Voting-eligible population (VEP)** — removes them too. This is the
+  denominator the table above uses.
+
+**The difference between CVAP and VEP turnout in Tennessee is not a rounding
+error.** Excluding 7.68% of adults from the denominator raises the turnout rate
+noticeably — and a state can look more or less civically healthy depending on a
+choice made in a methods note.
+
+You met this in the CPS turnout lab, where 2024 turnout was 64.4% or 58.5%
+depending on the denominator. **This is where a chunk of that gap comes from.**
+
+# Step 10 — What you can now say
+
+**You can say** that roughly **four million adult citizens** cannot vote
+because of a felony conviction, that **most of them are not incarcerated**, and
+that **two fifths have completed their sentences entirely**.
+
+**You can say the variation is a policy choice rather than a crime rate.** Maine
+and Vermont face the same criminal justice system and disenfranchise nobody, and
+ten states account for the entire post-sentence category.
+
+**You cannot say who those people are.** This file carries no demographics, so
+the racial disparities that motivate most of the literature are outside it. And
+you cannot say how many would vote if permitted — that is a separate estimation
+problem.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Rank by the right thing.** The table is sorted by rate. Sort by
+`total` instead. Which states move most, and which number would you use to argue
+that this is a national problem rather than a Southern one?
+
+**Option B — Abolish post-sentence disenfranchisement.** Suppose every state
+restored the vote at the end of a sentence. Recompute each state's rate using
+`total - post_sentence`. How many states drop below 1%, and which stay high?
+What does that tell you about where the policy bites?
+
+**Option C — Put it against a margin.** Pick a state and find a statewide race
+decided by less than the number of disenfranchised people there. Then say
+carefully what that comparison does and does not establish — this is the
+argument that gets made constantly and it needs handling with care.
+
+**Option D — Your own question.** Fifty states, five correctional categories.
+
+# What this lab cannot tell you
+
+- **How any of these people would have voted.** The comparison in Option C is a
+  comparison of magnitudes, not a claim about outcomes. Disenfranchised people
+  are not a random sample and many would not have turned out.
+- **Whether the estimates are right.** These are modeled figures, built from
+  correctional data and state law by researchers, not a count of named people.
+  The report documents the method; the uncertainty is real and not published as
+  an interval.
+- **Who is affected.** The report has separate tables for Black and Latino
+  Americans and for men and women, showing rates several times the overall
+  figure. **We used only Table 2.** The disparities are in the same PDF.
+- **What the rules actually are.** "Post-sentence" bundles states that require a
+  waiting period, a fee, a pardon, or nothing at all. The counts are comparable;
+  the laws behind them are not.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- Forty percent of disenfranchised Americans have finished their sentences.
+  Should completing a sentence restore the vote automatically?
+- Maine and Vermont let people vote from prison, and Tennessee bars one adult in
+  thirteen. Is it defensible that this varies by state?
+- Which denominator should a turnout rate use, and who should decide?
+
+***
+
+### Where the data came from
+
+Uggen, Larson, Shannon and Stewart, **"Locked Out 2024: Four Million Denied
+Voting Rights Due to a Felony Conviction"**, The Sentencing Project, October
+2024 — Table 2.
+<https://www.sentencingproject.org/reports/locked-out-2024-four-million-denied-voting-rights-due-to-a-felony-conviction/>
+
+**The Sentencing Project publishes a report, not a dataset.** These numbers
+exist only as a table on page 18 of a PDF, and `data/build-data.py` extracts
+them. The parse is checked rather than trusted: **every state's five categories
+must sum to its total, and all fifty do.** That check caught a real error —
+Texas reports numbers wide enough to overflow their column, and a naive
+fixed-width read splits them in half.
+
+The District of Columbia is not in Table 2 and so is not here.

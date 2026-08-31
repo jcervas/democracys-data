@@ -1,0 +1,148 @@
+---
+title: "The Official Returns, Typeset"
+subtitle: "Congress publishes its own election results, and every property that makes the page readable is a place a parser can go wrong"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("clerk-source-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The [county returns chapter](../county-returns/county-returns-brief.html) established the governing fact of this part. **No federal agency counts votes.** A national file has to be assembled from fifty-one officers, each publishing in their own format and on their own schedule.
+
+There is one exception, for one office. After every general election the Clerk of the House publishes *Statistics of the Presidential and Congressional Election* — the official congressional returns, district by district, for the whole country, in one place. It is authoritative, it is free, and it requires no account.
+
+It is also a **document**, not a dataset.
+
+## `r NDOC` publications, and no table anywhere
+
+```{r doctab}
+```
+
+`r NDOC` publications covering `r SPAN`, `r MB` MB of PDF, which `pdftotext` turns into **`r LINES` lines** of text. There is no CSV, no API and no machine-readable edition. Everything in this part that needs congressional returns begins with somebody writing a program to read a page typeset for a human. That includes the uncontested-races series, the competitiveness measures and the split-district count.
+
+Here is what that page looks like:
+
+```
+     1. Barry Moore, Republican ...........................   258,619
+        Tom Holmes, Democrat ..............................    70,929
+        Write-in ..........................................        306
+```
+
+A line beginning `1.` opens district 1; indented lines belong to it; the party is spelled out on every line. That last property is what makes the parse tractable at all — the alternative *Recapitulation* table puts parties in columns whose positions move from state to state.
+
+## Four ways the page is not a table
+
+```{r edgetab}
+```
+
+None of these is an error in the document. Each is the Clerk correctly reporting something the electoral system actually did — a candidate cross-endorsed by three parties, two Californians of the same party in a general election, a Louisiana runoff in December. The document is right. It is just not shaped like a table, and the shape it *is* has consequences: read fusion lines wrong and you split one winner into three losers, and invent uncontested races that never happened.
+
+> **Before you read on, commit to a view.** This parse was checked against an
+> independent academic file covering the same years — `r NOVER` overlapping
+> districts. Eight of them disagreed by more than two points. **How many of the
+> eight do you expect turned out to be the parser's fault?** All eight? Most?
+> Write down a number.
+
+## Three bugs, all invisible in the aggregate
+
+```{r bugtab}
+```
+
+Read the first one twice. Ralph Abraham was recorded with **2 votes instead of 134,616**. The Clerk prints footnote references as superscripts, and the text extractor drops them to the end of the line, pushing the real total onto a line of its own. The parser dutifully read the footnote marker as the vote count. It affected 24 rows across five years.
+
+Nothing about that row looked wrong. It had a real candidate, a real district, a real party and a number. The state total was still plausible. The national total was still plausible. **A district with two votes in it does not announce itself**, and in a file of thousands of rows nobody reads them all.
+
+The third bug is the one worth dwelling on, because it went in the direction that matters. Florida keeps unopposed candidates off the ballot, so the PDF prints `(1)` where a vote total would go. Those districts were dropped entirely — which **undercounted uncontested races, which is the headline measure this whole chapter family exists to report**, in the wrong direction. A parse failure that quietly improves your finding is the worst kind.
+
+## How you find a bug like that
+
+Not by reading the code, and not by checking the totals. **By having a second file.**
+
+The parse covers `r SPAN`. An academic dataset, independently compiled, covers 1946 to 2014. They overlap, and on `r NOVER` overlapping districts the median disagreement in the two-party Democratic share is **`r MEDD` points**. `r GT1` districts differ by more than a point; **`r GT2` differ by more than two.** Those eight are the entire yield, and every one was run down.
+
+```{r surtab}
+```
+
+`r cv("Disagreements that survived, by whose they are")`.
+
+That is the answer to the question above, and it is not the intuitive one. Chasing the outliers found three bugs in this parse. It also found that **the established academic file is wrong in two places and inconsistent in a third**. In Nebraska's 3rd (2004) and Utah's 1st (2006), the candidate blocks and the Recapitulation table inside the official document agree with each other and disagree with him. Two independent presentations inside the primary source, saying the same thing. In Connecticut in 2008 he counts fusion ballot lines in New York and South Carolina and not in Connecticut.
+
+**Neither file was right. Each was necessary to find what was wrong with the other.**
+
+## What cannot be fixed, and is flagged instead
+
+Louisiana is not a parsing problem and no rule solves it. Every candidate runs on one November ballot; if nobody clears 50% a December runoff decides it. The Clerk then substitutes the runoff totals for the two finalists **while leaving the eliminated candidates' November numbers in place** — so a single row mixes two elections. An all-Democratic runoff, as in LA-02 in 2006, makes a two-party share meaningless outright.
+
+So `r LAP` rows carry `la_primary` and `r RUN` carry `runoff_mixed`, and the two-party share there is advisory. Texas 22 in 2006 is the same class for a different reason. Tom DeLay resigned, Republicans ran a write-in campaign, and write-in lines carry no party. **The Republican vote is genuinely unrecoverable.** That is not a parse failure but a property of the record.
+
+## What the series can report, and what it cannot
+
+```{r covtab}
+```
+
+The split-district measure counts districts that voted for one party's presidential candidate and the other party's House candidate. It needs a presidential result *by congressional district*, and no government publishes one. For **`r NONEY`** it does not exist at all: nobody calculated it, and no amount of care recovers it. `r NPART` further years are partial, and `r NFULL` are complete.
+
+Those years are **masked rather than reported as complete**, which matters more than it sounds. A year with no data and a year with no split districts look identical in a chart if you let them.
+
+With the coverage stated honestly, the series says something clean: split districts peak at **`r PEAK`**, in the Watergate years, with Democrats winning House seats across Nixon's 1972 map. They collapse to **`r Y2012` in 2012**, which is exactly the published count.
+
+## What this chapter cannot tell you
+
+**It cannot tell you the parse is now correct.** It can tell you three things. That it agrees with an independent file to `r MEDD` points across `r NOVER` districts. That every disagreement above two points has been run down. And that three specific bugs are fixed. A fourth bug of the same kind would look exactly like the first three did: invisible.
+
+**It cannot be validated after 2014**, because that is where the independent file stops. From 2016 the Clerk parse is the only source, and it is unchecked in precisely the way the earlier years were before somebody checked them.
+
+**It cannot tell you what the Clerk got wrong.** Everything here treats the document as ground truth for what the states certified. It is the official record, but it is a compilation too, and its own errors are outside the reach of any of these tests.
+
+**And it cannot rescue Louisiana.** The flags say so; they are not a fix.
+
+## Sources
+
+Nothing in this chapter was downloaded. It reads the [`house-competition`](../house-competition/house-competition-brief.html) chapter's own folder, because the subject of this chapter is that chapter's parse:
+
+- [`clerk_2024.pdf`](../house-competition/data/raw/clerk_2024.pdf) and its ten
+  predecessors — the `r NDOC` publications, as fetched.
+- [`clerk_2024.txt`](../house-competition/data/derived/clerk_2024.txt) and its
+  ten predecessors — what `pdftotext` made of them.
+- [`clerk_house.csv`](../house-competition/data/derived/clerk_house.csv) — what
+  the parse made of that: `r NROWP` district-elections, with `r UNC`
+  uncontested races and the Louisiana rows flagged.
+- [`races.csv`](../house-competition/data/derived/races.csv) — the spliced
+  1946–2024 series.
+
+The edge cases, bugs and surviving disagreements above are read from the parse script's own record — `../house-competition/data/parse-clerk.py` carries a header documenting every one, including the ones that turned out to be somebody else's. It is cited here as the source it is rather than paraphrased into something vaguer.
+
+The underlying publication is the Clerk of the House, *Statistics of the Presidential and Congressional Election*, issued after each general election. The pre-2016 volumes are served from the Office of the Historian and the later ones from the Clerk directly, at two different addresses for the same series:
+<https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>
+and
+<https://clerk.house.gov/Votes/ElectionStatistics>.
+
+Every figure above is recomputed from those files, and checked against the values asserted in `checks.csv`. The table is printed here verbatim.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`bugs.csv`](data/derived/bugs.csv), [`coverage.csv`](data/derived/coverage.csv), [`documents.csv`](data/derived/documents.csv), [`edges.csv`](data/derived/edges.csv), [`survivors.csv`](data/derived/survivors.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `edges.csv` lists four ways the printed page is not a table, and what happens `if_mishandled`. Pick the one you think would be hardest to notice in the finished numbers.
+- `bugs.csv` records three parsing bugs with their `scale` and `status`. Work out how many results each one touched. Would any of them have changed a published seat count?
+- `coverage.csv` gives `districts_with` against `districts_total` for every year. Find where coverage is incomplete. What can you not say about those years?
+- `survivors.csv` describes disagreements nobody has resolved. Read the Louisiana row. Decide what you would publish for that state, and say what you are choosing to lose.
+
+```{r checks}
+```

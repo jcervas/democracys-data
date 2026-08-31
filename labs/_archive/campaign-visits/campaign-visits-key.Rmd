@@ -1,0 +1,252 @@
+---
+title: "Key: Where Candidates Actually Go"
+subtitle: "84-355 Democracy's Data | Campaign visits — retired, no slot | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+v  <- read.csv("data/campaign_visits_2024.csv", stringsAsFactors = FALSE)
+v$date <- as.Date(v$date)
+st <- read.csv("data/pres2024_states.csv", stringsAsFactors = FALSE)
+vis <- as.data.frame(table(v$state)); names(vis) <- c("state","visits")
+vis$state <- as.character(vis$state)
+m <- merge(st, vis, by = "state", all.x = TRUE); m$visits[is.na(m$visits)] <- 0
+m$absm <- abs(m$margin); m$per_ev <- round(m$visits / m$ev, 2)
+```
+
+All Part 7 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Candidates allocate their scarcest resource — their own time — by multiplying a
+state's size by its competitiveness, which means 25 states get nothing at all,
+and the Electoral College's logic is visible in a travel schedule.
+
+***
+
+# The findings
+
+```{r headline}
+c(total_stops = nrow(v), states_visited = length(unique(v$state)),
+  states_with_zero = sum(m$visits == 0))
+head(m[order(-m$visits), c("state","ev","absm","visits","per_ev")], 7)
+round(100 * sum(head(sort(m$visits, decreasing = TRUE), 7)) / sum(m$visits), 1)
+```
+
+- **377 stops, 26 states, 25 with none.**
+- **Top seven states: 83.8%** of the entire campaign.
+- **Pennsylvania 80** stops; California, with nearly three times the electoral
+  votes, got **2**.
+
+## The interaction — this is the teaching moment
+
+```{r interaction}
+c(all_states_visits_vs_ev      = round(cor(m$visits, m$ev), 3),
+  all_states_visits_vs_margin  = round(cor(m$visits, m$absm), 3))
+
+cl <- m[m$absm < 5, ];  lg <- m[m$ev >= 15, ]
+c(among_8_closest_visits_vs_ev     = round(cor(cl$visits, cl$ev), 3),
+  among_10_largest_visits_vs_margin = round(cor(lg$visits, lg$absm), 3))
+```
+
+| | correlation |
+|---|---|
+| visits ~ electoral votes, **all states** | +0.21 |
+| visits ~ margin, **all states** | −0.41 |
+| visits ~ electoral votes, **among the 8 closest** | **+0.74** |
+| visits ~ margin, **among the 10 largest** | **−0.83** |
+
+Marginally, neither variable explains much. Conditionally, each is powerful. That
+is the signature of an interaction, and students do not need the word to see the
+thing: **a state has to be both big and close to be worth a candidate's day.**
+
+***
+
+# Option A — Inside one state
+
+## Verified output
+
+```{r a}
+head(sort(table(v$city[v$state == "Pennsylvania"]), decreasing = TRUE), 6)
+c(stops = sum(v$state == "Pennsylvania"),
+  distinct_cities = length(unique(v$city[v$state == "Pennsylvania"])))
+```
+
+Philadelphia 11, Pittsburgh 10, Harrisburg 6, Erie 5, then a long tail. Eighty
+stops spread across 36 towns.
+
+## What a good answer says
+
+**3/4:** Notices the spread and connects it to persuadable voters outside the
+big cities.
+
+**4/4:** Gets the media logic. A stop in Erie buys the Erie evening news, which
+reaches people no Philadelphia rally touches. Campaigns are not buying the room;
+they are buying the coverage of the room. A student who distinguishes the
+audience present from the audience reached has understood modern campaigning
+better than the chapter states it.
+
+**4/4, best:** notices the *mobilisation versus persuasion* split. Philadelphia
+visits turn out existing Democrats; Erie and Johnstown chase people who might
+switch. Both are rational and they are different strategies, visible in the same
+column.
+
+**Common stumble:** "they go where the most people are." Philadelphia has eleven
+stops and Pittsburgh ten, despite Philadelphia being nearly four times larger.
+Population alone does not fit.
+
+***
+
+# Option B — Attention per voter
+
+## Verified output
+
+```{r b}
+head(m[order(-m$per_ev), c("state","ev","absm","visits","per_ev")], 8)
+```
+
+Wisconsin **5.00** stops per electoral vote, then Pennsylvania 4.21, Michigan
+4.20 and Nevada **4.17** in a near-tie. DC appears sixth at 2.67 and is an
+artefact (see below). Note that the top four are now separated by less than a
+stop per electoral vote — do not let a student's ordering of them decide a grade.
+
+The most ignored large states:
+
+```{r b2}
+m[m$ev >= 10 & m$visits <= 2, c("state","ev","absm","visits")]
+```
+
+Missouri and Washington: **zero**. California: 2, for 54 electoral votes.
+
+## What a good answer says
+
+**3/4:** Identifies the over- and under-attended states correctly.
+
+**4/4:** Answers the Electoral College question with precision rather than
+slogan. The defence — that it forces attention onto small states — is **half
+true and half false, and the data says which half**. Nevada (6 EV) and New
+Hampshire (4 EV) do get attention out of proportion to size. But Wyoming,
+Vermont, the Dakotas, Delaware and Alaska got *nothing*. The system does not
+reward smallness; it rewards **closeness**, and a handful of small states happen
+to be close. A small safe state is the most ignored place in America.
+
+**4/4, best:** turns it around — under a national popular vote, California's 54
+electoral votes' worth of voters would be worth campaigning for, and they
+currently are not. Which system ignores more people is an empirical question, and
+this table is evidence in it.
+
+**Common stumble:** treating DC's 2.67 as a real finding. It is fundraisers and
+proximity, not campaigning. Part 6 warns about it; reward students who exclude it
+and note why.
+
+***
+
+# Option C — The shape of the calendar
+
+## Verified output
+
+```{r c}
+v$month <- format(v$date, "%Y-%m")
+table(v$month)
+round(100 * sum(v$date >= as.Date("2024-09-01")) / nrow(v), 1)
+```
+
+**67.4%** of all logged stops fall in September, October and the first four days
+of November. Monthly counts: March 8, April 13, May 15, June 11, July 26, August
+50, September 61, October 144, November 49.
+
+## What a good answer says
+
+**3/4:** Describes the acceleration and reports the share.
+
+**4/4:** Handles both distortions honestly, and *weighs* them rather than
+reciting them. The tracker **stops on 4 November**, the day before the election,
+so only election day itself is missing — the true late concentration is still
+higher than 67.4%, but barely. This is the point to press: the distortion that
+used to dominate this question is now small, and the *other* one is not. The
+Democratic candidate changed in late July, so the summer dip is partly a real
+pause in one campaign and partly an artefact of who counted as a candidate. A
+student who says "truncation is now a rounding error and the July trough is not
+purely strategic" has read the data properly.
+
+**4/4, best:** notices that this file already shows what the earlier version had
+to be argued around — 49 stops in the first four days of November, on a pace of
+roughly twelve a day against an eight-month average of about 1.6. The endgame
+is in the data now, not inferred from its absence.
+
+**Note for grading:** if a student is working from an older knit or an older copy
+of the tracker, they will report **62%** and a 1 November end date. That is the
+correct answer to the previous version of the file, not an error of reasoning.
+Ask which version they read — that is Part 6's lesson landing.
+
+***
+
+# Option D — Their own question
+
+Ticket-versus-ticket maps are the most productive. Note the totals are nearly
+identical — **188 Democratic stops to 189 Republican** — which surprises students
+who expect an obvious resource asymmetry.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is reasoning about a *conditional* relationship —
+  recognising that a variable can matter enormously within a subgroup and barely
+  at all overall. This is the single most transferable idea in the lab and most
+  students will not have met it before. Name it in feedback when you see it.
+- **Reward exclusion of DC.** Noticing that a row satisfies your filter but does
+  not belong to your question is exactly the judgement Session 1 was training.
+
+## Anticipated questions
+
+- *"Why is DC in there at all?"* — Fundraisers, studios, and the fact that two of
+  the five candidates worked there. Not campaigning for votes.
+- *"Doesn't this prove the Electoral College is unfair?"* — It proves attention
+  is concentrated. Whether that is unfair depends on the alternative, and a
+  national popular vote would concentrate attention differently, not evenly. Push
+  students to say what they think the counterfactual looks like.
+- *"Is one visit really comparable to another?"* — No, and the lab says so. A
+  stadium rally and a diner stop are both one row. This is the biggest weakness
+  of the dataset.
+- *"Why does the data stop on November 4?"* — AP's choice, and it is a choice
+  that moved. Nobody was obliged to publish any of this; unlike the FEC filings
+  last week, this is a news organisation's log, with no due date and no moment
+  at which it is finished.
+- *"Why does my copy have 324 rows?"* — They have version 50 of the tracker.
+  This lab is built on version 54, which runs four days further and also
+  backfilled 15 events into the window version 50 already covered. Both are
+  still served. This is the single best live illustration of Part 6 the course
+  has; use it.
+
+## Connections forward
+
+- **Session 4 (returns over time)** is the direct setup: 13 states within ten
+  points in 2024 — only **8** within five — down from 33 in 1960. This lab is
+  that fact's consequence. Say so explicitly, and keep the two thresholds
+  straight: the lab's interaction section uses the 8.
+- **Session 5 (money, message, and attention)** — money and attention concentrate on the same small set of contests.
+  Worth asking whether the causation runs in a circle: money follows
+  competitiveness, competitiveness attracts visits, visits attract coverage,
+  coverage attracts money.
+- **Session 10 (live returns, Nov 5)** — students can build the equivalent map for
+  the midterms and compare. The 2026 Senate map is a very different shape.
+- **Sessions 2, 3 and 14, and the Dec 3 wrap** — the Electoral College logic here becomes the
+  apportionment and districting material. The question "whose vote is worth
+  campaigning for?" is the same question as "whose vote is worth counting equally?"

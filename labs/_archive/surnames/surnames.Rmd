@@ -1,0 +1,441 @@
+---
+title: "Lab 14: Guessing Who People Are"
+subtitle: "84-355 Democracy's Data | Week 14"
+author: "Your name here"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+```
+
+# Before we start
+
+Voter files do not record race. In most states nobody is asked, and in the states
+that do ask, many people decline.
+
+But the Voting Rights Act is about race. To argue in court that a districting
+plan dilutes Black or Latino voting strength, somebody has to estimate how many
+Black or Latino voters there are and how they voted — from records that do not
+say. The method the courts have largely accepted is the one you will build today:
+**Bayesian Improved Surname Geocoding**, from Imai and Khanna's 2016 paper, which
+you read for Tuesday.
+
+It works by combining two things the government does publish: what a surname
+suggests, and where the person lives.
+
+You are going to build it yourself, in three lines of arithmetic, and then spend
+the rest of the lab on the harder question of when it should be trusted.
+
+Everything is base R. Work in order.
+
+***
+
+# Part 1: What a surname knows
+
+```{r read}
+sn <- read.csv("data/census_surnames.csv", stringsAsFactors = FALSE)
+dim(sn)
+```
+
+Every surname held by **100 or more people** at the 2010 Census — 162,254 of
+them — with the racial and ethnic composition of the people who hold it.
+
+```{r head}
+head(sn, 3)
+```
+
+The six columns are percentages of the people with that name, and they are
+mutually exclusive: non-Hispanic White, non-Hispanic Black, non-Hispanic
+Asian/Pacific Islander, non-Hispanic American Indian/Alaska Native, non-Hispanic
+two or more races, and Hispanic of any race.
+
+Look one up:
+
+```{r lookup}
+look <- function(nm) sn[sn$name == toupper(nm), ]
+
+look("NGUYEN")
+look("GARCIA")
+```
+
+> Ninety-six percent of Nguyens are Asian or Pacific Islander. Ninety-two percent
+> of Garcias are Hispanic. For some names, the surname alone is nearly decisive.
+
+Now try a few others:
+
+```{r lookup2}
+rbind(look("SMITH"), look("JOHNSON"), look("WILLIAMS"))
+```
+
+> Williams is **45.8% white and 47.7% Black.** The name is a coin flip.
+
+Williams is not an obscure case: it is the **third most common surname in the
+country**, held by 1.63 million people. So how much of America does the method
+fail on?
+
+```{r ambiguous-scale}
+grp6 <- c("pctwhite","pctblack","pctapi","pctaian","pct2prace","pcthispanic")
+sn$top <- apply(sn[, grp6], 1, function(x) max(x, na.rm = TRUE))
+ok <- is.finite(sn$top) & !is.na(sn$count)
+
+cat("People whose surname is >90% one group:",
+    format(sum(sn$count[ok & sn$top > 90]), big.mark = ","),
+    sprintf("(%.1f%%)\n", 100 * sum(sn$count[ok & sn$top > 90]) / sum(sn$count[ok])))
+cat("People whose surname never reaches 60%:",
+    format(sum(sn$count[ok & sn$top < 60]), big.mark = ","),
+    sprintf("(%.1f%%)\n", 100 * sum(sn$count[ok & sn$top < 60]) / sum(sn$count[ok])))
+```
+
+> **For 37.5% of Americans a surname is nearly decisive. For 27.5 million — one
+> in eleven — it settles nothing at all.**
+>
+> That is the shape of the whole method. BISG is not uniformly good or uniformly
+> bad; it is excellent for Nguyen, useless for Williams, and the people it fails
+> on are not a random sample of the country.
+
+**Try your own.** Change the name below and re-run. Your name is in this file if
+at least a hundred Americans shared it in 2010.
+
+```{r your-name}
+look("CERVAS")
+```
+
+***
+
+# Part 2: The asymmetry
+
+How often does a surname actually settle the question? Count the names —
+restricting to those held by more than a thousand people, so we are not looking
+at noise — where one group makes up more than 90% of bearers.
+
+```{r asymmetry}
+big <- sn[sn$count > 1000, ]
+nrow(big)
+
+grp <- c("pctwhite", "pctblack", "pctapi", "pctaian", "pct2prace", "pcthispanic")
+sapply(grp, function(v) sum(big[[v]] > 90, na.rm = TRUE))
+```
+
+```{r asymmetry-plot, fig.width = 7.5, fig.height = 5}
+n90 <- sapply(grp, function(v) sum(big[[v]] > 90, na.rm = TRUE))
+names(n90) <- c("White", "Black", "API", "AIAN", "Two+", "Hispanic")
+n90 <- sort(n90)
+
+par(mar = c(5, 8, 4, 2))
+barplot(n90, horiz = TRUE, las = 1, col = "#4D4D4D", border = NA,
+        xlab = "Number of surnames that are >90% this group",
+        main = "How often does a surname give the answer away?")
+```
+
+> **12,022 surnames are more than 90% white. Only 122 are more than 90% Black.**
+>
+> There are a hundred times more names that identify a white American than
+> identify a Black American — and Black Americans are about an eighth of the
+> country, not a hundredth.
+
+This is not a quirk of the data. It is history sitting in a spreadsheet. Enslaved
+people were given, or took, the surnames of enslavers, and after emancipation
+those names stayed. Black and white Americans have shared a common stock of
+surnames for a hundred and sixty years.
+
+The exceptions are worth seeing:
+
+```{r blackest}
+b <- big[!is.na(big$pctblack), ]
+head(b[order(-b$pctblack), c("name", "count", "pctblack", "pctwhite")], 8)
+```
+
+```{r presidents}
+rbind(look("WASHINGTON"), look("JEFFERSON"), look("LINCOLN"))
+```
+
+> **Washington is the most identifiably Black common surname in America** —
+> 87.5% of the 177,386 people who carry it. Jefferson is 74.2%.
+>
+> These names were chosen. After emancipation many freed people took the names of
+> presidents associated with liberty, and the pattern is still legible in the
+> 2010 Census.
+>
+> Notice that Lincoln is only 14.7% Black — far below the other two. The
+> adoption was not uniform, and nobody planned it. Whatever produced this
+> pattern was millions of separate decisions, and it is still measurable a
+> century and a half later.
+
+***
+
+# Part 3: Where you live
+
+The second ingredient.
+
+```{r counties}
+co <- read.csv("data/county_race.csv", stringsAsFactors = FALSE,
+               colClasses = c(fips = "character"))
+dim(co)
+head(co[, c("fips", "county", "state", "pop", "white", "black", "hispanic")], 3)
+```
+
+Every county, in the same six categories. Two examples:
+
+```{r county-examples}
+co[co$fips %in% c("42003", "36005"),
+   c("county", "state", "pop", "white", "black", "api", "hispanic")]
+```
+
+Allegheny County is 76% white and 13% Black. The Bronx is 9% white, 30% Black,
+and 55% Hispanic. A name means something different in each.
+
+***
+
+# Part 4: Bayes' rule, by hand
+
+Here is the whole method.
+
+We want $P(\text{race} \mid \text{surname}, \text{county})$. We have
+$P(\text{race} \mid \text{surname})$ from the surname file and
+$P(\text{race} \mid \text{county})$ from the county file. Bayes' rule combines
+them:
+
+$$P(r \mid s, g) \;\propto\; \frac{P(r \mid s)\;P(r \mid g)}{P(r)}$$
+
+where $P(r)$ is the national share of group $r$. Dividing by it prevents
+double-counting the fact that some groups are large everywhere.
+
+```{r natl}
+grp6 <- c("white", "black", "api", "aian", "twoplus", "hispanic")
+natl <- colSums(co[, grp6] * co$pop) / sum(co$pop)
+round(natl, 4)
+```
+
+That is the entire model:
+
+```{r bisg}
+bisg <- function(name, fips) {
+  s <- sn[sn$name == toupper(name), ]
+  p_s <- c(s$pctwhite, s$pctblack, s$pctapi,
+           s$pctaian, s$pct2prace, s$pcthispanic) / 100
+  p_s[is.na(p_s)] <- 0                      # suppressed cells contribute nothing
+
+  p_g <- as.numeric(co[co$fips == fips, grp6])
+
+  u <- p_s * p_g / natl                     # <- Bayes' rule, one line
+  setNames(round(100 * u / sum(u), 1), grp6)
+}
+```
+
+Three lines. Now watch what it does.
+
+```{r smith-bronx}
+bisg("SMITH", "42003")     # Allegheny County, PA
+bisg("SMITH", "36005")     # Bronx County, NY
+```
+
+> **Smith is 70.9% white nationally. A Smith in the Bronx is 73.7% Black.**
+>
+> The name did not change. What changed is that we stopped ignoring where the
+> person lives.
+
+```{r lee}
+bisg("LEE", "42003")       # Allegheny County, PA
+bisg("LEE", "15003")       # Honolulu County, HI
+```
+
+> Lee is 42% Asian and 36% white by name alone. In Allegheny County it resolves
+> to white; in Honolulu it resolves to 90% Asian. The same four letters support
+> opposite conclusions.
+
+***
+
+# Part 5: When it fails
+
+**A third of the surname file is missing.**
+
+```{r suppression}
+cells <- nrow(sn) * length(grp)
+miss  <- sum(is.na(sn[, grp]))
+c(cells = cells, suppressed = miss, pct = round(100 * miss / cells, 1))
+```
+
+The Census suppresses any cell small enough to risk identifying someone. Those
+appear as `NA`, and in the function above they contribute zero — which quietly
+assumes the true value is zero when what we actually know is *small and
+unknown*. For rare names this matters.
+
+```{r rare}
+bucket <- cut(sn$count, breaks = c(0, 200, 500, 1000, 5000, 1e7),
+              labels = c("<200", "200-500", "500-1k", "1k-5k", ">5k"))
+supp <- 100 * tapply(is.na(sn$pctblack), bucket, mean)
+round(supp, 1)
+```
+
+> For surnames held by fewer than two hundred people, the Black percentage is
+> suppressed `r pc(supp[["<200"]])`% of the time. **That is the headline number,
+> and it is not the worst one.** Suppression *rises* to
+> `r pc(supp[["200-500"]])`% and peaks at `r pc(max(supp))`% in the
+> `r names(supp)[which.max(supp)]` bucket, then falls away to
+> `r pc(supp[["1k-5k"]])`% and `r pc(supp[[">5k"]])`%. **The method is not
+> simply least informative for the rarest names** — the loss of information
+> is not a smooth decline at all. And rarity is not evenly distributed across
+> groups.
+
+**And a probability is not a person.** The output of `bisg()` is a statement
+about a population: *of all the Smiths in the Bronx, roughly 74% are Black.* It
+is not a statement about any individual Smith. Every use of this method involves
+taking a number that is true on average and attaching it to somebody in
+particular.
+
+That matters because of what it is used for. BISG is used to estimate racial
+voting patterns in Voting Rights Act litigation — the evidence on which
+districts are drawn or struck down. It is used by the Consumer Financial
+Protection Bureau to detect lending discrimination. In both cases a real decision
+about real people rests on an inference from a name and a zip code.
+
+The alternative is not a better measurement. The alternative is **no
+measurement**, and therefore no ability to detect discrimination at all. That is
+the trade Imai and Khanna's paper is really about, and it is worth being clear
+that it is a trade rather than a solution.
+
+***
+
+# Part 6: On your own
+
+This is the part you turn in. **You are not being asked to write code.** Each
+option is a working chunk with one thing to change.
+
+Pick **one**.
+
+***
+
+### Option A — One name, many places
+
+```{r opt-a}
+my_name <- "WILLIAMS"        # <- change this. Try your own name.
+
+places <- c("42003", "36005", "15003", "48141", "06037", "36061")
+labels <- c("Allegheny PA", "Bronx NY", "Honolulu HI",
+            "El Paso TX", "Los Angeles CA", "Manhattan NY")
+
+out <- t(sapply(places, function(f) bisg(my_name, f)))
+rownames(out) <- labels
+out
+
+look(my_name)
+```
+
+**Write about:** how much does the estimate move across these six counties? Which
+county changes it most, and why? Then the question that matters: if this name
+were on a voter file and a court needed to know the voter's race, how much of the
+answer would come from the name and how much from the address? Would you be
+comfortable with the result being used as evidence?
+
+***
+
+### Option B — Which names does geography rescue?
+
+```{r opt-b}
+test_names <- c("SMITH", "WILLIAMS", "JOHNSON", "LEE",
+                "NGUYEN", "GARCIA", "WASHINGTON")   # <- edit this list
+
+fips_here <- "36005"                                # <- and this county
+
+for (nm in test_names) {
+  s <- look(nm)
+  before <- max(c(s$pctwhite, s$pctblack, s$pctapi, s$pcthispanic), na.rm = TRUE)
+  after  <- max(bisg(nm, fips_here))
+  cat(sprintf("%-12s strongest guess: %5.1f%% -> %5.1f%%  (%+.1f)\n",
+              nm, before, after, after - before))
+}
+co[co$fips == fips_here, c("county", "state", "white", "black", "api", "hispanic")]
+```
+
+**Write about:** for which names does adding geography sharpen the estimate, and
+for which does it barely help? You should find that names which were already
+decisive (Nguyen, Garcia) gain little, while ambiguous ones (Smith, Williams)
+gain a great deal. Explain why that is exactly what Bayes' rule should do. Then
+say which kind of name is more common in America, and what that implies about how
+much of BISG's accuracy is really coming from the address rather than the name.
+
+***
+
+### Option C — The cost of suppression
+
+```{r opt-c, fig.width = 7.5, fig.height = 5}
+cutoff <- 1000               # <- change this
+
+sn$bucket <- cut(sn$count, breaks = c(0, 200, 500, 1000, 5000, 1e7),
+                 labels = c("<200", "200-500", "500-1k", "1k-5k", ">5k"))
+supp <- tapply(is.na(sn$pctblack), sn$bucket, mean)
+round(100 * supp, 1)
+
+barplot(100 * supp, col = "#B2182B", border = NA,
+        ylab = "% of names with Black share suppressed",
+        xlab = "How many people hold the name",
+        main = "How often the Black share is suppressed, by how common the name is")
+
+c(names_below_cutoff = sum(sn$count < cutoff),
+  share_of_all_names = round(100 * mean(sn$count < cutoff), 1))
+```
+
+**Write about:** describe the pattern, and read the printed numbers before you
+do — suppression does not simply fall away as names get more common, and the
+rarest bucket is not the worst one. Now think about who has a rare surname in
+the United States — recent immigrants, small national-origin groups, Native
+American families. Is a method whose precision depends this much on how common
+your name is neutral with respect to who it works worst *for*? Say what you
+would want a court to be told about this before the estimate was admitted.
+
+***
+
+### Option D — Ask your own question
+
+Look up your family's names, or the names of people in the news. Find a name
+whose estimate you think is wrong and work out why. Compare two counties you
+know.
+
+***
+
+**What to submit.** Knit to HTML or PDF and upload to Canvas, with your chosen
+chunk and **two or three paragraphs** of interpretation.
+
+The writing is the assignment. I am not grading your code — it is my code. I am
+grading whether you can hold two things at once: that this method is genuinely
+useful, and that it is genuinely a guess.
+
+***
+
+## Where the data came from
+
+**Surnames** — U.S. Census Bureau, *Frequently Occurring Surnames from the 2010
+Census* (<https://www2.census.gov/topics/genealogy/2010surnames/names.zip>).
+Every surname held by 100 or more people, with the racial composition of
+bearers. Cells small enough to risk identifying an individual are suppressed.
+
+**County composition** — U.S. Census Bureau, Population Estimates Program,
+county characteristics file for 2024, collapsed to the same six categories.
+
+**The method** — Kosuke Imai & Kabir Khanna, "Improving Ecological Inference by
+Predicting Individual Ethnicity from Voter Registration Records," *Political
+Analysis* 24 (2016): 263–72, which you read for Tuesday.
+
+Two notes on what we did *not* use. The published `wru` package implements this
+method properly, including first names, age, sex, and party registration, and
+geography down to the census block. We have implemented the county-level core by
+hand instead, so that the arithmetic is visible rather than hidden inside a
+function call — and so that this lab needs no packages and no API key.
+
+The real thing is better than what you built today. It is better in degree, not
+in kind: it is still a guess about a person, assembled from facts about
+populations.
+
+The script that downloaded, checked and wrote these files is `data/build-data.R`.

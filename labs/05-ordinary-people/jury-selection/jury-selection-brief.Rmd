@@ -1,0 +1,310 @@
+---
+title: "Peremptory Strikes and Jury Composition"
+subtitle: "Peremptory strikes in one Mississippi district, and a pattern no single trial can show"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("jury-selection-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+In a courtroom in Mississippi's Fifth Circuit District in 1992, a prosecutor stood up and removed six people from a jury panel. Of the people sitting in that box, `r NB + NW` were his to remove if he wanted them gone: `r NB` Black and `r NW` white. He struck all `r NB` of the Black jurors and `r KS - SB` of the `r NW` white ones.
+
+He gave no reason for any of the six, and no reason was asked of him. That is what a **peremptory challenge** is. Each side in an American trial gets a fixed number of them, and the whole point of the device is that it does not require justification. The trial is the first row of the file this chapter is built from, and the file records it in four numbers:
+
+```{r one-trial}
+```
+
+Two words in that table are doing more work than they look. **"Eligible" means the side could actually have struck that person.** A juror already removed for cause, or never reached before the panel filled, was available to nobody. Counting such people in the denominator, the bottom number each rate is divided by, would understate every rate in this chapter. The source records this juror by juror, and these counts respect it.
+
+And **race is missing for a third of the jurors in the wider file.** APM Reports coded race from court records and, where those were silent, from other sources; `r n(4752)` of `r n(14873)` prospective jurors remain "Unknown" and are excluded here. That hole does not close later on. It should be carried through everything that follows.
+
+## One prohibited reason, in a system built on not requiring reasons
+
+For most of American history the peremptory strike was absolute. Since *Batson v. Kentucky* (1986) there is exactly one forbidden reason: **race.** If the defense makes a *prima facie* showing of racial motive, the prosecutor must supply a race-neutral explanation for the strike, and the judge decides whether to believe it.
+
+That is the entire regime, and its weakness is visible in the sentence that states it. **A rule against one reason, inside a procedure designed not to ask for reasons, can only be enforced by inference.** Nobody writes down "because she is Black." What exists instead is a record of who was removed. Whether that record can carry the inference is the question this chapter is about.
+
+It is worth being clear why the answer matters beyond the courtroom. The jury is the only branch of American government staffed by lottery. It exists so that the state's most severe power, taking a person's liberty or life, is exercised by ordinary people rather than by professionals. Its legitimacy comes entirely from being drawn out of the community rather than chosen.
+
+**A jury assembled by removing one group is not a lottery.** It is a jury selected by a lawyer, returning a verdict rendered by people the community did not supply. The harm runs three ways at once. To the defendant tried by a filtered panel. To the excluded juror denied a civic duty on the basis of race. And to the community whose judgment was quietly replaced with somebody's preference.
+
+## The record the courts never kept, and the newsroom that did
+
+Enforcement by inference requires a record, and no court keeps one. A clerk logs that a juror was excused; nothing in the file the clerk keeps says what race that juror was, because no rule requires it to. The evidence in this chapter therefore exists only because a newsroom built it. APM Reports, the investigative unit of American Public Media, decided during the second season of *In the Dark* that the question could not be answered without it.
+
+Reporters pulled the paper records of 225 trials out of Mississippi's Fifth Circuit, covering twenty-six years, and coded every prospective juror by hand. Who was in the pool, who could be struck by whom, who was struck, and, where the documents allowed it, what race the juror was. They then published the whole thing openly, as three CSV files, which is why a chapter can rest on it at all.
+
+Two things follow from how it was made, and neither is visible in the files. Nothing here was queried, downloaded from an agency, or scraped off a website, because there was nothing to query. The record did not exist until reporters made it, one trial folder at a time, reading paper and writing down what they read.
+
+Getting the result now takes a second from a public repository, and that second is the entire cost to everyone who came afterward. It is as clean an illustration as this book has of how completely a finished CSV hides what it took to produce.
+
+The other consequence is that it stops. A hand-built record covers what somebody had the reason and the budget to build, and there is no second circuit, no later years, and no process by which either would appear. So when a later section says this district cannot speak for the country, that is less a limitation of the sample than a limitation of what a newsroom can afford to read.
+
+Two properties make it the right evidence rather than merely the available evidence. It is juror-level, so a rate can be computed over the people a given side was actually permitted to remove instead of over everyone in the room. And it records both sides' strikes, which supplies a control group nobody had to construct: the defense drew from the same panels, in the same trials, under the same rules, wanting the opposite thing. A file of state strikes alone would leave every disparity open to the reply that the struck jurors differed somehow. This one answers that reply from inside itself.
+
+The thing it does not contain is the thing the law cares about. Reasons are absent from every row, because the procedure was designed not to require them. That gap is a feature of the institution rather than a failure of the reporting, and no better dataset would close it.
+
+The other limits are real and unfixable in a different way. Race here is a reporter's coding of a document, not anyone's self-report, and the documents were often silent. The unknowns are excluded rather than guessed at, and they are unlikely to be a random third. And this district was read precisely because it produced *Flowers v. Mississippi*, which is the strongest possible reason to expect it to be unrepresentative.
+
+The reduction from that to what this chapter reads is short and lossy on purpose. The juror file is walked once. It keeps only the jurors whose recorded eligibility says the side in question could have struck them, and only the two coded races. The result collapses to `r nrow(s)` rows of strike rates and `r nrow(t)` trial rows, one for every trial with at least ten eligible jurors. `r n(sum(t$eligible))` juror-slots survive into the trial table. Nothing juror-level is stored here, so a reader who wanted to recount would go back to the published file and rerun that script, which does no imputation of any kind.
+
+## What a hand-built record looks like
+
+APM's `jurors.csv` has 14,874 rows and nine columns, and one row is one prospective juror in one trial. Three of them, in seven of the nine columns, each row wrapped onto a second line to fit the page:
+
+| Column | What it holds | Juror 35 | Juror 38 | Juror 8198 |
+|:---|:---|:---|:---|:---|
+| id | the reporters' identifier for this prospective juror | 35 | 38 | 8198 |
+| trial | the case, as docket number and defendant | 1993-9826--Terry L. Landingham | 1993-9826--Terry L. Landingham | 2006-0044--Darreal Forrest |
+| race | the juror's race, as recorded | White | Black | White |
+| gender | the juror's sex, as recorded | Male | Female | Female |
+| race_source | **how the reporters knew the race** — the column almost nothing else in this book has | Jury strike sheet | Jury strike sheet | Jury strike sheet |
+| struck_by | who removed the juror, or that nobody did | Struck for cause | Struck for cause | Struck by the defense |
+| strike_eligibility | which side was entitled to strike this juror at all | n/a | n/a | Both State and Defense |
+
+Look at `race_source`. **The file records how it knows.** Race was read off a jury strike sheet for most jurors, off a voir dire transcript for a couple of hundred, and guessed from other sources for a few dozen. For 4,750 of them the value is `No info`.
+
+Almost nothing in this book carries a column like that. Where a value came from is normally something you have to reconstruct from a build script, or guess at. Here the reporters wrote it into the record beside the value, which is what makes the gaps in this file arguable rather than merely present.
+
+Now look at the last two columns, which are where the chapter's arithmetic actually lives. Neither is the yes-or-no it needs to be.
+
+| Column | Distinct values | The values |
+|:---|---:|:---|
+| struck_by | 9 | "Struck by the state", "Struck by the defense", "Struck for cause", "Struck without notation", "Juror excused/absent", "Unknown", *and three more* |
+| strike_eligibility | 5 | "Both State and Defense", "State", "Defense", "Neither", "n/a" |
+
+Out of that comes this:
+
+```{r clean-jury}
+```
+
+`r n(nrow(s))` rows. Fourteen thousand hand-coded jurors, each with a note saying where the record came from, become four numbers and their rates.
+
+### The three decisions that make the rate mean anything
+
+**The denominator is eligibility, not attendance.** `strike_eligibility` records who *could* have removed each juror, and nearly half the file reads `n/a` — jurors already gone for cause, or never reached. Counting those in the denominator would make both sides look far more restrained than they were, and would do it to the state and the defense unequally. **This is the single decision the whole comparison rests on**, and it is available only because the reporters thought to record eligibility as its own field. Most court records do not.
+
+**Nine outcomes were collapsed to one question.** `struck_by` distinguishes a juror struck by the state from one struck for cause, one excused, one never noted, and one whose fate is simply unknown. The rate in the table counts only `Struck by the state` or `Struck by the defense` as a strike; `Struck without notation`, 571 jurors, counts as not struck by either side. That is the conservative choice and it is still a choice, and it pushes both rates down.
+
+**Two races were kept and `r n(4756)` jurors were dropped.** Nearly all of them are the `No info` cases, and they are `r pc(100 * 4752 / 14874)`% of the file. They are unlikely to be a random third, since a juror whose race the paperwork never recorded is not a random juror. Four more were dropped because they were coded Asian or Latino: too few to compute anything about, and worth naming rather than folding silently into a two-category world. **A binary appears in the output that was not in the input.**
+
+## The first comparison anybody makes
+
+The file behind the 1992 trial holds `r nrow(t)` of them, every trial with at least ten eligible jurors prosecuted by a single district attorney's office over twenty-six years.
+
+```{r counts}
+```
+
+That narrowness is deliberate. A national average would tell you something about American prosecution in general; this tells you about a decision-maker, the office led by District Attorney Doug Evans, across a career.
+
+Pool every strike that office made and sort by the juror's race:
+
+```{r state-rates}
+```
+
+**The state struck `r pc(g("state","Black","pct"))`% of the eligible Black jurors and `r pc(g("state","White","pct"))`% of the eligible white ones**, a ratio of `r pc(g("state","Black","pct")/g("state","White","pct"))` to one.
+
+## The reply, which is not frivolous
+
+It is tempting to stop there, and stopping there would be a mistake, because there is an answer to that table and it is a serious one:
+
+> Struck jurors differ in ways that have nothing to do with race. Some had
+> relatives who had been prosecuted. Some expressed doubts about the death
+> penalty. Some knew a witness. If those characteristics are unevenly
+> distributed across the community — and in a county with this history they
+> certainly are — then a race-neutral striking rule will produce a racial
+> disparity all by itself.
+
+**The table above cannot defeat that argument, because it has no control group.** It compares Black jurors to white jurors and finds them treated differently, which is exactly what the prosecutor's story predicts. What would settle the matter is another party striking from the *same pool*, in the *same trials*, under the *same rules*, for *different reasons*.
+
+## The other side of the same room
+
+There is one, and it has been sitting in the file all along. **The defense also strikes.** Same venire, same courtroom, same day, same human beings, opposite incentives.
+
+The logic is worth working out before looking. If Black jurors really were disproportionately strike-worthy for reasons any lawyer would recognize, the defense should strike them too, or at least not strike them dramatically *less*. Suppose instead the two sides turn out to mirror each other. Then whatever shared trait explains the state's behaviour would have to make a juror desirable to the defense exactly as fast as it makes them undesirable to the state.
+
+```{r both-sides}
+```
+
+```{r mirror-static, eval=!knitr::is_html_output(), fig.height=4}
+```
+
+```{r d3-mirror, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The two sides strike the same panels in opposite directions.** Share of eligible jurors struck, by the striking side and the juror's race, across `r nrow(t)` trials. The state struck `r pc(g("state","Black","pct"))`% of eligible Black jurors and `r pc(g("state","White","pct"))`% of eligible white ones; the defense struck `r pc(g("defense","White","pct"))`% of eligible white jurors and `r pc(g("defense","Black","pct"))`% of eligible Black ones. The two tall bars differ by `r pc(abs(g("state","Black","pct") - g("defense","White","pct")))` points and the two short ones by `r pc(abs(g("state","White","pct") - g("defense","Black","pct")))`.
+
+**The pattern reverses almost exactly**, and that is worth more than the disparity that opened this section. Whatever made a Black juror strike-worthy to the state made a white juror strike-worthy to the defense at nearly the same rate. The legitimate-characteristics explanation now has to name a trait that is unevenly distributed by race *and* valued in precisely opposite directions by the two parties. No such trait has been proposed, in this litigation or in the research literature it belongs to.
+
+Which ought to settle it. It does not, and the reason is not statistical.
+
+## The law asks the question one trial at a time
+
+*Batson* is litigated in front of a judge who has seen one venire. Aggregate patterns across a career are not before that court and, in the ordinary case, have never been assembled by anybody. The question the judge is actually asked is whether *this* set of strikes, in *this* room, on *this* morning, is explicable without race.
+
+So put the 1992 trial back on its own terms and answer that question honestly. The prosecution had `r NB + NW` eligible jurors, `r NB` Black and `r NW` white, and used `r KS` strikes. If those `r KS` had been chosen without regard to race, how often would all `r NB` Black jurors be among them?
+
+That is an urn problem: draw `r KS` from `r NB + NW` without replacement and ask for the chance that the draw swallows all `r NB` of the `r NB`.
+
+```{r urn-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r urn-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```
+
+**Figure 2. One trial, and every outcome race-neutral striking could have produced.** The `r NB + NW` eligible jurors of the 1992 trial, and the `r KS` strikes the prosecution used. The spread shows how many Black jurors those strikes would have caught, had they been drawn without regard to race. The observed outcome, all `r NB` of `r NB`, is the least likely of the `r length(kk)` possibilities, occurring in `r pc(100 * PV, 1)`% of draws.
+
+```{r one-trial-p}
+```
+
+About one chance in `r ONE_IN`. Suggestive, and nowhere near enough. A judge would be right to observe that unlikely things happen in single trials all the time, and that `r nrow(t)` trials passed through this district. A `r pc(100 * PV, 1)`% probability establishes nothing whatever about one prosecutor's state of mind on one morning in 1992.
+
+**A single trial almost never carries the evidence.** That is not a defect in this data. It is a description of how the rule works.
+
+## Twenty-six years of single trials
+
+Compute that same probability for every trial in the file and count how many clear the conventional threshold.
+
+```{r many-trials-naive}
+```
+
+`r obs05` of `r nrow(t)` trials clear it, against the `r pc(naive05, 1)` that five percent of `r nrow(t)` gives you: about `r pc(naive_ratio, 0)` times as many as chance should produce. It is a large number and it is the wrong number, because the benchmark it is measured against is not true of these tests.
+
+> **Before you read on, commit to a number.** That benchmark is about to be
+> replaced by an honest one, computed from each trial's own margins rather
+> than assumed. You have the numbers going in: of `r nrow(t)` trials,
+> `r obs05` came in significant, where the shortcut expects `r pc(naive05, 1)`.
+> **How many significant trials does an honest benchmark say chance alone
+> would produce out of `r nrow(t)`?** Write the number down, and write down
+> whether the gap it leaves is wider or narrower than the
+> `r pc(naive_ratio, 0)`-fold one the shortcut gives.
+
+Multiplying `r nrow(t)` by 0.05 assumes each trial's p-value is equally likely to land anywhere between zero and one. **That assumption fails here, and it fails in the direction that works against the finding.** These are hypergeometric tests on small integer counts. A trial with four eligible Black jurors and three strikes can produce only a handful of distinct p-values, and none of them is 0.04. A test whose next available value below 0.11 is 0.03 simply never fires at 0.05.
+
+Tests like these, on small whole-number counts, are *conservative*, rejecting less often than their nominal rate says they will.
+
+The honest benchmark therefore has to be simulated rather than assumed. Redraw every trial's strikes from its own margins, keeping its own number of eligible Black jurors and its own number of strikes, `r n(NSIM)` times, and count how often the resulting courthouse produces a significant trial.
+
+```{r many-trials}
+```
+
+Most readers write down a number a little under `r pc(naive05, 1)` and a gap a little narrower than `r pc(naive_ratio, 0)`-fold, on the reasoning that a benchmark computed carefully ought to be harder to clear. Chance produces `r pc(exp05, 1)` such trials, not `r pc(naive05, 1)`. The observed count is `r pc(ratio05, 0)` times the simulated null rather than `r pc(naive_ratio, 0)` times the shortcut. **The correction runs in the direction people almost never expect: being careful about the null makes the disparity roughly three times larger, not smaller.** And `r sum(t$black_eligible > 0 & t$black_struck == t$black_eligible)` of the `r nrow(t)` trials removed *every single* eligible Black juror.
+
+Nobody should have to take a single threshold on trust, and 0.05 is an arbitrary line in any case. Figure 3 does the count at every threshold from `r min(THR)` to `r max(THR)`: what actually happened in this district, against what `r n(NSIM)` simulated courthouses produced with race doing no work at all.
+
+```{r thresh-static, eval=!knitr::is_html_output(), fig.height=4.3}
+```
+
+```{r thresh-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. The result does not depend on choosing 0.05.** Trials called significant at every threshold from `r min(THR)` to `r max(THR)`. What happened in this district is drawn against the mean and the middle 95% of `r n(NSIM)` simulated courthouses. In each of those, a trial keeps its own eligible jurors and its own number of strikes, but race does no work. At the conventional threshold the counts are `r obs05` against `r pc(exp05, 1)`. **The red line never enters the gray band at any threshold on the axis.**
+
+Figure 4 drops the thresholds altogether and puts every trial on the same plane: how many Black jurors the state could have struck, against how many it did.
+
+```{r scatter-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r d3-scatter, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. Every trial, jittered so that overlapping ones stay visible.** Black jurors the state could have struck, against Black jurors it struck, one dot per trial, colored by the probability of that split under race-neutral striking. Points on the dashed diagonal are the `r sum(t$black_eligible > 0 & t$black_struck == t$black_eligible)` trials in which every eligible Black juror was removed. `r sum(t$p < 0.01)` of the `r nrow(t)` trials sit below p = 0.01 on their own, without any help from the other `r nrow(t) - 1`.
+
+## The trial at the far corner
+
+One dot in Figure 4 is further from the rest than any argument about thresholds can reach.
+
+```{r flowers}
+```
+
+The most extreme trial in the file is **the third trial of Curtis Flowers. Fifteen Black jurors were eligible and fifteen were struck. Twenty-one white jurors were eligible and none was.** The probability of that split under race-neutral striking is `r formatC(min(t$p), format="e", digits=1)`, roughly one in five billion.
+
+Flowers was tried **six times for the same crime by the same prosecutor.** In *Flowers v. Mississippi* (2019) the Supreme Court threw out his conviction, and the majority rested substantially on the pattern of whom that office struck across those six trials. The charges were later dropped, and Flowers went home after twenty-three years.
+
+Notice what it took. Not a statistical argument in a single courtroom, which Figure 2 shows would have been laughed out. Not the district-wide mirror in Figure 1, which no judge had ever been shown. It took one defendant tried so many times by one office that the overall pattern and the individual case finally became the same object. **The rule is enforced at exactly the level where the evidence is weakest**, and *Flowers* is the rare case where the two levels collapsed into one.
+
+## What can be said, and by whom
+
+What this file supports is that in this district, over twenty-six years, the state's peremptory strikes were not race-neutral. The conclusion does not rest on anybody's judgment about which jurors *should* have been struck, which is the assumption that sinks most disparity findings. It rests on the defense's mirror-image behavior, which supplies the comparison from inside the same rooms.
+
+Almost none of that is available to the person it is supposed to protect. The pattern is overwhelming in aggregate and close to invisible one trial at a time, and the `r pc(100 * PV, 1)`% probability computed for the 1992 trial is roughly what an ordinary *Batson* motion has to work with. It loses.
+
+## The argument about all of this
+
+The dispute this evidence enters is not really about the numbers. Nobody seriously contests that prosecutors strike Black jurors at higher rates; studies in Philadelphia, North Carolina and Louisiana found the same thing. The dispute is about what follows from it.
+
+One position, Justice Marshall's, stated in a concurrence to *Batson* itself, is that the peremptory challenge cannot be saved. Requiring reasons, he argued, only teaches lawyers to produce them, and the only remedy is to abolish peremptories entirely. Several states have since restricted them, and **Arizona abolished them outright, in all jury trials, civil and criminal, effective 1 January 2022, the first state to do so.** The Arizona Supreme Court's stated reason was that *Batson* had failed: strikes were still being used to discriminate, by both sides.
+
+The other position is that peremptories protect defendants too, and Figure 1 is evidence for it as much as against it. The defense in these same trials struck `r pc(g("defense","White","pct"))`% of eligible white jurors. That is a defendant's lawyer using the tool exactly as it was meant to be used, in a district where the tool was the only protection on offer. Abolish it for the state and you abolish it for the defense.
+
+There is also a methodological objection worth taking seriously, and it is the missing third. Race is unknown for `r n(4752)` of `r n(14873)` jurors. If missingness were related both to race and to being struck, the rates in Figure 1 could shift. The mirror structure makes that a stretch, since the same missing jurors are missing from both sides of it, but "a stretch" is not "impossible."
+
+## What this evidence will bear
+
+The strength of this file is that it is not a summary. It was assembled trial by trial from court documents by journalists at APM Reports. It contains its own control group, which is what makes the central comparison possible at all. And it follows a single decision-maker over twenty-six years, rather than averaging across a profession.
+
+Its limits are equally concrete, and each one bounds a different claim. The missing third of jurors bounds the precision of every rate quoted here. The absence of any strike *reasons* means the file records what was done and never what was said. So it can show that the state's behaviour is not explained by race-neutral striking, without ever showing what explanation the prosecutor offered or the judge accepted.
+
+One district bounds how far any of this carries. Mississippi's Fifth Circuit is not America, and this office was extreme enough to reach the Supreme Court, which is a reason to expect it to be unusual.
+
+The probability model bounds the meaning of every p-value above. It assumes that under a race-neutral rule any set of strikes was equally likely. That is the assumption being tested, not a claim about how juries really work.
+
+And nothing here touches outcomes at all. This is a record of who was excluded, not of what verdicts followed, so whether these juries convicted differently is not a question this data can answer.
+
+Three things are left genuinely open, and more of this table will not close any of them. Whether peremptory challenges should exist at all is a question the data bears on and cannot decide. What a court ought to do with aggregate evidence is unsettled in a deeper way: *Flowers* used a history spanning six trials, and almost every defendant has one. And whether the pattern has changed since this file ends is simply unknown, because nobody has read the next twenty-six years of court records the way APM Reports read these.
+
+The prosecutor in 1992 was not required to give a reason, and did not give one. What the record shows is that across `r nrow(t)` trials, the reasons that were never given sorted the panel by race `r pc(ratio05, 0)` times more often than chance. The lawyer sitting at the other table, drawing from the same panel on the same morning, sorted it the opposite way at nearly the same rate. Neither of them had to explain that, and for most of those twenty-six years nobody asked.
+
+## Sources
+
+**Data**
+
+- APM Reports, *In the Dark* season 2, jury data.
+  <https://github.com/APM-Reports/jury-data> — `jurors.csv`, `trials.csv` and
+  `voir_dire_answers.csv`, coded from the court records of 225 trials in
+  Mississippi's Fifth Circuit District, reduced here to the `r nrow(t)` trials
+  with at least ten eligible jurors and
+  the four strike rates in Figure 1; every number above is computed from the
+  files it wrote, at the moment this document was rendered.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`strikes.csv`](data/derived/strikes.csv), [`trials.csv`](data/derived/trials.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `strikes.csv` has `eligible` and `struck` by side and race. Compute the rate for each combination. How large is the gap, and which side produces it?
+- `trials.csv` is one row per trial. Count the trials where every eligible Black juror was struck. Would any single one of those trials prove anything?
+- Compute the strike rate per trial and look at the spread. Is this a pattern across a district, or a few prosecutors?
+- `trials.csv` names the defendant in each row. Pick one trial and work out what the numbers in that row would have looked like to the judge at the time.
+
+**Cases and literature**
+
+- *Batson v. Kentucky*, 476 U.S. 79 (1986), including Marshall, J., concurring.
+- *Flowers v. Mississippi*, 588 U.S. ___ (2019).
+
+**Further reading**
+
+- Grosso, C. M. and O'Brien, B. (2012). "A Stubborn Legacy: The Overwhelming
+  Importance of Race in Jury Selection in 173 Post-*Batson* North Carolina
+  Capital Trials." *Iowa Law Review* 97: 1531–1559.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```

@@ -1,0 +1,241 @@
+---
+title: "Data Session 11 Key: Did the Machinery Work?"
+subtitle: "84-355 Democracy's Data | Session 11 — Election administration (EAVS) | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+nat <- read.csv("data/national.csv", stringsAsFactors = FALSE)
+st  <- read.csv("data/states.csv",   stringsAsFactors = FALSE)
+r   <- read.csv("data/reasons.csv",  stringsAsFactors = FALSE)
+u   <- read.csv("data/units.csv",    stringsAsFactors = FALSE)
+g   <- function(v) nat$total[nat$variable == v]
+st$rate <- 100 * st$mail_rejected / st$mail_returned
+big <- st[st$mail_returned > 100000, ]
+```
+
+All code is given to students. Grade the interpretation.
+
+**Where this sits.** Session 11, the week after the election. Every prior session
+used the *output* of an election; this one asks whether the machinery worked.
+It is also the session that most reliably connects to whatever is in the news
+that week, because administration failures are what get reported in November.
+
+**It runs on 2024 data, deliberately.** The 2026 EAVS will not exist until
+mid-2027. Say so early — students will ask, and the two-year lag is itself a
+fact worth teaching about administrative data.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+The country rejected 584,463 mail ballots and 436,258 provisional ballots, your
+odds of that happening to you vary twenty-two-fold by state, and the survey that
+tells us so is missing a fifth of its answers.
+
+***
+
+# The findings
+
+```{r headline}
+c(jurisdictions   = sum(st$jurisdictions),
+  mail_rejected   = g("C9a"),
+  mail_pct        = round(100 * g("C9a") / g("C1b"), 2),
+  prov_rejected   = g("E1d"),
+  prov_pct        = round(100 * g("E1d") / g("E1a"), 1),
+  worst_state     = big$rate[big$state == "OK"],
+  best_state      = big$rate[big$state == "VT"])
+```
+
+- **584,463 mail ballots rejected**, 1.22% of those returned.
+- **Oklahoma 4.35%, Vermont 0.20% — a 22-fold gap.**
+- **436,258 provisional ballots rejected: one in four.**
+- The largest single reason is **a signature that did not match — 197,979, 34%.**
+- The *total* is reported by 6,361 jurisdictions; some *reasons* by as few as
+  **845**.
+
+***
+
+# The three things to get said
+
+**1. "Jurisdiction" is not one thing, so most averages are meaningless.**
+Wisconsin reports 1,851 and Texas 254 because Wisconsin runs elections through
+townships. **Make the class say out loud what is safe to compute**: totals yes,
+rates yes, per-jurisdiction averages across states no. This is the "units"
+lesson from Session 4's midterm lab arriving in a new costume, and naming that
+connection is worth thirty seconds.
+
+**2. Variation between states is about rules, not voters.** The 22-fold gap is
+the number students will remember. Push them past outrage to mechanism: witness
+requirements, signature matching, postmark rules, and — most decisive —
+**whether the state has a cure process** letting a voter fix a problem after the
+fact. The same act, performed identically, is counted in Vermont and discarded
+in Oklahoma.
+
+**3. The survey's holes are the lesson, not a footnote.** Provisional rejections
+are reported by 79.9% of jurisdictions. Ask directly: *is the missing fifth
+random?* It is not — smaller offices with less staff skip more items, and
+smaller offices are systematically different. So every national total here is a
+**floor**, and the gap between floor and truth is unknown and unknowable from
+this file.
+
+**The line for the board:** this is the only dataset in the course where the
+people being measured are the same people filling in the form.
+
+***
+
+# Part 3 — where most of the discussion will go
+
+```{r p3}
+rbind(head(big[order(-big$rate), c("state","mail_returned","mail_rejected","rate")], 5),
+      head(big[order( big$rate), c("state","mail_returned","mail_rejected","rate")], 3))
+```
+
+**Anticipate the wrong inference.** Students will read a high rate as either
+voter incompetence or deliberate suppression. Both are available, neither is
+demonstrated, and the file cannot separate them from a third possibility:
+**states with strict rules and no cure process reject more ballots without
+anybody intending anything.**
+
+The strongest move available to a student is to notice that **Michigan rejects
+3.05% on 2.08 million returned ballots** — the largest absolute count of any
+high-rate state, 63,561 ballots — while Indiana rejects 0.21% on 1.6 million.
+Two large mail states, fourteen times apart.
+
+***
+
+# Option A — Provisional by state
+
+## Verified output
+
+```{r a}
+s <- st[st$prov_cast > 10000, ]
+s$prate <- round(100 * s$prov_rejected / s$prov_cast, 1)
+rbind(head(s[order(-s$prate), c("state","prov_cast","prov_rejected","prate")], 5),
+      head(s[order( s$prate), c("state","prov_cast","prov_rejected","prate")], 4))
+```
+
+**3/4:** Computes the rates, reports the spread, and notes it is wider than mail.
+
+**4/4:** Refuses to compare the top and bottom directly, because **provisional
+ballots mean different things in different states.** Where election-day
+registration exists, almost nobody needs one; where they are handed out freely
+for any discrepancy, many are issued and many fail. A high rejection rate can
+mean a generous issuing policy. **Denominators again.**
+
+**4/4, best:** Notices that states with the *fewest* provisional ballots per
+voter are often those with same-day registration — that is, the safety net is
+smallest where the main system works. A student who says "the number of
+provisional ballots is a measure of how badly the registration system is
+performing, not of how well the backup is" has understood the instrument.
+
+***
+
+# Option B — Mail take-up
+
+## Verified output
+
+```{r b}
+s <- st[st$mail_sent > 100000, ]
+s$unret <- round(100 * (1 - s$mail_returned / s$mail_sent), 1)
+rbind(head(s[order(-s$unret), c("state","mail_sent","mail_returned","unret")], 5),
+      head(s[order( s$unret), c("state","mail_sent","mail_returned","unret")], 3))
+```
+
+**3/4:** Computes the share and identifies the extremes.
+
+**4/4:** Distinguishes the two worlds inside this number. In **all-mail states**
+every registered voter is sent a ballot whether they asked or not, so an
+unreturned ballot mostly means "this person did not vote" — ordinary
+non-voting, arriving by post. In **request-only states**, somebody actively
+asked for a ballot and then did not return it, which is a different and more
+interesting failure.
+
+**4/4, best:** Says the comparison should not be made at all without splitting
+the states into those two groups first, and notes that this file does not label
+which is which — you would need to bring that knowledge from outside. **Knowing
+what you need and not having it is a legitimate finding.**
+
+***
+
+# Option C — The reporting gap
+
+## Verified output
+
+```{r c}
+r[order(-r$reported_by), c("reason","reported_by","ballots")][c(1:4, 16:19), ]
+```
+
+**3/4:** Ranks by reporting and observes that lateness is well reported while
+several others are not.
+
+**4/4:** Finds the pattern. **The best-reported reasons are the ones an office
+records automatically** — a ballot arrived after the deadline, the voter had
+already voted, the voter was ineligible. These are byproducts of the system.
+**The worst-reported are the ones requiring a human to have written down a
+judgement** — no postmark (845), no resident address (1,959), unofficial
+envelope (2,072).
+
+**4/4, best:** Draws the conclusion for the signature category, which sits
+awkwardly in between: signature mismatch is the **largest** reason, at 197,979,
+but is reported by only 3,222 of 6,461 jurisdictions. So the most consequential
+discretionary judgement in mail voting is documented by half the country. A
+student who says "we know least about the category where discretion matters
+most" has the session.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating the response rate as data rather than
+  as a caveat. Anyone who writes "this total is a floor because…" and completes
+  it correctly has the point.
+- **A 2** is reporting the 22-fold gap as evidence of suppression without
+  mentioning rules, cure processes, or the possibility that the states differ in
+  what they count.
+- **Reward anyone who is bothered by the two-year lag.** We watched an election
+  in Session 10 and cannot evaluate its administration until 2027. That is a
+  real democratic problem and it is nobody's fault.
+
+## Anticipated questions
+
+- *"Is 1.22% a lot?"* — It is 584,463 people, and the 2024 presidential margin in
+  several states was smaller than the number of ballots that state rejected. Do
+  not assert that rejections would have changed an outcome — rejected ballots
+  are not a random sample of anything — but the comparison of magnitudes is fair
+  and worth making.
+- *"Why do offices not answer?"* — No penalty, no staff, and in small townships
+  the clerk is often part-time. This is voluntary reporting by the people being
+  reported on.
+- *"Could someone reject ballots on purpose?"* — The file cannot answer that.
+  Point at the signature category and note that discretion concentrated in a
+  poorly documented category is where anyone worried about it would look.
+- *"Why is 2026 not here?"* — Fielded in early 2027, published mid-2027.
+- *"Why does Wisconsin have so many jurisdictions?"* — Townships. Then ask what
+  else in this course changed meaning by state (Session 6: party registration).
+
+## Connections
+
+- **Session 6 (voter files)** — the registration side of the same administrative
+  system, and the source research uses to find *who* gets rejected, which this
+  survey cannot say.
+- **Session 10 (live returns)** — we watched the election; this is its service
+  record, two years late.
+- **Session 4 / Oct 20** — "per what?" The units problem, third appearance.
+- **Session 3 (ACS margins)** — both sessions are about a published number that
+  arrives with its own uncertainty attached, and both reward reading the column
+  nobody quotes.

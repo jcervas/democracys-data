@@ -1,0 +1,455 @@
+---
+title: "Detecting a Gerrymander Without a Map"
+subtitle: "A bias statistic, and what it measures instead of intent"
+author: "84-355 Democracy's Data"
+date: "`r format(Sys.Date(), '%B %Y')`"
+toc_depth: 3
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("redistricting-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+Here is North Carolina's congressional delegation in 2024, written out as a row of numbers — the Democratic share of the two-party presidential vote inside each district, sorted from most Democratic to least:
+
+> `r row_of("NC")`
+
+`r sv("NC","seats")` districts up in the high sixties and seventies, `r sv("NC","n") - sv("NC","seats")` down in the high thirties and forties. **Nothing whatever between `r pc(sv("NC","below"))` and `r pc(sv("NC","above"))`**, in a state that was `r pc(sv("NC","vote"))`% Democratic overall.
+
+No map was consulted to produce that row, and none is needed to see that it is strange. Which is fortunate, because shape is a poor guide to districting. Gerrymandered districts are often perfectly tidy, and some of the ugliest districts in America are ugly for innocent reasons. Rivers, county lines and the Voting Rights Act are all shapes too.
+
+> **So: can you detect a gerrymander from the returns alone, and how far can the
+> detection be trusted?**
+
+> **The Voting Rights Act shape got smaller on 29 April 2026.**
+>
+> Several of the packed districts in this file exist because Section 2 of the
+> Voting Rights Act was understood to require them. *Louisiana v. Callais*, 608
+> U.S. ___ (2026), narrowed that requirement sharply. It did not overrule
+> *Thornburg v. Gingles*, 478 U.S. 30 (1986), but it updated the framework:
+> illustrative maps offered by a plaintiff may use **no race** as a districting
+> criterion and must meet **all** the State's legitimate objectives, "including
+> traditional districting criteria and the State's specified political goals";
+> proof of racially polarized voting must "control[] for party affiliation"; and
+> old discrimination and the effects of "societal discrimination" now get "much
+> less weight." Section 2 survives, but on the Court's reformulation it "imposes
+> liability only when the evidence supports a strong inference that the State
+> intentionally drew its districts to afford minority voters less opportunity
+> because of their race."
+>
+> **Nothing in the data below changes** — these are the 2024 maps and the 2024
+> presidential vote inside them. What changes is the reading of one of the
+> innocent explanations for a packed district, and this chapter returns to it
+> twice.
+
+## The lines change what a member of Congress has to fear
+
+Districting is the point at which a rule converts votes into seats, and unlike almost every other such rule, **somebody chooses it, in a room, on a schedule.** The Electoral College's distortions are inherited. A congressional map's distortions are authored, every ten years, by identifiable people.
+
+There is a second-order consequence that matters more. If a district's general election is not in doubt, the only threat to its member is a primary — a low-turnout contest dominated by the most committed partisans. The lines do not merely allocate seats; **they change what a member of Congress has to fear.**
+
+## Equal population is the only hard rule, and every map here obeys it
+
+Districts have to hold the same number of people. That requirement is the reason maps are redrawn at all, and it is the one piece of redistricting law that is pure arithmetic. The [vote-dilution chapter](../vote-dilution/vote-dilution-brief.html) works through the doctrine. What matters here is how tight the rule is, and how little it constrains.
+
+There are two standards rather than one. Congressional districts inside a state must be "as nearly as practicable" equal, which the courts read close to literally. State legislative districts need only be *substantially* equal. A plan whose largest and smallest districts differ by less than ten per cent of the ideal counts as a minor deviation, and that alone does not make a case.
+
+The distance between those two standards shows up in the units. The National Conference of State Legislatures collected the numbers for every plan drawn after the 2010 census, and congressional plans had to be reported in people while legislative plans could be reported in per cent:
+
+```{r devtab}
+```
+
+**The middle congressional plan in the country came out equal to within `r DV("Congressional", "median_range")` person.** `r DV("Congressional", "within_tight")` of the `r DV("Congressional", "plans_listed")` plans were within two people of perfect. Legislative plans cluster just under the ten per cent line instead, which is what a safe harbour does to behaviour: `r DV("State house", "within_tight")` of `r DV("State house", "plans_listed")` state house plans sit inside it, most of them not far inside.
+
+Now hold that against the rest of this chapter. North Carolina's congressional plan for that decade had an overall range of `r DS("North Carolina", "cong_people_range")` person. So did Wisconsin's, Pennsylvania's and Massachusetts's. **Equal population is satisfied to the person by fair maps and by gerrymanders alike.** Moving a district line by one block trades population one way and votes the other, so the arithmetic can always be brought back into balance while the politics moves.
+
+These are the plans of the previous decade, not the 2024 maps this chapter measures. The standard is what carries over, and it has not changed.
+
+### So what does constrain a map?
+
+Everything else is state law, and it varies by state. Most states require **contiguity**: a district must be one connected piece with the boundary never broken. Many require **compactness**, though few say how to measure it. Many require respect for county and city lines, or for [communities of interest](../../01-census-bureau/areal-units/areal-units-brief.html). A few states have recently added a competitiveness criterion, or a requirement that a plan neither favour nor disfavour a party or a person.
+
+Those criteria conflict with one another, and only a handful of states say which one wins. That is the practical reason a shape argument is so hard to win. A district can be ugly because it followed a river, respected a county line, kept a community together, or was drawn to waste somebody's votes, and the shape alone does not say which.
+
+## One of the most contested measurement problems in American politics
+
+This has been genuinely contested for a decade, and it has been litigated to the Supreme Court twice in a decade.
+
+- **The measure.** McGhee (2014) proposed a wasted-votes statistic capturing what
+  an efficient gerrymander actually does; Stephanopoulos and McGhee (2015)
+  developed it into the **efficiency gap** and argued it could serve as a
+  judicial standard.
+- **The counter-argument.** Chen and Rodden (2013) showed with automated
+  districting simulations that substantial bias arises from **human geography
+  alone**: Democratic voters concentrate in cities at very high densities, so
+  neutral maps can produce Democratic seat shares below 50% at 50% of the vote.
+- **The courts.** In *Gill v. Whitford* (2018) the Supreme Court declined to
+  adopt the measure, resolving the case on standing. In *Rucho v. Common Cause* (2019) it held partisan gerrymandering claims non-justiciable in federal court
+  altogether. The fight moved to state courts and state constitutions.
+
+Both sides of the measurement argument are right about something. Telling which one is operating in a given state is the problem this chapter ends on.
+
+## A table nobody official produces
+
+No agency publishes the presidential vote by congressional district. States canvass by county and by precinct, because that is how ballots are counted. Congressional districts are drawn across those units by a different body for a different purpose, and nobody is obliged to reconcile the two. So the table this chapter runs on does not exist in any government file. It exists because a private individual, Jason Timm, assembles it and posts it in a public GitHub repository. A single R data file is downloaded from the master branch there.
+
+There is no key and no guestbook, which is a pleasant change from most of the sources in this book. There is also no institution, no version of record, and no promise that the address will resolve next year. The committed CSV is the durable copy.
+
+The aggregation that produced it is the part to keep in view, because it happened before the file arrived and left no trace in it. Precincts do not nest inside congressional districts. Where a district line cuts a precinct, somebody has to decide how that precinct's votes divide, and that decision is a method with assumptions — usually about where inside the precinct the voters live. This file's columns are two percentages per district with the splitting already resolved and nothing recording how. **The hardest step in building it is the one step you cannot audit from it.** That is not a criticism of the compiler, who is doing work no agency has taken on; it is a description of what the file can and cannot be asked.
+
+The cleaning that this course did on top of it was small, and two decisions in it are worth the space. Maine runs ranked-choice House elections, and the compilation records ME-02's winner as "Continuing Ballots" with no party. That is a by-product of how a ranked count reports itself, rather than a fact about anyone. The presidential figures for that district are sound, so the row is kept and the House party is set to missing rather than guessed at. And one district carries no presidential figures at all. It is dropped rather than filled in, and the national totals below are computed over `r nrow(cd)` districts, which the next sections say each time it matters.
+
+Beyond that the script works out one column, the Democratic share of the two-party vote. Then it refuses to finish unless the file has exactly the rows it expects and every share lies strictly between zero and one hundred. Nothing was imputed, smoothed or reweighted. To impute is to fill in a value nobody recorded by guessing it from other things.
+
+## Two percentages, and the step that left no trace
+
+The download is not a spreadsheet. It is `pres_by_cd.rda`, an R binary object on GitHub's master branch, and this is everything in it:
+
+```{r rawcd}
+```
+
+`r RN` rows, `r RC` columns, and **two of those columns are the entire substance**: `democrat` and `republican`, each a percentage, each already apportioned to a congressional district. Look at what is not there. No county. No precinct. No vote counts — the numbers are `41.4` and `54.5`, not ballots. No column saying which precincts fell in this district, how many of them a district line cut in half, or what rule sent a cut precinct's votes one way rather than the other.
+
+That last absence is the one to sit with. Precincts do not nest inside congressional districts. So building this file meant deciding, for every split precinct in the country, how its votes divide. That is the same problem the [`precinct-geography`](../../03-elections/precinct-geography/precinct-geography-brief.html) chapter is entirely about, solved here by somebody else, once, invisibly. Two analysts using land area and population would produce different numbers in the `democrat` column, and **nothing in these `r RC` columns would look any different.** The hardest step is the one step the file cannot be asked about.
+
+Two rows in the download are not what they appear, and both survive into this chapter in modified form. The first:
+
+```{r rawme}
+```
+
+Maine's second district elected a person. `house_rep` says `Continuing Ballots`, which is not a person. It is a line from a ranked-choice tabulation report, read as though it were a candidate name. `house_rep_party` beside it is an empty string rather than a missing value. **An empty string is not `NA`, and R will not warn you about the difference.** Grouped by party, that row silently becomes its own party.
+
+The second exception is a whole district:
+
+```{r rawny}
+```
+
+New York's twenty-first has a member, a winner and no presidential vote at all.
+
+Here is what the build made of both. Maine, first, in `pres_by_cd_2024.csv`:
+
+```{r cleanme}
+```
+
+The row is kept, because the presidential figures are sound, and they are the only figures this chapter uses. What changed is that `house_rep_party` is now genuinely missing rather than blank, so every count of House parties below excludes it instead of inventing a party for it. **Nothing was guessed.**
+
+New York's twenty-first is not in the clean file at all. `r RN` districts became `r nrow(cd)`, and the arithmetic of that difference is the whole of the dropping: one district with no numbers, removed rather than filled in with a state average or a neighbor's figure. Every national total in this chapter is therefore over `r nrow(cd)` districts and not `r RN`, which is why the sections below keep saying so.
+
+And one column was added. `dem_share` is `democrat` over the two of them, `r sprintf("%.2f", cd$dem_share[cd$district == "ME-02"])` for Maine's second. It is the Democratic share of the *two-party* vote, not of all votes.
+
+That denominator, the bottom number every share is divided by, is a choice, and the rest of the chapter is built on it. It discards third-party and write-in ballots so that fifty per cent means "tied", which is what makes a column of these numbers readable as a map.
+
+## One row is a district, carrying the presidential vote counted inside it
+
+One row is **one congressional district, carrying the 2024 presidential vote counted inside it**:
+
+```{r one-row}
+```
+
+Not the House result — the **presidential** result, inside House lines. That choice is the whole methodology.
+
+To ask whether a *map* is biased you must hold the voters constant and vary only the lines. House results cannot do that: they mix the map together with incumbency, money, scandal, and seats nobody contested. The presidential race is the same contest in all `r nrow(cd)` districts, so any difference in how those votes turn into seats is a property of the districting plan. This is how the question is asked in litigation.
+
+## The national picture
+
+```{r national}
+```
+
+**A `r pc(mean(cd$dem_share))`% electorate distributed into districts that give one side `r pc(100 * mean(cd$dem_share > 50))`% of them.** Nationally the gap is small — and the national figure hides two large biases pointing in opposite directions.
+
+One district is missing: New York's 21st carries no presidential figures in the source. Every national number here is computed over `r nrow(cd)` districts rather than 435. It changes no conclusion, and you should know it anyway.
+
+## How much of the House is in play
+
+```{r competitive}
+```
+
+**`r comp$districts[comp$band == "within 5 points of even"]` districts sit within five points of even, or `r pc(comp$pct[comp$band == "within 5 points of even"])`%.** Four out of five seats in the House of Representatives were settled before anybody campaigned.
+
+Where you draw that line matters a great deal, and the honest thing is to report all of it: at two points only `r pc(comp$pct[1])`% of the House is competitive; at fifteen, `r pc(comp$pct[4])`% is.
+
+```{r natl-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+```{r natl-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Every congressional district in the country, by how Democratic it was.** All `r nrow(cd)` districts in bins of two points, measured by the Democratic share of the two-party presidential vote counted inside the district's 2024 lines. The shaded band is the `r comp$districts[comp$band == "within 5 points of even"]` districts within five points of even — `r pc(comp$pct[comp$band == "within 5 points of even"])`% of the House. **Nationally there is no hollow in the middle.** Whatever produced the North Carolina row at the top of this chapter is a property of individual states, not of the country.
+
+## Read the numbers as a row
+
+Take three states and simply print their districts in order.
+
+```{r rows}
+```
+
+Read those rows slowly.
+
+**North Carolina** is the row this chapter opened with: `r pc(sv("NC","vote"))`% Democratic, Democrats elected in `r sv("NC","seats")` of `r sv("NC","n")` districts, and nothing between `r pc(sv("NC","below"))` and `r pc(sv("NC","above"))`.
+
+**Wisconsin** was `r pc(sv("WI","vote"))`%, a tied state, and elects Democrats in `r sv("WI","seats")` of `r sv("WI","n")`. **Nothing between `r pc(sv("WI","below"))` and `r pc(sv("WI","above"))`.**
+
+**Pennsylvania** was `r pc(sv("PA","vote"))`% and splits `r sv("PA","seats")`–`r sv("PA","n") - sv("PA","seats")`. Its districts run smoothly from 27 up to 89, with the middle populated.
+
+> **That hole is the gerrymander.** To win most of the seats with fewer than half
+> the votes you do two things. **Pack** the other side into a few districts they
+> win overwhelmingly, wasting their surplus. **Crack** the rest across many
+> districts where they lose narrowly, wasting all of it. The signature is a
+> bimodal distribution with a gap in the middle.
+
+```{r ridge-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+```{r ridge-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 2. Three states on one axis.** Each band is one state's districts, drawn as a density with a common bandwidth; the ticks beneath are the districts themselves, colored by which side would carry them. The dashed line is the majority threshold, and the red bar spans the empty band around it. North Carolina's gap is `r pc(sv("NC","hole"))` points wide and Wisconsin's `r pc(sv("WI","hole"))`; Pennsylvania, at `r pc(sv("PA","hole"))`, has districts all the way through the middle.
+
+Not one district's shape has been consulted.
+
+## Putting a number on it
+
+The **efficiency gap**, in the simplest version:
+
+$$\text{EG} = (\text{seat share} - 50\%) - 2 \times (\text{vote share} - 50\%)$$
+
+Zero means no bias; negative favors Republicans, positive favors Democrats.
+
+```{r eg-worst}
+```
+
+**The two worst Republican-favoring maps are North Carolina (`r pc(sv("NC","eg"))`) and Wisconsin (`r pc(sv("WI","eg"))`)** — exactly the two states whose rows had the gap in them. The statistic and the row of numbers agree, which is reassuring, and Pennsylvania scores `r pc(sv("PA","eg"))`, very nearly the fairest large map in the country.
+
+> **Before you read on, make a prediction.** The list above is the
+> Republican-favoring end of the efficiency gap. **Write down which states you
+> expect at the *other* end** — the most Democratic-favoring maps by the same
+> statistic — and write down what you would conclude about the people who drew
+> them.
+
+## The other end of the list
+
+```{r eg-best}
+```
+
+Most people write down Illinois and Maryland, the two maps that get named in newspaper coverage of Democratic gerrymandering. The conclusion is that the people who drew them did on purpose what North Carolina's drafters did on purpose.
+
+**Massachusetts scores `r pc(sv("MA","eg"))`, nearly as extreme as North Carolina's `r pc(sv("NC","eg"))`, in the opposite direction.**
+
+And Massachusetts is not gerrymandered. It is `r pc(sv("MA","vote"))`% Democratic and elects Democrats in `r sv("MA","seats")` seats out of `r sv("MA","n")`, because **there is no way to carve a Republican district out of Massachusetts without deliberately trying to.** Its least Democratic district is `r pc(sv("MA","above"))`% Democratic.
+
+That is the objection Chen and Rodden formalized, and it is fatal to reading the efficiency gap as a gerrymandering detector on its own. **The measure cannot distinguish a map drawn to disadvantage a party from a state where that party's voters are too few, or too evenly spread, to win anywhere.**
+
+## Geography produces bias by itself
+
+```{r extremes}
+```
+
+**`r sum(cd$dem_share >= 70)` districts are at least 70% Democratic; `r sum(cd$dem_share <= 30)` are at least 70% Republican.** The most Democratic district in the country, Philadelphia's, is at `r pc(max(cd$dem_share))`%. The most Republican is at `r pc(100 - min(cd$dem_share))`%.
+
+That asymmetry is not drawn. It is **self-packing**: a party whose voters live at 90% density in city neighborhoods wastes enormous numbers of votes before anybody picks up a pen. It inflates the efficiency gap against Democrats even under neutral maps, which is exactly why Massachusetts scores `r pc(sv("MA","eg"))`\.
+
+Here is the whole list at once, drawn as a map. Each state's area is its House delegation — Texas's `r sv("TX","n")` seats against Vermont's one. Seats are the quantity this chapter argues about, and acreage is the wrong weight for it. The color is the efficiency gap.
+
+```{r egmap-prep}
+```
+
+```{r egmap-static, eval=!knitr::is_html_output(), fig.height=5.3}
+```
+
+```{r egmap-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+The two worst Republican-favoring maps in the country, North Carolina and Wisconsin, sit inside a belt of states colored the same way. Massachusetts and its neighbors answer them in blue, without a gerrymander among them. The map weights each verdict by the seats at stake, and what it shows is the Chen and Rodden point drawn to scale: **the statistic's extremes are regional before they are conspiratorial**. No color on this map can say which states earned theirs on purpose.
+
+## Measure the hole directly
+
+Self-packing produces *extreme districts*. Packing-and-cracking produces something different and more specific: **an empty band around the majority threshold.** That is measurable. For each state, take the most Democratic district below 50% and the least Democratic district above it, and record the distance between them.
+
+```{r hole}
+```
+
+The median state with districts on both sides of 50 has a hole of `r pc(median(big$hole, na.rm = TRUE))` points. **Wisconsin's is `r pc(sv("WI","hole"))` and North Carolina's `r pc(sv("NC","hole"))`. Pennsylvania's is `r pc(sv("PA","hole"))`.**
+
+**And Massachusetts has no hole at all — the statistic is undefined there, because Massachusetts has no district below 50%.** The measure that flags North Carolina cannot flag Massachusetts, because in Massachusetts there is nothing of that kind to flag. That is the distinction the efficiency gap could not make.
+
+```{r hole-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+```{r hole-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Every state's districts on one axis, ordered by efficiency gap.** One row per state with six or more districts; each dot is a district, placed by its Democratic share and colored by which side carries it. The dashed line is the majority threshold, and the shaded band marks states whose hole is wider than twelve points. The median state with districts on both sides of 50 has a hole of `r pc(median(big$hole, na.rm = TRUE))` points.
+
+And the correction cuts both ways, which is what makes it worth having. **Tennessee's hole is `r pc(sv("TN","hole"))` points and Louisiana's `r pc(sv("LA","hole"))`, both larger than Wisconsin's, while their efficiency gaps are `r pc(sv("TN","eg"))` and `r pc(sv("LA","eg"))`.** Tennessee's 2022 map divided Nashville among three districts, which is a textbook crack that the efficiency gap barely registers. Louisiana's 2024 map contains a second majority-Black district drawn under court order, which produces a large hole for a reason that has nothing to do with partisan advantage.
+
+```{r two-stats-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r two-stats-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 4. The two statistics against each other.** One point per state with six or more districts, placed by the width of its hole and by its efficiency gap. The triangles in the gutter at the right are states with no district below 50%, where the hole is undefined. If the two statistics measured the same thing the points would line up; they do not. Massachusetts has a large gap and no hole at all. Louisiana has a hole of `r pc(sv("LA","hole"))` points and an efficiency gap of `r pc(sv("LA","eg"))`, pointing the other way.
+
+**Two statistics, disagreeing, for reasons that can be named.** That is the honest state of this field.
+
+## When the lines are nearly the whole story
+
+```{r cross}
+```
+
+**Only `r nrow(cross)` districts of `r nrow(cd)` split their ticket, and every one of them falls between `r pc(min(cross$dem_share))`% and `r pc(max(cross$dem_share))`%.** A generation ago there were dozens.
+
+That near-disappearance has a consequence for redistricting that is easy to miss: **when almost nobody splits their ticket, drawing the lines is very close to choosing the winner.** A map-drawer in 1980 was making a bet. A map-drawer today is making a decision.
+
+So it is worth asking what the map as a whole does to a national vote.
+
+```{r svc-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r svc-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 5. What the national map would do to a national vote.** The curve is the Democratic share of seats the enacted districts would produce at each national Democratic vote share, under a uniform swing applied to every district at once. It assumes equal turnout everywhere and no district changing hands for any reason but the swing — both false, which is why the curve is a property of the map rather than a forecast. At an even national vote the map returns `r pc(seats50)`% of the seats; a Democratic majority of seats first appears at `r pc(vote50)`% of the vote.
+
+## Bias, never intent
+
+What the numbers above will carry is a ranking. Which states have biased plans, and roughly how much bias each carries, can be established without looking at a single map, and in 2024 North Carolina and Wisconsin are the extreme cases.
+
+The sharper statement is about the two statistics. They measure different things. The efficiency gap counts wasted votes in total, and the hole looks for the particular structural signature of packing and cracking. The cases where they disagree are informative rather than embarrassing.
+
+Massachusetts has a large gap and no hole. Louisiana has a large hole and a gap pointing the wrong way. Each disagreement names something real about the state underneath it.
+
+What none of it will carry is the accusation. Every number here measures **bias**; none measures **intent**, and intent is what courts litigate. Sliding from "the efficiency gap is `r pc(sv("NC","eg"))`" to "they cheated" skips the only step that would matter in a courtroom.
+
+Nor can a single map's numbers separate drawn bias from geographic bias. The method that can is **simulation** — generate thousands of legal maps at random and ask where the enacted plan falls in that distribution. That is the argument that has actually persuaded state courts, and it needs precinct geography that a table of district-level results does not carry.
+
+## Where intent comes from, when the numbers cannot supply it
+
+Intent is proved from documents, not from statistics. That is worth saying plainly, because a reader who has followed this chapter to here may reasonably ask what would finish the case that a row of numbers can only start.
+
+State legislators have no absolute privilege over their own records in a redistricting case. Members of Congress do, under the Speech and Debate Clause, and state legislators are often assumed to have the same protection. They do not. Over the 2010s the federal courts steadily narrowed what a legislator may withhold from plaintiffs challenging a map.
+
+**In practice most of a redistricting file becomes discoverable.** Drafts, memoranda, consultants' working files and email have all been ordered produced, personal email included. So the record that decides a gerrymandering case is usually not a measurement of the map. It is what the people drawing it wrote to each other while they drew it.
+
+The advice NCSL gives legislatures follows from that, and it is revealing in itself. Have a written policy for keeping and destroying communications, and then follow it, because courts notice when a policy is ignored until a challenge arrives.
+
+None of this is in the file this chapter uses, and none of it could be. **The numbers can tell you which maps are worth subpoenaing.** They cannot tell you what the subpoena will find.
+
+## Where the argument stands, and where the law does
+
+**The measure's own authors did not claim it settles anything alone.** Stephanopoulos and McGhee proposed the efficiency gap as one element of a judicial test, with thresholds and durability requirements attached. Bernstein and Duchin (2017) set out the properties that make it awkward as a legal standard, including its sensitivity to turnout and to how close the statewide vote is to even. The version computed here compounds that: it assumes **equal turnout across districts**, because it has vote shares and not vote counts.
+
+**The geography objection is the serious one**, and it is not a debating point. Chen and Rodden's simulations produce Republican-leaning bias from neutral procedures. The correct response is not to abandon the measurement but to change the baseline: **compare the enacted plan to the distribution of plans a neutral procedure could have produced**, rather than to an abstract 50–50.
+
+**The law has moved out from under all of this.** *Rucho* closed the federal courts to partisan gerrymandering claims in 2019, leaving state constitutions as the venue.
+
+**Pennsylvania's score is the result of litigation, not of restraint.** The map this chapter measures as very nearly the fairest large plan in the country replaced one a court threw out. In *League of Women Voters of Pennsylvania v. Commonwealth* (2018) the state supreme court held that the 2011 congressional plan violated the free and fair elections clause of the Pennsylvania constitution. Similar clauses sit in many other state constitutions, which is why *Rucho* closed one door rather than the building.
+
+And the racial-gerrymandering route, which remained open after *Rucho*, narrowed sharply this year. In *Louisiana v. Callais*, decided 29 April 2026, the Supreme Court held 6–3 that "the Voting Rights Act did not require Louisiana to create an additional majority-minority district." With no compelling interest to justify drawing one, the map was an unconstitutional racial gerrymander.
+
+The reasoning matters more than the result. *Gingles* survives, but was "update[d]". A plaintiff's illustrative map may use no race, and must meet every legitimate objective the State names, including its political ones. Racially polarized voting must be shown net of party. And historical discrimination now counts for "much less."
+
+Five weeks later the Court stayed an Alabama injunction for failing to apply it. **Louisiana is the state whose `r pc(sv("LA","hole"))`-point hole appears in Figures 3 and 4.** That is a useful reminder: a structural signature in the data can be the product of a legal requirement that no longer holds.
+
+## What a column of numbers can testify to
+
+Three things make this evidence unusually solid. Holding the election constant across every district is the right design and the design used in litigation, so any difference in how votes become seats belongs to the plan rather than to the candidates. The file is one row per district with no modeling in it. And the central finding, the empty band around the majority line, is visible in a printed row of numbers — which means believing it does not require trusting a formula.
+
+Six things make it narrower than it looks. The **efficiency gap computed here is an approximation**. The proper version uses actual wasted votes, which needs turnout by district. This one assumes every district casts the same number of votes, which none of them do.
+
+It rests on **one election**. A plan that looks fair against 2024 may not against 2020 or 2028, which is why the published metrics services report several elections rather than one. **`r 435 - nrow(cd)` district is missing** from the file, so every national figure above is computed over `r nrow(cd)` rather than 435.
+
+There is **no geography at all**: no precincts, no shapes, no population. So no simulation can be run here, and the Chen–Rodden alternative cannot be tested against these numbers, only stated. There are **no dates**. Several 2024 maps were drawn or redrawn by courts, and nothing in the file records which. And every statistic above measures **bias and never intent**, which is the limit that matters most and the one most easily forgotten.
+
+**The deviation table is a different decade and a different source.** Those fifty rows describe the plans drawn after the 2010 census, not the 2024 maps everything else here measures, and they were typed in from a printed book rather than fetched. They are carried to show how tight the equal-population rule is and how little it settles. Do not read a state's row there against its efficiency gap above: the two describe different maps.
+
+**That table is also frozen at 2019, and it is not uniform.** A few of its rows come from remedial plans adopted later in the decade rather than from the plan first enacted, which its own footnotes say. Hawaii's legislative figures are wide because Hawaii apportions seats to island units first, so its `r pc(DS("Hawaii", "senate_pct_range"), 2)`% senate range is a fact about that method rather than about unequal districts.
+
+Three questions are genuinely open. How much of each state's bias is geographic rather than authored is answerable in principle, by simulation, and not answerable from a table of results. What the right baseline should be is unsettled in the courts as well as in the literature. "Proportionality" and "the spread of legal maps a neutral procedure could have drawn" are different standards, and neither has been adopted.
+
+And what becomes of the racial-gerrymandering route after *Callais* is genuinely unknown. Several of the packed majority-minority districts visible in this file exist partly because of a legal requirement whose scope changed in April 2026. The structural signature they produce may not survive the next round of maps.
+
+The row of numbers at the top of this chapter is still a row of numbers. It shows that a plan can be identified as biased without anyone examining a shape, and it cannot show who meant it.
+
+## Sources
+
+**Data**
+
+- Presidential results by congressional district, 2024, from Jason Timm's
+  `PresElectionResults` (<https://github.com/jaytimm/PresElectionResults>);
+  `r nrow(cd)` of 435 districts. The missing district is documented rather than
+  filled in.
+- National Conference of State Legislatures. *Redistricting Law 2020*. Denver:
+  NCSL, October 2019 — Appendix C, "Population Equality of Districts from
+  2010-Cycle Plans", transcribed for the deviation table. Chapter 2 supplies
+  the two equal-population standards, Chapter 4 the redistricting criteria,
+  Chapter 5 the commissions, Chapter 6 the partisan-gerrymandering cases and
+  Chapter 7 the legislative-privilege material.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`deviation.csv`](data/derived/deviation.csv), [`deviation_states.csv`](data/derived/deviation_states.csv), [`pres_by_cd_2024.csv`](data/derived/pres_by_cd_2024.csv), [`seat_rings.csv`](data/derived/seat_rings.csv), [`seat_states.csv`](data/derived/seat_states.csv)
+
+**Your turn**
+
+None of these is answered above, and every one can be answered from the
+tables you just opened.
+
+- `deviation_states.csv` has `cong_pct_range` beside `house_pct_range` and `senate_pct_range`. Compare congressional maps against legislative ones. Which are held to a tighter standard?
+- `deviation.csv` names the state with the widest range. Look it up in `deviation_states.csv`. Is equal population a real constraint, or a rounding exercise?
+- `pres_by_cd_2024.csv` has `dem_share` and the party that actually holds each seat. Count the districts where they disagree. Is that a gerrymander or a good candidate?
+- Sort `pres_by_cd_2024.csv` by `dem_share` and look at the distribution. Are the districts bunched near the middle, or piled at the ends?
+
+**Academic literature**
+
+- Bernstein, M. and Duchin, M. (2017). "A Formula Goes to Court: Partisan
+  Gerrymandering and the Efficiency Gap." *Notices of the American Mathematical
+  Society* 64(9): 1020–1024.
+- Chen, J. and Rodden, J. (2013). "Unintentional Gerrymandering: Political
+  Geography and Electoral Bias in Legislatures." *Quarterly Journal of Political
+  Science* 8(3): 239–269.
+- McGhee, E. (2014). "Measuring Partisan Bias in Single-Member District Electoral
+  Systems." *Legislative Studies Quarterly* 39(1): 55–85.
+- Rodden, J. A. (2019). *Why Cities Lose: The Deep Roots of the Urban–Rural
+  Political Divide.* New York: Basic Books.
+- Stephanopoulos, N. O. and McGhee, E. M. (2015). "Partisan Gerrymandering and
+  the Efficiency Gap." *University of Chicago Law Review* 82(2): 831–900.
+
+**Cases**
+
+- *Wesberry v. Sanders*, 376 U.S. 1 (1964) (congressional districts "as nearly
+  as practicable" equal).
+- *Reynolds v. Sims*, 377 U.S. 533 (1964) (substantial equality for state
+  legislative districts).
+- *Karcher v. Daggett*, 462 U.S. 725 (1983), and *Brown v. Thomson*, 462 U.S.
+  835 (1983) (the strict congressional rule, and the ten per cent band for
+  legislative plans).
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986).
+- *League of Women Voters of Pennsylvania v. Commonwealth*, 178 A.3d 737
+  (Pa. 2018).
+- *Gill v. Whitford*, 585 U.S. 48 (2018).
+- *Rucho v. Common Cause*, 588 U.S. 684 (2019).
+- *Allen v. Milligan*, 599 U.S. 1 (2023).
+- *Louisiana v. Callais*, 608 U.S. ___ (2026) (Nos. 24-109 and 24-110, decided
+  29 April 2026), affirming *Callais v. Landry*, 732 F. Supp. 3d 574 (WD La.
+  2024).
+- *Allen v. Milligan*, 608 U.S. ___ (2026) (per curiam) (No. 25A1314, order of
+  2 June 2026).
+
+
+```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

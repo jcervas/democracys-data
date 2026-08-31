@@ -1,0 +1,226 @@
+---
+title: "The Ballots With Nothing On Them"
+subtitle: "84-355 Democracy's Data | Residual votes, 2024"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `residual-votes-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"The machines worked fine."*
+
+After Florida in 2000, a group of political scientists and engineers asked a
+question nobody had been asking: **how many ballots come out of an election with
+no valid vote for the top office on them?**
+
+The measure they built is the **residual vote** — ballots cast, minus votes
+counted in the presidential race. What is left is a ballot that went in and came
+out without a usable presidential choice: left blank on purpose, marked twice,
+or filled in a way the scanner could not read. It became the standard way to
+compare voting equipment and ballot design, and it is why punch cards
+disappeared.
+
+**Nobody publishes it.** To get it you need two numbers that live in different
+places, and today you are going to put them together — and then discover that
+the seam between them is more interesting than the measure.
+
+# Steps 1-3 — Two sources, one subtraction, and units that do not match
+
+```{r load}
+co <- read.csv("data/counties.csv",  stringsAsFactors = FALSE)
+st <- read.csv("data/states.csv",    stringsAsFactors = FALSE)
+an <- read.csv("data/anomalies.csv", stringsAsFactors = FALSE)
+un <- read.csv("data/unusable_states.csv", stringsAsFactors = FALSE)
+
+c(counties_joined = nrow(co) + nrow(an), usable = sum(co$state_usable))
+head(co[co$state_usable, c("state_name", "county_name", "ballots",
+                           "total_votes", "residual", "residual_rate")], 5)
+```
+
+**Ballots cast** comes from **EAVS**, item F1a — the survey you have already
+met, where every election office in the country reports what it did.
+
+**Presidential votes** come from the county returns in this course's first lab.
+
+Neither was collected with the other in mind. The join is by county FIPS — which
+works because **counties nest**, the fact established in the geography lab. In
+the township states, EAVS jurisdictions are summed to their county prefix.
+
+# Step 4 — The distribution
+
+```{r rate}
+u <- co[co$state_usable, ]
+c(counties = nrow(u),
+  median_rate = round(median(u$residual_rate), 2),
+  ballots = sum(u$ballots),
+  presidential_votes = sum(u$total_votes),
+  aggregate_rate = round(100 * (sum(u$ballots) - sum(u$total_votes)) / sum(u$ballots), 2))
+round(quantile(u$residual_rate, c(0, .25, .5, .75, .95)), 2)
+```
+
+```{r rate-plot}
+hist(u$residual_rate[u$residual_rate < 6], breaks = 60, col = "#2c7fb8",
+     border = "white", main = "", xlab = "residual vote rate, % of ballots cast")
+abline(v = median(u$residual_rate), col = "#C41230", lwd = 2)
+```
+
+**A median county has a residual vote rate of 0.93%.** Roughly one ballot in a
+hundred arrives without a usable presidential vote — and half of counties sit
+between 0.64% and 1.39%.
+
+That is a real number and it matches what the voting-technology literature finds.
+In a close state it is also a lot of ballots.
+
+# Steps 5-7 — The floor, the 103 counties that break it, and the other tail
+
+> **Before you run this section, notice one thing about the measure.** A
+> residual vote cannot be negative — you cannot count more presidential votes
+> than there were ballots to carry them. That is arithmetic, not an assumption.
+> **So predict what it means if the subtraction comes out below zero anywhere.**
+
+Here is what makes this lab different from every other measurement in the
+course. **The residual vote has a floor: it cannot be negative.** You cannot
+count more presidential votes than there were ballots to put them on.
+
+So any county where the subtraction goes negative is not a low residual rate.
+**It is a mistake, in one source or the other, that we have just caught.**
+
+```{r anomalies}
+nrow(an)
+head(an[, c("state_name", "county_name", "ballots", "total_votes", "residual")], 8)
+```
+
+**103 counties report more presidential votes than ballots cast.** Two federal
+data sources, describing the same election in the same county, disagreeing about
+something neither could be vague about.
+
+We cannot tell you which one is wrong. **We can tell you that one of them is**,
+and that is more than either source will tell you on its own.
+
+# Steps 8-9 — Three states where it breaks, and what survives
+
+```{r unusable}
+un
+```
+
+Three states had to be set aside, and each fails differently.
+
+**Mississippi: every single county comes out at exactly 0.000%.** Ballots cast
+equals presidential votes, county after county, to the vote. That is not a state
+with perfect ballots — it is a state that answered the "ballots cast" question
+by reporting its presidential total.
+
+**The District of Columbia: 87.7%.** EAVS reports DC by ward; the returns file
+does not line up, so the join compares a citywide total against one ward's
+votes. **A geography mismatch, exactly of the kind the census-geography lab
+warned about.**
+
+**Vermont: a median of 5.8%**, far above any plausible rate.
+
+```{r outliers}
+head(u[order(-u$residual_rate),
+       c("state_name", "county_name", "ballots", "total_votes", "residual_rate")], 6)
+```
+
+And even inside the 45 usable states, individual counties reach 30% and higher.
+**Those are not findings about ballot design.** They are bad rows, visible only
+because the measure has a plausible range and they fall outside it.
+
+# Step 10 — What you can now say
+
+**You can say** that residual votes are real and common: the typical county
+loses about **1% of its ballots** at the top of the ticket, and in a state
+decided by 20,000 votes that is not a rounding error.
+
+**You can say something sharper about the sources.** Two federal datasets
+describing the same election disagree in **103 counties** and in three whole
+states, and nobody reconciles them — because no agency owns the comparison. That
+disagreement is only visible because the quantity we happened to compute has a
+floor.
+
+**You cannot say** how much of the residual vote is deliberate abstention and
+how much is failure, and you cannot rank equipment without equipment data this
+file does not carry.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Which source is wrong?** Take five counties from `anomalies.csv`
+and work out which number you would trust. What would you check, and where would
+you look? You will not be able to settle it from this data — say what would.
+
+**Option B — The state table.** `states.csv` aggregates counties within states.
+Compare a state's aggregate rate to the median of its counties (Missouri is
+1.36% by median and 5.26% in aggregate). Which is the better summary, and what
+is the aggregate doing that the median is not?
+
+**Option C — Set a filter.** Choose a rule for excluding implausible counties
+and defend it — a maximum rate, a minimum county size, something else. How many
+counties does it remove, and how much does the national figure move? Then say
+what your rule might be throwing away.
+
+**Option D — Your own question.** 2,993 joined counties, two federal sources,
+one subtraction.
+
+# What this lab cannot tell you
+
+- **Why any ballot was residual.** Deliberate abstention, a spoiled mark and a
+  scanner failure are indistinguishable here. The measure was built precisely
+  because you can compute it without knowing which — but it means a high rate is
+  a symptom, not a diagnosis.
+- **Anything about equipment.** The classic use of this measure compares punch
+  cards to optical scan to touchscreen. We have no equipment data joined in, so
+  we cannot make that comparison.
+- **Which source is right.** See Steps 5-7. We have found 103 disagreements and
+  resolved none.
+- **The whole country.** Three states are unusable, 103 counties are impossible,
+  and roughly 170 counties never joined at all.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- One ballot in a hundred carries no presidential vote. Is that a lot?
+- In 103 counties two federal sources contradict each other about the same
+  election. Should somebody be reconciling them, and who?
+- Mississippi appears to have answered a different question than the one it was
+  asked. How would anybody have noticed without doing this subtraction?
+
+***
+
+### Where the data came from
+
+**Ballots cast** — U.S. Election Assistance Commission, **EAVS 2024, Version 2**,
+item F1a, aggregated from jurisdiction to county FIPS.
+
+**Presidential votes** — county returns, from this course's Session 1 lab.
+
+**The residual vote is not published by anybody**; this lab constructs it. The
+build in `data/build-data.R` identifies unusable states from the data rather
+than from a list, and writes every impossible county to `anomalies.csv` instead
+of dropping them.

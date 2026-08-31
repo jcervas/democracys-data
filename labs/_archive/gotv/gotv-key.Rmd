@@ -1,0 +1,299 @@
+---
+title: "Key: A Quarter of a Million Dollars and Nine Weeks"
+subtitle: "84-355 Democracy's Data | GOTV field experiments — retired | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+g <- read.csv("data/gotv_tactics.csv", stringsAsFactors = FALSE)
+e <- g[g$effective, ]
+```
+
+```{r vals, include=FALSE}
+# Every figure quoted in this key is computed here and inserted inline, so key
+# and brief cannot drift apart. BUDGET, HRS and CPH are the lab's own constants.
+BUDGET <- 250000; CPH <- 25
+
+CAN  <- e[which.min(e$contacts_per_vote), ]     # most effective per contact
+VOL  <- e[which.min(e$cost_per_vote), ]         # cheapest per vote
+ROBO <- g[g$tactic == "Robocalls", ]
+NBLANK <- sum(!g$effective)
+
+BUY  <- function(B, cpv = VOL$cost_per_vote) floor(B / cpv)
+ALLC <- BUY(BUDGET, CAN$cost_per_vote)
+
+# Option B: volunteer hours -> votes, spending any remainder on canvassing
+TOT <- function(h) {
+  vv   <- floor(h * CPH / VOL$contacts_per_vote)
+  left <- BUDGET - vv * VOL$cost_per_vote
+  if (left > 0) vv + floor(left / CAN$cost_per_vote) else BUY(BUDGET)
+}
+BIND <- function(h) if (TOT(h) < BUY(BUDGET)) "volunteers" else "money"
+CROSS <- {                                     # fewest hours at which money binds
+  hh <- 1:20000
+  hh[which(sapply(hh, function(h)
+    floor(h * CPH / VOL$contacts_per_vote) * VOL$cost_per_vote) >= BUDGET)[1]]
+}
+
+RHO <- cor(e$contacts_per_vote, e$cost_per_contact, method = "spearman")
+
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+dl <- function(x) paste0("$", nn(x))
+d2 <- function(x) paste0("$", formatC(x, format = "f", digits = 2))
+```
+
+All Part 5 code is given to students. Grade the interpretation.
+
+Every number below was run against the data file.
+
+***
+
+# The lab in one sentence
+
+Mobilization is the one part of campaigning that has been tested
+experimentally, and the experiments say the most *effective* tactic and the
+cheapest *per vote* are different tactics — while several of the things
+campaigns spend most on do nothing measurable at all.
+
+***
+
+# The findings
+
+```{r headline}
+e[, c("tactic", "contacts_per_vote", "cost_per_vote")]
+g$tactic[!g$effective]
+```
+
+- **Door-to-door is the most effective** (1 additional vote per
+  `r CAN$contacts_per_vote` conversations) and **volunteer phones are the
+  cheapest per vote** (`r dl(VOL$cost_per_vote)` vs `r dl(CAN$cost_per_vote)`).
+  Not the same tactic — the whole lab hangs on this.
+- **`r NBLANK` tactics have no measurable effect**: campaign direct mail, email,
+  and leaflets left on doors. Not small effects — nothing distinguishable from
+  zero.
+- Spending the whole `r dl(BUDGET)` on the best-value tactic buys about
+  **`r nn(BUY(BUDGET))` votes**. Wisconsin 2024 was decided by roughly 29,000.
+
+***
+
+# The idea to teach
+
+Two ideas, and the second is the harder one.
+
+**First:** effectiveness and cost-efficiency are different axes, and campaigns
+optimise the wrong one when they confuse them.
+
+**Second, and this is the one worth the time:** *"no significant effect" is a
+finding, not an absence of one.* Students read the blank cells as missing data.
+They are results — expensive, replicated, negative results. Getting them to
+feel the difference between "we don't know" and "we know it doesn't work" is
+the most transferable thing in this lab.
+
+**One housekeeping note before you teach it.** `data/build-data.R` still says in
+its header that **four** tactics have no statistically significant effect, while
+the file it writes flags `r NBLANK`. The data is what this key and the brief
+report; the comment is what is stale. The likeliest candidate for the fourth is
+robocalls — see the anticipated questions — so reconcile the two before this lab
+comes out of retirement.
+
+***
+
+# Option A — A different budget
+
+## Verified output
+
+```{r a}
+for (B in c(25000, 250000, 5000000)) {
+  v <- floor(B / e$cost_per_vote)
+  cat(sprintf("$%9s -> best %s, %s votes | order: %s\n", format(B, big.mark=","),
+      e$tactic[which.max(v)], format(max(v), big.mark=","),
+      paste(substr(e$tactic[order(-v)], 1, 12), collapse=" > ")))
+}
+```
+
+| budget | votes |
+|---|---|
+| `r dl(25000)` | `r nn(BUY(25000))` |
+| `r dl(BUDGET)` | `r nn(BUY(BUDGET))` |
+| `r dl(5e6)` | `r nn(BUY(5e6))` |
+
+**The ranking is identical at every budget**, and votes scale linearly.
+
+## What a good answer says
+
+**3/4:** Reports that the numbers scale and the best tactic does not change.
+
+**4/4:** Sees why that is suspicious. **A model in which money converts to votes
+at a fixed rate has no diminishing returns in it** — but a $5M program cannot
+buy `r nn(BUY(5e6))` votes at `r dl(VOL$cost_per_vote)` each, because it would
+run out of volunteers, run out of doors worth knocking, and start contacting
+people who were always going to vote. The linearity is an artifact of using an
+average cost as if it were a constant.
+
+**4/4, best:** turns that into the right conclusion about money in politics.
+This lab looks like it says money buys votes at a known price; what it actually
+says is that *the first* `r dl(BUDGET)` is efficient. The question "does money buy
+elections" needs the marginal, not the average, and this table has only the
+average. A student who says "I would need the experiments' dose-response
+curves, not their headline" is doing graduate-level thinking.
+
+***
+
+# Option B — Volunteer supply
+
+## Verified output
+
+```{r b}
+for (h in c(1000, 2000, 4000, CROSS, 12000)) {
+  vv <- floor(h*CPH/VOL$contacts_per_vote); cost <- vv*VOL$cost_per_vote
+  left <- BUDGET - cost
+  tot <- if (left > 0) vv + floor(left/CAN$cost_per_vote) else floor(BUDGET/VOL$cost_per_vote)
+  cat(sprintf("%5d hrs -> %5d vol votes, $%7s left, TOTAL %5d %s\n",
+      h, vv, format(max(0,left), big.mark=","), tot,
+      ifelse(left <= 0, "  <- budget binds", "")))
+}
+```
+
+| volunteer hours | total votes | binding constraint |
+|---|---|---|
+| `r nn(1000)` | `r nn(TOT(1000))` | `r BIND(1000)` |
+| `r nn(2000)` | `r nn(TOT(2000))` | `r BIND(2000)` |
+| `r nn(4000)` | `r nn(TOT(4000))` | `r BIND(4000)` |
+| **~`r nn(CROSS)`** | **`r nn(TOT(CROSS))`** | **the crossover** |
+| `r nn(12000)` | `r nn(TOT(12000))` | `r BIND(12000)` |
+
+For reference: all-canvassing is `r nn(ALLC)` votes; unconstrained all-volunteer
+is `r nn(BUY(BUDGET))`.
+
+## What a good answer says
+
+**3/4:** Finds roughly where the crossover is and states it.
+
+**4/4:** Says what to do on each side of it. **Below ~`r nn(round(CROSS, -2))`
+hours, an extra $50,000 is worth less than fifty more volunteers**, because the
+cheap capacity is already exhausted and marginal money buys
+`r dl(CAN$cost_per_vote)` canvassing. Above it, more
+volunteers sit idle and money is the constraint. This is why field directors
+are measured on recruitment: they are managing the binding constraint, not the
+budget.
+
+**4/4, best:** notices that at 2,000 hours the mixed strategy (`r nn(TOT(2000))`)
+beats all-canvassing (`r nn(ALLC)`) but falls well short of the unconstrained
+ideal (`r nn(BUY(BUDGET))`) —
+so the *published* `r dl(VOL$cost_per_vote)`/vote figure is unreachable for almost every real
+campaign. A number that is true in the aggregate and unattainable in practice
+is worth being suspicious of, and students have now met that pattern twice
+(the other is Session 4's vote target).
+
+***
+
+# Option C — Why buy the things that do not work
+
+## What a good answer says
+
+This one has no output. It is graded entirely on the quality of the reason.
+
+**3/4:** Offers one plausible reason — usually name recognition or "reaching
+people the other tactics miss."
+
+**4/4:** Gives a reason that survives the objection, and names the evidence that
+would test it. The strong candidates:
+
+- **Turnout is not the objective; votes for *you* are.** Every number here is a
+  turnout effect. Mail may not raise turnout while still moving *choice* among
+  people already voting. The table simply does not measure persuasion.
+- **Mail and email are fundraising instruments.** A mail program that loses on
+  turnout and returns $1.40 per dollar in donations is not irrational.
+- **Signalling to donors, endorsers and press** that the campaign is real.
+- **List-building** for later cycles.
+
+**4/4, best:** notices the asymmetry in the evidence itself. The negative
+findings are about *turnout*, measured against the voter file, which is public.
+Persuasion effects require survey data and are much harder and rarer to
+measure. So the tactics that look useless may just be the ones whose payoff is
+hardest to observe — and campaigns that keep buying them are not necessarily
+being stupid, they may be responding to evidence the table cannot show.
+
+**Do not accept** "campaigns are irrational" or "consultants profit from it" as
+a complete answer. Both are partly true and neither is testable as stated. Push
+for what evidence would settle it.
+
+***
+
+# Option D — Their own question
+
+Good versions: cost per vote if you value a *net* vote (mobilising both sides
+equally is worthless); what happens if door-knocking contact rates are half
+what the experiments assumed.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is treating the averages as estimates with
+  conditions attached rather than as prices.
+- **Reward anybody who separates turnout from persuasion** without being
+  prompted. It is the distinction the whole table rests on and it is not
+  labelled.
+
+## Anticipated questions
+
+- *"Does 1 vote per `r CAN$contacts_per_vote` mean
+  `r CAN$contacts_per_vote - 1` people didn't vote?"* — No, and this is the most
+  common misreading. It means turnout in the contacted group was higher by
+  about one vote per `r CAN$contacts_per_vote` people **than in an otherwise
+  identical group that was not contacted**. Most of the
+  `r CAN$contacts_per_vote` were going to vote anyway. Draw the
+  treatment/control picture on the board; it takes two minutes and prevents
+  half the bad write-ups.
+- *"Why is canvassing more effective but more expensive?"* — Because a
+  conversation at a door is more persuasive than one on a phone, and it costs
+  far more per conversation (`r d2(CAN$cost_per_contact)` vs
+  `r d2(VOL$cost_per_contact)`). Effectiveness is per *contact*; cost is per
+  *vote*. Two denominators. Across all `r nrow(e)` effective tactics the two
+  orderings are an exact reversal — the rank correlation between contacts per
+  vote and cost per contact is `r pc(RHO, 0)`, which is the brief's Step 5.
+- *"Are these numbers current?"* — Green and Gerber's 5th edition, 2024. Costs
+  move with wages and postage; the effect sizes have been broadly stable across
+  editions, which is itself notable.
+- *"Do robocalls really work?"* — Barely: 1 per `r ROBO$contacts_per_vote`,
+  which is `r round(ROBO$contacts_per_vote / CAN$contacts_per_vote)` times as
+  many conversations as door-knocking needs for the same single vote. The row
+  clears the cost comparison only because a robocall costs
+  `r d2(ROBO$cost_per_contact)`, not because it is good. **Say the caveat out
+  loud.** `effective` is a `TRUE`/`FALSE` flag standing in for a significance
+  test, and the file carries no standard errors, so a positive finding and a
+  practically negligible one are indistinguishable in this column. The brief's
+  provenance section works this through and uses robocalls as the case in point.
+  Nothing shipped in `data/` lets you re-verify that flag against Green and
+  Gerber; treat it as the row most likely to move.
+- *"Is this legal / is this what campaigns actually do?"* — Yes and yes. The
+  experiments were mostly run with real campaigns and nonpartisan groups.
+
+## Connections
+
+- **Session 9 (polls, models, and markets)** — same underlying problem:
+  an average estimated on one population applied to another. There it is
+  non-response, here it is external validity.
+- **Chapter 12's three factors** — ability, motivation, opportunity. Ask which
+  one canvassing acts on. (Motivation, mostly. Registration law acts on
+  opportunity. They are not substitutes.)
+- **Session 4's vote-targeting lab** — targeting says *where*, this says *how*. Together
+  they are a field plan.
+- **Tuesday's debate** (political equality) — if mobilization mostly moves
+  people who were nearly voting anyway, it may widen participation gaps rather
+  than close them. That is the sharpest version of the question and worth
+  saving for the last ten minutes.

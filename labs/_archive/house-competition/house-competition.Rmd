@@ -1,0 +1,343 @@
+---
+title: "The Races Nobody Contested"
+subtitle: "84-355 Democracy's Data | House elections, `r {yy <- read.csv('data/by_year.csv')$year; paste0(min(yy), '–', max(yy))}`"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+
+# Every number in the prose below is computed from the two built files, so it
+# cannot drift when the data is rebuilt. The visible `load` chunk re-reads them
+# in front of the students.
+d  <- read.csv("data/races.csv",  stringsAsFactors = FALSE)
+by <- read.csv("data/by_year.csv", stringsAsFactors = FALSE)
+
+n1 <- function(x) format(x, big.mark = ",")
+p1 <- function(x) sprintf("%.1f", x)
+
+# decade mean of a by_year column (each election weighted equally)
+dc <- function(v, decade) p1(mean(by[[v]][(by$year %/% 10) * 10 == decade]))
+# decade mean of a race-level flag (each race weighted equally)
+rd <- function(x, yr, decade) p1(100 * mean(x[(yr %/% 10) * 10 == decade]))
+
+jac  <- d$source == "Jacobson"          # the two sources spliced in races.csv
+cont <- d[!d$uncontested, ]             # contested races only
+unc     <- d[d$uncontested, ]           # uncontested races
+unc_inc <- unc[!is.na(unc$incwin), ]    # ... where the file records incumbency
+
+ns_dec  <- tapply(by$pct_uncontested_non_south, (by$year %/% 10) * 10, mean)
+lnd_dec <- tapply(by$pct_landslide,             (by$year %/% 10) * 10, mean)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+> **Read `house-competition-brief.Rmd` first.** This lab works through the same material with the
+> code exposed. The brief tells you what the question is and why it is hard;
+> this shows you where each number came from.
+
+***
+
+# Where did that number come from?
+
+> *"Only about forty House seats are really in play."*
+
+You have seen district partisanship measured from presidential votes. This is
+the other way to ask: **what actually happened in the House elections
+themselves**, in every district, in every election, since `r min(by$year)`.
+
+The dataset is Gary Jacobson's, assembled over a career and still the standard
+source for congressional elections, carried past his last year with the Clerk of
+the House's official returns. **`r nrow(by)` elections, `r round(mean(by$races))`
+seats each.**
+
+And before we can use it, we have to survive it.
+
+# Steps 1-3 — What one record is, how many, and the three definitions
+
+```{r load}
+d  <- read.csv("data/races.csv",  stringsAsFactors = FALSE)
+by <- read.csv("data/by_year.csv", stringsAsFactors = FALSE)
+
+c(races = nrow(d), elections = nrow(by),
+  first = min(by$year), last = max(by$year),
+  seats_per_election = round(mean(by$races)))
+```
+
+Jacobson's file as distributed has **30,005 rows. 14,777 of them are empty** — no
+year, no votes, no candidate, nothing. Padding.
+
+Drop them and you have **`r n1(sum(jac))` real races**:
+`r round(mean(by$races))` seats × `r length(unique(d$year[jac]))` elections,
+`r min(d$year[jac])` through `r max(d$year[jac])`. Compute anything before that
+drop and every number you produce is wrong by a factor of two, silently.
+
+**This is the ordinary condition of an old research dataset.** It was built for
+its author, who knew what was in it. Nothing warns you.
+
+Jacobson stops at `r max(d$year[jac])`. The `r n1(nrow(d))` rows you just loaded
+run to `r max(by$year)` because the last `r n1(sum(!jac))` races were parsed from
+the Clerk of the House's official returns and spliced on. That splice, not the
+end of the file, is where this data's real limit sits — hold onto it; we come
+back to it in *What this lab cannot tell you*.
+
+# Steps 4-5 — The first number, and who holds the uncontested seats
+
+```{r missing}
+c(races = nrow(d),
+  no_vote_share_recorded = sum(d$uncontested),
+  pct = round(100 * mean(d$uncontested), 1))
+```
+
+**`r n1(nrow(unc))` races have no Democratic vote share.** There is no
+"uncontested" flag in this file. There is simply a hole where the number should
+be.
+
+The hole *is* the finding. `dv` is the Democratic share of the **two-party**
+vote, and if only one party fielded a candidate there is no two-party share to
+record.
+
+Two pieces of evidence that this is what missingness means:
+
+```{r evidence}
+table(uncontested = d$uncontested, incumbent_won = d$incwin, useNA = "ifany")
+round(100 * tapply(d$uncontested, d$south, mean), 1)
+```
+
+**Where the file records incumbency at all, the incumbent won
+`r n1(sum(unc_inc$incwin == 1))` of those `r n1(nrow(unc_inc))` races —
+`r p1(100 * mean(unc_inc$incwin == 1))`%.** And missingness runs at
+**`r p1(100 * mean(d$uncontested[d$south == 1]))`% in the South against
+`r p1(100 * mean(d$uncontested[d$south == 0]))`% elsewhere.**
+
+That is what an unopposed incumbent looks like in a spreadsheet.
+
+Read the `NA` column of that table, not just the two you were looking for.
+`r n1(sum(is.na(unc$incwin)))` of the uncontested races carry no incumbency flag
+at all — they are the post-`r max(d$year[jac])` rows, where the source changes
+and the flag stops existing. **Divide `r n1(sum(unc_inc$incwin == 1))` by
+`r n1(nrow(unc))` instead of by `r n1(nrow(unc_inc))` and you have quietly
+counted every one of them as "no incumbent".** The honest denominator is the
+races where the answer was recorded.
+
+# Step 6 — Split the country in two
+
+> **Before running this, take the flat national trend seriously.** Uncontested
+> races ran at `r p1(by$pct_uncontested[which.min(by$year)])`% in
+> `r min(by$year)` and `r p1(by$pct_uncontested[which.max(by$year)])`% in
+> `r max(by$year)` — and the widest single-election jump in between is
+> `r p1(max(abs(diff(by$pct_uncontested))))` points, larger than the whole
+> `r max(by$year) - min(by$year)`-year drift. That looks like noise around a
+> line that went nowhere. **Predict what you will see if you compute the same
+> share separately for the South and for everywhere else.**
+
+```{r south}
+by[by$year %in% c(1946, 1958, 1972, 1990, 2010, 2024),
+   c("year", "pct_uncontested_south", "pct_uncontested_non_south")]
+```
+
+```{r south-plot}
+plot(by$year, by$pct_uncontested_south, type = "b", pch = 19, col = "#C41230",
+     ylim = c(0, max(by$pct_uncontested_south, by$pct_uncontested_non_south) + 5),
+     xlab = "", ylab = "% of races with no opponent")
+lines(by$year, by$pct_uncontested_non_south, type = "b", pch = 1, col = "#2c7fb8")
+legend("topright", c("South", "rest of the country"),
+       col = c("#C41230", "#2c7fb8"), pch = c(19, 1), bty = "n", cex = 0.85)
+```
+
+**In the 1950s, `r dc("pct_uncontested_south", 1950)`% of Southern House races
+had only one candidate** — `r p1(max(by$pct_uncontested_south))`% in
+`r by$year[which.max(by$pct_uncontested_south)]`, the worst year. Not close
+races — *no* races. The Democratic primary was the election, and November was a
+formality.
+
+By the 2010s it is **`r dc("pct_uncontested_south", 2010)`%**, and
+**`r dc("pct_uncontested_south", 2020)`%** so far in the 2020s. Meanwhile the
+rest of the country sat between `r p1(min(ns_dec))`% and `r p1(max(ns_dec))`% in
+every decade and never moved much.
+
+**The most dramatic democratisation in modern American electoral history is
+visible here as a column filling in.**
+
+# Steps 7-8 — Contested is not competitive, and a fourth measure
+
+```{r comp}
+by[by$year %in% c(1946, 1964, 1988, 2004, 2014, 2024),
+   c("year", "pct_competitive", "pct_landslide")]
+```
+
+```{r comp-plot}
+plot(by$year, by$pct_competitive, type = "b", pch = 19, col = "#2c7fb8",
+     ylim = c(0, max(by$pct_competitive, by$pct_landslide) + 5),
+     xlab = "", ylab = "% of all races")
+lines(by$year, by$pct_landslide, type = "b", pch = 1, col = "#C41230")
+legend("topleft", c("won by under 5 points", "won by 20+ points"),
+       col = c("#2c7fb8", "#C41230"), pch = c(19, 1), bty = "n", cex = 0.85)
+```
+
+**Close races fell from `r dc("pct_competitive", 1940)`% of all seats in the
+1940s to `r dc("pct_competitive", 2000)`% in the 2000s**, recovering to
+`r dc("pct_competitive", 2010)`% in the 2010s and
+`r dc("pct_competitive", 2020)`% in the 2020s — still well below where they
+started. **Landslides went the other way** — `r dc("pct_landslide", 1940)`% in
+the 1940s to a peak of `r p1(max(lnd_dec))`% in the
+`r names(lnd_dec)[which.max(lnd_dec)]`s, and
+`r dc("pct_landslide", 2020)`% now.
+
+So the South stopped being uncontested, and the country as a whole got *less*
+competitive. Those are not contradictory: one-party dominance stopped taking the
+form of empty ballots and started taking the form of lopsided ones.
+
+# Step 9 — All four at once
+
+Everything in Steps 7-8 divides by **all** races, uncontested ones included. That
+is a choice, and it changes the answer.
+
+```{r denom}
+cont <- d[!d$uncontested, ]
+dec <- function(x, y) round(100 * tapply(x, 10 * (y %/% 10), mean), 1)
+
+rbind(all_races        = dec(d$competitive, d$year),
+      contested_only   = dec(cont$competitive, cont$year))
+```
+
+**Among all races, competitive seats fell from
+`r rd(d$competitive, d$year, 1940)`% in the 1940s to
+`r rd(d$competitive, d$year, 2000)`% in the 2000s. Among contested races only,
+from `r rd(cont$competitive, cont$year, 1940)`% to
+`r rd(cont$competitive, cont$year, 2000)`%.**
+
+Both are true. They answer different questions — *what share of seats were in
+play* versus *when somebody bothered to run, how close was it* — and an
+uncontested race is arguably the least competitive race there is, which argues
+for keeping it in.
+
+**Nobody who quotes one of these numbers tells you which one it is.** You have
+now met this exact problem in the midterm-penalty lab, in the turnout labs, and
+in election administration. It is the same question every time: *per what?*
+
+# Step 10 — What you can now say
+
+**You can say** that American House elections did not become less competitive
+in a straight line, and did not become more competitive either. **One region's
+one-party system was dismantled while the rest of the country drifted toward
+having one of its own**, and the two motions roughly cancel in the national
+number.
+
+**You can say non-competition is an elite decision, not a voter verdict**: of
+the uncontested races whose incumbency the file records,
+`r p1(100 * mean(unc_inc$incwin == 1))`% had one — which means a party looked at
+a seat with a sitting member in it and declined to run anybody.
+
+**You cannot say why.** This file has no candidate quality, no fundraising and
+no district boundaries, so redistricting, geographic sorting and party
+recruitment cannot be separated here.
+
+***
+
+# Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Midterms.** `races.csv` has a `midterm` flag. Are midterm elections
+more or less competitive than presidential-year ones? Before running it, write
+down what you expect and why — then check. (`incwin` is empty after
+`r max(d$year[jac])`, so keep this one to `competitive` and `uncontested`, which
+are recorded for all `r n1(nrow(d))` races.)
+
+**Option B — Split districts.** `split_district` is TRUE where the district's
+presidential and House winners came from different parties. Plot its share over
+time (`pct_split` in `by_year.csv`). What does the trend say about how
+nationalised congressional elections have become, and when did it change?
+
+> **Note the source change at `r max(d$year[jac])`.** Everything from
+> `r min(d$year[!jac])` on is parsed from the Clerk of the House's official
+> statistics rather than Jacobson's file. The `source` column in `races.csv`
+> says which is which, and `dvp` is empty for every one of those rows — so the
+> denominator shifts at the splice as well as with coverage.
+>
+> **Two traps in this one, both deliberate.** First, `pct_split` is `NA` for
+> `r sum(is.na(by$pct_split))` elections — check `split_coverage` before you
+> plot, and say in your write-up what you did with the gaps. Second, the file
+> has both a `dvp` and a `dpres` column. **`dvp` is "Democratic vote,
+> *previous* election", not "presidential"**; an earlier version of this lab
+> used it by mistake and reported seat turnover as split districts for a term.
+> Use `dpres`.
+
+**Option C — The South, defined.** The `south` flag is one researcher's list of
+states. Look at which states it includes (`unique(d$state[d$south == 1])`), and
+say whether the Step 6 finding depends on that choice. What would you do with
+border states?
+
+**Option D — Your own question.** `r n1(nrow(d))` races, `r nrow(by)` elections,
+`r max(by$year) - min(by$year)` years.
+
+# What this lab cannot tell you
+
+- **Who ran.** No candidate names, no parties of challengers, no quality
+  measures. "Uncontested" here is inferred from a missing number, not read from
+  a list of candidates.
+- **Why nobody ran.** A seat can go uncontested because it is hopeless, because
+  the party is disorganised, or because a deal was struck. This data cannot
+  distinguish them.
+- **Who was sitting in the seat, after `r max(d$year[jac])`.** The file does not
+  end there — it runs to `r max(by$year)` — but it *changes source* there.
+  Jacobson supplies `r n1(sum(jac))` races through `r max(d$year[jac])`; the
+  Clerk of the House supplies the remaining `r n1(sum(!jac))` from
+  `r min(d$year[!jac])` on, and the Clerk's tables report votes, not careers.
+  **`incwin` and `dvp` are empty for all `r n1(sum(!jac))` of those rows.** Vote
+  shares, margins, uncontested races and competitiveness cross the splice
+  intact; incumbency and the previous election's result do not. A claim about
+  incumbency computed over the whole file will silently answer a question about
+  `r min(d$year[jac])`–`r max(d$year[jac])` and label it
+  `r min(by$year)`–`r max(by$year)`. That is the boundary in this data, and it
+  is invisible unless you look at `source`.
+- **Whether `dv` missing *always* means uncontested.** It is an inference from
+  the incumbent-won pattern and the regional concentration, not a documented
+  flag. A handful of the `r n1(nrow(unc))` may be missing for other reasons.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** A sentence or two is enough.
+
+Three that would make good posts:
+
+- In the 1950s, `r dc("pct_uncontested_south", 1950)`% of Southern House races
+  had one candidate. What does that do to your idea of what "an election" is?
+- Competition fell even as uncontested races became rarer. How can both be true?
+- The uncontested races are a hole in a column, not a label. What else might you
+  have missed in a dataset because absence was the signal?
+
+***
+
+### Where the data came from
+
+**Gary C. Jacobson's House elections dataset,
+`r min(d$year[jac])`–`r max(d$year[jac])`** — the standard source for
+congressional elections research, held locally in this repository, and
+`r n1(sum(jac))` of the `r n1(nrow(d))` races here.
+
+**The Clerk of the House's official election statistics,
+`r min(d$year[!jac])`–`r max(d$year[!jac])`** — parsed from the published PDFs
+in `data/`, and the remaining `r n1(sum(!jac))` races. The two sources overlap
+for several elections and agree closely on vote shares, which is why the splice
+is usable; they do not carry the same columns, which is why `incwin` and `dvp`
+stop at `r max(d$year[jac])`.
+
+**14,777 of Jacobson's 30,005 rows are empty padding and must be dropped**, and
+**uncontested races appear as a missing vote share rather than a flag.** Both
+are handled and documented in `data/build-data.R`. `split_district` comes from
+the file's own `split` column, which was checked against a recomputation from
+`dv` and `dpres` before being trusted — an earlier build had it backwards, and
+`data/build-data.R` records how that was settled. Where `dpres` does not exist
+the series is masked rather than reported, which is why `pct_split` is `NA` for
+`r sum(is.na(by$pct_split))` elections.

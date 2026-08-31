@@ -1,0 +1,247 @@
+---
+title: "Key: The Ballots With Nothing On Them"
+subtitle: "84-355 Democracy's Data | Residual votes | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+co <- read.csv("data/counties.csv",  stringsAsFactors = FALSE)
+an <- read.csv("data/anomalies.csv", stringsAsFactors = FALSE)
+un <- read.csv("data/unusable_states.csv", stringsAsFactors = FALSE)
+u  <- co[co$state_usable, ]
+an$gap <- an$total_votes - an$ballots
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief (`residual-votes-brief.Rmd`) is now
+a chapter rather than a parallel copy of the lab: prose organised by argument,
+under idea headings, with four numbered figures and no numbered steps. The lab
+(`residual-votes.Rmd`) still runs Steps 1-10 with the code exposed. **Students
+should read the brief first.** **Step numbers below refer to the lab**; the
+chapter is cited by figure number or section title.
+
+
+**Requires EAVS and the Session 1 returns lab**, and pays off the geography lab
+directly. Best taught after all three.
+
+**This is the only lab in the course where students construct a measure nobody
+publishes**, and then use arithmetic to audit the sources it came from. Say that
+at the start — it is a different activity from every other session.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+One ballot in a hundred carries no presidential vote, and the subtraction that
+tells you so also catches 103 counties where two federal datasets contradict
+each other outright.
+
+***
+
+# The findings
+
+```{r headline}
+c(counties_usable = nrow(u),
+  median_rate     = round(median(u$residual_rate), 2),
+  aggregate_rate  = round(100 * (sum(u$ballots) - sum(u$total_votes)) / sum(u$ballots), 2),
+  impossible      = nrow(an),
+  unusable_states = nrow(un))
+```
+
+- **Median county residual rate 0.93%**, quartiles 0.64% and 1.39%.
+- **103 counties** report more presidential votes than ballots cast.
+- **Three states unusable**: Mississippi (all exact zeros), DC (87.7%), Vermont.
+
+***
+
+# The three things to get said
+
+**1. The measure exists because of Florida 2000.** Punch cards produced residual
+rates several times higher than optical scan, and the finding — from exactly
+this subtraction — is why they are gone. **A number nobody published turned out
+to be the one that mattered**, and building it is a demonstration that useful
+measures are sometimes lying around unassembled.
+
+**2. The floor is the audit.** A residual vote cannot be negative. That single
+constraint converts a measurement into a **test of the sources**, and it is the
+only lab in the course where the data can prove itself wrong. Make sure students
+see the difference between "this county has an unusual value" and "this county
+has an impossible one."
+
+**3. Three states fail in three different ways, and one is the geography lab.**
+Mississippi answered a different question. DC is a unit mismatch — EAVS reports
+wards, the returns do not. **Point at DC explicitly and connect it back.** These
+were found by the build from the data itself, not from a list of known problems.
+
+**The line for the board:** the subtraction measures the ballots, and the
+leftovers measure the bookkeeping.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | Two sources that were never meant to meet; one joined row; the township problem | 8 | Flag the nesting assumption here — Step 6 is where it detonates. |
+| **4** | The distribution: median 0.93% | 5 | One ballot in a hundred. Make them convert it to votes in a close state. |
+| **5-7** | The floor, the 103 impossible counties, and the other tail | 14 | **The heart of the session.** A measure that cannot be negative is a test of its own sources. |
+| **8-9** | Three states where it breaks; what survives | 8 | Mississippi's exact 0.000% everywhere is the one to linger on. |
+| **10** | What you can say about the measure and about the sources | 6 | The finding is about the data system, not about voters. |
+
+**Step 5 is the pivot and it is one sentence:** a residual vote cannot be negative. Everything after it follows. Write it on the board before running Step 6.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Which source is wrong?
+
+## Verified output
+
+```{r a}
+c(worst_gap_county = an$county_name[which.max(an$gap)],
+  state = an$state_name[which.max(an$gap)],
+  extra_votes = max(an$gap),
+  median_gap = median(an$gap),
+  gaps_of_10_or_fewer = sum(an$gap <= 10))
+head(an[order(-an$gap), c("state_name", "county_name", "ballots", "total_votes", "gap")], 5)
+```
+
+**Cook County, Illinois: 943,822 more presidential votes than ballots cast** —
+85% of the reported ballots. The median anomaly is 112 votes; only 12 of the 103
+are within 10 votes.
+
+**3/4:** Picks counties, observes the size of the gaps, says the data cannot
+settle which source erred.
+
+**4/4:** Separates the two populations. **Twelve counties differ by ten votes or
+fewer** — plausibly a late-counted provisional or an amended return, and not very
+interesting. **Cook County differs by nearly a million**, which is not an error
+of that kind at all.
+
+**4/4, best — and this is the answer to steer toward:** diagnoses Cook County.
+**Chicago runs its own elections, separate from suburban Cook County**, so EAVS
+carries two jurisdictions where the returns file carries one county. Summing by
+FIPS prefix should catch both; if Chicago's rows are coded differently, the
+county's ballots are undercounted by roughly the size of Chicago. **A student who
+reasons from "who administers elections here" to "what the join must have
+missed" has used the geography lab exactly as intended.**
+
+***
+
+# Option B — The state table
+
+## Verified output
+
+```{r b}
+agg <- tapply(seq_len(nrow(u)), u$state_name,
+              function(i) 100 * (sum(u$ballots[i]) - sum(u$total_votes[i])) / sum(u$ballots[i]))
+med <- tapply(u$residual_rate, u$state_name, median)
+d <- data.frame(state = names(med), median = round(as.vector(med), 2),
+                aggregate = round(as.vector(agg), 2))
+d$gap <- round(d$aggregate - d$median, 2)
+head(d[order(-abs(d$gap)), ], 6)
+```
+
+**Missouri: 1.36% by median, 5.26% in aggregate.**
+
+**3/4:** Notes the two differ and that aggregate is vote-weighted.
+
+**4/4:** Explains the direction. The aggregate is a ratio of sums, so **a handful
+of large counties with bad numbers drags it up**, while the median is immune.
+Missouri's median says its typical county is unremarkable; its aggregate says
+several big ones are broken.
+
+**4/4, best:** Says which to use and when — **the aggregate is the right estimate
+of "what share of ballots statewide were residual" if the data are clean, and
+the median is the better description of typical county performance when they are
+not.** Choosing between them requires knowing whether you trust the tails, which
+is the question the whole lab is about.
+
+***
+
+# Option C — Set a filter
+
+## Verified output
+
+```{r c}
+for (cut in c(3, 5, 10, 100)) {
+  k <- u$residual_rate <= cut
+  cat(sprintf("  drop rate > %3d%%   keeps %4d   national %.2f%%\n",
+              cut, sum(k), 100 * (sum(u$ballots[k]) - sum(u$total_votes[k])) / sum(u$ballots[k])))
+}
+for (m in c(0, 1000, 5000)) {
+  k <- u$ballots >= m
+  cat(sprintf("  ballots >= %5d   keeps %4d   national %.2f%%\n",
+              m, sum(k), 100 * (sum(u$ballots[k]) - sum(u$total_votes[k])) / sum(u$ballots[k])))
+}
+```
+
+**Two rules, two completely different outcomes.** Trimming by rate moves the
+national figure from 1.39% to 1.20%. **Trimming by county size does nothing at
+all** — 1.39% whether you keep every county or only those with 5,000+ ballots.
+
+**3/4:** Picks a rule, reports how many counties it removes and how the figure
+moves.
+
+**4/4:** Notices the size filter is inert, and says why that is informative:
+**the bad rows are not small counties.** The instinct that noise lives in small
+places is wrong here — Cook County is the worst offender in the file.
+
+**4/4, best:** Sees the circularity in the rate filter. **Excluding counties
+because their residual rate is implausible uses the outcome to select the
+sample**, which will always tighten the estimate and cannot distinguish bad data
+from genuinely bad ballot design. A student who says the honest move is to
+report both figures and show the excluded rows — which is what the lab does —
+has arrived at the professional standard.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is distinguishing *impossible* from *unusual*, and
+  treating the impossible ones as evidence about the sources.
+- **A 2** is reporting 0.93% as the answer with no engagement with the 103.
+- **Also a 2**: "the data is bad so we can't say anything." 2,803 counties
+  behaved.
+- **Reward anyone who diagnoses a specific anomaly** rather than listing them.
+
+## Anticipated questions
+
+- *"Which number is the real residual rate?"* — Median 0.93% for a typical
+  county; 1.39% across the usable states by volume. Both, with the caveat.
+- *"Is 1% bad?"* — Depends entirely on the margin. In 2000 Florida it was
+  decisive; in a 20-point state it is invisible. **Refuse to answer without a
+  comparison.**
+- *"Why doesn't the EAC just fix this?"* — EAVS reports what jurisdictions
+  submit, and the county returns come from state canvasses. **No agency owns the
+  comparison**, which is why nobody had made it.
+- *"Could students report an error?"* — Genuinely yes. The EAC accepts
+  corrections and the anomalies file is a list of candidates. Worth mentioning:
+  the work is real.
+
+## Connections
+
+- **EAVS** — the source of the ballots figure and the same self-report problem.
+- **Session 1 returns** — the other half, and the first "two sources disagree"
+  lesson.
+- **Census geography** — DC's failure is a unit mismatch; Cook County's is an
+  administrative one.
+- **Independent expenditures** — the other lab where impossible values exposed
+  what nobody had checked.

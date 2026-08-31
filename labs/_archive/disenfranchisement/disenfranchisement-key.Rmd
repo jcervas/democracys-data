@@ -1,0 +1,311 @@
+---
+title: "Key: Four Million People Who Are Not in the Denominator"
+subtitle: "84-355 Democracy's Data | Felony disenfranchisement | Instructor copy — do not distribute"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>")
+options(scipen = 999)
+s <- read.csv("data/states.csv",   stringsAsFactors = FALSE)
+n <- read.csv("data/national.csv", stringsAsFactors = FALSE)
+s$new_total <- s$total - s$post_sentence
+s$new_pct   <- round(100 * s$new_total / s$voting_eligible_pop, 2)
+```
+
+```{r vals, include=FALSE}
+# Every figure quoted in this key is computed here and inserted inline, using
+# the same definitions as the brief, so the two cannot drift apart.
+s$drop <- s$pct - s$new_pct
+
+PS   <- s[s$post_sentence > 0, ]          # states with a post-sentence category
+ZERO <- s$state[s$pct == 0]
+MEANBAR <- mean(s$pct[s$pct > 0])         # mean among states that bar anyone
+TOPR <- s$state[which.max(s$pct)]
+BYR  <- s[order(-s$pct), ]                # by rate
+BYC  <- s[order(-s$total), ]              # by count
+AFT  <- s[order(-s$new_pct), ]            # by rate after the reform
+
+RANK  <- function(st, v = s$pct) which(s$state[order(-v)] == st)
+PCTOF <- function(st, col) s[[col]][s$state == st]
+SUMD  <- s$prison + s$parole + s$probation + s$jail + s$post_sentence - s$total
+NEXACT <- sum(SUMD == 0); NOFF <- sum(SUMD != 0)
+
+PCTPOST <- 100 * n$post_sentence / n$total
+PCTFREE <- 100 * (n$total - n$prison - n$jail) / n$total
+PCTPRIS <- 100 * n$prison / n$total
+NATAFT  <- round(100 * (n$total - n$post_sentence) / n$voting_eligible_pop, 2)
+
+ord <- function(k) {
+  sfx <- if (k %% 100 %in% 11:13) "th" else
+    switch(as.character(k %% 10), "1" = "st", "2" = "nd", "3" = "rd", "th")
+  paste0(k, sfx)
+}
+
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+```
+
+All code is given to students. Grade the interpretation.
+
+**Structure, as of the rebuild.** The brief
+(`disenfranchisement-brief.Rmd`) is now a chapter rather than a parallel copy of
+the lab: prose organised by argument, under idea headings, with three numbered
+figures and no numbered steps. The lab (`disenfranchisement.Rmd`) still runs
+Steps 1-10 with the code exposed. **Students should read the brief first.**
+**Step numbers below refer to the lab**; the chapter is cited by figure number
+or section title.
+
+
+**Teach this near the turnout labs.** It is the missing piece of every turnout
+rate in the course — the CPS lab's 64.4%-or-58.5% gap is partly *this*. If you
+run it right after, students can go back and recompute.
+
+**It is also the shortest lab in the set.** Two tables and a bar chart. The time
+goes on Steps 8-9 and the discussion.
+
+Every number below was run against the data files.
+
+***
+
+# The session in one sentence
+
+`r nn(n$total)` Americans cannot vote because of a felony conviction,
+`r pc(PCTPOST, 0)`% of them have finished their sentences, and whether they are
+in your turnout denominator is a choice somebody made without telling you.
+
+***
+
+# The findings
+
+```{r headline}
+c(total = n$total, post_sentence = n$post_sentence,
+  pct_post = round(100 * n$post_sentence / n$total),
+  national_rate = n$pct,
+  states = nrow(s))
+head(s[, c("state", "total", "pct")], 4)
+```
+
+- **`r nn(n$total)` disenfranchised, `r pc(n$pct, 2)`% of the voting-eligible
+  population.**
+- **`r nn(n$post_sentence)` — `r pc(PCTPOST, 0)`% — are post-sentence.** The
+  largest single category.
+- **`r BYR$state[1]` `r pc(BYR$pct[1], 2)`%**, `r BYR$state[2]`
+  `r pc(BYR$pct[2], 2)`%, `r BYR$state[3]` `r pc(BYR$pct[3], 2)`% — the top rate is
+  `r pc(max(s$pct) / MEANBAR, 1)`× the average among the states that bar anyone
+  at all.
+- **`r paste(ZERO, collapse = " and ")`: zero.** They are the only
+  `r length(ZERO)` states that bar nobody at all — people vote from prison.
+
+***
+
+# The three things to get said
+
+**1. The biggest group has finished being punished.** Students arrive assuming
+this is about people in prison. Prison is `r nn(n$prison)` of `r nn(n$total)` —
+`r pc(PCTPRIS, 0)`%. **Post-sentence is the largest category**, and it is entirely a policy choice
+made after the court is done. Put those two numbers next to each other on the
+board before anything else.
+
+**2. The variation is law, not crime.** Tennessee's rate is not high because
+Tennessee has more crime than Vermont. **It is high because Tennessee keeps the
+penalty running and Vermont never imposes it.** Ask what it means that the same
+conviction produces permanent disenfranchisement in one state and none in
+another.
+
+**3. Then close the loop to the denominator.** This is why the lab is in a data
+course rather than a criminal-justice one. **Every turnout rate the class has
+computed has silently included or excluded these people**, and the CPS lab
+already showed a 5.9-point swing from denominator choice. Have someone state
+which denominator they would use and defend it.
+
+**The line for the board:** a turnout rate is an opinion about who counts as a
+voter.
+
+***
+
+# The methods point worth two minutes
+
+**The source is a PDF.** No spreadsheet exists; these numbers live in Table 2 on
+page 18 of a report. The build extracts them and then **checks the parse** —
+every state's five categories must sum to its total.
+
+**That check earned its keep.** Texas reports 139,631 and 100,600, wide enough
+to overflow their column, and a naive fixed-width read splits the numbers in
+half. The sum test caught it; without the test the lab would have shipped with
+Texas quietly wrong or missing.
+
+Worth saying out loud: **the check is what makes an extracted table usable.**
+Students will extract data from PDFs for the rest of their lives.
+
+***
+
+# Handling the room
+
+Charged, and in a different way from the discrimination unit — this one has a
+live policy argument attached with people on both sides in most classrooms.
+
+- **The lab does not take a side and neither should the session.** The finding is
+  the `r pc(PCTPOST, 0)`% and the state variation; what to do about it is the
+  discussion.
+- **Head off the electoral-consequences argument early** — see Option C. Students
+  will want to say a state's disenfranchised population exceeds some margin, and
+  that comparison needs care.
+
+***
+
+***
+
+# Walking the steps
+
+| Steps | What they do | Min | Watch for |
+|---|---|---|---|
+| **1-3** | A PDF source, the sum check, and one state's row | 10 | **`r NEXACT` states sum exactly, `r NOFF` are off by one.** That is rounding, not a parse failure — and the distinction is the lesson. |
+| **4-5** | `r pc(n$total / 1e6, 2)`m people; then the post-sentence column | 14 | **The pivot.** `r pc(PCTFREE)`% not incarcerated; `r pc(PCTPOST)`% finished their sentence; `r nrow(PS)` states hold all of it. |
+| **6-7** | The range across states, then the top of the table as a bar chart | 9 | `r TOPR` `r pc(max(s$pct), 2)`% against `r paste(ZERO, collapse = " and ")` at zero. The chapter's **Figure 3** is the cartogram of the same thing; the lab plots bars. |
+| **8-9** | The denominator is itself an estimate; the summary | 7 | Adult citizens, not current electorate. Say which. |
+| **10** | What you can say | 5 | No demographics in this file — the racial disparity is outside it. |
+
+**Step 5 is the pivot.** Post-sentence is the largest category, larger than prison and jail combined, and it exists in only `r nrow(PS)` states. Everything political about this topic is in that one column.
+
+**If you are short on time**, protect the pivot and the closing step. The numbers are what make the argument concrete; the sequence is the argument.
+
+
+# Option A — Rank by the right thing
+
+## Verified output
+
+```{r a}
+head(s[order(-s$total), c("state", "total", "pct")], 6)
+```
+
+**By rate it is `r paste(BYR$state[1:3], collapse = ", ")`. By count it is
+`r paste(BYC$state[1:3], collapse = ", ")`** — and Texas, second by count, is
+`r ord(RANK("Texas"))` by rate at `r pc(PCTOF("Texas", "pct"), 2)`%, against
+`r pc(BYR$pct[1], 2)`% at the top.
+
+**3/4:** Produces both rankings and notes Texas jumps.
+
+**4/4:** Says which serves which argument. **Rate** measures how much a state's
+electorate is diminished; **count** measures how many people are affected.
+Someone arguing this is a national problem rather than a Southern one reaches
+for Texas, California and the total — California is
+`r ord(RANK("California", s$total))` by count and only
+`r ord(RANK("California"))` by rate; someone arguing about the health of a
+particular democracy reaches for the rate.
+
+**4/4, best:** Notices neither ranking is neutral and both are honest — and that
+the choice between them is the same choice as the denominator question in
+**Steps 8-9**. **The unit you divide by is an argument.**
+
+***
+
+# Option B — Abolish post-sentence disenfranchisement
+
+## Verified output
+
+```{r b}
+c(national_now = n$pct,
+  national_after = round(100 * (n$total - n$post_sentence) / n$voting_eligible_pop, 2),
+  states_above_1pct_now = sum(s$pct > 1),
+  states_above_1pct_after = sum(s$new_pct > 1))
+s$drop <- s$pct - s$new_pct
+head(s[order(-s$drop), c("state", "pct", "new_pct", "drop")], 5)
+```
+
+**The national rate falls from `r pc(n$pct, 2)`% to `r pc(NATAFT, 2)`%** — a
+`r pc(PCTPOST, 0)`% reduction, by definition. But the state effects are wildly
+uneven:
+
+- **Tennessee `r pc(PCTOF("Tennessee", "pct"), 2)`% →
+  `r pc(PCTOF("Tennessee", "new_pct"), 2)`%**, a fall of
+  `r pc(PCTOF("Tennessee", "drop"), 2)` points
+- **Alabama `r pc(PCTOF("Alabama", "pct"), 2)`% →
+  `r pc(PCTOF("Alabama", "new_pct"), 2)`%**; **Florida
+  `r pc(PCTOF("Florida", "pct"), 2)`% → `r pc(PCTOF("Florida", "new_pct"), 2)`%**
+- **Arkansas, Georgia, Texas and Idaho do not move at all**
+
+**3/4:** Recomputes and reports the national fall.
+
+**4/4:** Notices that **`r sum(s$post_sentence == 0)` of `r nrow(s)` states
+report zero post-sentence disenfranchisement**, so the reform would do nothing in
+most of the country and almost everything in a handful of states. The policy is
+not national; it is about `r nrow(PS)` states.
+
+**4/4, best:** Sees that this reorders the table. After the change, the highest
+rates are **`r AFT$state[1]` and `r AFT$state[2]`**, which ranked
+`r ord(RANK(AFT$state[1]))` and `r ord(RANK(AFT$state[2]))` before — because
+their disenfranchisement is concentrated in probation, which is unaffected.
+**A reform aimed at the visible problem leaves a different set of states at the
+top**, and a student who notices that the ranking is an artefact of which
+mechanism you target has understood the structure.
+
+***
+
+# Option C — Put it against a margin
+
+No verified output; **grade the care, not the comparison.**
+
+**3/4:** Finds a race with a margin smaller than the state's disenfranchised
+population and states the comparison.
+
+**4/4:** Immediately qualifies it correctly. Disenfranchised people are **not a
+random sample** — they are disproportionately young, poor, and Black, all groups
+with turnout below average, and formerly incarcerated people who regain the vote
+turn out at low rates. **A population of 400,000 does not become 400,000 votes.**
+
+**4/4, best:** Says what the comparison *is* good for. It establishes that the
+policy operates at a scale where it *could* matter, which is a claim about
+magnitude and is defensible. It does not establish that any election would have
+gone differently, which is a counterfactual this data cannot support. **A
+student who separates "large enough to matter" from "decided the outcome" has
+the answer** — and it is the same distinction the RPV lab needed between
+direction and magnitude.
+
+***
+
+# Grading
+
+Four-point scale from the syllabus.
+
+- **Never penalise code.** It is your code.
+- **The move that earns a 4** is connecting the four million to a denominator
+  they have already used in this course.
+- **A 2** is reporting the state ranking as a fact about crime.
+- **Also a 2**: asserting an election would have flipped. See Option C.
+- **Reward anyone who asks about the estimates' uncertainty.** These are modeled
+  figures published without intervals, and noticing that is right.
+
+## Anticipated questions
+
+- *"Are these people counted in the census?"* — Yes, and mostly **where they are
+  incarcerated**, not where they lived. That is prison gerrymandering, and it is
+  the same population appearing in a different lab's problem.
+- *"Can they get the vote back?"* — Depends entirely on the state: automatic at
+  release, at end of parole, after fees are paid, or only by pardon. Florida's
+  2018 amendment and the fee litigation that followed is the case students will
+  have heard of.
+- *"Why is DC missing?"* — Not in Table 2 of the source. Say so plainly.
+- *"Is `r pc(n$pct, 2)`% a lot?"* — It is 1 in `r round(100 / n$pct)` adults
+  nationally and 1 in `r round(100 / max(s$pct))` in `r TOPR`. **Give both; the
+  national figure conceals the policy.**
+- *"Who produced these numbers?"* — Academic researchers, from correctional
+  counts and state law. Not a government count — **nobody official publishes
+  this**, which is itself worth a beat.
+
+## Connections
+
+- **CPS turnout** — the 64.4%/58.5% denominator gap, partly explained here.
+- **The census** — where incarcerated people are counted, and the VAP/CVAP/VEP
+  distinction.
+- **Section 203 and EAVS** — thresholds and rates that depend on a chosen
+  population.
+- **Jury selection and policing** — the same populations, measured at a
+  different stage of the same system.

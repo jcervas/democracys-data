@@ -1,0 +1,388 @@
+---
+title: "Lab 15: Inferring the Secret Ballot"
+subtitle: "84-355 Democracy's Data | Racially polarized voting, Houston County, Georgia"
+author: "Jonathan Cervas"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = "#>", fig.width = 7.2, fig.height = 4.6)
+options(scipen = 999)
+pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
+nn <- function(x) format(x, big.mark = ",", trim = TRUE)
+```
+
+Everything here runs as given. Your job is to read what comes out and say what
+it means.
+
+***
+
+# Before we start
+
+Section 2 of the Voting Rights Act turns on a factual question: **do voters of
+different races prefer different candidates?** If they do not, there is no
+claim. Everything you read this morning — King, Monmonier — exists because of
+one obstacle in the way of answering it.
+
+> ### Note — the law under this changed on 29 April 2026
+>
+> *Louisiana v. Callais*, 608 U.S. ___ (2026), did not overrule *Gingles*. It
+> updated it, and the update lands on the two preconditions this lab is about. A
+> plaintiff must now "provide an analysis that controls for party affiliation"
+> and show racial bloc voting "that cannot be explained by partisan
+> affiliation." Simply pointing to inter-party polarization, the Court said,
+> "proves nothing." Five weeks later it put it flatly: "the mere fact that
+> voters of different races vote for different parties is not relevant to
+> proving racially polarized voting patterns," *Allen v. Milligan*, 608 U.S.
+> ___ (2026) (per curiam) (June 2, 2026).
+>
+> **What we estimate today is which party's ballot each racial group asked
+> for** — the inter-party comparison, exactly. The statistical problem is
+> unchanged and everything below still runs. What changed is what the answer
+> would be worth in court, and that is worth holding in mind from Part 6 on.
+
+**The ballot is secret.** Nobody records how you voted. What gets recorded is
+how a *precinct* voted, and separately, who *lives* in that precinct. From those
+two aggregates an expert witness must infer how each racial group behaved — and
+then a federal judge decides a case on the answer.
+
+That inference is called **ecological inference**, and it is the thing every
+statistics course warns you about: reasoning from groups to individuals. Do it
+badly and you commit the ecological fallacy.
+
+Today we do it, and then we find out whether it worked.
+
+**Why we can check.** In Georgia, two facts are public that are private almost
+everywhere else: the race a voter reports on the registration form, and **which
+party's primary ballot they requested**. So for one election — the General
+Primary of 21 May 2024 — we know, person by person, the exact quantity
+ecological inference is trying to estimate.
+
+This is the same trick as last week. Week 14 graded a guess about *who someone
+is*. Today we grade a guess about *what they did*.
+
+For the next four parts, **pretend we do not know the answer.** That is the
+honest position of every expert who has ever testified on this.
+
+# Part 1 — What you observe
+
+```{r load}
+p <- read.csv("data/houston_primary.csv", stringsAsFactors = FALSE)
+
+p$pct_black <- p$black / p$voters
+p$pct_dem   <- p$dem   / p$voters
+
+obs <- p[order(p$pct_black), c("precinct", "voters", "pct_black", "pct_dem")]
+print(obs, row.names = FALSE, digits = 3)
+```
+
+Seventeen precincts, `r nn(sum(p$voters))` voters. Two columns matter: what
+share of each precinct's primary electorate was Black, and what share of its
+ballots were Democratic.
+
+**This table is the entire evidentiary record.** An expert witness in a Section
+2 case gets essentially this and nothing more.
+
+Notice the range. The least Black precinct
+(`r p$precinct[which.min(p$pct_black)]`) is `r pc(100 * min(p$pct_black))`%
+Black; the most (`r p$precinct[which.max(p$pct_black)]`) is
+`r pc(100 * max(p$pct_black))`%. **There is no precinct in this county that is
+overwhelmingly Black.** Hold on to that — it matters more than it looks.
+
+# Part 2 — The eyeball
+
+```{r scatter}
+plot(p$pct_black, p$pct_dem, pch = 19, cex = sqrt(p$voters) / 22,
+     col = "#2c7fb8", xlim = c(0, 1), ylim = c(0, 1),
+     xlab = "Share of the precinct's primary voters who are Black",
+     ylab = "Share of ballots that were Democratic")
+abline(0, 1, lty = 3, col = "grey60")
+grid()
+```
+
+The relationship is about as clean as social science ever gets. Precincts with
+more Black voters cast more Democratic ballots, and the points sit close to the
+45-degree line — which would be exactly what you would see if **every** Black
+voter took a Democratic ballot and **no** white voter did.
+
+That is a hypothesis, not a finding. Two different worlds produce this picture:
+one where Black and white voters are perfectly polarized, and one where
+Democratic-leaning people of every race happen to live near each other. The
+scatter cannot tell them apart. **Neither can any method in this lab.**
+
+# Part 3 — Homogeneous precincts
+
+The oldest method in voting-rights litigation, and still the one courts find
+most intuitive: **find precincts that are nearly all one race, and just look at
+how they voted.** No modeling, no assumptions.
+
+```{r homogeneous}
+hb <- p[p$pct_black >= 0.80, ]
+hw <- p[p$pct_black <= 0.20, ]
+
+cat("precincts at least 80% Black:", nrow(hb), "\n")
+cat("precincts at most  20% Black:", nrow(hw), "\n\n")
+
+if (nrow(hw))
+  cat(sprintf("white-homogeneous precincts, Democratic share: %.1f%%\n",
+              100 * sum(hw$dem) / sum(hw$voters)))
+if (nrow(hb))
+  cat(sprintf("Black-homogeneous precincts, Democratic share: %.1f%%\n",
+              100 * sum(hb$dem) / sum(hb$voters)))
+```
+
+**Read that first number again: there are none.** Not one precinct in Houston
+County is 80% Black, so the most trusted method in the field cannot produce an
+estimate for Black voters here *at all*. Not an imprecise one — none.
+
+This is not a quirk of our threshold. It is a fact about the county, and it is
+the ordinary situation in most of the United States. The method works best
+exactly where segregation is most severe.
+
+And the number it *does* give us is worth distrusting. The `r nrow(hw)`
+"white-homogeneous" precincts return
+**`r pc(100 * sum(hw$dem) / sum(hw$voters))`%** Democratic — but those precincts
+are up to 20% Black, and those Black voters cast ballots too. The estimate for
+white voters is contaminated by the very group we are trying to hold out.
+
+# Part 4 — Goodman's ecological regression
+
+The standard alternative, and for fifty years the workhorse of Section 2
+litigation. Fit a line through the scatter, then read off its ends: where the
+line crosses `pct_black = 0` is the estimate for white voters, and where it
+crosses `pct_black = 1` is the estimate for Black voters.
+
+```{r goodman}
+fit <- lm(pct_dem ~ pct_black, data = p, weights = voters)
+b   <- coef(fit)
+
+est_white <- 100 * b[1]
+est_black <- 100 * (b[1] + b[2])
+
+cat(sprintf("R-squared: %.3f\n\n", summary(fit)$r.squared))
+cat(sprintf("  estimated Democratic support, white voters: %5.1f%%\n", est_white))
+cat(sprintf("  estimated Democratic support, Black voters: %5.1f%%\n", est_black))
+```
+
+```{r goodman-plot}
+plot(p$pct_black, p$pct_dem, pch = 19, cex = sqrt(p$voters) / 22,
+     col = "#2c7fb8", xlim = c(0, 1), ylim = c(0, 1.1),
+     xlab = "Share of the precinct's primary voters who are Black",
+     ylab = "Share of ballots that were Democratic")
+abline(fit, col = "#C41230", lwd = 2)
+abline(h = 1, lty = 2, col = "grey40")
+rect(max(p$pct_black), -1, 1.2, 2, col = adjustcolor("grey70", alpha.f = 0.25),
+     border = NA)
+text(0.88, 0.45, "no data\nout here", col = "grey30", cex = 0.9)
+points(c(0, 1), c(b[1], b[1] + b[2]), pch = 21, bg = "#C41230", cex = 1.6)
+```
+
+**The model fits beautifully — R² of `r pc(summary(fit)$r.squared, 3)` — and
+returns an impossible answer.** It estimates that **`r pc(est_black)`%** of
+Black voters took a Democratic ballot.
+
+There is no gentle reading of this. A percentage above 100 is not a close call
+or a rounding problem; it is a signal that the method has been asked to do
+something it cannot do. And notice that nothing in the regression *complained*.
+The fit statistics are superb. A `r pc(summary(fit)$r.squared, 2)` R² is the
+kind of number that gets quoted in a report.
+
+The grey band shows why. **The most Black precinct in the county is
+`r pc(100 * max(p$pct_black))`% Black**, so the estimate for Black voters comes
+from extending the line `r pc(100 - 100 * max(p$pct_black))` points past the
+last observation. The model is not summarising data out there. There is no data
+out there.
+
+# Part 5 — What is knowable without a model
+
+Before King, Duncan and Davis pointed out something simple: even with no model
+at all, the precinct totals *constrain* the answer. If a precinct is 40% Black
+and cast 45% Democratic ballots, then even if every single white voter went
+Democratic, Black voters must supply the rest — and that puts a floor and a
+ceiling on their behaviour.
+
+```{r bounds}
+bl <- p$pct_black
+dm <- p$pct_dem
+
+lo <- pmax(0, (dm - (1 - bl)) / bl)   # if every white voter went Democratic
+hi <- pmin(1, dm / bl)                # if no white voter did
+
+cat(sprintf("Tightest single precinct: [%.1f%%, %.1f%%]  (%s)\n",
+            100 * max(lo), 100 * min(hi), p$precinct[which.min(hi - lo)]))
+cat(sprintf("Intersection of all 17:   [%.1f%%, %.1f%%]\n",
+            100 * max(lo), 100 * min(hi)))
+cat(sprintf("width: %.1f points\n", 100 * (min(hi) - max(lo))))
+```
+
+**Black Democratic support is between `r pc(100 * max(lo))`% and
+`r pc(100 * min(hi), 0)`%.** That statement requires no assumptions whatsoever —
+it is arithmetic on the marginals, and it cannot be wrong.
+
+It is also **`r pc(100 * (min(hi) - max(lo)))` points wide**, which is why
+nobody testifies with it alone.
+
+Here is the trade the whole field runs on. The bounds are *guaranteed correct
+and too vague to decide a case*. The regression is *precise, decisive, and
+impossible*. King's method — the reading for today — is an attempt to get
+something in between: use the bounds as a hard constraint, then use a
+statistical model to say where inside them the answer probably sits.
+
+# Part 6 — The answer
+
+We know the truth. Every voter in that table requested a party ballot by name,
+and reported their race on the registration form.
+
+```{r truth}
+truth_black <- 100 * sum(p$black_dem) / sum(p$black)
+truth_white <- 100 * sum(p$white_dem) / sum(p$white)
+
+res <- data.frame(
+  method = c("Homogeneous precincts", "Goodman regression",
+             "Bounds (lower)", "Bounds (upper)", "TRUTH"),
+  black  = c(NA, est_black, 100 * max(lo), 100 * min(hi), truth_black),
+  white  = c(100 * sum(hw$dem) / sum(hw$voters), est_white, NA, NA, truth_white))
+
+print(res, row.names = FALSE, digits = 3)
+```
+
+```{r truth-plot}
+barplot(c(Goodman = est_black, `Bounds low` = 100 * max(lo),
+          `Bounds high` = 100 * min(hi), TRUTH = truth_black),
+        col = c("#C41230", "grey70", "grey70", "#2c7fb8"),
+        ylim = c(0, 110), ylab = "Black Democratic support (%)")
+abline(h = 100, lty = 2); abline(h = truth_black, lty = 3, col = "#2c7fb8")
+```
+
+**The truth is `r pc(truth_black)`% for Black voters and `r pc(truth_white)`%
+for white voters.** This county
+is about as racially polarized as American politics gets, and every method in
+this lab said so. On the question these methods were built to answer — *is
+voting polarized here?* — they all got it right.
+
+On the question *Callais* now asks — is it polarized by **race** rather than by
+**party**? — none of them took a position. They could not. What this file
+records is the party of the ballot each voter requested.
+
+Now look at how they got there.
+
+- **The bounds contained the truth**, as they must. They always do. That is
+  their entire virtue and it cost them
+  `r pc(100 * (min(hi) - max(lo)))` points of precision.
+- **Goodman missed by `r pc(est_black - truth_black)` points** and landed
+  outside the range of possible numbers. Its white estimate,
+  `r pc(est_white)`%, is less than half the true `r pc(truth_white)`%.
+- **Homogeneous precincts could not answer at all** for Black voters, and
+  overstated white Democratic support by
+  `r pc(100 * sum(hw$dem) / sum(hw$voters) - truth_white)` points —
+  `r pc(100 * sum(hw$dem) / sum(hw$voters))`% against `r pc(truth_white)`%.
+
+The uncomfortable part is that the method that was *most confident* was the one
+that was wrong, and its confidence was legible: R² of
+`r pc(summary(fit)$r.squared, 3)`, a tight line, a clean plot. Nothing in the
+output warned anybody. **The impossibility was the only warning, and only
+because the truth happened to lie near a boundary.** In a county where Black
+Democratic support were 60%, Goodman could have missed by the same
+`r pc(est_black - truth_black)` points and returned a perfectly plausible
+`r pc(60 - (est_black - truth_black), 0)`%, and no one would ever have known.
+
+# Part 7 — Your turn
+
+Change **one** thing, re-run, and write about what changed. Pick one.
+
+**Option A — Move the homogeneity threshold.** Part 3 used 80%. Try 70%, or 60%
+(`hb <- p[p$pct_black >= 0.60, ]`). At some threshold you get a Black estimate.
+How close is it, and how much did you have to loosen the definition of
+"homogeneous" to get it? Would you defend that threshold under
+cross-examination?
+
+**Option B — Drop the biggest precinct.** WELLSTON CENTER is the only precinct
+above 50% Black, so it is doing nearly all the work of anchoring the right-hand
+end of the line. Refit without it (`p2 <- p[p$precinct != "WELLSTON CENTER", ]`)
+and compare. What does the change tell you about how much of a fifty-year-old
+courtroom method rests on one polling place?
+
+**Option C — Predict, then check, precinct by precinct.** The regression
+implies a Democratic share for each precinct (`fitted(fit)`). Compare those to
+what each precinct actually did (`p$pct_dem`), and then to what the truth
+columns say Black voters in that precinct actually did
+(`p$black_dem / p$black`). Where is the model worst, and is there a pattern to
+where it fails?
+
+**Option D — Turn it around.** We validated the method where we could check it.
+Write down what would have to be true for today's result to transfer to the
+November general election, where nobody can check it. Then say how confident you
+would be, and why.
+
+**Option E — Your own question.** `r nrow(p)` precincts,
+`r nn(sum(p$voters))` voters, and a column called `black_dem` that real analysts
+never get.
+
+# What this lab cannot tell you
+
+- **This would not establish *Gingles* preconditions two and three.** Before 29
+  April 2026 it would have. Since *Callais* a plaintiff has to show racial bloc
+  voting that partisanship cannot explain, and the only outcome in this file is
+  which party's ballot a voter asked for. We measured the confound. We did not
+  break it.
+- **A primary ballot is not a vote.** Requesting a Democratic ballot in May is
+  not the same as voting for a Democrat in November, and primary electorates are
+  smaller and more partisan than general ones — 18,133 people here against
+  82,114 in the general. We validated the *method*, on a real electorate, for a
+  real choice. We did not measure how Houston County votes.
+- **This is the easy case.** Polarization here is near-total, so every method
+  reached the correct legal conclusion despite bad numbers. In a county at 55/45
+  the same errors would flip the answer. **Do not conclude that these methods
+  are fine because they passed today.**
+- **Two groups only.** 1,135 primary voters — Hispanic, Asian, American Indian,
+  Other, Unknown — were dropped, because two-group ecological inference has
+  nowhere to put them. They voted. The framework, not the data, excluded them.
+- **Race on the form is still a measurement**, with the same one-box problem
+  Weeks 12 and 14 raised.
+- **We never ran King's method**, only the two it was designed to replace. It
+  would do better here. It would also still be a model, and it would still be
+  unfalsifiable in every county but this kind.
+
+# On the discussion board
+
+By **Friday, 11:59 p.m.** No length requirement; a sentence or two is enough, so
+long as it shows you engaged with what we did. Any *one* of the usual four.
+
+Four that would make good posts:
+
+- A method returned `r pc(est_black, 0)`% and had an R² of
+  `r pc(summary(fit)$r.squared, 3)`. What is the general lesson about trusting
+  model fit?
+- The bounds were guaranteed right and `r pc(100 * (min(hi) - max(lo)), 0)`
+  points wide; the regression was
+  precise and wrong. If you were the judge, which would you rather be handed,
+  and what would you ask for instead?
+- Every method got the *polarization* answer right and the *numbers* wrong. Does
+  that make this a success story or a warning?
+- *Callais* says a difference in party between racial groups "proves nothing."
+  Look again at the two truth numbers in Part 6 and ask what evidence could tell
+  race and party apart here. If you cannot think of any, is the Court's
+  requirement a demand for rigour or a demand that cannot be met?
+
+***
+
+### Where the data came from
+
+Houston County, Georgia, General Primary of 21 May 2024. Party of the primary
+ballot requested comes from the state's voter-history file; race is
+self-reported on the voter registration form; precinct is from registration
+extract 71754. All three are public records in Georgia. Working data for the
+2026 Houston County redistricting matter.
+
+**Nothing individual-level is in the committed file** — `r nn(sum(p$voters))`
+voter records were collapsed to `r nrow(p)` precinct rows before anything was
+saved. **Rows whose race
+had been filled in by BISG rather than reported by the voter were dropped**
+before the collapse; grading one inference against another would have proved
+nothing. The build is in `data/build-data.R`.
