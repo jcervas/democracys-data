@@ -197,8 +197,10 @@ SECTIONS = [
 
   dict(name="II. Survey Data", intros=["part-2-surveys"], legacy=[], clusters=[
     ("What a Survey Can Establish", ["surveys-source"],
-     ["survey-access", "poll-weighting", "poll-simulation", "age-structure"]),
-    ("The Big Academic Surveys", ["anes"],
+     ["survey-access", "age-structure"]),
+    ("Political Polls", [],
+     ["poll-weighting", "poll-simulation"]),
+    ("Public Opinion", ["anes"],
      ["party-id", "gender-gap", "ideology", "partisan-economy",
       "abortion-opinion", "gss-confidence", "thermometers", "perception-gap"]),
     ("Weighting", ["ces-class"], ["ces-states"]),
