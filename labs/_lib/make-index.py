@@ -198,12 +198,12 @@ SECTIONS = [
   dict(name="II. Survey Data", intros=["part-2-surveys"], legacy=[], clusters=[
     ("What a Survey Can Establish", ["surveys-source"],
      ["survey-access", "age-structure"]),
+    ("Weighting", ["ces-class"], ["ces-states"]),
     ("Political Polls", [],
      ["poll-weighting", "poll-simulation"]),
     ("Public Opinion", ["anes"],
      ["party-id", "gender-gap", "ideology", "partisan-economy",
       "abortion-opinion", "gss-confidence", "thermometers", "perception-gap"]),
-    ("Weighting", ["ces-class"], ["ces-states"]),
   ]),
 
   # The three retired part openers are kept findable as legacy intros until
