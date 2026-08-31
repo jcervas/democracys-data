@@ -187,33 +187,14 @@ NGIVE <- sum(vapply(SRC, has, logical(1), "\\*\\*The data itself\\*\\*"))
 NTURN <- sum(vapply(SRC, function(x)
              has(x, "\\*\\*Your turn\\*\\*") || has(x, "^#{2,3} Extensions"),
              logical(1)))
-stopifnot(NTURN == NGIVE, NADDR > 0, NEXH > 0, NLIM > 0, NNUM == NCH)
+# Every doc that leaves exercises also hands over its tables. The reverse is
+# not universal: a section intro may hand over the tables behind its own
+# exhibits without assigning exercises, so NGIVE may exceed NTURN by the few
+# intros that do.
+stopifnot(NTURN <= NGIVE, NGIVE - NTURN <= 4,
+          NADDR > 0, NEXH > 0, NLIM > 0, NNUM == NCH)
 
-# ---- THE OPENING EXHIBIT, from the election-returns chapter's own data -----
-# Read from that chapter's folder rather than copied here, so this page cannot
-# disagree with the chapter it is introducing. The FIPS column is text: read as
-# a number it loses the leading zero on every state from Alabama to
-# Connecticut, which is the second thing this file is about.
-DS   <- chap("data-sources", "data", "derived")
-o20  <- read.csv(file.path(DS, "pres2020_counties.csv"), stringsAsFactors = FALSE,
-                 colClasses = c(county_fips = "character"))
-o24  <- read.csv(file.path(DS, "pres2024_counties.csv"), stringsAsFactors = FALSE,
-                 colClasses = c(county_fips = "character"))
-naive <- read.csv(file.path(DS, "pres2024_counties.csv"), stringsAsFactors = FALSE)
-sw <- merge(o20[, c("county_fips", "votes_dem", "votes_gop")],
-            o24[, c("county_fips", "votes_dem", "votes_gop")],
-            by = "county_fips", suffixes = c("_20", "_24"))
-sw$r20   <- 100 * sw$votes_gop_20 / (sw$votes_gop_20 + sw$votes_dem_20)
-sw$r24   <- 100 * sw$votes_gop_24 / (sw$votes_gop_24 + sw$votes_dem_24)
-sw$swing <- round(sw$r24 - sw$r20, 2)
-DCSW  <- sw$swing[sw$county_fips == "11001"]
-MEDSW <- median(sw$swing)
-DC20  <- sum(o20$total_votes[o20$state_name == "District of Columbia"])
-DC24  <- o24$total_votes[o24$county_fips == "11001"]
-DCSHR <- 100 * DC24 / DC20
-NBAD  <- sum(nchar(naive$county_fips) == 4)     # rows a numeric read would break
-
-# ---- three more exhibits, each from the chapter it belongs to --------------
+# ---- THE ONE WORKED EXHIBIT, from the chapter it belongs to ----------------
 # The traffic-stop chapter's two denominators. Neither is dishonest, and they
 # disagree about the sign of the finding, which is the point being made.
 PBY <- read.csv(chap("policing", "data", "derived", "by_race.csv"),
@@ -227,19 +208,6 @@ prel <- function(dn, race) {
 }
 HRES <- prel("residents", "hispanic")
 HDRV <- prel("drives to work", "hispanic")
-
-fv <- function(file, key, col = "key") {
-  d <- read.csv(file, stringsAsFactors = FALSE)
-  v <- d$value[d[[col]] == key]
-  if (!length(v)) stop("introduction-brief: no key '", key, "' in ", file)
-  v[1]
-}
-FM   <- chap("false-matches", "data", "derived", "facts.csv")
-JAN1 <- as.numeric(fv(FM, "jan1_n"))
-JAN1M <- as.numeric(fv(FM, "jan1_mult"))
-NJN  <- as.numeric(fv(FM, "nj_n"))
-DEMO <- chap("demographics", "data", "derived", "facts.csv")
-STEP <- as.numeric(fv(DEMO, "prof_jump_black", col = "name"))
 
 ## ---- sectiontab
 data.frame(Section = PT$section, Docs = n(PT$docs), What_it_covers = PT$about)

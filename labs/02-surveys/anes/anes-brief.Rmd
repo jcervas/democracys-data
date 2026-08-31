@@ -18,34 +18,34 @@ dd_read_chunks("anes-code.R")
 
 The American National Election Studies has asked Americans about politics in every presidential election since 1948, and in most midterms since. The cumulative file gathers seventy-six years of it into one table: `r nn(73745)` interviews, `r nn(1030)` columns, 163 megabytes of numbers. It is the longest continuous record of American political behaviour that exists.
 
+It is the file behind this book's Public Opinion cluster, and that cluster measures the kind of thing no election ever grades. A poll about a vote is eventually scored against a real result. A question about party identification, ideology, abortion, or trust never is, because there is no true national figure to score it against. When nothing can grade the answer, the method is the whole credential: the sampling, the wording, and the codebook. This chapter is about learning to read all three.
+
 It is also a file in which **three of the columns this chapter uses run in the opposite direction from the one you would assume**, and nothing in the data says so. Two of the three fooled the person who built this chapter. The resulting figures were not broken — they were readable, plausible, and wrong, which is the only kind of error worth writing a chapter about.
 
-## Where the file comes from, and what it is for
+## Where the data comes from, and what it is for
 
-ANES is run by Michigan and Stanford under a National Science Foundation grant. Its purpose is not to report the news and never has been: it exists so that the same question, asked the same way, can be compared across decades. That single design decision is what makes the cumulative file possible and what makes it strange.
+ANES is run by the University of Michigan and Stanford University under a National Science Foundation grant. Its purpose is not to report the news and never has been: it exists so that the same question, asked in the same words, can be compared across decades. That single design decision is what makes the cumulative file possible and what makes it strange.
 
-**Why it fits this book.** Nothing else reaches back to 1948 with individual respondents attached. Totals like vote counts and party divisions tell you what a country did. ANES is one of the few sources that records what individual people said about it, and it is the only one that has been doing so since Truman.
+**Who is in it, and how they got there.** Each study interviews a national probability sample of voting-age adults, a sample drawn so that every kind of person has a known chance of being picked. Most respondents are interviewed twice, once before the election and once after. Nobody is obliged to answer, and most people approached decline. The cumulative file stacks every study since 1948 into one table, one row per interview, so a 22-year-old questioned about Truman sits a few thousand rows above one questioned about Trump.
 
-**What it costs to get.** The file is requested, not handed over. The download page returns 403 to a script and 200 to a browser, so no build script can fetch it unattended; a person has to go and get it. It is not redistributed with this chapter, both because it is 163 MB and because ANES asks that people take it from ANES. The build script looks in two places and stops with the URL if it finds nothing.
+**Who it was made for.** Political scientists asking whether the country has changed. Totals like vote counts and party divisions tell you what a country did; ANES is one of very few sources recording what individual people *said* about it, and the only one doing so since Truman. The whole investment in long interviews, frozen wording and careful samples buys comparability over time rather than speed or size.
 
-**What has already been done to it.** A great deal, and this is the important part. The cumulative file is not a pile of surveys; it is a *reconciliation*. ANES staff recoded seventy-six years of differently-worded, differently-ordered, differently-scaled questions so that one VCF number means one thing throughout. The file is comparable across time only because people made it so, case by case.
+**What it costs to get.** Nothing in money, and one deliberate inconvenience. The file is requested, not handed over: the download page returns 403 to a script and 200 to a browser, so no build script can fetch it unattended. A person has to go and get it. It is not redistributed with this chapter, both because it is 163 MB and because ANES asks that people take it from ANES. The build script looks in two places and stops with the URL if it finds nothing.
 
-The codebook is the record of those decisions. ANES states plainly that the data cannot be used with any codebook but its own. That is not a formality. It is the whole warranty.
+**What has already been done to it.** A great deal, and this is the important part. The cumulative file is not a pile of surveys; it is a *reconciliation*. ANES staff recoded seventy-six years of differently worded, differently ordered, differently scaled questions so that one VCF-numbered column means one thing throughout. The file is comparable across time only because people made it so, case by case.
 
-## What arrives
+The codebook is the record of those decisions, and ANES states plainly that the data cannot be used with any codebook but its own. That is not a formality. It is the whole warranty.
 
-Five random rows — not the first five, because the file is ordered by study year and the first five are all interviews from 1948.
+## What arrives, and why it needs the codebook
+
+The file is published as one CSV plus two codebook volumes, re-released after each new study folds in; the version read here is dated 5 February 2026. A question earns a column only if it was asked in three or more studies. Each column keeps its VCF number across every release, so a brief written against one release still runs against the next. Here are five random rows — not the first five, because the file is ordered by study year and the first five are all interviews from 1948.
 
 ```{r raw, comment="", class.output="rawblock"}
 ```
 
 Every value above is a number, and only some of them are measurements. On this evidence alone you cannot tell which is which, and no amount of staring at the file will tell you. That is what the codebook is for.
 
-## The codes that are not measurements
-
-Take one column. `VCF0806` asks where the respondent stands between a government insurance plan and a private one, on a scale of one to seven. The column also contains `-1`, `0` and `9`.
-
-Those are not positions on the scale. They record *inapplicable*, *no post-election interview*, and *don't know*. Together they are **`r p2(PCTBAD)`% of every answer in the column** — `r nn(NALL - NGOOD)` of `r nn(NALL)`.
+Take one column. `VCF0806` asks where the respondent stands between a government insurance plan and a private one, on a scale of one to seven. The column also contains `-1`, `0` and `9`. Those are not positions on the scale. They record *inapplicable*, *no post-election interview*, and *don't know*. Together they are **`r p2(PCTBAD)`% of every answer in the column** — `r nn(NALL - NGOOD)` of `r nn(NALL)`.
 
 Now average the column four ways.
 
@@ -54,30 +54,18 @@ Now average the column four ways.
 
 **The first row is the trap and the middle two are the lesson.** Doing nothing gives `r p3(NAIVE)`, and the correct answer is `r p3(RIGHT)`. That is off by only `r p3(abs(NAIVE - RIGHT))` on a seven-point scale, which is small enough to survive any sanity check you might apply to it.
 
-It is small for a reason that should frighten you. The `9`s are larger than the largest real answer, so they drag the mean up. The `0`s and `-1`s are smaller than the smallest, so they drag it down. There are `r nn(5044)` of the first and `r nn(5019)` of the second, and **the two errors very nearly cancel**.
+It is small for a reason that should frighten you. The `9`s are larger than the largest real answer, so they drag the mean up. The `0`s and `-1`s are smaller than the smallest, so they drag it down. There are `r nn(5044)` of the first and `r nn(5019)` of the second, and **the two errors very nearly cancel**. Clean half the problem and the cancellation breaks: remove only the don't-knows and you get `r p3(ONLY9)`; remove only the inapplicables and you get `r p3(ONLY0)`. Both are three to four times further from the truth than leaving the column entirely alone.
 
-Clean half the problem and the cancellation breaks. Remove only the don't-knows and you get `r p3(ONLY9)`. Remove only the inapplicables and you get `r p3(ONLY0)`. Both are three to four times further from the truth than leaving the column entirely alone.
+## Three columns that run backwards
 
-> **Before you read on, commit to a view.** You have inherited a script that
-> recodes *some* of a survey's missing-value conventions and misses others.
-> Is its output better than the same script with the recoding stripped out
-> altogether, or worse? **Say which, and say what you would need to look at to
-> find out.**
+The worked example is one claim, taken from the codebook to a figure: *the parties have pulled apart on racial attitudes, and one of them did most of the moving.* Three columns stand between the file and that sentence, and every one of them points the opposite way from the way you would guess.
 
-## The axis nobody was asked about
-
-The most reproduced figure in the study of public opinion plots an attitude against **political awareness**. No respondent has ever been asked how aware they are. There is no such question and no such column.
-
-Awareness is *built*. The usual materials are the interviewer's judgment of how informed the respondent seemed, and the respondent's own account of how closely they followed the campaign. Two defensible builds from the same file:
+The first is the interviewer's rating of how politically informed the respondent seemed, the raw material of the field's **political awareness** scale. No respondent has ever been asked how aware they are; there is no such question and no such column. Awareness is *built*, usually from this rating and from the respondent's own account of how closely they followed the campaign. Two defensible builds from the same file:
 
 ```{r awareness}
 ```
 
-Neither is more correct than the other. They cover different people, they have different resolution, and a reader who is shown only the finished figure has no way to know which was used or that a choice existed.
-
-### The part that nearly ruined this chapter
-
-The interviewer's rating is coded like this, and the coding exists only in the codebook:
+Neither is more correct than the other. They cover different people, they have different resolution, and a reader shown only a finished figure has no way to know which was used or that a choice existed. And the rating itself is coded like this, in the codebook and nowhere in the data:
 
 | Variable | Code | What the code means |
 |:---|---:|:---|
@@ -87,82 +75,68 @@ The interviewer's rating is coded like this, and the coding exists only in the c
 | | 4 | Fairly low |
 | | 5 | Very low |
 
-**One is the most informed respondent, not the least.** The scale descends.
+**One is the most informed respondent, not the least.** The scale descends. Read it the intuitive way and the classic awareness results come out inverted: the party gap appears to *shrink* as awareness rises. That reads as a comfortable finding about information moderating partisanship, rather than as a coding error.
 
-Read it the intuitive way and every figure in the next section comes out inverted: the party gap appears to *shrink* as awareness rises. That inverted result is not obviously broken. It reads as a finding: *information moderates partisanship, exposure to argument brings people together*. It is comfortable enough that somebody might publish it. It held across every study year tested, which made it look robust rather than wrong.
+Read the right way round, the file shows what the literature shows. On government health insurance, the gap between Republicans and Democrats is `r p2(HI_LO)` points among the least aware and `r p2(HI_HI)` among the most aware. On abortion it is `r p2(abs(AB_LO))` at the bottom (indistinguishable from nothing) and `r p2(abs(AB_HI))` at the top. A party gap that grows with attention is not a fact about what ordinary Democrats and Republicans are like; it is a record of how far down the elite disagreement has travelled.
 
-Nothing in the CSV says which end is which. The direction of a scale is not a property of the data; it is a fact about the data, kept somewhere else.
+The second and third backwards columns sit in the racial resentment battery, four questions asked together since `r YR1`. All four use the same response scale, one for agree strongly through five for disagree strongly, and two of them mean the opposite of the other two:
 
-## Two ways awareness works
+```{r rrlabels}
+```
 
-With the scale the right way round, here is opinion by awareness, by party.
+Average the four without reversing the middle two and the directions cancel almost perfectly: every party lands within five hundredths of every other, in every year, for thirty-eight years. That would be a spectacular finding: *no partisan difference in racial attitudes, ever*. It is arithmetic on mixed-direction items, nothing more. Reversed properly, the same four questions give this.
 
-```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.9}
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.3}
 ```
 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Mean position by constructed awareness**, pooled across every study year in which each item was asked. Left: government health insurance, 1 = a government plan, 7 = a private plan. Right: abortion, 1 = never permitted, 4 = always permitted. Party is the seven-point identification collapsed to leaners.
+**Figure 1. Mean racial resentment by party identification, 1986–2024; higher is more resentful.** The chart is three lines on a time axis because the claim is a claim about change: a gap that widened, and which side moved. A single-year snapshot could show the gap but not the movement, and only lines running side by side let you see that one stays roughly level while the other falls. Hovering a year gives all three levels and the Republican-minus-Democrat gap.
 
-Hovering an awareness band gives every party's mean and its number of respondents. Hovering a party name below dims the others in **both** panels, so the two items can be compared directly. That is the comparison the figure exists to support.
+The gap between Republicans and Democrats was `r p2(RGAP(YR1))` points in `r YR1` and `r p2(RGAP(YR2))` in `r YR2`. It more than quadrupled. And the movement is asymmetric: Republicans end close to where they started, while Democrats fall by `r p2(rg(YR1, "Democrat") - rg(YR2, "Democrat"))` points. The parties did not walk away from each other. One of them walked.
 
-On health insurance the lines **spread**. Among the least aware the gap between Republicans and Democrats is `r p2(HI_LO)` points; among the most aware it is `r p2(HI_HI)` points, and it widens at every step in between.
+That is the whole method of the Public Opinion cluster in miniature. Every brief in it pulls one question from a file like this one, checks the codes against a codebook, decides what to do with the non-answers, and only then draws the trend.
 
-Abortion does something better. Among the least aware the gap is `r p2(abs(AB_LO))` — indistinguishable from nothing. Among the most aware it is `r p2(abs(AB_HI))`, **and the sign has flipped**. There is no partisan difference on abortion among Americans who pay little attention to politics. The difference is manufactured further up.
+## What this data cannot tell you
 
-This is what the awareness axis is for. A party gap that grows with attention is not a fact about what Democrats and Republicans are like. It is a record of how far down the elite disagreement has travelled.
+**Anything asked fewer than three times.** The three-study rule that builds the file also bounds it: anything asked once or twice is not here, and that includes most questions about anything new. The file is excellent on what has been asked for decades and silent on everything else, and that silence looks exactly like the thing not mattering.
 
-> **A second prediction.** Both panels widen. Suppose you found an issue where
-> the lines *converge* — where the most aware partisans agree and the least
-> aware disagree. **What would have to be true of the country's politicians for
-> that to happen?**
-
-## The same trap, twice more
-
-The racial resentment battery is four questions asked together since `r YR1`. All four use the same response scale, one for agree strongly through five for disagree strongly. Two of them mean the opposite of the other two:
-
-```{r rrlabels}
-```
-
-Average the four without reversing the middle two and the directions cancel almost perfectly: every party lands within five hundredths of every other, in every year, for thirty-eight years. That is a spectacular finding: *no partisan difference in racial attitudes, ever*. It is arithmetic on mixed-direction items, nothing more.
-
-Reversed properly, the same four questions give this.
-
-```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.3}
-```
-
-```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. Mean racial resentment by party identification, 1986–2024.** Higher is more resentful. The four items are reversed where needed so that all point the same way; without that step every line lies on top of every other. Hovering gives the Republican-minus-Democrat gap at each year as well as the three levels. The chapter's claim is about the gap and about which side moved, and neither is reliably read off a pair of printed lines.
-
-The gap between Republicans and Democrats was `r p2(RGAP(YR1))` points in `r YR1` and `r p2(RGAP(YR2))` in `r YR2`. It more than quadrupled. And the movement is asymmetric in a way the figure makes unmissable: Republicans end close to where they started, while Democrats fall by `r p2(rg(YR1, "Democrat") - rg(YR2, "Democrat"))` points. The parties did not walk away from each other. One of them walked.
-
-## What the file will not let you ask
-
-A cumulative file is a set of decisions about what deserves to be carried forward, and those decisions bound every question you can put to it.
-
-**A question must have been asked three or more times to be included at all.** Anything asked once or twice is not here, and that includes most questions about anything new. The file is excellent on what has been asked for decades and silent on everything else, and that silence looks exactly like the thing not mattering.
-
-**Coverage is uneven, and the gaps are not where you would guess.**
+**Anything outside a variable's own years.** Coverage is uneven, and the gaps are not where you would guess.
 
 ```{r coverage}
 ```
 
-Only `r REACH24` of these `r nrow(cov)` variables reach 2024. **The interviewer rating stops in `r INFO_LAST`**, and it is the raw material of the awareness axis. The measure behind the most reproduced figure in the field is missing for the most recent three studies. A chapter wanting to extend Figure 1 to the present could not do it from this file.
+Only `r REACH24` of these `r nrow(cov)` variables reach 2024. **The interviewer rating stops in `r INFO_LAST`**, and it is the raw material of the awareness scale. So the measure behind the most reproduced figure in the field is missing for the three most recent studies, and Zaller's classic charts cannot be extended to the present from this file.
 
-**And question wording drifts.** ANES documents the changes, because a question asked identically in 1972 and 2024 may still not mean the same thing to the person hearing it. The file gives you comparability; it cannot give you equivalence.
+**That a question meant the same thing throughout.** Wording drifts, and ANES documents the changes, because a question asked identically in 1972 and 2024 may still not mean the same thing to the person hearing it. The file gives you comparability; it cannot give you equivalence.
 
-## What this chapter cannot tell you
+**Levels, as measured here.** Nothing in this chapter is weighted: `VCF0009z` sits in the file unused, so every number above describes the people ANES interviewed rather than the country. For gaps between groups inside the same survey that matters less than it would for a level, but it is a choice, and you should know it was made. The awareness figures also pool every study year, so they show the shape of the pattern rather than its history. And racial resentment is a measure with a large critical literature attached. This chapter shows what happens when two of its four items point the wrong way, which is a claim about arithmetic, not about the concept.
 
-The awareness bands pool every study year together, which means Figure 1 mixes eras whose elite politics differed. A version done properly year by year would show the pattern arriving at different times for different issues, and that is the actual argument in the literature; this is the shape, not the history.
+## What you should have learned
 
-Nothing here is weighted. `VCF0009z` is in the file and unused, so every number in this chapter describes the people ANES interviewed rather than the country. For the comparisons made here, which are gaps between groups within the same survey, that matters less than it would for a level. It is still a choice, and you should know it was made.
+- The cumulative file is a reconciliation, not a pile of surveys: `r nn(73745)` interviews recoded so one column means one thing across seventy-six years, and the codebook is the only warranty that it does.
+- Non-answer codes live inside the data columns. In `VCF0806` they are `r p2(PCTBAD)`% of all values, and half-cleaning them is worse than not cleaning at all — `r p3(ONLY9)` and `r p3(ONLY0)` both sit further from the correct `r p3(RIGHT)` than the naive `r p3(NAIVE)` does.
+- The direction of a scale is not a property of the data. It is a fact kept in the codebook, and a backwards read produces figures that are plausible rather than broken.
+- Public-opinion measures are never graded by an election, so the method is the credential. Read this way, the file shows the party gap on racial resentment growing from `r p2(RGAP(YR1))` points in `r YR1` to `r p2(RGAP(YR2))` in `r YR2`, with Democrats doing most of the moving.
+- Coverage bounds every question: only `r REACH24` of the `r nrow(cov)` variables this chapter touches reach 2024.
 
-Racial resentment is a measure with a large critical literature attached to it, and reasonable people disagree about what it captures. This chapter takes no position on that. It shows what happens to four questions when two of them are pointed the wrong way, which is a claim about arithmetic, not about the concept.
+## Where this data appears in this book
+
+Each brief in the Public Opinion cluster pulls one question from the ANES cumulative file or a file built the same way, and reads it with exactly the discipline this chapter teaches.
+
+- [Party Identification and the Leaner Problem](../party-id/party-id-brief.html): one coding decision about a follow-up question, and the most repeated number in American politics moves by a factor of five.
+- [Ideological Self-Placement in ANES](../ideology/ideology-brief.html): a fifth of Americans take the exit the question offers them, and what dropping them does.
+- [Abortion Opinion, 1980–2024](../abortion-opinion/abortion-opinion-brief.html): four printed options and the fifty years of shares they produce.
+- [What a Question About the Economy Measures](../partisan-economy/partisan-economy-brief.html): one economy, rated by two parties, changing sign whenever the White House does.
+- [Nobody Started Liking Their Own Side More](../thermometers/thermometers-brief.html): forty-six years of feeling thermometers, and which half of the gap moved.
+- [The Gender Gap Is a Subtraction](../gender-gap/gender-gap-brief.html): the one number everybody quotes and the two numbers underneath it, from the GSS cumulative file.
+- [Confidence in Institutions, GSS 1973–2024](../gss-confidence/gss-confidence-brief.html): fifty-one years of one question, and the summary that does not survive it.
+- [The Perception Gap](../perception-gap/perception-gap-brief.html): what each party thinks the other is made of, and how wrong that is.
 
 ## Sources
+
+**Data**
 
 - American National Election Studies. *ANES Time Series Cumulative Data File
   (1948–2024)*, version of 5 February 2026. Ann Arbor, MI and Palo Alto, CA:
@@ -170,12 +144,14 @@ Racial resentment is a measure with a large critical literature attached to it, 
   <https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/>
 - ANES. *Time Series Cumulative Data File Codebook* and *Appendices*, same
   release. Every variable coding quoted in this chapter is read from the
-  codebook, including the one that runs backwards.
+  codebook, including the ones that run backwards.
+
+**Academic literature**
+
 - Zaller, John R. (1992). *The Nature and Origins of Mass Opinion.* Cambridge
-  University Press. The awareness axis, and the mainstream and polarization
-  patterns, are his.
+  University Press. The awareness scale, and the patterns it reveals, are his.
 - Tesler, Michael (2016). *Post-Racial or Most-Racial? Race and Politics in the
-  Obama Era.* University of Chicago Press. Figure 2 is a much-simplified
+  Obama Era.* University of Chicago Press. Figure 1 is a much-simplified
   version of a relationship he documents at length.
 - Converse, Philip E. (1964). "The Nature of Belief Systems in Mass Publics,"
   in David E. Apter, ed., *Ideology and Discontent.* Free Press.

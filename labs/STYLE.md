@@ -11,6 +11,19 @@ cares about democracy, has not written code, and has not taken statistics.
 They are clever and they are not trained. They will read one document, alone,
 on a laptop or in an email.
 
+**The book's stance is affirmative and empirical.** Its two governing
+questions are *what data is available* and *what it says about the country's
+people and democracy* — in that order, and led by the second wherever
+possible. A document opens with what its data can show, not with what goes
+wrong; failure modes and limits are load-bearing, but they serve the
+measurement rather than replacing it. And the book measures rather than
+asserts or argues: where a textbook states a regularity as fact ("the
+president's party loses seats at the midterm") or a theory text states a
+requirement ("democracy requires equality"), a document here turns the
+sentence into a question, opens the record, and answers it with data and a
+chart the reader can check. Assertions become questions; questions get
+answered from the file.
+
 `sh _lib/check-all.sh` runs `check-language.py`, which measures Part Two, and
 `check-layout.py`, which measures Parts Three and Four where it can. Part One
 cannot be measured and matters more.
