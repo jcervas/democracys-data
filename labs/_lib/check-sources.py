@@ -59,7 +59,10 @@ MIN_QUESTIONS = 3
 # counts -- and the introduction computes nothing at all. An allowlist, not a
 # skip: a chapter missing from both this set and the checked set is a bug in
 # the traversal, and the run says so.
-STRUCTURAL = re.compile(r"^(part-.*|introduction)$")
+# admin-records-source is here because it is becoming Section III's intro under
+# the 3rd-edition rewrite: a reading about administrative records as a kind of
+# data, which will stop carrying data of its own.
+STRUCTURAL = re.compile(r"^(part-.*|introduction|admin-records-source)$")
 
 # Sources with no address, because there is no file and never was. Keep this
 # short and keep the reason in it: "we could not find a URL" is not a reason.

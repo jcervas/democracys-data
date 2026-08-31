@@ -17,6 +17,11 @@
 #      — both must point at a file that exists.
 #   3. Does any chapter write into another chapter's folder?
 #
+# Two further checks are ADVISORY and never touch the exit status (until
+# DD_STRICT_TEMPLATE=1): does each document end the way the 3rd-edition
+# template says its type ends, and does its title name the data rather than
+# withhold a punchline. See "--template" and STYLE.md Part Three.
+#
 # The build stamps are NOT checked here. check-stamps.py owns all of that --
 # whether a BUILD-STAMP.tsv exists, whether it names the right files, and
 # whether those files still hash to what it recorded. It asks the same kind of
@@ -47,6 +52,24 @@ import os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LABS = os.path.dirname(HERE)
+
+# Two ways to run half of this script, both for check-all.sh's benefit:
+#
+#   --gate-only   only the gating layout checks. check-all.sh's "layout"
+#                 section uses this, so the advisory output below is not
+#                 printed twice in one run.
+#   --template    only the ADVISORY 3rd-edition checks (template tail and
+#                 title policy). check-all.sh runs this next to the other
+#                 advisory checks (language, captions).
+#
+# A bare run prints both, which is what a person at the keyboard wants.
+# DD_STRICT_TEMPLATE=1 turns the advisory checks into gates; until the
+# rewrite completes they never touch the exit status, because render-brief.R
+# runs check-all.sh before every render and a new gate the whole corpus
+# fails would stop every render in the book.
+GATE_ONLY = "--gate-only" in sys.argv[1:]
+TEMPLATE_ONLY = "--template" in sys.argv[1:]
+STRICT_TEMPLATE = os.environ.get("DD_STRICT_TEMPLATE") == "1"
 
 # A script may sit at the top of data/ whatever it is written in. .mjs is here
 # because follower-counts collects through a browser, which R and Python cannot
@@ -294,21 +317,162 @@ for lab, d in chapters():
         for _, target in WRITE.findall(text):
             problems.append(("writes outside", os.path.relpath(path, LABS), target))
 
-if notes:
-    print("raw sources not committed (fetched at run time, or not redistributable):")
-    for where, what in notes:
-        print(f"  {where:52s}  {what}")
-    print()
+# --- 4. the 3rd-edition template — ADVISORY -----------------------------------
+#
+# STYLE.md Part Three (third edition, 31 Aug 2026): every document is a
+# `type: chapter` (a reading about a kind of data) or a `type: brief` (a lab),
+# declared in its YAML front matter, absent meaning brief. A brief's H2s end
+# "What you should have learned" > "Extensions" > "Sources"; a chapter carries
+# "What you should have learned" somewhere and ends on "Sources".
+#
+# ADVISORY, NOT A GATE, like check-captions.py and for the same reason: the
+# corpus is being rewritten toward this template, and gating on it today would
+# stop every render. It reports the backlog and a coverage count instead.
+# DD_STRICT_TEMPLATE=1 makes both this check and the title check below gate,
+# for when the rewrite is done.
+#
+# Structural chapters — the part openers, the introduction, and
+# admin-records-source (becoming Section III's intro) — are exempt, matching
+# check-sources.py's STRUCTURAL set.
+STRUCTURAL = re.compile(r"^(part-.*|introduction|admin-records-source)$")
+BRIEF_TAIL = ("What you should have learned", "Extensions", "Sources")
 
-if problems:
-    w = max(len(k) for k, _, _ in problems)
-    for kind, where, what in problems:
-        print(f"{kind:{w}}  {where:52s}  {what}")
-    print(f"\n{len(problems)} problem(s)")
-else:
-    # Say what was covered, not just that it passed. "clean" on a number
-    # smaller than the corpus is the shape the blind spot took.
-    print(f"{len(ALL)} chapters, layout clean "
-          f"({len(CHECKED)} with data/, "
-          f"{len(ALL) - len(CHECKED)} exempt: {', '.join(sorted(NO_DATA_OK))})")
-sys.exit(1 if problems else 0)
+
+def front_matter(text):
+    """The YAML front matter as a flat dict, scalars only. A real YAML parser
+    is not a dependency this script wants for two keys."""
+    m = re.match(r"---\s*\n(.*?)\n---\s*(\n|$)", text, re.S)
+    out = {}
+    if not m:
+        return out
+    for line in m.group(1).splitlines():
+        km = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
+        if not km:
+            continue
+        v = km.group(2).strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+            v = v[1:-1]
+        out[km.group(1)] = v
+    return out
+
+
+def h2_headings(text):
+    """Every H2 heading in document order, fenced code blocks skipped —
+    a chunk printing '## something' is output, not structure."""
+    out, fence = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        m = re.match(r"^##\s+([^#].*?)\s*$", line)
+        if m:
+            out.append(re.sub(r"\s*\{[^}]*\}\s*$", "", m.group(1)))
+    return out
+
+
+tail_bad = []          # (slug, type, what its H2s actually end with)
+tail_ok = tail_total = 0
+title_bad = []         # (slug, title)
+
+# Titles already read by a person and judged fine (STYLE.md rule 14). Same
+# pattern as check-tables-reviewed.tsv: delete a line to see it again.
+REVIEWED_TITLES = os.path.join(HERE, "check-titles-reviewed.tsv")
+reviewed_titles = set()
+if os.path.exists(REVIEWED_TITLES):
+    for line in open(REVIEWED_TITLES, encoding="utf-8"):
+        if line.startswith("#") or not line.strip():
+            continue
+        reviewed_titles.add(line.rstrip("\n").split("\t")[0])
+
+for slug, p in ALL:
+    try:
+        text = open(os.path.join(p, slug + "-brief.Rmd"), encoding="utf-8").read()
+    except OSError:
+        continue
+    fm = front_matter(text)
+
+    # -- title policy (STYLE.md rule 14). The heuristic is deliberately dumb
+    # and low-recall: a title with no digit, colon, comma or em-dash, running
+    # five words or more, is the shape a withholding sentence takes
+    # ("Everyone Guesses Forty" is spared only by its length; "Everybody
+    # Moved, Almost Nobody Left" by its comma — the allowlist is the real
+    # instrument, this is just what feeds it).
+    title = fm.get("title", "")
+    if (title and title not in reviewed_titles
+            and not re.search(r"[0-9:,—]", title)
+            and len(title.split()) >= 5):
+        title_bad.append((slug, title))
+
+    # -- template tail. Structural chapters are shaped like neither type.
+    if STRUCTURAL.match(slug):
+        continue
+    typ = fm.get("type", "brief")
+    hs = h2_headings(text)
+    tail_total += 1
+    if typ == "chapter":
+        ok = "What you should have learned" in hs and bool(hs) and hs[-1] == "Sources"
+    else:
+        ok = tuple(hs[-3:]) == BRIEF_TAIL
+    if ok:
+        tail_ok += 1
+    else:
+        got = " > ".join(hs[-3:]) if hs else "(no H2 headings)"
+        tail_bad.append((slug, typ, got))
+
+
+def report_template():
+    print("template tail (STYLE.md rule 13; advisory"
+          + (", DD_STRICT_TEMPLATE=1 so it gates" if STRICT_TEMPLATE else "")
+          + "):")
+    for slug, typ, got in tail_bad:
+        print("  %-28s (%s) ends: %s" % (slug, typ, got))
+    print("%d of %d chapters follow the 3rd-edition template"
+          % (tail_ok, tail_total))
+    print("  (briefs end learned > Extensions > Sources; chapters carry "
+          "learned and end on Sources)")
+    print()
+    print("title policy (STYLE.md rule 14; advisory):")
+    if title_bad:
+        for slug, title in title_bad:
+            print("  %-28s %s" % (slug, title))
+        print("%d title(s) look like withholding sentences — name the data "
+              "and the question, or record them in\n"
+              "_lib/check-titles-reviewed.tsv once a person has read them"
+              % len(title_bad))
+    else:
+        print("  every title names its data, or has been reviewed "
+              "(%d on the reviewed list)" % len(reviewed_titles))
+
+
+# ------------------------------------------------------------------ reporting
+if not TEMPLATE_ONLY:
+    if notes:
+        print("raw sources not committed (fetched at run time, or not redistributable):")
+        for where, what in notes:
+            print(f"  {where:52s}  {what}")
+        print()
+
+    if problems:
+        w = max(len(k) for k, _, _ in problems)
+        for kind, where, what in problems:
+            print(f"{kind:{w}}  {where:52s}  {what}")
+        print(f"\n{len(problems)} problem(s)")
+    else:
+        # Say what was covered, not just that it passed. "clean" on a number
+        # smaller than the corpus is the shape the blind spot took.
+        print(f"{len(ALL)} chapters, layout clean "
+              f"({len(CHECKED)} with data/, "
+              f"{len(ALL) - len(CHECKED)} exempt: {', '.join(sorted(NO_DATA_OK))})")
+
+if not GATE_ONLY:
+    if not TEMPLATE_ONLY:
+        print()
+    report_template()
+
+# The advisory checks touch the exit status only under DD_STRICT_TEMPLATE=1.
+advisory_fail = STRICT_TEMPLATE and bool(tail_bad or title_bad)
+if TEMPLATE_ONLY:
+    sys.exit(1 if advisory_fail else 0)
+sys.exit(1 if problems or advisory_fail else 0)

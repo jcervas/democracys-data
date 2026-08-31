@@ -21,6 +21,9 @@
 #   captions   is any figure captioned twice, once by the figure and once by a
 #             bold Figure N paragraph saying the same thing. Advisory: it
 #             reports a backlog, and gating on it would stop every render
+#   template  does each document end the way its type's 3rd-edition skeleton
+#             ends, and does its title name the data. Advisory for the same
+#             reason as captions; DD_STRICT_TEMPLATE=1 turns it into a gate
 #   contrast  is any figure text unreadable on the dark page, measured against
 #             what is actually painted behind it. OPT-IN (--contrast): it needs
 #             a browser and takes minutes, so it is the one check here that
@@ -43,7 +46,7 @@ LIB=$(cd "$(dirname "$0")" && pwd)
 fail=0
 
 echo "=== layout ==="
-python3 "$LIB/check-layout.py"    || fail=1
+python3 "$LIB/check-layout.py" --gate-only || fail=1
 
 echo
 echo "=== chunk pairing (brief <-> code.R) ==="
@@ -80,6 +83,13 @@ python3 "$LIB/check-figures.py"  || true
 echo
 echo "=== one figure, one caption (STYLE.md rule 4) ==="
 python3 "$LIB/check-captions.py" || true
+
+# Advisory like captions, and for the same reason: the corpus is mid-rewrite
+# toward the 3rd-edition template, and gating today would stop every render.
+# DD_STRICT_TEMPLATE=1 makes check-layout.py gate on these once it is done.
+echo
+echo "=== 3rd-edition template and titles (STYLE.md Part Three) ==="
+python3 "$LIB/check-layout.py" --template || true
 
 # Opt-in, because it breaks the rule the rest of this file keeps. It drives a
 # browser over every render and takes minutes, and render-brief.R runs this

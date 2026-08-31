@@ -1,23 +1,27 @@
 # How this book is written
 
-Second edition, 30 August 2026. The first edition measured sentences and never
-asked what the sentences were about, so the corpus passed every check and still
-read badly. What follows puts subject matter first and mechanics second.
+Third edition, 31 August 2026. The first edition measured sentences and never
+asked what the sentences were about. The second put subject matter first, and
+the corpus read better for it. The third fixes the shape of the book: there
+are now two kinds of document, each with a fixed skeleton, so a reader always
+knows what they are holding and where it will end.
 
-The reader is a **first-year undergraduate** who cares about democracy, has not
-written code, and has not taken statistics. They are clever and they are not
-trained. They will read one brief, alone, on a laptop or in an email.
+The reader is a **first- or second-year undergraduate, or a lay reader** who
+cares about democracy, has not written code, and has not taken statistics.
+They are clever and they are not trained. They will read one document, alone,
+on a laptop or in an email.
 
-`sh _lib/check-all.sh` runs `check-language.py`, which measures Part Two. Part
-One cannot be measured and matters more.
+`sh _lib/check-all.sh` runs `check-language.py`, which measures Part Two, and
+`check-layout.py`, which measures Parts Three and Four where it can. Part One
+cannot be measured and matters more.
 
 ---
 
-# Part One — what a brief is about
+# Part One — what a document is about
 
 ## 1. The subject is the data, not the handling of it
 
-**A brief is about where a number came from and what it can bear. It is not
+**A document is about where a number came from and what it can bear. It is not
 about how the file was obtained, parsed, or stored.** The reader does not care
 that a page answered with a status code, that a column arrived as text, that
 the download was 163 MB, or that a request carried one header rather than
@@ -46,7 +50,7 @@ about `head()`. A chapter about turnout is not.
 
 ## 2. Say what you measured and what you took on trust
 
-Every brief mixes two kinds of claim, and a reader cannot tell them apart
+Every document mixes two kinds of claim, and a reader cannot tell them apart
 unless you do it for them. **Facts you measured are yours and must be
 reproducible. Facts you took from somebody else are theirs and must be cited
 where they appear**, not only in the sources.
@@ -90,12 +94,13 @@ number attached.
 
 Inline `` `r ` `` expressions, `dd_write_csv()`, `checks.csv`, and the
 assertions in every build script. A typed figure goes stale silently; a
-computed one cannot. This applies to the exercises too: "take the biggest gap"
-never goes stale, "fifteen counties disagree" does.
+computed one cannot. This applies to the closing bullets and the exercises
+too: "take the biggest gap" never goes stale, "fifteen counties disagree"
+does.
 
 ---
 
-# Part Two — how a brief reads
+# Part Two — how a document reads
 
 These are measured by `_lib/check-language.py`. A chapter can pass all of them
 and still be unreadable, but it cannot fail them and be fine.
@@ -161,22 +166,106 @@ as the story is told in statements.
 
 ---
 
-# Part Three — what every brief must contain
+# Part Three — two kinds of document
 
-Four structural conventions, each enforced by a checker:
+## 13. Decide what you are writing before you write it
+
+Every `.Rmd` declares itself in its YAML front matter: `type: chapter` or
+`type: brief`. Absent means brief. The skeletons below are what
+`check-layout.py` checks — advisory until the rewrite completes, gating under
+`DD_STRICT_TEMPLATE=1`.
+
+**A chapter is a reading about a kind of data.** 2,500–4,000 words. It teaches
+what a source is, who made it and why, and what it can bear — so that every
+brief leaning on that source can stay short. Its shape:
+
+1. An opening that makes the data worth caring about
+2. `## Where the data comes from, and what it is for` — the data biography,
+   in its existing form: one opening paragraph, then bold-led paragraphs in
+   fixed order — **Who is in it, and how they got there.** / **Who it was
+   made for.** / **What it costs to get.** / **What has already been done to
+   it.**
+3. How the data is published — the files, the cadence, where they actually live
+4. One worked example, with one figure
+5. `## What this data cannot tell you`
+6. `## What you should have learned` — 3–5 bullets
+7. `## Where this data appears in this book` — the briefs that use it
+8. `## Sources`
+
+A chapter carries **no prediction prompt**. It is a reading, not a lab.
+
+**A brief is a lab.** 1,500–2,500 words. It asks one question of one source
+and answers it. Its shape:
+
+1. The question
+2. A labeled **Why this data** paragraph: why this source, of all sources,
+   answers this question — with a link to the section's data-type chapter
+3. The prediction prompt
+4. The analysis. The first figure carries one or two sentences saying what
+   the chart shows and why this form — a slope, a scatter, a map — fits the
+   question
+5. `## What this chapter cannot tell you`
+6. `## What you should have learned` — 3–5 bullets, every number in them
+   computed inline, never typed
+7. `## Extensions`
+8. `## Sources` — data citations, then **The data itself**, then the AI
+   prompt box
+
+## 14. The title names the data and the question
+
+The evocative sentence goes in the subtitle, where it earns its keep under a
+title that says what the document is about. Two title shapes are banned: a
+full sentence that withholds its resolution, and a bare number-teaser that
+names no dataset and no concept.
+
+> **Good:** "The Perception Gap: What Each Party Thinks the Other Looks
+> Like" · "Bellwether Counties, 1960–2024" · "Party Identification and the
+> Leaner Problem"
+>
+> **Bad:** "Everyone Guesses Forty" · "Everybody Moved, Almost Nobody
+> Left" · "Free, Public, and Unreachable"
+
+The bad ones are good sentences in the wrong slot. Demote them: "Free,
+Public, and Unreachable" survives happily as a subtitle under a title that
+names state election sites and retrievability.
+
+## 15. Every document travels alone, to a lay reader
+
+Strip course machinery from anything the reader sees: no "84-355 Democracy's
+Data" author line, no "this course", "this session", "this week". A brief's
+only required dependency is **one link to its section's data-type chapter**,
+in the Why-this-data paragraph. Everything else it needs, it carries.
+
+## 16. Figures come from the shared chart library
+
+New and rewritten figures use the DD chart library — `labs/_lib/dd-charts.js`,
+reached through `dd_fig()` in `labs/_lib/dd-charts.R` — with class-based
+colors, so the corpus's figures look like one book and restyle in one place.
+Hand-written D3 is reserved for designated showpieces, and a showpiece is
+designated, not drifted into.
+
+---
+
+# Part Four — what every document must contain
+
+The structural conventions, each enforced by a checker:
 
 - **A closing `## Sources`**, giving the publisher's address for every source
   the chapter reads, written as `<https://…>` after the citation it belongs
   to. Naming the agency is not enough, and pointing at another chapter is a
-  dead end: a brief travels alone. A source with no address — a printed book —
-  is cited by ISBN and named in `check-sources.py`.
-- **A prediction prompt** before the chapter's main turn, asking the reader to
-  commit to a number before they see it.
-- **A section saying what the chapter cannot tell you.** Not hedging: the
-  specific questions this source cannot answer, and why.
+  dead end: a document travels alone. A source with no address — a printed
+  book — is cited by ISBN and named in `check-sources.py`.
+- **A prediction prompt, in briefs only**, before the brief's main turn,
+  asking the reader to commit to a number before they see it.
+- **A section saying what the document cannot tell you** — `## What this data
+  cannot tell you` in a chapter, `## What this chapter cannot tell you` in a
+  brief. Not hedging: the specific questions this source cannot answer, and
+  why.
+- **`## What you should have learned`** — 3 to 5 bullets a reader could
+  repeat a week later. Any number in them is computed inline (rule 5).
 - **A `data/build-data.R`** that rebuilds everything the chapter prints.
 
-Three younger conventions sit beside those:
+Three conventions carried forward from the second edition, one of them moved:
 
 - **The AI prompt box.** Every chapter that fetches external data closes its
   sources with `ai_prompt(readLines("data/ai-prompt.txt"))`: a prompt a reader
@@ -186,23 +275,22 @@ Three younger conventions sit beside those:
   EXISTS INSTEAD, WHAT YOU CAN STILL CHECK. Every number in the check block is
   taken verbatim from the chapter's own tables; `check-ai-prompt.py` holds it
   there.
-- **The data biography.** The chapter that introduces a dataset carries
-  `## Where the file comes from, and what it is for`, placed after the
-  prediction prompt: one opening paragraph, then bold-led paragraphs in fixed
-  order — **Who is in it, and how they got there.** / **Who it was made
-  for.** / **What it costs to get.** / **What has already been done to it.**
-  One dataset, one biography; every other chapter linking the source links
-  there.
-- **The tables, and `Your turn`.** Sources closes with **The data itself**,
-  linking the CSVs the figures rest on — the tables, not the folder, and not
-  the chapter's own bookkeeping. Then three or four open questions the tables
-  can answer and the chapter did not ask. Name the file and the column. Ask
-  something genuinely open: a question whose answer is printed above is a
-  quiz, and this is not a quiz. Every question must be answerable by sorting
-  or grouping in a spreadsheet — students in this course are not asked to
-  write code, and an exercise that needs R is an exercise nobody does.
+- **The data biography** now lives in the data-type chapter (rule 13), under
+  `## Where the data comes from, and what it is for`. One dataset, one
+  biography; every brief reading the source links there rather than carrying
+  its own.
+- **The tables, and `## Extensions`.** Sources closes with **The data
+  itself**, linking the CSVs the figures rest on — the tables, not the
+  folder, and not the chapter's own bookkeeping. `## Extensions` absorbs what
+  "Your turn" used to hold: three or four open questions the tables can
+  answer and the brief did not ask, each naming the file *and the column*,
+  each answerable by sorting or grouping in a spreadsheet — an exercise that
+  needs R is an exercise nobody does. Then one or two **stretch extensions**
+  that point past the spreadsheet: another year to fetch, another state to
+  compare, a claim to check against a second source. A question whose answer
+  is printed above is a quiz, and this is not a quiz.
 
 ---
 
 Plain language is not a lower bar. The reading gets easier; the thinking the
-brief asks for does not.
+document asks for does not.
