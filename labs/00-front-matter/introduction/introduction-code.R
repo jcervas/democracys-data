@@ -98,43 +98,45 @@ STMC <- if (NSTM == NDAT)
           "and beside both a stamp listing every one of those files" else
           paste0("and ", n(NSTM), " of them a stamp listing every file")
 
-# ---- THE PARTS, READ OUT OF THE INDEX ---------------------------------------
-# The part names, their order and their sizes come from INDEX.md, which
+# ---- THE SECTIONS, READ OUT OF THE INDEX ------------------------------------
+# The section names, their order and their sizes come from INDEX.md, which
 # _lib/make-index.py generates from the corpus. Reorganise the book and this
 # table follows; it cannot describe a structure the book does not have. The
-# one-line description of each part is editorial and lives here, keyed by the
-# part's numeral so that renaming a part does not silently orphan its blurb.
+# one-line description of each section is editorial and lives here, keyed by
+# the section's numeral so renaming a section does not silently orphan its
+# blurb. INDEX.md's first column is "Section / Cluster" ("I. Census &
+# Geography" on intro rows, "I.1 The Census and Its Products" on cluster
+# rows); the leading roman numeral is the section. Its second column is the
+# doc's type: intro, chapter, or brief.
 IDX  <- readLines(file.path(LABS, "INDEX.md"), warn = FALSE)
 IDX  <- IDX[startsWith(IDX, "| ")]
 fld  <- strsplit(IDX, "\\s*\\|\\s*")
-prt  <- vapply(fld, function(x) if (length(x) > 1) x[[2]] else "", "")
-kind <- vapply(fld, function(x) if (length(x) > 2) x[[3]] else "", "")
-keep <- prt != "Part" & prt != "---" & prt != "front matter" &
-        prt != "unassigned" & kind != "part opener"
+sec  <- vapply(fld, function(x) if (length(x) > 1) x[[2]] else "", "")
+typ  <- vapply(fld, function(x) if (length(x) > 2) x[[3]] else "", "")
+keep <- grepl("^[IV]+[. ]", sec) & typ %in% c("intro", "chapter", "brief")
 ABOUT <- c(
-  I   = "One agency that counts people and places, and where population numbers come from",
-  II  = "Asking a sample of people questions: public opinion, and polls that predict elections",
-  III = "The certified result, and the machinery that produced it",
-  IV  = "What a member of Congress, a campaign or a lobbyist leaves on the record",
-  V   = "Records made to run a system, about people who never volunteered for anything",
-  VI  = "Combining the sources, which is where the hard questions and the wrong answers are")
-pn   <- factor(prt[keep], levels = unique(prt[keep]))
-PT   <- data.frame(part = levels(pn), chapters = as.integer(table(pn)),
+  I   = "Counting people and places: the enumeration, the rolling survey, the estimates between, and the geography they are published on",
+  II  = "Asking a sample of people questions, and weighting the answers until they describe the country",
+  III = "Records kept to run a system: returns, rolls, filings, votes, stops",
+  IV  = "Combining the kinds, which is where the hard questions and the wrong answers are")
+num  <- sub("^([IV]+)[. ].*$", "\\1", sec)
+pn   <- factor(num[keep], levels = unique(num[keep]))
+# Display names are spelled out rather than harvested from the index, because
+# a proper noun is not something a string function can find.
+NAME <- c(I   = "Data About the Population",
+          II  = "Survey Data",
+          III = "Administrative Data",
+          IV  = "Putting Data Together")
+PT   <- data.frame(numeral = levels(pn), docs = as.integer(table(pn)),
                    row.names = NULL)
-# Display names are spelled out rather than title-cased from the index, because
-# title-casing turns "the census bureau" into "The census bureau" -- a proper
-# noun is not something a string function can find.
-NAME <- c(I   = "The Census Bureau",
-          II  = "Surveys",
-          III = "Elections",
-          IV  = "Records of Political Actors",
-          V   = "Records of Ordinary People",
-          VI  = "Putting Data Together")
-PT$numeral <- sub(" .*$", "", PT$part)
-PT$part    <- paste0(PT$numeral, ". ", unname(NAME[PT$numeral]))
+PT$section <- paste0(PT$numeral, ". ", unname(NAME[PT$numeral]))
 PT$about   <- unname(ABOUT[PT$numeral])
-stopifnot(nrow(PT) >= 5, !any(is.na(PT$about)), !any(is.na(NAME[PT$numeral])),
-          sum(PT$chapters) > 50)
+stopifnot(nrow(PT) == 4, !any(is.na(PT$about)), !any(is.na(NAME[PT$numeral])),
+          sum(PT$docs) > 100)
+# Chapters and briefs, counted from the same column of the same index.
+NCHAP <- sum(typ[keep] == "chapter")
+NBRF  <- sum(typ[keep] == "brief")
+stopifnot(NCHAP >= 10, NBRF >= 80)
 
 has <- function(x, p) any(grepl(p, x, perl = TRUE))
 # A prediction prompt, in either of the two forms the chapters use: a set-off
@@ -177,11 +179,14 @@ NEXH  <- sum(vapply(SRC, has, logical(1), P_EXH))
 # Numbers computed from the file rather than typed into the prose. This is the
 # house rule the whole book rests on, so it should be universal, and it is.
 NNUM  <- sum(vapply(SRC, has, logical(1), "`r [^`]"))
-# The tables handed over, and the questions asked of them. Both live at the
-# foot of ## Sources; both arrived on 29 Aug 2026, and before that the
-# introduction promised a move no chapter made.
+# The tables handed over, and the questions asked of them. The tables live at
+# the foot of ## Sources; the questions live either there under **Your turn**
+# (2nd-edition chapters) or in a ## Extensions section (3rd edition), and
+# during the rewrite the corpus holds both forms, so both are counted.
 NGIVE <- sum(vapply(SRC, has, logical(1), "\\*\\*The data itself\\*\\*"))
-NTURN <- sum(vapply(SRC, has, logical(1), "\\*\\*Your turn\\*\\*"))
+NTURN <- sum(vapply(SRC, function(x)
+             has(x, "\\*\\*Your turn\\*\\*") || has(x, "^#{2,3} Extensions"),
+             logical(1)))
 stopifnot(NTURN == NGIVE, NADDR > 0, NEXH > 0, NLIM > 0, NNUM == NCH)
 
 # ---- THE OPENING EXHIBIT, from the election-returns chapter's own data -----
@@ -236,8 +241,8 @@ NJN  <- as.numeric(fv(FM, "nj_n"))
 DEMO <- chap("demographics", "data", "derived", "facts.csv")
 STEP <- as.numeric(fv(DEMO, "prof_jump_black", col = "name"))
 
-## ---- parttab
-data.frame(Part = PT$part, Chapters = n(PT$chapters), What_it_covers = PT$about)
+## ---- sectiontab
+data.frame(Section = PT$section, Docs = n(PT$docs), What_it_covers = PT$about)
 
 ## ---- movetab
 data.frame(
@@ -245,13 +250,13 @@ data.frame(
                "What it actually looks like",
                "What it says",
                "What it cannot say",
-               "Your turn"),
+               "Extensions"),
   what_that_means = c(
     "Who produced this file, under what obligation, and for whose purpose — which was almost never yours. The address is printed, so you can go and get it yourself",
     "One real record, shown in full before anything is summarised — because a row is where the surprises are. The chapters that skip it have nothing small enough to print",
     "Summary numbers and figures, built from the file in front of you, with the wrong reading shown as well as the right one. Every number is computed from the data as the page is built, never typed in",
     "The question this source will not answer however carefully you ask — a limit built into the file, not into the analysis",
-    "The tables the figures rest on, linked so you can open them in a spreadsheet, and questions the chapter did not answer"),
+    "The tables the figures rest on, linked so you can open them in a spreadsheet, and questions the document left for you — answerable in a spreadsheet, plus a stretch or two beyond it"),
   chapters = c(NADDR, NEXH, NNUM, NLIM, NTURN),
   check.names = FALSE)
 
