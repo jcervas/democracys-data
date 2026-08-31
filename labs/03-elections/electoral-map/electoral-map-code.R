@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -340,79 +341,68 @@ tile_key("percentage points from a tie, on one ramp shared by both maps",
 layout(1)
 
 ## ---- sharemap-d3
-rows <- paste(sprintf(
-  '{"a":"%s","s":"%s","c":%d,"r":%d,"dm":%.2f,"ds":%.2f,"m":%.2f,"h":%.2f,"ev":%d}',
-  e$abbrev, e$state, e$col, e$row, d_marg, d_shar, e$margin, e$harris, e$ev),
-  collapse = ",")
+# Drawn with the shared library, as two choropleths over the equal-weight
+# state grid in _lib/geo -- the same squares, read from the same file, that
+# the senate chapter draws. Colour is a CLASS, one of the ten shared
+# diverging bins, quantised here by dd_ramp_class() on the same +/-CAP the
+# static twin caps its ramp at; brief.css owns what each bin looks like in
+# each theme. The two maps share one values frame, so they cannot disagree
+# about a state -- only about which column they colour by.
+gp <- dd_geo_paths("../../_lib/geo/us-grid.geojson", "st")
+gp$lab <- gp$id
+vals <- data.frame(id = e$abbrev, s = e$state,
+                   dm = round(d_marg, 2), ds = round(d_shar, 2),
+                   h = e$harris, stringsAsFactors = FALSE)
+shmp_tip <- dd_js('function(d){
+  return "<b>"+d.s+"</b><br>margin "+DD.fmt.signed2(d.dm)+
+    "<br>Harris share "+d.h+"%, i.e. "+DD.fmt.signed2(d.ds)+" from a tie";
+}')
+cat('<div style="display:flex;gap:12px;margin:1em 0 0.2em">\n<div style="flex:1">\n')
+dd_fig("shmp-m", "choropleth", d3 = FALSE,
+  geo = dd_geo(gp), title = "colored by margin", titleSize = 22,
+  values = cbind(vals, cls = dd_ramp_class(vals$dm, cap = CAP)),
+  geoLabels = TRUE, labelSize = 20, labelClass = "lbl halo",
+  tip = shmp_tip)
+cat('</div>\n<div style="flex:1">\n')
+dd_fig("shmp-s", "choropleth", d3 = FALSE,
+  geo = dd_geo(gp), title = "colored by Harris vote share", titleSize = 22,
+  values = cbind(vals, cls = dd_ramp_class(vals$ds, cap = CAP)),
+  geoLabels = TRUE, labelSize = 20, labelClass = "lbl halo",
+  tip = shmp_tip)
+cat('</div>\n</div>\n')
+# The shared key, once, under both maps, from the library's primitives: the
+# same DD.rampKey() bins the two maps were quantised onto.
 cat(sprintf('
-<div id="shmp" style="position:relative;margin:1em 0"></div>
+<div class="dd-fig" id="shmp-key"></div>
 <script>
 (function(){
-const D=[%s],CAP=%d,NM=%d,NS=%d;
-const W=760,PAD=12,TOP=26;
-const nc=d3.max(D,d=>d.c), nr=d3.max(D,d=>d.r);
-const GW=(W-3*PAD)/2, cw=GW/nc, GH=cw*nr;
-const KY=TOP+GH+40, H=KY+62;
-const box=d3.select("#shmp");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const col=d3.scaleLinear().domain([-CAP,0,CAP])
-  .range(["#2166AC","#F7F7F7","#B2182B"]).clamp(true);
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-[["colored by margin","dm",PAD],
- ["colored by Harris vote share","ds",2*PAD+GW]].forEach(p=>{
-  const ox=p[2];
-  svg.append("text").attr("x",ox+GW/2).attr("y",15).attr("text-anchor","middle")
-    .attr("font-size","12.5px").attr("font-weight","600").attr("fill","#333")
-    .text(p[0]);
-  const g=svg.append("g");
-  g.selectAll("rect").data(D).join("rect")
-    .attr("x",d=>ox+(d.c-1)*cw+cw*0.05).attr("y",d=>TOP+(d.r-1)*cw+cw*0.05)
-    .attr("width",cw*0.90).attr("height",cw*0.90)
-    .attr("fill",d=>col(d[p[1]])).attr("stroke","#fff").attr("stroke-width",1.2)
-    .on("mousemove",function(ev,d){
-      tip.style("opacity",1).html(`<b>${d.s}</b><br>margin `+
-        `${d.dm>0?"+":""}${d.dm.toFixed(2)}<br>Harris share ${d.h}%%, i.e. `+
-        `${d.ds>0?"+":""}${d.ds.toFixed(2)} from a tie`)
-        .style("left",Math.min(ev.offsetX+14,W-260)+"px")
-        .style("top",(ev.offsetY-10)+"px");})
-    .on("mouseleave",()=>tip.style("opacity",0));
-  g.selectAll("text").data(D).join("text")
-    .attr("x",d=>ox+(d.c-1)*cw+cw/2).attr("y",d=>TOP+(d.r-1)*cw+cw/2+3.5)
-    .attr("text-anchor","middle").attr("font-size",Math.min(cw*0.40,11)+"px")
-    .attr("fill","#222").attr("pointer-events","none").text(d=>d.a);
-});
-const LW=300,LH=12,LX=(W-LW)/2;
-const grad=svg.append("defs").append("linearGradient").attr("id","shmpgrad")
-  .attr("x1","0%%").attr("x2","100%%");
-d3.range(0,101).forEach(i=>grad.append("stop")
-  .attr("offset",i+"%%").attr("stop-color",col(-CAP+i/100*2*CAP)));
-svg.append("rect").attr("x",LX).attr("y",KY).attr("width",LW).attr("height",LH)
-  .attr("fill","url(#shmpgrad)").attr("stroke","#666").attr("stroke-width",0.8);
-const lx=d3.scaleLinear().domain([-CAP,CAP]).range([LX,LX+LW]);
-d3.range(-CAP,CAP+1,CAP/2).forEach(v=>{
-  svg.append("line").attr("x1",lx(v)).attr("x2",lx(v)).attr("y1",KY+LH)
-    .attr("y2",KY+LH+4).attr("stroke","#666").attr("stroke-width",0.8);
-  svg.append("text").attr("x",lx(v)).attr("y",KY+LH+16).attr("text-anchor","middle")
-    .attr("font-size","10.5px").attr("fill","#555").text(v>0?"+"+v:""+v);});
-svg.append("text").attr("x",LX-10).attr("y",KY+LH-1).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#2166AC").text("Harris ahead");
-svg.append("text").attr("x",LX+LW+10).attr("y",KY+LH-1)
-  .attr("font-size","11px").attr("fill","#B2182B").text("Trump ahead");
-svg.append("text").attr("x",W/2).attr("y",KY-10).attr("text-anchor","middle")
-  .attr("font-size","11px").attr("fill","#555")
-  .text("percentage points from a tie, on one ramp shared by both maps");
-svg.append("text").attr("x",W/2).attr("y",KY+LH+32).attr("text-anchor","middle")
-  .attr("font-size","10.5px").attr("fill","#777")
-  .text("Jurisdictions at the cap: "+NM+" on the left, "+NS+" on the right.");
+const CAP=%d,NM=%d,NS=%d;
+const f=DD.frame("#shmp-key",{w:760,h:74,m:{t:0,r:0,b:0,l:0}});
+f.svg.append("text").attr("class","lbl").attr("x",380).attr("y",12)
+  .attr("text-anchor","middle").attr("font-size","11px")
+  .text("percentage points from a tie, on one scale shared by both maps");
+const it=DD.rampKey(CAP,5,"signed0"),sw=30,gap=2;
+const kw=it.length*(sw+gap)-gap,kx=(760-kw)/2,ky=22;
+it.forEach(function(d,i){
+  f.svg.append("rect").attr("class",d.cls)
+    .attr("x",kx+i*(sw+gap)).attr("y",ky).attr("width",sw).attr("height",12);
+  f.svg.append("text").attr("class","lbl")
+    .attr("x",kx+i*(sw+gap)+(i<5?0:sw)).attr("y",ky+24)
+    .attr("text-anchor","middle").attr("font-size","10px").text(d.label);});
+f.svg.append("text").attr("class","dem-txt").attr("x",kx-10).attr("y",ky+10)
+  .attr("text-anchor","end").attr("font-size","11px").text("Harris ahead");
+f.svg.append("text").attr("class","gop-txt").attr("x",kx+kw+10).attr("y",ky+10)
+  .attr("font-size","11px").text("Trump ahead");
+f.svg.append("text").attr("class","foot").attr("x",380).attr("y",ky+42)
+  .attr("text-anchor","middle").attr("font-size","10.5px")
+  .text("Jurisdictions at the cap: "+NM+" on the left map, "+NS+" on the right.");
 })();
 </script>
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Identical geography, identical data, identical color ramp; only the quantity
+Identical geography, identical data, identical color scale; only the quantity
 being colored has changed. The right-hand map is the paler one because a margin
 is about %s times the distance of a share from 50. Hover either map.</p>
-', rows, CAP, sum(abs(d_marg) > CAP), sum(abs(d_shar) > CAP),
+', CAP, sum(abs(d_marg) > CAP), sum(abs(d_shar) > CAP),
    pc(diff(range(d_marg)) / diff(range(d_shar)), 1)))
 
 ## ---- scales

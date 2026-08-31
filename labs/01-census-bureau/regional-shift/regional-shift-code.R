@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -282,51 +283,23 @@ text(m$change + ifelse(m$change > 0, 0.5, -0.5), bp,
 legend("bottomright", names(RCOL), fill = RCOL, border = NA, bty = "n", cex = 0.7)
 
 ## ---- bars-d3
-# d3 itself is loaded once, by the map figure above.
+# Drawn with the shared library. d3 itself is loaded once, by the map figure
+# above, so dd_fig() is told not to emit it a second time; it still emits
+# dd-charts.js, which rides beside whatever loaded d3 first. The four region
+# hues are the series classes the whole chapter maps onto RCOL.
 m <- moved[order(-moved$change), ]
-rows <- paste(sprintf('{"s":"%s","v":%d,"r":"%s","c":"%s"}',
-                      m$name, m$change, m$region, RCOL[m$region]), collapse = ",")
-cat(sprintf('
-<div id="bars" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,RH=17,M={t:26,r:30,b:8,l:130};
-const H=M.t+M.b+D.length*RH;
-const svg=d3.select("#bars").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-17,17]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.s)).range([M.t,H-M.b]).padding(0.18);
-svg.append("g").attr("transform",`translate(0,${M.t})`)
-  .call(d3.axisTop(x).ticks(7).tickFormat(d=>d>0?"+"+d:d))
-  .call(g=>g.selectAll(".tick line").clone()
-    .attr("y2",H-M.b-M.t).attr("stroke","#00000012"));
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(Math.min(0,d.v))).attr("y",d=>y(d.s))
-  .attr("width",d=>Math.abs(x(d.v)-x(0))).attr("height",y.bandwidth())
-  .attr("fill",d=>d.c)
-  .append("title").text(d=>`${d.s} (${d.r}): ${d.v>0?"+":""}${d.v} seats`);
-svg.append("g").selectAll("text").data(D).join("text")
-  .attr("x",d=>x(0)+(d.v>0?-6:6)).attr("y",d=>y(d.s)+y.bandwidth()/2+4)
-  .attr("text-anchor",d=>d.v>0?"end":"start")
-  .attr("font-size","11px").attr("fill","#333").text(d=>d.s);
-svg.append("g").selectAll("text").data(D).join("text")
-  .attr("x",d=>x(d.v)+(d.v>0?5:-5)).attr("y",d=>y(d.s)+y.bandwidth()/2+4)
-  .attr("text-anchor",d=>d.v>0?"start":"end")
-  .attr("font-size","10.5px").attr("fill",d=>d.c)
-  .text(d=>(d.v>0?"+":"")+d.v);
-svg.append("line").attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t)
-  .attr("y2",H-M.b).attr("stroke","#666");
-const lg=d3.select("#bars").append("div").attr("style","margin-top:4px;font-size:12px");
-lg.selectAll("span").data(%s).join("span")
-  .attr("style",d=>`display:inline-block;margin-right:14px;color:${d[1]};font-weight:600`)
-  .html(d=>`\\u25a0 ${d[0]}`);
-})();
-</script>
+dd_fig("bars", "bar", m[, c("name", "change", "region")], d3 = FALSE,
+  x = list(field = "change", domain = c(-17, 17), fmt = "signed0", ticks = 7),
+  y = list(field = "name", band = TRUE),
+  series = list(field = "region",
+                classes = list(Northeast = "series-1", Midwest = "series-3",
+                               South = "series-2", West = "series-4")),
+  catLabels = "inline", valueLabels = TRUE, legend = TRUE,
+  tip = dd_tip(c(region = "region", change = "seat change"),
+               fmt = c(change = "signed0"), title = "name"))
+cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Hover a bar for the exact figure.</p>
-', rows,
-   paste0("[", paste(sprintf('["%s","%s"]', names(RCOL), RCOL), collapse = ","), "]")))
+Hover a bar for the exact figure.</p>')
 
 ## ---- slope
 tp <- sc[order(-pmax(sc$reps_1960, sc$reps_2020)), ][1:12, ]

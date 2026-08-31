@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -79,78 +80,35 @@ par(op)
 # lean_dem + pure_ind + lean_rep, so the reader can see that almost all of the
 # disagreement is leaners rather than people with no party at all.
 #
-# This chunk carries the ONE d3 <script src> for the document.
+# Drawn with the shared library (_lib/dd-charts.js); dd_fig() emits the two
+# <script src> tags for the document. The blue and red are series classes,
+# not the party pair: the two lines are two DEFINITIONS, and both count the
+# same independents.
 # ---------------------------------------------------------------------------
 m <- merge(ind[, c("year", "n", "pure_only", "with_leaners", "spread")],
            sev[, c("year", "lean_dem", "pure_ind", "lean_rep")], by = "year")
 m <- m[order(m$year), ]
-rows <- paste0('[', m$year, ',', m$n, ',', m$pure_only, ',', m$with_leaners,
-               ',', m$spread, ',', m$lean_dem, ',', m$pure_ind, ',',
-               m$lean_rep, ']', collapse = ",")
-cat(paste0('
-<div id="pid" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const R=[', rows, '];
-const D=R.map(r=>({y:r[0],n:r[1],pure:r[2],with_:r[3],sp:r[4],
-                   ld:r[5],pi:r[6],lr:r[7]}));
-const DEM="', DEM, '", REP="', REP, '";
-const W=770,H=420,M={t:16,r:150,b:40,l:52};
-const box=d3.select("#pid");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain(d3.extent(D,d=>d.y)).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.with_)+4]).range([H-M.b,M.t]);
-svg.append("path").attr("fill","#E4E8EA")
-  .attr("d",d3.area().x(d=>x(d.y)).y0(d=>y(d.pure)).y1(d=>y(d.with_))(D));
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(7));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).tickFormat(d=>d+"%").ticks(6));
-svg.append("text").attr("transform","rotate(-90)")
-  .attr("x",-(M.t+(H-M.b))/2).attr("y",14).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#4E5A63").text("% of respondents");
-[["with_",DEM,["anyone who said","independent"]],
- ["pure",REP,["no party at all"]]].forEach(function(s){
-  svg.append("path").attr("fill","none").attr("stroke",s[1]).attr("stroke-width",2.5)
-     .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[s[0]]))(D));
-  svg.selectAll("p"+s[0]).data(D).join("circle")
-     .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[s[0]])).attr("r",2.8).attr("fill",s[1]);
-  const t=svg.append("text").attr("x",W-M.r+8)
-     .attr("y",y(D[D.length-1][s[0]])+4)
-     .attr("font-size","11.5px").attr("font-weight","600").attr("fill",s[1]);
-  s[2].forEach(function(line,i){
-    t.append("tspan").attr("x",W-M.r+8).attr("dy",i===0?"0":"1.15em").text(line);
-  });
-});
-const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#12181D").attr("stroke-dasharray","3 3").attr("opacity",0);
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","transparent")
-  .on("mousemove",function(e){
-    const yr=x.invert(d3.pointer(e,this)[0]+M.l);
-    const d=D.reduce((a,b)=>Math.abs(b.y-yr)<Math.abs(a.y-yr)?b:a);
-    rule.attr("x1",x(d.y)).attr("x2",x(d.y)).attr("opacity",0.55);
-    const r=box.node().getBoundingClientRect();
-    tip.style("opacity",1)
-       .style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-10)+"px")
-       .html("<b>"+d.y+"</b> &middot; "+d.n.toLocaleString()+" respondents<br>"+
-         "<span style=\\"color:"+DEM+"\\">&#9632;</span> said independent: "+
-           d.with_.toFixed(1)+"%<br>"+
-         "<span style=\\"color:"+REP+"\\">&#9632;</span> no party at all: "+
-           d.pure.toFixed(1)+"%<br>"+
-         "<b>band = "+d.sp.toFixed(1)+" pts</b><br>"+
-         "&nbsp;&nbsp;lean Dem "+d.ld.toFixed(1)+"% &middot; pure "+
-           d.pi.toFixed(1)+"% &middot; lean Rep "+d.lr.toFixed(1)+"%");
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);rule.attr("opacity",0);});
-})();
-</script>'))
+dd_fig("pid", "line", m,
+  size = list(w = 770, h = 420, m = list(t = 16, r = 150, b = 40, l = 52)),
+  x = list(field = "year", fmt = "d", ticks = 7),
+  y = list(field = "with_leaners", label = "% of respondents",
+           domain = c(0, max(m$with_leaners) + 4), fmt = "pct0", ticks = 6),
+  series = list(fields = list(
+    list(field = "with_leaners", label = "anyone who said independent",
+         endLabel = c("anyone who said", "independent"), class = "series-1"),
+    list(field = "pure_only", label = "no party at all", class = "series-2"))),
+  band = list(y0 = "pure_only", y1 = "with_leaners"),
+  points = TRUE, endLabels = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b> &middot; "+DD.fmt.comma(d.n)+" respondents<br>"+
+      "<span class=\'series-1-txt\'>&#9632;</span> said independent: "+
+        d.with_leaners.toFixed(1)+"%<br>"+
+      "<span class=\'series-2-txt\'>&#9632;</span> no party at all: "+
+        d.pure_only.toFixed(1)+"%<br>"+
+      "<b>band = "+d.spread.toFixed(1)+" pts</b><br>"+
+      "&nbsp;&nbsp;lean Dem "+d.lean_dem.toFixed(1)+"% &middot; pure "+
+        d.pure_ind.toFixed(1)+"% &middot; lean Rep "+d.lean_rep.toFixed(1)+"%";
+  }'))
 
 ## ---- tab1
 sel <- ind[ind$year %in% c(FIRST, 1972, 1992, 2012, LAST), ]
