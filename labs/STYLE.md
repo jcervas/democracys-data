@@ -207,22 +207,39 @@ brief leaning on that source can stay short. Its shape:
 
 A chapter carries **no prediction prompt**. It is a reading, not a lab.
 
-**A brief is a lab.** 1,500–2,500 words. It asks one question of one source
-and answers it. Its shape:
+**A brief is a lab.** 1,500–2,500 words. It takes a claim, turns it into a
+question, and answers it from the record. Its shape (the running example is
+the midterm-penalty brief):
 
-1. The question
-2. A labeled **Why this data** paragraph: why this source, of all sources,
-   answers this question — with a link to the section's data-type chapter
-3. The prediction prompt
-4. The analysis. The first figure carries one or two sentences saying what
-   the chart shows and why this form — a slope, a scatter, a map — fits the
-   question
-5. `## What this chapter cannot tell you`
-6. `## What you should have learned` — 3–5 bullets, every number in them
+1. **The question** (no heading; plain opening). A claim as the reader has
+   heard it, then the turn: *"Political scientists have frequently observed
+   that the president's party loses seats in the midterm elections. Is that
+   true?"*
+2. `## The test` — how we will answer it: the data named with years and
+   source, linked; and why this source, of all sources, can answer this
+   question, with a link to the section's data-type chapter. *"Using data
+   from US House elections, 1858–2024, obtained from official sources
+   [link]."*
+3. `## The data` — what the reader is actually holding: how the table was
+   constructed (*"built by combining the records of each race in each
+   election"*), what cleaning was done and what it decided, and the
+   variables it contains, by name.
+4. The prediction prompt.
+5. `## What it says about democracy` — the finding, in figures and prose.
+   The first figure carries one or two sentences saying what the chart shows
+   and why this form — a slope, a scatter, a map — fits the question. The
+   exceptions get their story: *"With few exceptions, the observation holds.
+   2002 is one: President Bush's approval was extraordinarily high, and the
+   districts had just been redrawn after the 2000 census."*
+6. `## What this brief cannot tell you` — short; the limit built into the
+   file, not into the analysis
+7. `## What you should have learned` — 3–5 bullets, every number in them
    computed inline, never typed
-7. `## Extensions`
-8. `## Sources` — data citations, then **The data itself**, then the AI
-   prompt box
+8. `## Extensions` — additional questions and ideas for future research:
+   spreadsheet-answerable questions naming file and column, then one or two
+   stretch ideas beyond the spreadsheet
+9. `## Sources` — data citations, then **The data itself**, then the AI
+   prompt box, last
 
 ## 14. The title names the data and the question
 

@@ -124,18 +124,33 @@ for slug, d in chapters():
         problems.append((rel, f"'{BLOCK}' block links nothing"))
     offered = set(LINKED.findall(handed))
 
-    if TURN not in src:
-        problems.append((rel, f"## Sources has no '{TURN}' block"))
+    # The questions live in one of two places. 2nd-edition docs carry a
+    # "**Your turn**" block inside ## Sources; 3rd-edition briefs carry a
+    # "## Extensions" section before ## Sources (additional questions and
+    # ideas for future research). Either satisfies the contract; the same
+    # rules apply to both: at least MIN_QUESTIONS bullets, and every file a
+    # question names is one the chapter hands over.
+    ext = re.search(r"^## Extensions\s*$", text, re.M)
+    if TURN in src:
+        rest = src[src.index(TURN) + len(TURN):]
+        end = re.search(r"^(\*\*|```)", rest, re.M)
+        turn = rest[:end.start()] if end else rest
+        label = f"'{TURN}'"
+    elif ext:
+        rest = text[ext.end():]
+        end = re.search(r"^## ", rest, re.M)
+        turn = rest[:end.start()] if end else rest
+        label = "'## Extensions'"
+    else:
+        problems.append((rel, f"no '{TURN}' block in ## Sources and no "
+                              f"'## Extensions' section"))
         continue
-    rest = src[src.index(TURN) + len(TURN):]
-    end = re.search(r"^(\*\*|```)", rest, re.M)
-    turn = rest[:end.start()] if end else rest
     n = len(BULLET.findall(turn))
     if n < MIN_QUESTIONS:
-        problems.append((rel, f"'{TURN}' has {n} question(s), wanted "
+        problems.append((rel, f"{label} has {n} question(s), wanted "
                               f"{MIN_QUESTIONS}"))
     for name in sorted(set(QFILE.findall(turn)) - offered):
-        problems.append((rel, f"'{TURN}' names {name}, which the chapter "
+        problems.append((rel, f"{label} names {name}, which the chapter "
                               f"does not hand over"))
 
 if problems:
