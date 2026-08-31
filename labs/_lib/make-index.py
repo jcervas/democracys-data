@@ -142,10 +142,10 @@ def first_url(text):
 #
 # THE BOOK'S SPINE IS FOUR SECTIONS, and each section is a kind of provenance:
 #
-#   I    Census & Geography      you were ordered to answer, and everything
+#   I    Data About the Population   you were ordered to answer, and everything
 #                                else borrows a denominator from the result
-#   II   Surveys                 somebody asked, and you answered voluntarily
-#   III  Administrative Records  nobody asked you anything and you are in the
+#   II   Survey Data             somebody asked, and you answered voluntarily
+#   III  Administrative Data     nobody asked you anything and you are in the
 #                                file anyway -- returns, rosters, voter files,
 #                                roll calls, money, attention, ordinary people
 #   IV   Putting Data Together   nobody collected it; the number is built by
@@ -182,7 +182,7 @@ def first_url(text):
 SECTIONS = [
   dict(name="Front matter", intros=["introduction"], legacy=[], clusters=[]),
 
-  dict(name="I. Census & Geography", intros=["part-1-census-bureau"], legacy=[],
+  dict(name="I. Data About the Population", intros=["part-1-census-bureau"], legacy=[],
        clusters=[
     ("The Census and Its Products", ["census-source"],
      ["census-access", "census-api", "census-coverage", "census-race"]),
@@ -195,7 +195,7 @@ SECTIONS = [
      ["areal-units", "zip-codes"]),
   ]),
 
-  dict(name="II. Surveys", intros=["part-2-surveys"], legacy=[], clusters=[
+  dict(name="II. Survey Data", intros=["part-2-surveys"], legacy=[], clusters=[
     ("What a Survey Can Establish", ["surveys-source"],
      ["survey-access", "poll-weighting", "poll-simulation", "age-structure"]),
     ("The Big Academic Surveys", ["anes"],
@@ -206,7 +206,7 @@ SECTIONS = [
 
   # The three retired part openers are kept findable as legacy intros until
   # their material is folded into admin-records-source and they are archived.
-  dict(name="III. Administrative Records", intros=["admin-records-source"],
+  dict(name="III. Administrative Data", intros=["admin-records-source"],
        legacy=["part-3-elections", "part-4-political-actors",
                "part-5-ordinary-people"],
        clusters=[
