@@ -155,6 +155,12 @@ Some terms are worth teaching by name — *unit of analysis*, *the modifiable
 areal unit problem* — because a student who meets them elsewhere should
 recognise them. Teach them once, in plain words, under rule 7.
 
+Also banned: gimmick labels that dramatize a difficulty instead of naming
+it — **"trap"** above all ("the section's recurring trap", "the trap is
+sprung"). A denominator mismatch is a mistake, a problem, a question to ask;
+call it what it is. If a sentence needs a stage prop to feel important, the
+sentence has not found its subject.
+
 ## 9. Short paragraphs — three to five sentences, never more than six
 
 A paragraph that runs past six is two paragraphs, and the reader has already
@@ -206,6 +212,13 @@ brief leaning on that source can stay short. Its shape:
 8. `## Sources`
 
 A chapter carries **no prediction prompt**. It is a reading, not a lab.
+
+**A section intro motivates before it maps.** Its first job is to answer why
+anyone — a citizen, not just an analyst — would want this kind of knowledge:
+what understanding the population (or opinion, or the records) buys for
+democracy and politics, with historical or constitutional grounding where it
+genuinely helps. The mechanics of the section's products come after the
+reader knows why they should care.
 
 **A brief is a lab.** 1,500–2,500 words. It takes a claim, turns it into a
 question, and answers it from the record. Its shape (the running example is
