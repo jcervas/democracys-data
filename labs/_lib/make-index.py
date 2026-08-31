@@ -206,11 +206,8 @@ SECTIONS = [
       "abortion-opinion", "gss-confidence", "thermometers", "perception-gap"]),
   ]),
 
-  # The three retired part openers are kept findable as legacy intros until
-  # their material is folded into admin-records-source and they are archived.
   dict(name="III. Administrative Data", intros=["admin-records-source"],
-       legacy=["part-3-elections", "part-4-political-actors",
-               "part-5-ordinary-people"],
+       legacy=[],
        clusters=[
     ("Election Returns", ["returns-source", "levels-of-aggregation"],
      ["county-returns", "panhandle-claim", "electoral-map", "mapping",

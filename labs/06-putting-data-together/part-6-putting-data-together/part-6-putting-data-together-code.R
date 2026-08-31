@@ -13,16 +13,26 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       dpi = 96, fig.retina = 1)
 options(scipen = 999)
 
-rd <- function(f) read.csv(file.path("data/derived", f), stringsAsFactors = FALSE)
-ch <- rd("chapters.csv"); bt <- rd("beats.csv"); ru <- rd("reuse.csv")
+# The section's shape is read from the book's own index -- INDEX.md, written
+# by _lib/make-index.py -- so this page cannot disagree with the section it
+# opens: reorganise the section and re-render, and every count below follows.
+idx  <- readLines("../../INDEX.md", warn = FALSE)
+rows <- idx[startsWith(idx, "| ")]
+f    <- strsplit(rows, "\\s*\\|\\s*")
+cell <- vapply(f, function(x) if (length(x) > 3) x[[2]] else "", "")
+typ  <- vapply(f, function(x) if (length(x) > 3) x[[3]] else "", "")
+
+# Cluster rows of Section IV carry labels like "IV.1 Joining Files"; the
+# section's intro row (this page) carries the bare section name and is not
+# counted among the docs it introduces.
+keep <- grepl("^IV\\.[0-9]", cell)
+clu  <- cell[keep]
+NDOC <- sum(keep)
+NCLU <- length(unique(clu))
+NCH  <- sum(typ[keep] == "chapter")
+stopifnot(NDOC >= 15, NCLU >= 5)   # parsing drift must fail loudly, not quietly
 
 nn <- function(x) format(round(as.numeric(x)), big.mark = ",")
-RU <- function(q) ru$value[ru$quantity == q]
-
-NCH   <- nrow(ch)
-OUT   <- RU("Chapters outside this part")
-GOES  <- RU("Of those, that go to the Census Bureau themselves")
-DEPS  <- RU("Of those, that read this part's own derived files")
 
 knit_print.data.frame <- function(x, ...) {
   n <- names(x)
@@ -34,13 +44,8 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- beattab
-data.frame(Beat = bt$beat, Chapters = nn(bt$chapters),
-           What_it_does = bt$what_it_does)
-
-## ---- chaptab
-data.frame(Beat = ifelse(ch$companion, paste0(ch$beat, " \u00b7 companion"), ch$beat),
-           Chapter = ch$chapter, Title = ch$title)
-
-## ---- reusetab
-data.frame(Quantity = ru$quantity, Chapters = nn(ru$value))
+## ---- clustertab
+tab <- as.data.frame(table(factor(clu, levels = unique(clu))),
+                     stringsAsFactors = FALSE)
+names(tab) <- c("Cluster", "Docs")
+tab

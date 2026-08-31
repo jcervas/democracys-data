@@ -1,5 +1,5 @@
 ---
-title: "Part VI — Putting Data Together"
+title: "Section IV — Putting Data Together"
 type: chapter
 subtitle: "Where the interesting questions and nearly all the errors live"
 author: "Democracy's Data"
@@ -16,61 +16,80 @@ dd_read_chunks("part-6-putting-data-together-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Every part before this one worked with one source at a time. That was a simplification, and this part drops it.
+The first three sections of this book each worked with one kind of data at a time. A count described the population, a survey asked it questions, an administrative record wrote down what a system did. That one-source-at-a-time discipline was a simplification, and this section drops it.
 
-**Nothing here introduces new data.** Every file these `r NCH` chapters touch comes from elsewhere in this book, not from a new fetch. What is new is the *combining*. A name and an address joined to a guess about race. A precinct result joined to the demographics of the precinct. A district map graded against a rule somebody wrote down.
-
-That is where the questions people actually care about live. It is also where nearly all the wrong answers come from, and the two facts are related.
+Almost nothing here introduces new data. What is new is the *combining*. A name and an address joined to a guess about race. A survey's claim about turnout joined to the counted ballots. A precinct result joined to the demographics of the precinct, and a district map graded against a rule somebody wrote down. That is where the questions people actually care about live. It is also where nearly all the wrong answers come from, and the two facts are related.
 
 ## Nobody recorded any of these numbers
 
-Start with what these chapters produce, because it is a genuinely different kind of object from anything so far.
+Start with what these `r nn(NDOC)` docs produce, because it is a genuinely different kind of object from anything so far.
 
-There is no file anywhere that records a voter's race, if the voter's state does not ask. There is no file that records how Black voters in a county voted, because ballots are secret. There is no file that records whether a district was drawn to dilute somebody's vote. **Every one of those numbers is manufactured** — computed from other numbers, by somebody, using a method with assumptions in it.
+There is no file anywhere that records a voter's race, if the voter's state does not ask. There is no file that records how Black voters in a county voted, because ballots are secret. There is no file that records whether a district was drawn to dilute somebody's vote, or what the House will look like next November. **Every one of those numbers is manufactured** — computed from other numbers, by somebody, using a method with assumptions in it.
 
-Once it is computed it looks exactly like the measured numbers around it. It has the same number of decimal places. It goes in the same column. The assumptions do not come with it.
+You have already met one manufactured number without being asked to notice. A member of Congress's ideology score, in the roll-call cluster of Section III, appears in no clerk's record. It is computed from the votes, by a method, and the method's choices are inside every polarization chart built on it. This section is where numbers of that kind stop passing unexamined.
 
-## So every chapter here is a test
+Because once such a number is computed, it looks exactly like the measured numbers around it. It has the same number of decimal places. It goes in the same column, and it joins to other files as easily as a count does. The assumptions do not come with it. The point of this section is to keep hold of them anyway.
 
-Because these numbers cannot be checked against a file, they have to be checked another way: run the method on a case where the true answer is already known, and see whether it gets it.
+## Every join carries one assumption more
 
-That is what this part does, over and over. Guess people's race from their names and addresses, then compare against a state that records race and see how often the guess is right. Estimate how a group voted from precinct totals, then compare against ballots that were actually counted separately. Search for a fair map with an algorithm, then check whether the map it could not find has been law for years.
+Here is the section's recurring trap, stated once so you can watch for it everywhere. A number built from two sources inherits the assumptions of both. Then the join adds one more of its own: **an assumption about how the two files line up.** The first two you have spent three sections learning to see. The third is new, it belongs to nobody's file, and no column in either source records it.
 
-The answers are not reassuring, and that is the point of putting them last. **You now know enough about where data comes from to understand why the methods fail where they do** — which is a different and more useful thing than being told not to trust them.
+It fails in a few repeating ways, and you have met each of them once already, in single-source form.
 
-## The shape of this part
+**A code outlives what it names.** Two files agree that a row is `11001`, and mean different ground by it — the join that opened this book, where a county code silently switched from a city to an eighth of one. Match on a precinct name, a county code or a district number across years, and part of what you measure is the drift of the label rather than a change in the world.
 
-Every part of this book is built out of the same few moves, though no part uses all of them and the order changes when the material demands it. Here is what this one runs, and what each move is for:
+**A denominator is borrowed across sources.** The top of the fraction comes from one file and the bottom from another, made by different people, on different dates, with different rules about who counts. Divide counted ballots by a census population, and the fraction quietly assumes the two files describe the same people at the same moment. They rarely do. One doc here shows a famous thirty-year decline in American turnout that lives entirely in the borrowed bottom number, and disappears when the denominator counts only people actually eligible to vote.
 
-```{r beattab}
+**A probable match is treated as a certain one.** Most joins in real political data are guesses with a score attached — this voter is *probably* that record, this surname *probably* belongs to this group. The arithmetic that follows almost always drops the "probably". A guess laid over a guess can still print a tight, confident interval, and one doc here exists to show exactly that happening.
+
+None of these failures announces itself. That is what makes join error the section's trap rather than its nuisance: the join succeeds, the table is complete, and the number is wrong. Every check a careful person runs on a single file comes back clean, because no single file contains the mistake. The mistake lives between them.
+
+## The shape of this section
+
+The section runs in `r nn(NCLU)` clusters. Only `r nn(NCH)` doc is a data-type chapter, because only one new kind of raw material is introduced: the join key itself. Everything after it combines files you have already met.
+
+```{r clustertab}
 ```
 
-The rule is cumulative: **nothing in a later move is worked out from a source you have not already met.** If a chapter uses a file, the chapter that introduced that file came earlier.
+**Joining Files** opens with [the join key](../data-sources/data-sources-brief.html): one federal county code, two files four years apart, and a match that succeeds on every row while being wrong in one of them. It is the mechanics of every join after it, worked on the simplest possible case.
 
-```{r chaptab}
-```
+**Survey Meets Record** puts Section II against Section III directly: [what people say they did against what the ballots show](../validated-turnout/validated-turnout-brief.html), over sixty years. People report voting more than the counted ballots can support. The gap is not noise, it runs one way, and it is one of the most reliable findings in American survey research — which makes it the cleanest possible demonstration of what a record can do to a survey.
 
-There is only one row in that first table, and it is the honest description of this part: every chapter takes a number somebody built and grades it.
+**Race Inference** builds a number no file contains. [A federal surname table](../surnames/surnames-brief.html) turns a name into a probability; [a check against a state that records race](../bisg-check/bisg-check-brief.html) says how often the guess is right, and for whom it fails; [a third doc](../uncertainty/uncertainty-brief.html) shows a tight confidence interval sitting on top of a number that describes nobody. The cluster ends with [ecological inference](../rpv/rpv-brief.html) — guessing what individuals did from group totals — run on a county where the answer is known, and producing an estimate above 100%.
 
-## Where this part sits
+**Districts** joins census counts, election returns and geography to grade maps. [Thousands of computer-drawn plans](../neutral-maps/neutral-maps-brief.html) stand in for the maps nobody drew, and the other docs test real maps against them: the same votes poured into redrawn lines, a dilution claim about a map that does not exist, and six defensible answers to how many majority-Black districts a state has. A bias statistic gets a doc of its own, because what it measures is not intent.
 
-```{r reusetab}
-```
+**Forecasting** joins everything to the calendar: polls, history and judgment compressed into [a probability](../models-markets/models-markets-brief.html), and a [working model of an election that has not happened](../seat-forecast/seat-forecast-brief.html). A forecast is the join at its most exposed, because the thing it is joined to — the future — supplies no file at all until the night it arrives. Grading one is its own problem: a forecast that gave the loser thirty per cent was not wrong, and finding out whether it was any good takes hundreds of resolved forecasts, which is exactly what the cluster assembles.
 
-Read those two numbers together, because they are the shape of a final part.
+**Proxies and Indices** closes the book with numbers that stand in for other numbers: [two denominators for turnout](../turnout-denominator/turnout-denominator-brief.html), fifty-six election laws [compressed into one score](../cost-of-voting/cost-of-voting-brief.html), and a famous shorthand about grocery stores [rebuilt from scratch](../whole-foods-cracker-barrel/whole-foods-cracker-barrel-brief.html) to see what it is actually made of. A proxy is a join whose second file is an idea, and the cluster asks what each one quietly decided on your behalf.
 
-**This part reads files from `r nn(RU("Chapters here that read another part\'s files"))` chapters elsewhere in the book, and no chapter anywhere reads its files.** It imports more than any other part and exports nothing. That is what a destination looks like: everything flows in, nothing flows out, and the book stops here because there is nowhere further to carry it.
+## Every doc here is a test
 
-## How to read this part
+Because a manufactured number cannot be checked against a file, it has to be checked another way: run the method on a case where the true answer is already known, and see whether it gets it.
 
-**Read it in order.** This is the one part of the book where that matters. The chapters build: uncertainty sets up what a margin does not cover, the race imputation chapter supplies a method, the voting-estimate chapter uses it, and the districting chapters put the whole apparatus against real law.
+That is what this section does, over and over. Guess race from names and addresses, then compare against a state that records race. Estimate how a group voted from precinct totals, then compare against ballots that were counted separately. Grade forecasts against the elections they forecast, and search for a fairer map with an algorithm, then check whether the map it could not find has been law for years.
 
-If you only read one, read [the racially polarized voting chapter](../rpv/rpv-brief.html) — a method used in federal voting-rights litigation, run against an answer key, getting an impossible number.
+The answers are not reassuring, and that is the point of putting them last. **You now know enough about where each file comes from to understand why the methods fail where they do** — which is a different and more useful thing than being told not to trust them.
+
+## Where this section sits
+
+This is the destination of the book. Its docs read files built all over the earlier sections — a census denominator here, a voter file there, a set of returns underneath nearly everything — and no doc anywhere reads what this section computes. Everything flows in, and nothing flows out.
+
+That is what a final section should look like. The manufactured numbers here are ends of chains, not links in them, and each doc names the docs it borrowed from so you can walk any chain back to a source with a signature on it. Walking the chain is worth doing at least once. A racially polarized voting estimate rests on a race guess, which rests on a surname table and a census block count, which rest on a form somebody filled in. Every link was somebody's decision, and the estimate at the end is only as good as the weakest of them.
+
+## How to read this section
+
+**Read it in order.** This is the one section of the book where that matters. The docs build: the join-key doc supplies the mechanics, the race-inference cluster supplies a method and its error rate, the voting-estimate doc uses that method, and the district docs put the whole apparatus up against real law.
+
+Two docs are fixed to dates rather than to places in the sequence. The Senate-rating brief asks you to commit to a map in August, to a number you cannot revise in November. The election-night brief runs on the night itself, with results that do not exist until then, and grades the predictions made earlier against what the country actually did.
+
+If you only read one doc, read [the racially polarized voting brief](../rpv/rpv-brief.html): a method used in federal voting-rights litigation, run against an answer key, getting an impossible number with an excellent fit statistic on top.
 
 ## Sources
 
-- The corpus itself. The chapter list, its order and each chapter's subject are
-  read from this book's own `INDEX.md`, so this page cannot disagree with the
-  part it opens.
-- No new data is acquired in this part. Every file is one introduced earlier in
-  the book, and each chapter names the chapter it borrowed from.
+- The corpus itself. The cluster labels and every count on this page are read
+  from this book's own `INDEX.md`, written by `_lib/make-index.py`, so this
+  page cannot disagree with the section it opens; reorganise the section and
+  re-render, and the table above follows.
+- No new data is acquired in this section. Every file is one introduced
+  earlier in the book, and each doc names the doc it borrowed from.
