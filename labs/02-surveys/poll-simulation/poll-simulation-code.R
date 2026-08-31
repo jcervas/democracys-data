@@ -139,175 +139,12 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 # the one and only copy of d3 in this document
 cat('<script src="../../_lib/d3.v7.min.js"></script>\n')
 
-## ---- rawrda
-# Two captures, taken when the file was fetched: R's own description of the
-# loaded object, and the first four 2024 rows of it. Both are quoted verbatim.
-# The row and column counts used in the prose are parsed back out of the first
-# line at knit time rather than asserted beside it.
-RAWSTR <- c(
-"'data.frame':\t1913 obs. of  7 variables:",
-" $ year        : num  1864 1864 ...",
-" $ state_abbrev: chr  \"CA\" \"CT\" ...",
-" $ winner      : chr  \"Abraham Lincoln\" \"Abraham Lincoln\" ...",
-" $ party_win   : chr  \"republican\" \"republican\" ...",
-" $ democrat    : num  41.4 48.6 ...",
-" $ other       : num  NA NA NA NA NA ...",
-" $ republican  : num  58.6 51.4 ...")
-RAWHEAD <- c(
-"     year state_abbrev       winner  party_win democrat other republican",
-"1863 2024           AK Donald Trump republican    41.41  1.68      54.54",
-"1864 2024           AL Donald Trump republican    34.10    NA      64.57",
-"1865 2024           AR Donald Trump republican    33.56  1.12      64.20",
-"1866 2024           AZ Donald Trump republican    46.70  0.50      52.20")
-RN <- as.integer(sub(".*:\\D*([0-9]+) obs.*", "\\1", RAWSTR[1]))
-RC <- as.integer(sub(".*of *([0-9]+) variables.*", "\\1", RAWSTR[1]))
-
-# R's own description of the object, parsed into the three things it actually
-# says about each column: its name, its storage type, and the first values.
-.v <- RAWSTR[-1]
-.m <- regmatches(.v, regexec("^ \\$ ([A-Za-z_]+)\\s*: (\\w+)\\s+(.*)$", .v))
-.ps <- c(
-  year = "the presidential election year",
-  state_abbrev = "the state's two-letter code",
-  winner = "who carried the state",
-  party_win = "that winner's party",
-  democrat = "the Democratic share of the vote, as a percentage",
-  other = "the share going to everyone else",
-  republican = "the Republican share")
-.nm <- vapply(.m, function(z) z[2], character(1))
-data.frame(
-  Column       = .nm,
-  What_it_holds = unname(.ps[.nm]),
-  Stored_as    = c(num = "number", chr = "text")[
-                    vapply(.m, function(z) z[3], character(1))],
-  First_values = trimws(vapply(.m, function(z) z[4], character(1))))
-
-## ---- rawrda2
-# The four rows as a table. The row numbers on the left are R's, not the
-# file's, and they are kept because the paragraph below refers to them.
-.h <- strsplit(trimws(RAWHEAD[1]), " +")[[1]]
-.b <- lapply(RAWHEAD[-1], function(x) strsplit(trimws(x), " +")[[1]])
-.b <- lapply(.b, function(z) c(z[1], z[2], z[3], paste(z[4], z[5]),
-                               z[6], z[7], z[8], z[9]))
-.d <- as.data.frame(do.call(rbind, .b), stringsAsFactors = FALSE)
-names(.d) <- c("row", .h)
-.d
-
-## ---- cleanstates
-st[st$abbrev %in% c("AK", "AL", "AR", "AZ"),
-   c("state", "abbrev", "ev", "harris", "trump", "other", "winner", "margin")]
-
-## ---- one-record
-o <- st[st$state == "Pennsylvania",
-        c("state", "abbrev", "ev", "harris", "trump", "other", "winner", "margin")]
-names(o) <- c("state", "code", "electoral votes", "Harris (%)", "Trump (%)",
-              "other (%)", "winner", "margin (Trump − Harris)")
-o
-
 ## ---- close-states
 o <- st[st$abs_margin < moe(1000), ]
 o <- o[order(o$abs_margin), c("state", "ev", "harris", "trump", "margin", "winner")]
 names(o) <- c("state", "electoral votes", "Harris (%)", "Trump (%)",
               "margin (Trump − Harris)", "winner")
 o
-
-## ---- gridmap-static
-mm    <- moe(1000)
-cap40 <- pmin(st$abs_margin, 40)
-ramp  <- colorRampPalette(c(CM, "#9fd0d3", "#f2f2f2"))(101)
-fillc <- ramp[round(100 * cap40 / 40) + 1]
-tight <- st$abs_margin < mm
-par(mar = c(0.3, 0.3, 2.6, 0.3))
-plot(NA, xlim = c(0.4, 11.6), ylim = c(8.6, 0.4), axes = FALSE, ann = FALSE,
-     asp = 1)
-rect(st$col - 0.46, st$row - 0.46, st$col + 0.46, st$row + 0.46,
-     col = fillc, border = "white", lwd = 1.1)
-rect(st$col[tight] - 0.46, st$row[tight] - 0.46,
-     st$col[tight] + 0.46, st$row[tight] + 0.46,
-     col = NA, border = "#111111", lwd = 2.8)
-tcol <- ifelse(cap40 < 15, "white", "#333333")
-text(st$col, st$row - 0.08, st$abbrev, cex = 0.60, font = 2, col = tcol)
-text(st$col, st$row + 0.26, pc(st$abs_margin, 1), cex = 0.46, col = tcol)
-lx <- seq(2.1, 5.1, length.out = 101)
-rect(lx, 0.72, lx + 0.031, 0.92, col = ramp, border = NA)
-text(2.1, 1.10, "dead heat", cex = 0.58, adj = 0)
-text(5.13, 1.10, "40+ point margin", cex = 0.58, adj = 1)
-rect(6.10, 0.72, 6.42, 0.92, col = NA, border = "#111111", lwd = 2.4)
-text(6.55, 0.83, paste0("closer than \u00b1", pc(mm, 2), " points"), cex = 0.58,
-     adj = 0)
-mtext(paste0("One square per state, shaded by how close it was. Black outline: ",
-             "decided by less than the \u00b1", pc(mm, 2),
-             " a poll of 1,000 claims."),
-      side = 3, line = 1.4, cex = 0.76, adj = 0)
-mtext(paste0(close_n, " of the ", nrow(st), " squares are outlined, together ",
-             close_ev, " electoral votes. The tightest was ",
-             st$state[which.min(st$abs_margin)], " at ",
-             pc(min(st$abs_margin), 2), " points."),
-      side = 3, line = 0.4, cex = 0.68, adj = 0, col = "#555555")
-
-## ---- gridmap-d3
-mm   <- moe(1000)
-rows <- paste(sprintf('{"a":"%s","s":"%s","c":%d,"r":%d,"m":%.2f,"e":%d,"w":"%s","t":%d}',
-                      st$abbrev, st$state, st$col, st$row, st$abs_margin,
-                      st$ev, st$winner, as.integer(st$abs_margin < mm)),
-              collapse = ",")
-cat(sprintf('
-<div id="gmap" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], MM=%.4f;
-const cell=58, W=11*cell+40, H=8*cell+74, M={t:52,l:20};
-const box=d3.select("#gmap");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const col=d3.scaleLinear().domain([0,40]).clamp(true)
-  .range(["%s","#f2f2f2"]).interpolate(d3.interpolateRgb);
-const gx=d=>M.l+(d.c-1)*cell, gy=d=>M.t+(d.r-1)*cell;
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:11.5px;opacity:0;white-space:nowrap");
-const g=svg.append("g").selectAll("g").data(D).join("g")
-  .attr("transform",d=>`translate(${gx(d)},${gy(d)})`)
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html(`<b>${d.s}</b><br>${d.w} by ${d.m.toFixed(2)} points`+
-      `<br>${d.e} electoral vote${d.e===1?"":"s"}`+
-      (d.t?`<br><i>closer than \\u00b1${MM.toFixed(2)}</i>`:""))
-      .style("left",Math.min(gx(d)+cell+6,W-230)+"px").style("top",(gy(d)-4)+"px");
-  }).on("mouseleave",()=>tip.style("opacity",0));
-g.append("rect").attr("width",cell-4).attr("height",cell-4)
-  .attr("fill",d=>col(d.m)).attr("stroke",d=>d.t?"#111":"#fff")
-  .attr("stroke-width",d=>d.t?3:1.4);
-// on-mark: these two sit inside the cell, so the fill is chosen against the
-// cell and must not follow the page into dark. The caption below the grid uses
-// the same #333 and is on the page, which is why this is classed per text.
-g.append("text").attr("x",(cell-4)/2).attr("y",(cell-4)/2+1).attr("class","on-mark")
-  .attr("text-anchor","middle").attr("font-size","14px").attr("font-weight","600")
-  .attr("fill",d=>d.m<15?"#fff":"#333").text(d=>d.a);
-g.append("text").attr("x",(cell-4)/2).attr("y",(cell-4)/2+17).attr("class","on-mark")
-  .attr("text-anchor","middle").attr("font-size","10.5px")
-  .attr("fill",d=>d.m<15?"#fff":"#666").text(d=>d.m.toFixed(1));
-const lg=svg.append("g").attr("transform",`translate(${M.l},14)`);
-const nstop=60;
-lg.selectAll("rect").data(d3.range(nstop)).join("rect")
-  .attr("x",d=>d*3.4).attr("width",3.6).attr("height",11)
-  .attr("fill",d=>col(d/(nstop-1)*40));
-lg.append("text").attr("x",0).attr("y",25).attr("font-size","11px")
-  .attr("fill","#555").text("dead heat");
-lg.append("text").attr("x",nstop*3.4).attr("y",25).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#555").text("40+ point margin");
-lg.append("rect").attr("x",250).attr("y",0).attr("width",11).attr("height",11)
-  .attr("fill","none").attr("stroke","#111").attr("stroke-width",3);
-lg.append("text").attr("x",268).attr("y",10).attr("font-size","11px")
-  .attr("fill","#333").text("closer than \\u00b1"+MM.toFixed(2)+" points");
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-%d of the %d squares carry a black outline: %s, together %d electoral votes,
-came in closer than the ±%.2f a poll of 1,000 advertises. The tightest was
-%s at %.2f points. Hover any square.</p>
-', rows, mm, CM, close_n, nrow(st),
-   paste(st$abbrev[st$abs_margin < mm][order(st$abs_margin[st$abs_margin < mm])],
-         collapse = ", "),
-   close_ev, mm, st$state[which.min(st$abs_margin)], min(st$abs_margin)))
 
 ## ---- population
 data.frame(candidate = c("Harris", "Trump"),
@@ -419,14 +256,6 @@ o <- data.frame(
 names(o) <- c("people polled", "estimate (%)", "advertised margin",
               "actually wrong by", "as a multiple of its own margin")
 o
-
-## ---- asymptote
-data.frame(
-  quantity = c("The truth", "What the poll converges on as n → ∞",
-               "The bias", "Margin of error at n = 100,000"),
-  value = c(paste0(pc(100 * truth, 2), "%"), paste0(pc(asym(GAP), 2), "%"),
-            paste0(sg(asym(GAP) - 100 * truth), " points"),
-            paste0("±", pc(moe(1e5), 2), " points")))
 
 ## ---- fan-static
 nf <- unique(round(exp(seq(log(100), log(1e6), length.out = 200))))
@@ -751,7 +580,6 @@ lg.append("text").attr("x",101).attr("y",30).attr("text-anchor","middle")
 # the chapter IS on the page and does want lifting.
 # Sites found by _lib/check-contrast.js; re-run it after touching these figures.
 cat('<style>
-#gmap text[fill="#666" i],
 #wmx text[fill="#222" i],
 #wmx text[fill="#444" i]
   { --ink:#12181D; --ink-2:#4E5A63; --ink-3:#76838C;
@@ -772,11 +600,6 @@ cat('<style>
 #fan text[fill="currentcolor" i]
   { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
     stroke-linejoin:round; }
-@media (prefers-color-scheme: light) {
-#gmap text[fill="#666" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
 #wmx text[fill="#fff" i],
 #wmx text[fill="#ffffff" i]
   { paint-order:stroke; stroke:var(--ink); stroke-width:3px;

@@ -16,165 +16,46 @@ dd_read_chunks("census-race-code.R")
 ```{r setup, include=FALSE}
 ```
 
-On the 2020 census form, question 8 asked whether the person was of Hispanic, Latino or Spanish origin. Question 9 asked what the person's race was. Between them the Bureau printed a note telling respondents to answer both, and explaining why:
+The census, people say, tells us what race Americans are. On the 2020 form, question 8 asked whether the person was of Hispanic, Latino or Spanish origin. Question 9 asked what the person's race was. Between them the Bureau printed a note telling respondents to answer both, and explaining why:
 
 > For this census, Hispanic origins are not races.
 
-That sentence is a decision, made by the federal government, about the relationship between two things people are routinely asked to be one thing about. It is also a claim you can test, because the form that separates them also records the answers together. This chapter is about what happened when a large minority of respondents declined to accept the separation.
+That sentence is a decision, made by the federal government, about the relationship between two things people are routinely asked to be one thing about. So what does the census actually measure when it measures race? And what happens when the form's categories and people's self-understanding pull apart? Both questions can be answered from the record, because the form that separates race from origin also publishes the two answers together.
 
-## The file American districts are drawn from
+## The test
 
-The Constitution orders a count — an "actual Enumeration" every ten years. But a count requires categories, and categories are made by people.
+The data is the [2020 Census Redistricting Data (P.L. 94-171) Summary File](https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/), the counts certified as of 1 April 2020, read here for six states: Pennsylvania, Texas, New York, Hawaii, Mississippi and New Mexico. A 1975 statute obliges the Bureau to hand this file to every state within a year of Census Day so that legislatures can draw districts from it. The form's seven questions, and how one of them becomes most of the published file, are the subject of the [decennial chapter](../census-decennial/census-decennial-brief.html).
 
-The file those answers arrive in is called **P.L. 94-171**. A 1975 statute requires the Census Bureau to deliver it to every state within a year of Census Day, specifically so that legislatures can draw districts. Everything downstream runs off it: how many seats a state gets, where the lines go, which jurisdictions must translate their ballots.
+It is the right file for two reasons. First, it is the operative one. Every legal claim about racial fairness in American elections is stated in its categories: a vote-dilution claim under §2 of the Voting Rights Act turns on whether a minority group could form a majority in a district, a number computed from this file, and language-assistance coverage under §203 is decided in the same terms. If the categories fit people badly, the misfit does not stay in the data; it propagates into the districts, the lawsuits and the money. Second, the file reports race *crossed with* Hispanic origin, so it can be used to interrogate its own categories. The American Community Survey asks the same two questions in more detail, but it uses the same boxes, so it inherits the misfit rather than measuring it.
 
-Every legal claim about racial fairness in American elections is stated in these categories. A §2 vote-dilution claim requires showing that a minority group is large and compact enough to form a majority in a district — a claim about a number computed from this file. Language-assistance coverage under §203 is determined in these terms. Federal money moves on them.
+The boxes themselves are not the Bureau's. They come from the **Office of Management and Budget**, a White House office whose Statistical Policy Directive No. 15 binds every federal agency. The version governing 2020, written in 1997, set five minimum race categories and two ethnicity categories, required that ethnicity be asked first as a separate question, and allowed more than one race. It also said what the categories are not: socio-political constructs, in its own words, not scientific or anthropological ones. And it defined White as "a person having origins in any of the original peoples of Europe, the Middle East or North Africa", so a respondent whose family came from Lebanon or Iran had no other place to go. In March 2024 the directive was rewritten again — a single combined question, a new Middle Eastern or North African category, compliance by 2029.
 
-So if the categories fit people badly, the misfit does not stay in the data. It propagates into the districts, the lawsuits and the appropriations. **A measurement error here is a representation error later**, and there is no second instrument to check it against.
+## The data
 
-The file is one row per county.
-
-```{r one-row}
-```
-
-`r alleg$county` had **`r n(alleg$total)`** people on 1 April 2020. Not an estimate and not a projection — the number the Bureau certified, and the number Pennsylvania's districts were drawn from.
-
-Notice that the last column overlaps every other one. Nothing has gone wrong; that is the two questions arriving in one table.
+What arrives from the Bureau's server is pipe-separated text with no column headers, split across pieces that join on a record number. Counties are the rows whose summary-level code reads `050`; everything else, every block and tract, is discarded. Three tables are kept by field position, located in a published technical specification: P1 (race), P2 (Hispanic origin by race) and P5 (group quarters). The FIPS code is held as text, because turning `01001` into the number 1,001 is how joins go quietly wrong, and county names come from the Census Gazetteer, matched on that code.
 
 ```{r file}
 ```
 
-Six states rather than fifty, because these six together are about 300 MB and they pull race and ethnicity apart in usefully different directions.
+One clean row per county, `r n(nrow(d))` of them. The variables, by name: `total`; the six race-alone counts (`white`, `black`, `aian`, `asian`, `nhpi`, `other_race`) plus `two_or_more`; the origin pair `hispanic` and `not_hispanic`; an `nh_` version of every race column, counting only non-Hispanic respondents; and the group-quarters counts, `gq_correctional` through `gq_military`. Six states rather than fifty, because these six pull race and ethnicity apart in usefully different directions. Every share below is therefore unrepresentative by design, and covers `r n(sum(d$total))` people rather than the country.
 
-Whatever else is wrong with this data, arithmetic is not. Both of the decompositions the file claims can be checked against every county in it rather than assumed, and both hold exactly:
+Two things were done to the numbers before this brief was written, one by the Bureau and one by the build. The Bureau injected privacy noise: small deliberate adjustments so that no individual's answers can be reconstructed, exact at the state level, close at the county level. The build then checked the arithmetic it was given:
 
 ```{r checks}
 ```
 
-Nothing that follows is a data-quality problem. The count is exact. It is the categories that are in question.
+Nothing that follows is a data-quality problem. The count is exact and it breaks apart without error. It is the categories that are in question.
 
-## Who decides what the boxes are
+> **Before you read on, commit to two numbers.** In these six states,
+> `r n(tot_other)` people answered the race question by choosing "Some Other
+> Race", and `r n(tot_two)` reported two or more races. The form asked
+> about Hispanic origin separately, one question earlier. **What share of
+> each of those two groups do you think said yes to it?** Write both
+> percentages down before you read on.
 
-Not the Census Bureau. The categories on the form come from the **Office of Management and Budget**, a White House office that sets standards every federal agency has to follow. Its Statistical Policy Directive No. 15, in the version governing 2020, is where the boxes were fixed. The Bureau administers a question somebody else wrote.
+## What it says about democracy
 
-The directive settles almost everything this chapter is about. It sets **five** minimum race categories: American Indian or Alaska Native, Asian, Black or African American, Native Hawaiian or Other Pacific Islander, and White. It sets **two** ethnicity categories, Hispanic or Latino and not Hispanic or Latino. It says respondents must be allowed to report more than one race. And where the two are asked as separate questions, it says **ethnicity is asked first**.
-
-So the sentence printed between questions 8 and 9 was not the Bureau's editorial choice. The separation is federal policy, and the ordering of the two questions is federal policy too.
-
-**The directive also says what the categories are not.** In its own words the race and ethnicity categories are socio-political constructs, and are not to be read as scientific or anthropological. That disclaimer sits in the standard that produces the numbers, which is stranger than it first sounds. The instrument states that the thing it measures is not a natural kind, and then measures it to the person.
-
-Two of the definitions are worth reading in full, because a chapter about boxes that fit people badly should say what the boxes were defined to hold. Black or African American means "a person having origins in any of the black racial groups of Africa." **White means "a person having origins in any of the original peoples of Europe, the Middle East or North Africa."**
-
-Read that second one twice. Under the standard governing the 2020 census, a respondent whose family came from Lebanon, Egypt or Iran was White, and the form offered no other place to put them. That is the same structural problem this chapter measures for Hispanic respondents, produced by a different clause of the same directive, and it is the problem the 2024 revision was written to fix.
-
-### Why the question is on the form at all
-
-**The decennial census asks about race in order to enforce the Voting Rights Act.** Since 1980 the Bureau has asked every person counted to identify their race and whether they are of Hispanic or Latino origin. Self-identification is the rule: the answer is whatever the respondent says it is.
-
-That is the answer to a question students reasonably ask, which is why a headcount for apportionment collects race at all. It does not, for apportionment. Every seat in the House would be allotted identically if question 9 did not exist. The question is there because Section 2 and Section 203 cannot be enforced without it, and it is delivered in P.L. 94-171 for the same reason.
-
-Hold that against the closing argument of this chapter. The categories fit a large population badly, and the reason they are collected is to protect that population.
-
-## Why this file, and what it took to open it
-
-**The obligation is statutory, and it shows in the format.** The Bureau does not publish P.L. 94-171 because someone requested it. A 1975 statute requires delivery to every state within a year of Census Day, and the layout is agreed with the states beforehand so that redistricting software can read it on arrival. Most of the files in this book were made for somebody's convenience; this one was made against a deadline that a legislature's calendar depends on.
-
-What actually arrives is less friendly than that sounds. It is pipe-separated text with no column headers, split across four pieces that join on a record number. A county's total population is the sixth field of the first piece, and nothing in the file says so. The `r length(read.csv("data/derived/pl94171_counties.csv", nrows = 1))` columns of the extract this chapter reads were located in a published technical specification and then pulled out by position.
-
-**It is the right file because it is the operative one, not because it is the best instrument.** The American Community Survey asks these same two questions every year of a sample, with more detail and more recent data. For almost any question about how Americans describe themselves it would be the better source.
-
-But it is not the file districts are drawn from. When a court is told that a minority group is large and compact enough to make a majority somewhere, the number in front of it came out of P.L. 94-171. And because the ACS uses the same OMB categories, it is not an independent check on them. It inherits the misfit rather than measuring it.
-
-What would genuinely have been better is something the Bureau holds and does not release: the write-in text behind *Some Other Race*, where people said in their own words what the boxes could not accommodate. Those strings are coded into categories before publication. This chapter can show that a hatch was used. It cannot show what was written in it.
-
-**The hard part is not counting. It is that the thing being counted is a classification.** A population can be enumerated; a race cannot, because the categories are not out in the world waiting to be observed. They are set by the Office of Management and Budget, revised in 1997 and revised again in March 2024, and the second revision merges race and Hispanic origin into a single question by 2029.
-
-The seam this chapter measures is therefore not a permanent feature of American life. It is a product of a two-question form that is being retired. That is an argument for reading it now, and an argument against extending the series forward.
-
-A second difficulty is quieter. To protect respondent confidentiality the Bureau injected noise into the 2020 tables before release, and the file carries no column recording how much. State totals are exact and counties are close, but the smallest county here holds `r n(min(d$total))` people, and the blocks that districts are actually assembled from are smaller than that by orders of magnitude.
-
-**It needed cleaning, and one of the cleaning decisions is a small lesson in itself.** The build script downloads the six state archives, keeps only the rows at county level, and joins the three pieces on their record number. Then it throws away the file's own county-name field in favour of the Census Gazetteer's, matched on the FIPS code. That code is held as text rather than as a number. None of these six states begins with a zero, but the national county list it is matched against is full of states that do.
-
-Before writing anything the script re-runs both decompositions and checks Allegheny County's total against the figure the Bureau published. A reader rebuilding this from scratch would have to repeat all of it, and would meet the name field first.
-
-Getting the archives, by contrast, took nothing at all. They sit at fixed public addresses on the Bureau's own server: no key, no form, and nobody standing between the agency that produced the count and the person reading it. So there are no other people's cleaning decisions baked in before the download begins.
-
-The one concession was size. These are large files one state at a time, and taking all fifty would mean moving gigabytes to answer a question that six states answer, so six is what is kept here.
-
-That is a choice about which data to get, and it shows up as a limit on the argument. Every count below is a count of `r n(sum(d$total))` people. The national figure appears only as a denominator, the bottom number you divide by. Nothing here can be added up into a statement about the country without going back for the other forty-four.
-
-## What arrives, and what a row of it becomes
-
-Everything above describes the file. This section shows it: four exact slices of the download, not summaries and not retyped versions but the actual bytes. The rest of this section is read out of them.
-
-Here is Allegheny County as the Census Bureau delivers it. This is one line of `pageo2020.pl`, the geographic header, folded to fit the page:
-
-```{r pl-geo, results='asis'}
-```
-
-`r sh("pa_geo_fields")` fields, separated by pipes, with no header line anywhere in the file saying what any of them is. Only `r length(GNE)` carry a value; the rest are empty because most of them describe kinds of geography a county is not. Four matter here and none of them announces itself:
-
-- field 3 is `r G[3]`, the **summary level**. `050` means county. The file this
-  line came out of holds `r n(sh("pa_geo_rows"))` rows at
-  `r n(sh("sumlevels_in_pa_geo"))` different summary levels — blocks, tracts,
-  places, school districts — and `r n(sh("pa_geo_county_rows"))` of them are
-  counties. The only thing separating them is this code.
-- field 8 is `r G[8]`, the **logical record number** — the join key.
-- field 10 is `r G[10]`, the **FIPS code**: `42` Pennsylvania, `003` Allegheny.
-- field 88 is `r G[88]`, the county's name.
-
-Now the same county in `pa000012020.pl`, the file that holds the actual counts:
-
-```{r pl-seg1}
-```
-
-`r NA1` fields, and only the first five are labels. The other `r NA1 - 5` are population counts with nothing to identify them: **Table P1 occupies positions 6 through 76, Table P2 occupies 77 through `r NA1`, and the file does not say so.** That layout lives in a technical specification published separately. Field 6 is `r n(as.numeric(A[6]))`, the total population of Allegheny County, because a document on a different website says the sixth field is the total population.
-
-Below is where in that line the chapter's numbers actually are.
-
-```{r pl-fields, fig.height=2.5}
-```
-
-**One line, `r NA1` numbers, `r length(KEEP)` used.** Each cell is one field of segment 1. The dark cells are the ones this chapter's extract keeps; the pale ones are the 63-way race combinations, published in full and thrown away here.
-
-Group quarters are not in that line at all. Those are the prison and dormitory counts this chapter uses later. They are in a third file, `pa000032020.pl`, `r NB` fields wide, joined back on the same record number:
-
-```{r pl-seg3}
-```
-
-And here is what the build makes of the three of them together — the whole clean row for Allegheny County, with the position each number came out of. The third column is not annotation: the chunk that draws this table refuses to print it unless every value still matches the raw line beside it.
-
-```{r pl-clean}
-```
-
-Seven decisions turned the first three blocks into that row, and each one is a rule somebody chose.
-
-**A code decides which rows exist.** `050` in field 3 is the only thing marking Allegheny County's row as a county. Pennsylvania's geographic header holds `r n(sh("pa_geo_rows"))` rows, and `r n(sh("pa_geo_county_rows"))` of them are counties. Everything else is thrown out on the strength of a three-digit code that the file never defines: every block, every tract, every borough. That is also why the archive is `r pc(sh("pa_zip_bytes") / 1e6, 0)` MB compressed for one state: the counties are a rounding error inside a file built for drawing districts out of blocks.
-
-**The join key is not the FIPS code.** Segment 1 does not carry `42003`. It carries `r A[5]`, a logical record number, and that number is meaningful only inside Pennsylvania's own archive: `r sp(HI[2])[8]` is Allegheny County here and Honolulu County in Hawaii's. **A key that is unique inside one file and meaningless across files is the most common way a join goes quietly wrong.** That is why the build joins piece to piece before it joins anything to anything else.
-
-**The identifier is kept as text.** `42003` could be stored as the number 42,003 without any loss. Do that to Alabama and `01001` becomes `1001`, which is not a county. Nothing in these six states begins with a zero; the national list this file is matched against is full of states that do, so the column is character from the first line that reads it.
-
-**`r NA1 - 5` numbers arrive and `r length(KEEP)` are used.** The rest is the 63-way race combination table, published in full at county level for every county in the United States: White and Black; White and Asian; White, Black and Native Hawaiian, and so on. This chapter needs the six single races, the two summary lines and the Hispanic split, so it takes 18 fields by position and leaves `r NA1 - 5 - length(KEEP)` behind. **That is not a data-quality decision. It is a decision about what question is being asked**, and a chapter about multiracial identification would take the other `r NA1 - 5 - length(KEEP)` and leave these.
-
-**The file's own name field is discarded.** Field 88 says `r G[88]`, and the build does not use it. County names throughout this chapter come from the Census Gazetteer, matched on the FIPS code.
-
-In these two states the swap changes nothing at all. The name field is filled in for every one of Pennsylvania's `r n(sh("pa_geo_county_rows"))` counties and all `r length(HI)` of Hawaii's, and all `r n(sh("pa_name_matches_gazetteer") + sh("hi_name_matches_gazetteer"))` of those names match the Gazetteer exactly.
-
-It is a habit rather than a repair. **One name list used everywhere in this book is worth more than the nearest name list used each time**, because names are what you join on when the codes run out.
-
-**The counts are converted from text to numbers, and that is a real step.** Every field in the raw line is characters. `r A[6]` is a string until somebody decides it is a quantity. The build decides that for 18 columns and refuses to decide it for the FIPS code, and the difference between those two decisions is the whole of the previous point.
-
-**Then it checks the arithmetic it was given.** Before writing anything the build asserts that every county's total equals one-race plus two-or-more, and equals Hispanic plus not-Hispanic. Both hold in all `r n(nrow(d))` rows. That is worth doing and it is worth knowing what it cannot catch: it verifies that the Bureau's tables are internally consistent, which they were always going to be. It says nothing about whether the field the build called `white` is the field the specification calls `white`.
-
-**Reading one field too far along produces a file that passes every check in this build.** The only defence against that is the last section's kind of evidence: Allegheny's total matches the population the Bureau announced, to the person.
-
-## Two answers to how white a place is
-
-Because Hispanic origin is asked separately, a Hispanic respondent also answers the race question — so a person can be, and millions are, both Hispanic and white. Which means there are two different and equally correct answers to a question that sounds like it has one.
-
-```{r two-answers}
-```
+Because Hispanic origin is asked separately, a person can be, and millions are, both Hispanic and white. Which means a question that sounds like it has one answer — how white is this state? — has two.
 
 ```{r two-static, eval=!knitr::is_html_output(), fig.height=4}
 ```
@@ -182,91 +63,36 @@ Because Hispanic origin is asked separately, a Hispanic respondent also answers 
 ```{r two-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Two correct answers to "how white is this state?", in six states.** The dark bar counts people who answered the race question "white" and the origin question "not Hispanic". The whole bar counts everyone who answered the race question "white", whatever they said about origin. The light segment between them is the seam: people who are both. It runs from `r pc(min(st$gap))` points in `r st$state[which.min(st$gap)]` to `r pc(max(st$gap))` points in `r st$state[which.max(st$gap)]`, and it is almost a mechanical function of how Hispanic a state is.
+**Figure 1. Two correct answers to "how white is this state?", in six states.** Each state appears once with two readings joined by a rule: the share answering the race question "white", and the share who are white *and* not Hispanic. The distance between the dots is the point of the figure — the people who are both — which is why the form is a dumbbell rather than a bar.
 
-**New Mexico is `r pc(S("New Mexico","white_pct"))`% white by the race question and `r pc(S("New Mexico","nhwhite_pct"))`% white once you account for the ethnicity question — a gap of `r pc(S("New Mexico","gap"))` points, a ratio of `r pc(S("New Mexico","ratio"), 2)`.**
+**New Mexico is `r pc(S("New Mexico","white_pct"))`% white by the race question and `r pc(S("New Mexico","nhwhite_pct"))`% white once the origin question is counted.** By one measure it is a majority-white state; by the other it is not close. Both numbers are correct, they answer different questions, and almost nobody reporting a figure like this says which one they used. Across the six states the gap tracks the Hispanic share almost mechanically (a correlation of `r pc(cor_gap, 3)`): `r pc(S("New Mexico","gap"))` points in New Mexico, `r pc(S("Mississippi","gap"))` in Mississippi, where few people are both.
 
-By one measure New Mexico is a majority-white state. By the other it is not close. Both numbers are correct. They answer different questions, and almost nobody reporting a figure like this says which one they used.
-
-Across these six states the correlation between the gap and the Hispanic share is `r pc(cor_gap, 3)`, because the gap *is* the Hispanic-and-white population. Mississippi, where very few people are both, shows `r pc(S("Mississippi","gap"))` points.
-
-So far this is only an accounting consequence of asking two questions instead of one. It becomes something else when you look at the people who answered the race question by rejecting every box on it.
-
-## The box for people who fit nowhere
-
-```{r other}
-```
-
-**`r pc(S("New Mexico","other_pct"))`% of New Mexicans and `r pc(S("Texas","other_pct"))`% of Texans looked at the race question and chose "Some Other Race."**
-
-Who are they? The file answers directly, because it reports each race crossed with Hispanic origin.
+So far this is an accounting consequence of asking two questions. It becomes something else in the people who answered the race question by rejecting every box on it. `r pc(S("New Mexico","other_pct"))`% of New Mexicans and `r pc(S("Texas","other_pct"))`% of Texans chose "Some Other Race", and the file says who they are:
 
 ```{r other-who}
 ```
 
-**`r pc(pct_other_h)`% of the people who rejected every race box are Hispanic.**
+**`r pc(pct_other_h)`% of the people who rejected every race box are Hispanic.** The leftover category on the race question is, in practice, an ethnicity box. The form asks a question a large minority of respondents do not think is well posed, then records their refusal as though it were an answer.
 
-Read that again. The leftover category on the race question is in practice an ethnicity box. It is the box for people who fit nowhere else. In these six states, `r n(tot_other)` people were asked their race, found the form did not offer one they recognized, and the overwhelming majority of them are the same people the *next* question was about.
-
-**The form asks a question a large minority of respondents do not think is well posed, and then records their refusal as though it were an answer.**
-
-That would be a contained problem if it were the only such box. It is not.
-
-There is a second unusual column in this file: **two or more races**. Across these six states it moves enormously, from `r pc(S("Hawaii","two_pct"))`% in Hawaii to `r pc(S("Mississippi","two_pct"))`% in Mississippi. It is normally read as a story about mixed-race families, with Hawaii as the obvious place to look.
-
-> **Before you read on, commit to a number.** `r n(tot_two)` people in these six
-> states marked two or more races on a form that asked about race and about
-> Hispanic origin in two separate places. **What share of those
-> `r n(tot_two)` also said they were of Hispanic origin?** Write down a
-> percentage before you look at the next table.
-
-## The second hatch, used by the same people
+That would be a contained problem if it were the only such box. The second unusual column is `two_or_more`, normally read as a story about mixed-race families, with Hawaii as the obvious place to look. Most readers' written-down guess for it is in the teens or twenties.
 
 ```{r two-race-who}
 ```
 
-Most readers write down something in the teens or twenties, because the mixed-race-families reading predicts a number like that. **`r pc(pct_two_h)`% of everyone reporting two or more races in these six states is Hispanic.**
-
-Put the two questions side by side. Every person in these six states enters on the left with the race they gave, and leaves on the right with the answer they gave to the separate question about Hispanic origin.
+**`r pc(pct_two_h)`% of everyone reporting two or more races in these six states is Hispanic.** Put every race answer beside the origin answer and both hatches show at once:
 
 ```{r sankey-static, eval=!knitr::is_html_output(), fig.height=5.2}
 ```
 
-**Figure 2. Every race answer in these six states, split by the answer to the separate question about Hispanic origin.** Each band on the left enters with the race a person gave, and leaves on the right with what they said about origin. Bands are ordered by how Hispanic the race answer turned out to be. The two at the top are the two residual categories, the boxes for what is left over: "`r rc$race[1]`" at `r pc(rc$share[1])`% Hispanic and "`r rc$race[2]`" at `r pc(rc$share[2])`%. They carry almost all of their people into the same node. The next race answer down is `r pc(rc$share[3])`%, and every one below it behaves nothing like the top two.
+**Figure 2. Every race answer in these six states, split by the answer to the separate origin question.** Bands are ordered by how Hispanic each race answer turned out to be. The two at the top are the two residual categories: "`r rc$race[1]`" at `r pc(rc$share[1])`% Hispanic and "`r rc$race[2]`" at `r pc(rc$share[2])`%. The next answer down is `r pc(rc$share[3])`%, and everything below it behaves nothing like the top two.
 
 ```{r sankey-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-Those are national-ish totals for the six states together. Both hatches behave the same way inside every one of them, and the comparison worth making is against how Hispanic each state actually is:
-
-```{r hatch-static, eval=!knitr::is_html_output(), fig.height=4.3}
-```
-
-```{r hatch-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 3. Both hatches behave the same way inside every state, and neither behaves like the state.** The open square is the share of a state's own population that is Hispanic; the two markers to its right are the share of the people using each residual category who are Hispanic. In `r st$state[which.min(st$hisp_pct)]`, only `r pc(min(st$hisp_pct))`% of the state is Hispanic and `r pc(st$other_h[which.min(st$hisp_pct)])`% of the people there who chose "Some Other Race" are. The distance from square to marker is the size of the misfit, and it is large everywhere.
-
-In every state the red circle sits far to the right of the square. The "Some Other Race" box runs from `r pc(min(st$other_h))`% Hispanic in `r st$state[which.min(st$other_h)]` to `r pc(max(st$other_h))`% in `r st$state[which.max(st$other_h)]`. Those same states' own Hispanic shares run from `r pc(min(st$hisp_pct))`% to `r pc(max(st$hisp_pct))`%. The second hatch does the same thing everywhere except `r st$state[which.min(st$two_h)]`, the one state where reporting two races mostly means what it appears to mean.
-
-And the counties:
+The counties say the same thing more sharply. **The ten most multiracial counties in this file are all in Texas**, strung along the Rio Grande, and all of them are between `r pc(min(top_two$hisp_pct))`% and `r pc(max(top_two$hisp_pct))`% Hispanic. Hawaii's most multiracial county, `r hi_top$county` at `r pc(hi_top$two_pct)`%, does not make the list.
 
 ```{r top-two}
 ```
-
-**The ten most multiracial counties in this file are all in Texas, and all of them are between `r pc(min(top_two$hisp_pct))`% and `r pc(max(top_two$hisp_pct))`% Hispanic.** Starr County, on the Rio Grande, is `r pc(top_two$two_pct[1])`% two-or-more-races and `r pc(top_two$hisp_pct[1])`% Hispanic. Hawaii's most multiracial county, `r hi_top$county` at `r pc(hi_top$two_pct)`%, does not make the list.
-
-They are not scattered across Texas either. Shade every county in Texas and New Mexico by the share reporting two or more races:
-
-```{r map-static, eval=!knitr::is_html_output(), fig.height=5.4}
-```
-
-```{r map-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. Where the multiracial counties actually are.** Every county in Texas and New Mexico, shaded by the share of its people reporting two or more races, with the `r nrow(top_two)` counties from the table above outlined in red. They are not scattered. They sit in a line along the Rio Grande, which is the Mexican border, in a state where the same counties are between `r pc(min(top_two$hisp_pct))`% and `r pc(max(top_two$hisp_pct))`% Hispanic.
-
-Across all `r nrow(d)` counties the correlation between Hispanic share and multiracial share is `r pc(cor_two, 3)`; for "Some Other Race" it is `r pc(cor_other, 3)`.
 
 ```{r scatter-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -274,142 +100,97 @@ Across all `r nrow(d)` counties the correlation between Hispanic share and multi
 ```{r scatter-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 5. The multiracial share of a county is largely a function of its Hispanic share.** One dot per county across all `r nrow(d)` in the file. Hawaii's counties are picked out in red, because Hawaii is the state most people name when asked where multiracial America is. They sit off the trend, low on the horizontal axis and high on the vertical one. They are the exception rather than the rule. Everywhere else the correlation is `r pc(cor_two, 3)`.
+**Figure 3. The multiracial share of a county is largely a function of its Hispanic share.** One dot per county, all `r n(nrow(d))` in the file; a scatter, because the claim is a relationship between two shares. The correlation is `r pc(cor_two, 3)`. Hawaii's counties are picked out because Hawaii is where most people locate multiracial America, and they sit off the trend: the exception, not the rule.
 
-So the obvious reading is wrong twice over. "Two or more races" is not primarily a story about mixed-race families, and it is not primarily about Hawaii. **It is the second escape hatch from the same badly-posed question**, used by the same population, on the same form. The 2020 questionnaire invited people to write in detail. Hispanic respondents who had previously ticked "Some Other Race" alone often wrote entries that the Bureau coded as two races, and the multiracial count in these six states rose accordingly.
+So the obvious reading is wrong twice over. "Two or more races" here is not primarily mixed-race families, and it is not primarily Hawaii. **It is the second escape hatch from the same badly-posed question, used by the same population.** The mechanism is on the form itself: the 2020 questionnaire added write-in lines under the race boxes, and Hispanic respondents who had previously ticked "Some Other Race" alone often wrote origins the Bureau coded as two races. The multiracial count in these states jumped accordingly.
 
-That has a hard consequence. **Comparing "two or more races" between 2010 and 2020 compares instruments, not people.**
+That is the finding about democracy, and it is worth stating as a rule. **A trend line that crosses a category rewrite partly measures the rewrite.** The 2010-to-2020 rise in multiracial America compares instruments as much as people. The same rule now points forward: the 2024 revision merges race and Hispanic origin into one question by 2029, which will end the two-answers problem in Figure 1 and make Figures 2 and 3 impossible to extend. The categories these charts measure are federal policy, revised in 1997 and 2024, and every downstream series — districts, §2 claims, funding formulas — is stated in the categories as they stood that decade. The population the 2020 form fit worst is precisely the population those protections most concern.
 
-## Counted where you sleep
+## What this brief cannot tell you
 
-The form makes one more decision about a person, and it is not about what they are. It is about where they are.
+**Nothing here is a national estimate.** Six states were chosen because race and ethnicity pull apart in them, so every share above is unrepresentative on purpose. Adding the other forty-four is the only way to a claim about the country.
 
-```{r prisons}
-```
+**What people meant is not in the file.** The write-in text behind "Some Other Race", where respondents said in their own words what the boxes could not hold, is coded into categories before publication and never released. This brief can show that a hatch was used; it cannot show what was written in it.
 
-**`r pc(forest$corr_pct)`% of `r forest$county`, `r forest$state` is in a state correctional facility** — `r n(forest$gq_correctional)` people out of `r n(forest$total)`.
+**The noise is unquantified.** The privacy adjustments were applied before release and the file carries no column saying by how much. These are counties; the blocks that districts are actually built from are smaller by orders of magnitude, and that is where the noise bites hardest.
 
-Those people cannot vote in Pennsylvania. They are counted as residents of `r forest$county` for the purpose of drawing districts, and represented by a legislator they had no part in choosing. The communities they came from, mostly urban ones, lose the population that would have counted toward their own representation.
+**Decades do not compare.** The 2020 form added write-in areas and examples the 2010 form lacked, and the coding changed with them, so a 2010-to-2020 change in these columns is not a change in people alone.
 
-Note that every county at the top of that list is small. The percentage is driven as much by the denominator as by the facility.
+**Residents, not citizens.** The file counts everyone living in a county, which is what apportionment uses; it says nothing about citizenship.
 
-The same residence rule catches students, without the disenfranchisement:
+## What you should have learned
 
-```{r college}
-```
+- Race and Hispanic origin are two separate questions by federal rule, so
+  "how white is New Mexico?" has two correct answers:
+  `r pc(S("New Mexico","white_pct"))`% and
+  `r pc(S("New Mexico","nhwhite_pct"))`%.
+- The race question has two leftover boxes, and one population uses both: in
+  these six states `r pc(pct_other_h)`% of "Some Other Race" and
+  `r pc(pct_two_h)`% of "two or more races" respondents are Hispanic.
+- Multiracial geography follows the seam, not Hawaii: the correlation between
+  a county's Hispanic share and its multiracial share is
+  `r pc(cor_two, 3)` across `r n(nrow(d))` counties, and the ten most
+  multiracial counties are all on the Texas border.
+- The categories are set by the Office of Management and Budget, rewritten in
+  1997 and 2024, so a trend crossing a rewrite partly measures the rewrite.
+- The counts themselves are exact and internally consistent — both
+  decompositions hold in all `r n(nrow(d))` counties — which is how a file
+  can be arithmetically perfect and still measure its own categories' misfit.
 
-The two lists do not overlap, and the two categories point in opposite directions:
+## Extensions
 
-```{r gq-static, eval=!knitr::is_html_output(), fig.height=4.6}
-```
+None of these is answered above, and every one can be answered by sorting or
+grouping in a spreadsheet.
 
-**Figure 6. The same residence rule, pointed in opposite directions.** The counties with the largest shares of their population in a correctional facility (left of the line) and in student housing (right of it). The two lists do not overlap. Everyone counted on the left is a resident of a county they cannot vote in; everyone counted on the right can vote where they are counted. Every county here is small, so the percentage is driven as much by the denominator as by the institution.
+- `pl94171_counties.csv` carries both `white` and `nh_white`. Take the difference for every county, divide by `total`, and sort. Where does the choice between the two definitions change the answer most?
+- `other_race` and `two_or_more` are the boxes people reach for when none of the offered ones fit. Compute their combined share of `total`, county by county. Which places does the form fit worst?
+- `hispanic` and `not_hispanic` should add to `total` in every row. Check it, then explain to somebody who has not read this brief why Hispanic origin is missing from the race columns.
+- `gq_correctional` counts people in prison, counted where the facility is. Divide it by `total` and sort. What would the top counties' shares do to a district drawn from this file?
 
-```{r gq-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-Which is the useful comparison. Prison gerrymandering combines counting people where they are held *and* denying them the vote there. Colleges have the first without the second, and almost nobody objects. **The objection rests on the combination**, and saying so is more precise than objecting to either half.
-
-## Discovered, or constructed, or scheduled
-
-The dispute underneath all of this is not really about accuracy. It is about whether the census *discovers* race or *constructs* it, and the federal government has already answered in the standard itself: the categories are socio-political constructs, not scientific or anthropological ones. That language is OMB's rather than the Bureau's, which matters, because it means the disclaimer binds every agency using these categories and not just the one that collects them.
-
-The scholarly answer is more settled than the political one. Nobles (2000), in a history of the American and Brazilian censuses, shows racial categories being added, merged and dropped in response to political pressure in both countries. The book argues that census bureaus have never been bystanders in that process. Kenneth Prewitt (2013), who ran the Bureau, goes further and argues the race question should be dropped outright. The counter-argument is practical rather than philosophical: no count, no civil-rights enforcement. Abolishing the measure abolishes the remedy.
-
-That argument was, in the ordinary run of things, unresolvable. In March 2024 it was partly resolved by fiat. The Office of Management and Budget revised Statistical Policy Directive No. 15, its first revision since 1997. The revision merges race and Hispanic origin into a **single** question and adds a Middle Eastern or North African category, with agencies required to comply by 2029.
-
-That will end the two-answers problem drawn in Figure 1. It will also make the comparison in Figures 2 to 5 permanently impossible to extend forward. **Both effects are certain, and reasonable people weight them differently.** That is the actual trade, and it has been made. The seam this chapter measures has a scheduled end date.
-
-There is also the noise. For 2020 the Bureau applied *differential privacy*: small deliberate adjustments designed so that no individual's answers can be reconstructed from published tables. State totals are exact and county figures are close, but districts are drawn from blocks, and the smaller the geography the more the injected noise matters. Alabama sued to stop it and lost — its motion for a preliminary injunction was denied and the case dismissed in September 2021. Kenny and colleagues (2021), evaluating the system on actual redistricting tasks, found the distortion modest for most purposes and non-trivial for some, which is why the argument continues rather than ends.
-
-## What the count will bear
-
-The strengths of this source are the strongest in this field. It is the legally operative count, published by the agency that performed it, and it is the file states actually redistrict from. It is internally consistent, and both of its decompositions were tested above against every county rather than assumed. And because it reports race crossed with Hispanic origin, it can be used to interrogate its own categories, which is something most datasets cannot do at all.
-
-The limits are equally definite. This is six states rather than fifty, chosen precisely because race and ethnicity pull apart in them, so every share above is unrepresentative by design. Differential privacy noise is present and unquantified here: it was applied before publication and the file carries no column saying by how much. The categories are not comparable across decades, because the 2020 form invited write-in detail the 2010 form did not and the coding changed with it. 
-
-Concretely: 2020 added write-in areas and examples under the White and Black categories, and examples under American Indian or Alaska Native. It collected specific Hispanic origins within the broader category. It also dropped the word "Negro" that the 2010 form still carried.
-
-Two more limits. These are counties, while the geography where both the privacy noise and the districting actually bite is two levels smaller. And it is a count of residents rather than citizens, which is what apportionment uses and what attempts to change have so far failed in court.
-
-What can be said, then, is this. The count is exact, certified, and it breaks apart without error. It still supports two different and equally correct answers to "how white is New Mexico?": `r pc(S("New Mexico","white_pct"))`% and `r pc(S("New Mexico","nhwhite_pct"))`%. And, more sharply: the race question has two leftover categories, and in these six states `r pc(pct_other_h)`% of the people in one and `r pc(pct_two_h)`% of the people in the other are Hispanic.
-
-**The form has two escape hatches and one population is using both.** That is a measurement of misfit, not a description of who Americans are. The box is used by Hispanic respondents *because* the form separates race from origin. So the finding is evidence about the form, rather than about the people answering it.
-
-Three questions stay open. Whether a combined question is an improvement: it will fit respondents better and destroy the trend series, and there is no version of the change without a cost. Whether "Some Other Race" should have been retained at all — the Bureau has repeatedly proposed removing it, and the population using it is precisely the population §2 and §203 most concern. And how much differential privacy costs at block level, which is the only level at which the question really matters and the only level this file cannot show.
-
-The instruction printed on the 2020 form was an answer to a hard question, and it was not an unreasonable one. In these six states alone, `r n(tot_other)` people read it and reached for the box marked *Some Other Race*, and `r n(tot_two)` more wrote something the Bureau coded as two races. Both boxes now sit in the file that districts are drawn from, carrying a population the form could not name into lawsuits about whether that population is fairly represented.
+Two stretch ideas, beyond the spreadsheet. Fetch a seventh state's archive from the same server, one with a large Middle Eastern population such as Michigan, and ask whether the White column behaves like a box that fits. Or pull the 2010 P.L. 94-171 file for Texas and compare `two_or_more` county by county, to put a number on how much of the multiracial rise is the instrument.
 
 ## Sources
 
 **Data**
 
 - U.S. Census Bureau, *2020 Census Redistricting Data (P.L. 94-171) Summary
-  File*, legacy format, tables P1, P2 and P5, for Pennsylvania, Texas, New York,
-  Hawaii, Mississippi and New Mexico.
+  File*, legacy format, tables P1, P2 and P5, for Pennsylvania, Texas, New
+  York, Hawaii, Mississippi and New Mexico.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
   County names joined from the Census Gazetteer, because the file's own header
   populates the name field inconsistently.
-- U.S. Census Bureau, *2020 Census Questionnaire*. The two questions quoted at
-  the head of this chapter are its questions 8 and 9, and the sentence between
-  them is the note the Bureau printed to explain why both had to be answered.
-- County outlines in Figure 4 are drawn from the `maps` package's county
-  boundary data, matched to the file by FIPS code.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`pl94171_counties.csv`](data/derived/pl94171_counties.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `pl94171_counties.csv` carries both `white` and `nh_white`. Take the difference for every county and sort it. Where does the choice between those two columns change the answer most?
-- `other_race` and `two_or_more` are the boxes people reach for when none of the offered ones fit. Work out their combined share county by county. Which places does the form fit worst?
-- `hispanic` and `not_hispanic` should add up to `total`. Check that they do. Then explain to somebody who has not read this chapter why Hispanic origin is missing from the race columns.
-- The file also counts people in group quarters. Find the counties where they are a large share of the total, and say what that does to a district drawn from this file.
+- U.S. Census Bureau, *2020 Census Questionnaire*. The two questions at the
+  head of this brief are its questions 8 and 9, and the sentence between them
+  is the note the Bureau printed to explain why both had to be answered.
 
 **Literature and law**
 
+- Office of Management and Budget (1997). "Revisions to the Standards for the
+  Classification of Federal Data on Race and Ethnicity." Statistical Policy
+  Directive No. 15, *Federal Register* 62: 58782 (30 October 1997) — the
+  standard governing the 2020 census.
+- Office of Management and Budget (2024). "Revisions to OMB's Statistical
+  Policy Directive No. 15." *Federal Register* 89: 22182 (29 March 2024) —
+  the combined question and the Middle Eastern or North African category.
+- Voting Rights Act § 2, 52 U.S.C. § 10301, and § 203, 52 U.S.C. § 10503 —
+  the enforcement the race and Hispanic-origin questions exist to serve.
 - Nobles, M. (2000). *Shades of Citizenship: Race and the Census in Modern
   Politics.* Stanford: Stanford University Press.
 - Prewitt, K. (2013). *What Is Your Race? The Census and Our Flawed Efforts to
   Classify Americans.* Princeton: Princeton University Press.
-- Office of Management and Budget (1997). "Revisions to the Standards for the
-  Classification of Federal Data on Race and Ethnicity." Statistical Policy
-  Directive No. 15, *Federal Register* 62: 58782 (30 October 1997) — the
-  standard governing the 2020 census: five race categories, two ethnicity
-  categories, two separate questions with ethnicity asked first, more than one
-  race permitted, and the definitions quoted above.
-- Office of Management and Budget (2024). "Revisions to OMB's Statistical Policy
-  Directive No. 15." *Federal Register* 89: 22182 (29 March 2024).
-- Voting Rights Act § 2, 52 U.S.C. § 10301, and § 203, 52 U.S.C. § 10503 — the
-  enforcement the race and Hispanic-origin questions exist to serve.
-- National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
-  NCSL, October 2019), ch. 1, for the OMB standards as they were applied to the
-  2020 form, the changes from 2010, and the account of why the census has asked
-  these two questions since 1980.
 - Kenny, C. T., Kuriwaki, S., McCartan, C., Rosenman, E. T. R., Simko, T. and
   Imai, K. (2021). "The Use of Differential Privacy for Census Data and Its
-  Impact on Redistricting: The Case of the 2020 U.S. Census." *Science Advances*
-  7(41): eabk3283.
+  Impact on Redistricting: The Case of the 2020 U.S. Census." *Science
+  Advances* 7(41): eabk3283.
 - *Alabama v. U.S. Department of Commerce*, 546 F. Supp. 3d 1057 (M.D. Ala.
-  2021).
+  2021) — Alabama's challenge to the privacy noise, dismissed.
 
+**The data itself**
 
-**Further reading**
+Every figure above is drawn from this table. It is plain CSV, it opens in a
+spreadsheet, and it is yours to take further.
 
-- Scott, J. C. (1998). *Seeing Like a State: How Certain Schemes to Improve the
-  Human Condition Have Failed.* New Haven: Yale University Press.
-**On the design of this material.** The structure follows Moon Duchin's PUBPOL 2130, *Data and the State*, at Cornell, adapted from Python to base R: race, then ethnicity as a second dimension, then the question of what the categories accomplish.
-
-**How the figures were made**
-
-The legacy-format P.L. 94-171 files for the six states are read, tables P1, P2 and P5 kept, the county names joined, giving the single `pl94171_counties.csv` this chapter draws on. Every number printed above, including the two decomposition checks, is computed from that file at the moment this document was rendered.
+[`pl94171_counties.csv`](data/derived/pl94171_counties.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

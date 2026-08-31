@@ -333,16 +333,6 @@ draw();
 Click an item to see the thousand answers to that question on their own, with
 the true share marked. Hover for the count at any value.</p>'))
 
-## ---- heap-table
-o <- hp[, c("item", "group", "mult10", "mult5", "eq50")]
-o$name <- ifelse(o$item == "ALL", "all eight pooled", unname(LAB[o$group]))
-o <- o[, c("name", "mult10", "mult5", "eq50")]
-o$mult10 <- paste0(p1(o$mult10), "%")
-o$mult5  <- paste0(p1(o$mult5), "%")
-o$eq50   <- paste0(p1(o$eq50), "%")
-names(o) <- c("Item", "Ends in a zero", "Ends in a zero or a five", "Exactly 50")
-o
-
 ## ---- fig4-static
 o <- it[order(-it$gap_mean), ]
 op <- par(mar = c(3.8, 12.5, 2.6, 3.2), mgp = c(2.4, 0.6, 0))
@@ -377,11 +367,6 @@ o <- cov
 o$where <- ifelse(o$where == "codebook only",
                   "described, and not in the file", "in the file, and not described")
 names(o) <- c("Column", "Which side it falls on")
-o
-
-## ---- form-table
-o <- it[order(it$party, it$field), c("field", "question")]
-names(o) <- c("Field", "Question")
 o
 
 ## ---- ai-prompt

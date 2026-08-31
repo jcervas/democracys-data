@@ -16,83 +16,51 @@ dd_read_chunks("census-api-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Every number anybody has ever quoted about the American population came out of a building in Suitland, Maryland, and there are three ways to get it out. Two of them are open to anyone. The third is the only one a program can use, and it is the one that asks who you are.
+The Census Bureau publishes its data free, to everyone. That is the standard boast about federal statistics, and it is true. It is also unfinished, because published is not the same as reachable, and reachable depends on which of three doors you walk through.
 
 ```{r doors}
 ```
 
-All three return the same published counts. **Which door you use decides what you can do**, and the only one built for a program is the only one that is gated.
+All three doors return the same published counts, and **which one you use decides what you can do**. The only door built for a program is the API — an interface that answers a typed web address with data rather than a page — and it is the only one that asks who you are. Since 2026, asking it for a number without a registered key returns nothing.
 
-That arrangement has a consequence that is easy to state and unpleasant to sit with. A person clicking through fifty counties on a website is fine. A person cannot click through eight million census blocks, and blocks are the unit districts are drawn from. So the practical capacity to check a redistricting plan lives behind the door that asks for a name and an email address. The same goes for a lending pattern, or a language-assistance determination.
+The gate matters because some questions cannot be asked by hand. A person can click through fifty counties on the website. Nobody can click through eight million census blocks, and blocks are the unit district maps are drawn from. So the practical capacity to check a redistricting plan lives behind the door that wants a name and an email address.
 
-Registration for public data is defended as rate-limiting and abuse prevention, and objected to as an access barrier that falls hardest on people with no institutional affiliation. Both descriptions are accurate.
+That raises the question this brief answers. The Bureau publishes everything, so who is the publication actually built for — the curious citizen, or somebody else? The answer turns out to be readable from an unlikely piece of evidence: the API's own table of contents, the half of the service that still answers anybody.
 
-But the gate is not the most interesting thing about this API, and it is not what this chapter is mainly about. The half of it that requires nothing at all turns out to be the half worth reading.
+## The test
 
-## A file that describes a file
+The evidence is the two catalog files the API publishes about itself, fetched in August 2026 from the open metadata addresses at [api.census.gov](https://api.census.gov/data/2020/dec/pl.html). One lists every variable, meaning every published column, of the 2020 census redistricting release. The other lists every geographic level the service will answer for. Neither needs a key, and neither is a sample: a catalog either lists a column or it does not, so the count of what the census measures is settled outright.
 
-The evidence in this chapter is not a measurement of anything. It is two catalogs. `api_variables.csv` has one row for each of the `r nrow(v)` columns the 2020 P.L. 94-171 release publishes. `api_geography.csv` has one row for each of the `r nrow(g)` geographic levels the same service will serve them at.
+Why this product, out of everything the Bureau serves? Because the redistricting release is the census at its most obligatory. A 1975 law, Public Law 94-171, requires the Bureau to hand every state the small-area counts it needs to redraw its districts, on a deadline. Nothing requires the Bureau to run an API at all; that is a service it chose to build and could withdraw. So the catalog is a voluntary description of a compulsory product, and reading it closely reads the law rather than the agency's taste. [What a census can and cannot do](../census-source/census-source-brief.html) introduces the census itself; this brief reads its table of contents.
 
-Both were fetched in August 2026 from the API's open metadata endpoints, which need no key. The raw JSON responses are kept beside the CSVs, unmodified, so that anyone can see what actually came back rather than what somebody says came back. The whole of it is about `r round((file.size("data/raw/api_variables_2020pl.json") + file.size("data/raw/api_geography_2020pl.json")) / 1024)` kilobytes.
+A catalog is also the right instrument for a question about who the data is for. If the columns exist out of curiosity, the list should read like an encyclopedia. If they exist out of obligation, the obligations should be visible in its shape.
 
-Two different obligations are stacked inside those files and it is worth pulling them apart. **Nothing requires the Census Bureau to run an API at all**, or to publish a machine-readable description of one. That is a service the agency chose to build and could withdraw, and the key requirement is evidence that its terms can change.
+## The data
 
-But **the columns listed in the catalog are not the Bureau's choice.** Public Law 94-171 obliges the Bureau to deliver redistricting tabulations to the states, and the tables that obligation produces are the tables the catalog lists. So the file is a voluntary description of a compulsory product. That is exactly why reading it closely tells you about the law, rather than about the Bureau's preferences.
+`api_variables.csv` holds one row for each of the `r nrow(v)` columns the 2020 redistricting release publishes, in three columns kept from the response: `variable` (the code a query would name), `label` (where the column sits inside its table), and `concept` (the table's full name). `api_geography.csv` holds one row for each of the `r nrow(g)` geographic levels the same service will serve those columns at, with a numeric `level` code and a `name`.
 
-It is the right evidence for this chapter's question and a poor fit for the question people usually think this chapter is asking. If the question is *what does the United States measure about its own population, and how finely*, a complete column list settles it outright. No sample, no estimate, nothing left out.
+Both were built by two keyless requests to the open metadata addresses. The raw responses are kept beside the CSVs, unmodified, so anyone can check what actually came back. Nothing was dropped and nothing was renamed. No live data query was made, and no key exists anywhere in this brief.
 
-If the question is *who is actually shut out by the key*, the catalog cannot answer, and neither can anything else public. That would take the request logs, which nobody publishes, or a survey of the people who gave up, which nobody has run. What this chapter does instead is read the architecture and argue from it, and the difference between reading an architecture and measuring a harm is one a careful reader should keep in view. A second limit is temporal: a catalog describes the day it was fetched. The gate is recent, and the 2030 file will list different columns.
+Two construction decisions are worth knowing about. The `label` field arrives as a table position flattened into a string, with `!!` marking the levels, and it is kept exactly as sent; everything below about hierarchy is recovered by splitting that string. And each geography row lost one field on the way to CSV — the one saying what a query at that level requires you to name first. For how far down the hierarchy goes, which is this brief's question, the loss is harmless. For anybody actually requesting eight million blocks it was the field that mattered, and it is still waiting in the raw file.
 
-Cleaning was small and deliberately unglamorous. No JSON package is used. These two responses have a flat, predictable shape, so the fields come out with base R pattern matching. That is not a general parser, and is not pretending to be. The one real change is to the `label` field. The Bureau writes a variable's position in its table as a string with `!!` between the levels, and that string has to be split before anything can be counted or drawn.
+> **Before you read on, commit to two numbers.** Once the geographic
+> identifiers are set aside, six tables carry the `r n_data` substantive
+> variables the 2020 census published — the counts of people and housing.
+> **How many of those `r n_data` do you think are a table published a second
+> time, rather than a distinct fact about anybody?** Write down a count, or a
+> share of `r n_data`. Then a second guess: of the `r nrow(g)` rows in the
+> geography file, how many name a genuinely different level of geography?
 
-Nothing was dropped and nothing was renamed. No live query was made either when the CSVs were built or when this page is rendered, and there is no key anywhere here. A reader redoing it would need two `curl` commands and no account.
+## What it says about democracy
 
-## What came back, before anybody tidied it
+### The name of the thing is not the thing
 
-Both raw responses are kept, so the two CSVs can be held against the thing they were made from. Here is the entry for one variable, lifted out of `api_variables_2020pl.json` exactly as it sits there.
-
-```{r api-raw-var}
-```
-
-And here is the entry for the smallest geography the service will serve, out of `api_geography_2020pl.json`.
-
-```{r api-raw-geo}
-```
-
-This is the gentlest arrival in the book. The response is already one object per thing, the fields already have names, and nothing has to be repaired. `r nvar_json` variable objects came back and `r nrow(v)` rows were written; `r ngeo_json` geography objects came back and `r nrow(g)` rows were written. Not one row was dropped, filled in or reconciled against anything.
-
-What happened instead was subtraction. The raw object carries `r fv` fields about this variable and the build keeps `r length(cv)`:
-
-```{r api-clean-var}
-```
-
-The raw object for a block carries `r fg` and the build keeps `r length(cg)`:
-
-```{r api-clean-geo}
-```
-
-Three decisions are visible in that shrinkage, and the second and third are losses worth knowing about.
-
-**Read the JSON with pattern matching, and admit that it only works here.** The build uses no JSON package, because the labs are base R and base R has none. It finds each object with a pattern that assumes no object contains another object, which is true of these two responses and is not true of JSON in general. An endpoint that nested one level deeper would return something this code would read as gibberish rather than refuse.
-
-**The label is a tree flattened into a string, and it stays flattened.** What the CSV keeps is the field as sent: `r sub("^ ", "", v$label[v$variable == "P1_003N"])`. The `!!` are not decoration. They are the levels of the table hierarchy, and the leading space is real too. Anything a reader wants to know about where a column sits has to be recovered from that string by splitting it, which is what the next section does and what the figure after it draws.
-
-**The geography entry lost the part that says how to ask for it.** The raw object says a block query `requires` state, county and tract, and that a wildcard is allowed for two of the three. The CSV keeps the level code and the name and drops the rest. For the argument in this chapter, which is about how far down the hierarchy goes, that is fine. For anybody trying to actually request eight million blocks it is the only field that mattered, and it is the first thing they would have to go back to the raw response for.
-
-That is the whole of the cleaning. A catalog that describes itself is the one kind of file that arrives close to usable, and it is worth seeing once so that the other chapters' files can be recognized for what they are.
-
-## The name of the thing is not the thing
-
-The catalog is a file with one row per published column of the 2020 census.
+The catalog's first lesson fits in a single row.
 
 ```{r one-var}
 ```
 
-The `!!` are nesting. `P1_003N` is *Total > Population of one race > White alone* — the number you would casually call "the white population." It sits three levels down a hierarchy and it excludes everyone who ticked two boxes.
-
-**The name of the thing is not the thing**, and no column announces the difference. A researcher who writes down `P1_003N` as "white population" has made a substantive claim about multiracial Americans without noticing.
-
-Table P1 in full, drawn as the tree the `!!` describe, is a way of seeing where that column actually sits. Width is how many bottom-level categories lie underneath.
+The `!!` are nesting. `P1_003N` is *Total > Population of one race > White alone* — the number you would casually call "the white population." It sits three levels down a hierarchy and excludes everyone who ticked two boxes. **The name of the thing is not the thing**, and no column announces the difference. A researcher who writes down `P1_003N` as "white population" has made a substantive claim about multiracial Americans without noticing.
 
 ```{r icicle-static, eval=!knitr::is_html_output(), fig.height=3.1}
 ```
@@ -100,55 +68,16 @@ Table P1 in full, drawn as the tree the `!!` describe, is a way of seeing where 
 ```{r icicle-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Table P1 as a tree, `r max(ice$depth)` levels deep and `r n_leaf` bottom-level categories wide.** Each block is one published column; a block's width is the number of bottom-level categories beneath it, so the whole row at any depth accounts for the same population. The red block is `P1_003N`, "White alone," `r white_d` levels down. Its width is the point: it is one of several single-race categories, sitting under a branch that excludes everyone who ticked two boxes, and the orange branch beside it is where those people went.
+**Figure 1. Table P1 as a tree, `r max(ice$depth)` levels deep and `r n_leaf` bottom-level categories wide.** The label strings are a hierarchy flattened for transport, so the honest way to draw them is to unflatten them: each block is one published column, and a block's width is the number of bottom-level categories beneath it. The red block is `P1_003N`, "White alone," `r white_d` levels down — one single-race category under a branch that excludes everyone who ticked two boxes, and the orange branch beside it is where those people went.
 
-## The open half answers instantly, to anybody
+### Nearly half the substantive file is one statute
 
-```{r files}
-```
-
-Neither file needs a key. Ask the API *what exists* and it answers instantly, to anybody; ask it for an actual number and it asks who you are. The consequence is that the information about how American democracy is measured is entirely public, while the measurements themselves are not.
-
-At first reading the catalog looks enormous. `r nrow(v)` variables and `r nrow(g)` geography levels. Multiplied out, that is over `r n(round(nrow(v)*nrow(g)/1000)*1000)` possible things to ask for, from a census that asked about ten.
-
-```{r concepts}
-```
-
-Look at the top four concepts and the shape of the thing starts to give. Two subjects, each appearing twice, once for everybody and once for a subset.
-
-Strip the rows that are geographic identifiers rather than counts of people and the whole census fits in six tables.
+At first reading the catalog looks enormous: `r nrow(v)` variables, served at `r nrow(g)` geographic levels. But `r n_ident` of those rows are not data at all — they are the names of geographies you may filter on, plus the API's own query keywords. Strip them and the whole 2020 census fits in six tables.
 
 ```{r tables}
 ```
 
-Six boxes, drawn to scale:
-
-```{r treemap-static, eval=!knitr::is_html_output(), fig.height=4.0}
-```
-
-```{r treemap-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. The whole of the 2020 census, by published column count.** Area is the number of columns each table carries. `r tm$table[1]` and `r tm$table[2]` are the two largest and are nearly the same size as `r tm$table[3]` and `r tm$table[4]`; `r tm$table[5]` and `r tm$table[6]` together are only `r sum(tm$variables[5:6])` of the `r n_data` substantive variables. Everything the decennial census published about the American population in 2020 is in this picture, and most of the picture is race.
-
-```{r ident}
-```
-
-**`r n_ident` of the `r nrow(v)` rows are not data at all** — they are the names of geographies you may filter on (`STATE`, `COUNTY`, `BLOCK`, `VTD`) plus the API's own query keywords. Six tables carry everything the census published.
-
-> **Before you read on, commit to a number.** The 2020 census form asked about
-> ten things, and six tables carry the `r n_data` substantive variables that came
-> out of it. **How many of those `r n_data` are a table published a second time,
-> rather than a distinct fact about anybody?** Write down a count, or a share of
-> `r n_data`. Then write down a second guess: of the `r nrow(g)` rows in the
-> geography file, how many name a genuinely different level of geography?
-
-## A statute is visible in the shape of the file
-
-```{r adult}
-```
-
-"Duplicate" is a strong word, so check it directly. Count how many *label strings* each pair of tables has in common:
+Two of those tables are copies, and the claim can be checked directly. Count how many label strings each pair of tables has in common:
 
 ```{r matrix-static, eval=!knitr::is_html_output(), fig.height=3.8}
 ```
@@ -156,22 +85,29 @@ Six boxes, drawn to scale:
 ```{r matrix-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Two tables in six are the same table.** Each cell counts the label strings two tables have in common. Off the diagonal, almost every pair shares exactly one: the row called "Total," which every table has. The two red cells are the exceptions: `r rownames(shr)[twins[1,1]]` and `r colnames(shr)[twins[1,2]]` share `r shr[twins[1,1], twins[1,2]]` labels, and `r rownames(shr)[twins[2,1]]` and `r colnames(shr)[twins[2,2]]` share `r shr[twins[2,1], twins[2,2]]` — every row of both tables. They are not similar tables. They are identical, down to the wording.
+**Figure 2. Two tables in six are the same table.** Each cell counts the label strings two tables share, because identical wording is the test of a republished table. Off the diagonal almost every pair shares exactly one, the row called "Total," which every table has. The two red cells are the exceptions: `r rownames(shr)[twins[1,1]]` and `r colnames(shr)[twins[1,2]]` share `r shr[twins[1,1], twins[1,2]]` labels, and `r rownames(shr)[twins[2,1]]` and `r colnames(shr)[twins[2,2]]` share `r shr[twins[2,1], twins[2,2]]` — every row of both tables, down to the wording.
 
-Most readers put the duplication somewhere around a tenth, on the reasonable assumption that a statistical agency does not publish the same table twice. **`r n_adult` of the `r n_data` substantive variables are duplicates, or `r pc(100*n_adult/n_data, 0)`%.** P3 is P1 restricted to adults. P4 is P2 restricted to adults. Nobody was asked a second time; the Bureau ran the same cross-tabulation twice and published both, and the only thing distinguishing the copies is which population it ran them on.
+```{r adult}
+```
 
-That is not curiosity, and it is not redundancy. **The Voting Rights Act is about voters, and voters are adults.** A §2 vote-dilution claim turns on whether a minority group is large enough to form a majority in a district, and the relevant population is voting-age. Without P3 and P4 the central quantity in American voting-rights litigation could not be computed from the census at all.
+Most readers put the duplication somewhere around a tenth, on the reasonable assumption that a statistical agency does not publish the same table twice. **`r n_adult` of the `r n_data` substantive variables are duplicates, or `r pc(100*n_adult/n_data, 0)`%.** P3 is P1 restricted to adults, and P4 is P2 restricted to adults. Nobody was asked a second time; the Bureau ran the same cross-tabulations twice and published both.
 
-So the obvious reading of a big catalog is wrong here. That reading is that a statistical agency published a lot because there is a lot to know. **Nearly half the substantive file exists because of a law**, and you can read the law off the column list.
+That is not redundancy. **The Voting Rights Act is about voters, and voters are adults.** A vote-dilution claim under the Act's Section 2 turns on whether a minority group is numerous enough to form a majority in a district, and the population that matters is voting-age. Without P3 and P4, the central quantity in American voting-rights litigation could not be computed from the census at all. Nearly half the substantive file exists because of a law, and you can read the law off the column list.
+
+### The geography file is mostly bookkeeping, and partly the states
 
 The same move works on the geography file.
 
 ```{r geo}
 ```
 
-**`r nrow(g)` levels are `r length(lvl)` levels.** `r n_part` of the rows are bookkeeping — the same level again, sliced by whatever larger unit it happens to straddle, because most American geographies do not nest. The catalog's size is partly a law and partly the fact that the country is covered by two incompatible systems of boundaries.
+**`r nrow(g)` rows collapse to `r length(lvl)` distinct levels.** The other `r n_part` are the same levels again, sliced by whatever larger unit they happen to straddle — "county (or part)" — because most American boundaries refuse to nest inside each other. `r n_below` of the `r length(lvl)` levels sit below the county, and one of them is **`voting district`**: a precinct.
 
-Set the whole variables file out in three groups and there is very little of it left that is a fact somebody chose to collect.
+That row is the point of the whole file. The Bureau publishes population inside precinct lines, which is exactly the join a voting-rights analysis needs. The government publishes the data required to challenge the maps that governments draw, and a statute arranged it that way on purpose.
+
+With one qualification, and it is the most surprising fact here. The Bureau does not know where a precinct is unless a state tells it, because precinct lines are state and county creations. Before each census the states are invited to submit their voting districts for inclusion in the file, and the submission is voluntary: a state that took part gets population totals inside its precincts, and a state that did not, does not. So parts of this compulsory product were supplied voluntarily, by the same states whose maps the file is used to challenge.
+
+### What the catalog is made of
 
 ```{r shape-static, eval=!knitr::is_html_output(), fig.height=3.4}
 ```
@@ -179,131 +115,77 @@ Set the whole variables file out in three groups and there is very little of it 
 ```{r shape-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. What the catalog is made of.** Every row of the variables file, in three groups. `r n_ident` rows are geographic identifiers and query keywords, not counts of anybody. `r n_adult` are the adults-only twins of tables already published.
+**Figure 3. Every row of the variables file, in three groups.** One bar per group, because the only question is how big each group is. `r n_ident` rows are geographic identifiers and query keywords, not counts of anybody; `r n_adult` are the adults-only twins of tables already published; the remaining `r n_data - n_adult` are the census — race, Hispanic origin, group quarters and housing occupancy, for everyone. **The middle bar is the finding.** A catalog that looks like an inventory of curiosity is, by row count, closer to an inventory of legal obligation.
 
-The remaining `r n_data - n_adult` are the census: race, Hispanic origin, group quarters and housing occupancy, for the whole population. **The middle bar is the finding.** A catalog that looks like an inventory of curiosity is, by row count, closer to an inventory of legal obligation.
+### The open half answers anybody; the locked half answers politely
 
-## How far down it goes, and why that is political
+Ask the API what exists, at the two addresses under **Sources**, and it answers instantly, to anyone. Ask it for an actual number without a key and, since 2026, the answer is a web page reading **Missing Key**. So the information about how American democracy is measured is entirely public, while the measurements themselves sit behind a registration.
 
-```{r small}
-```
+The way the door is locked deserves a sentence of its own. A keyless request does not get an error code or broken data; it gets a valid page, which a program will happily read and carry along. The failure is silent and surfaces later, in a table of blanks nobody questions. A locked door that answers politely is worse than one that says no, and answering with a proper error instead would cost the Bureau nothing.
 
-`r n_below` of the `r length(lvl)` levels sit below the county, and one of them is **`voting district`** — a precinct.
+A key is free and arrives by email in about a minute. It is also a password: it identifies you, and it does not belong in any file you share. That is not hypothetical — a live Census API key once sat in plain text in a teaching handout for a year, and had to be flagged for revocation.
 
-The `r n_part` "(or part)" rows are not spread evenly. They pile up on the levels that refuse to nest:
+Should public data require registration at all? The Bureau's answer is operational: keys allow rate-limiting and abuse prevention, and the catalog stays open precisely so discovery is unimpeded. The objection is that the gate falls on the automatable door and leaves casual lookup untouched, so it burdens the systematic checking — the redistricting plan, the lending pattern — that the file exists to make possible. Both descriptions are accurate. What the catalog adds is a fact about who carries the burden: the gated door is the only one that can reach the blocks and precincts.
 
-```{r frag-static, eval=!knitr::is_html_output(), fig.height=4.4}
-```
+## What this brief cannot tell you
 
-```{r frag-d3, results='asis', eval=knitr::is_html_output()}
-```
+**A catalog is not data.** Nothing above establishes a single population count, and no live query was run, so nothing here describes what the gated half returns. The numbers behind these column names are themselves processed before release: rounded, withheld and, since 2020, deliberately noised.
 
-**Figure 5. Where the geography file's bulk actually comes from.** Each dot is one geographic level, positioned by how many times it reappears in the catalog as an "(or part)" row. That is the same level again, sliced by whatever larger unit happens to cut across it. `r nrow(frag)` levels generate all `r n_part` fragment rows, and "`r frag$level[nrow(frag)]`" alone accounts for `r frag$fragments[nrow(frag)]` of them, because counties are cut by almost every other boundary the census publishes. Purple dots are levels that never appear in their own right at all: they exist only as fragments of something else.
+**It cannot measure who is shut out by the key.** That would take the request logs, which nobody publishes, or a survey of the people who gave up, which nobody has run. This brief reads an architecture and argues from it, and that is a weaker kind of claim than a measurement.
 
-**The Census Bureau publishes population inside precinct lines.** That is the join a voting-rights analysis needs, and it is exactly why the PL 94-171 file exists. A 1975 statute requires the Bureau to hand states the data they need to draw districts, on a deadline. The government publishes the data required to challenge the maps that government draws. That is deliberate, not circular.
+**It describes a day.** The catalog was fetched in August 2026, and the key requirement itself is recent. The 2030 release will list different columns: a 2024 federal revision merges the race and Hispanic-origin questions into one, which will change the shape of P1 through P4 and every trend computed across them.
 
-### The states helped build the file they are judged by
+**And the columns are the closest measurable thing, not the thing the law asks for.** For many voting-rights claims the right denominator — the bottom number of the fraction, the population you divide by — is citizens of voting age. The census does not publish that. It comes from the American Community Survey instead, with a margin of error attached: a stated range for how far off each estimate could be.
 
-That last claim needs one qualification, and it is the most surprising thing in this chapter.
+## What you should have learned
 
-**The Bureau does not know where a precinct is unless a state tells it.** Precinct boundaries are set by counties and states and are not federal geography. So the Bureau runs a Redistricting Data Program across the whole decade, in five phases, and two of them are the states supplying it with information.
+- Published is not reachable: three doors serve the same counts, and the only door a program can use is the only one that requires a key.
+- Of the `r nrow(v)` rows in the variables catalog, `r n_ident` are identifiers and keywords, and `r n_adult` of the `r n_data` substantive variables are tables republished for adults, because the Voting Rights Act runs on voting-age population.
+- The `r nrow(g)`-row geography file names only `r length(lvl)` distinct levels; the rest is bookkeeping for boundaries that refuse to nest, and its `voting district` row exists only where a state volunteered its precinct lines.
+- A variable's name is not its meaning: `P1_003N`, "White alone," sits `r white_d` levels down a hierarchy and excludes everyone who chose two races.
+- A gated request fails politely, with a valid page instead of an error, which is the kind of failure that surfaces later, somewhere else, as a table of blanks.
 
-In the first phase, from 2015 to 2017, states were invited to say which roads, rivers and rail lines the Bureau should use as census block boundaries. In the second, from 2017 to 2020, states were invited to submit their own voting districts for inclusion in the P.L. 94-171 file. Only after that does the Bureau tabulate anything.
+## Extensions
 
-**The second phase is voluntary, and that is what qualifies the claim above.** A state that took part receives population summaries for its voting districts. A state that did not, does not. So the `voting district` row in the geography catalog is a capability of the service rather than a promise about any particular state, and this chapter's catalog cannot tell you which states filled it in. That would take the Bureau's own participation records.
+Every question below can be answered by sorting or grouping the two tables handed over under **The data itself**.
 
-The programme does not stop at delivery either. In a fourth phase the states send back the districts they actually drew, and the Bureau re-tabulates the 2020 counts inside them. In a fifth, running to 2025, the states write up what went wrong, for the 2030 round.
+- `api_variables.csv`: group the `concept` column and count the rows under each. What is this catalog mostly about, and what is barely in it at all?
+- `api_variables.csv`: read down the `label` column and find another variable whose code and position could mislead the way `P1_003N` does. How would you learn what it holds without the label?
+- `api_geography.csv`: count the rows whose `name` contains "(or part)". Which level fragments most often, and what does that say about how American boundaries fit together?
+- `api_geography.csv`: sort by the `level` code. Which geographies sit at the top of the hierarchy, and which level did you expect to find that is not there?
 
-So the chapter's opening description was one layer short. The catalog is a voluntary description of a compulsory product, and **parts of that compulsory product were themselves supplied voluntarily, by the same states whose maps the file is used to challenge.**
+Two stretch extensions, beyond the spreadsheet:
 
-## A locked door that answers politely
-
-Ask the API what exists:
-
-```
-https://api.census.gov/data/2020/dec/pl/variables.json
-https://api.census.gov/data/2020/dec/pl/geography.json
-```
-
-Both answer immediately, to anyone. Ask it for a number:
-
-```
-https://api.census.gov/data/2020/dec/pl?get=NAME,P1_001N&for=state:42
-```
-
-and since 2026 the answer is a page reading **Missing Key**.
-
-The URL *is* the query, and the two doors return two different kinds of object:
-
-```{r api-static, eval=!knitr::is_html_output(), fig.height=4.4}
-```
-
-```{r api-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 6. One request, dissected, and the two kinds of object it can return.** The URL is the query: a host, a dataset, a list of columns, and a filter naming where you want them. Ask the catalog for its own contents and the answer is the JSON on the left — real bytes from `api_variables_2020pl.json`, one of `r nrow(v)` entries the open half hands anybody who asks. Ask the same host for a population count without a key and the answer is on the right: not an error code, not malformed JSON, but a valid web page reading **Missing Key**.
-
-Read the grammar segment by segment, because the URL *is* the query:
-
-```{r urls}
-```
-
-Now the failure. **A missing key does not produce an error code or malformed JSON. It produces valid HTML.** A script asking for numbers receives a web page and continues. Further down the line that becomes either an obvious explosion or, worse, a reader that quietly yields nothing and a table of zeroes nobody questions.
-
-**A locked door that returns a web page is worse than one that returns an error**, because the failure is silent and surfaces later, in an analysis nobody re-reads. Returning a documented status code instead would cost the Bureau nothing, which is what makes it a design choice rather than an accident.
-
-## A key is a password
-
-A key is free and arrives in about a minute from <https://api.census.gov/data/key_signup.html>. You then append `&key=YOUR_KEY_HERE` to any URL above.
-
-> **A key is a password.** It identifies you and it is not revocable by
-> accident. Never put one in a file you share, a repository, a slide, or a
-> handout.
->
-> This is not hypothetical. **A live Census API key sat in plain text in a
-> handout distributed to this course's F25 section for a year.** It has been
-> flagged for revocation. The lesson is cheaper to learn from somebody else's
-> mistake.
-
-Nothing in this chapter required one. Both files above came from the open endpoints, and no live query was ever run.
-
-## Whether a catalog is evidence, or only a menu
-
-**Should public data require registration?** The Bureau's position is operational: keys allow rate-limiting and abuse prevention, and the metadata stays open precisely so that discovery is unimpeded. The objection is that the gate falls on the *automatable* door while the point-and-click door stays open. That turns the usual direction of an access barrier upside down: it burdens systematic work and leaves casual lookup untouched. Both descriptions are accurate, and the disagreement is about which effect matters.
-
-**Is the catalog evidence, or just a menu?** The reading above is that a file's column list is a record of legal obligation. That is standard in the sociology of quantification, and contested in its strong form. The weak claim is safe: P3 and P4 exist because §2 litigation needs voting-age population, and the Bureau says so. The strong claim, that what a state measures reveals what it intends to govern, is an interpretation the data supports and does not prove.
-
-**And the deeper limit is that 18-and-over is not the quantity the law wants either.** Voting-age population includes non-citizens and people barred from voting by felony conviction. For many §2 claims the right denominator, the bottom number you divide by, is citizen voting-age population. The decennial census does not publish that. It has to come from the American Community Survey, with margins of error attached. **The Bureau publishes the closest thing it can measure, not the thing the law asks for**, and courts have argued about that gap for decades.
-
-## What a column list can testify to
-
-The evidence in this chapter is authoritative in a narrow sense and thin in a wide one, and it is worth being exact about which is which.
-
-It is authoritative because both files came from the Bureau's own endpoint, unmodified, and are complete for the dataset they describe. Nothing here is a sample, an estimate, or a reconstruction. It is also the only part of the API that can be checked without credentials, which is precisely why it is the part worth reading closely: the argument does not depend on anybody's access.
-
-It is thin because a catalog is not data. Nothing above establishes a single population count. The 2020 decennial PL file is the *smallest* thing the Bureau publishes. The American Community Survey has tens of thousands of variables, every one carrying a margin of error: a statement of how far off it could be. The PL file does not need one.
-
-So the shape found here is the shape of one small, legally required product, rather than of federal statistics generally. The key policy changed recently, so a description of the API's behavior describes a moment rather than a settled fact.
-
-And labels are not definitions. The `label` field says where a variable sits in a table, not who is inside it. That is the whole trouble with `P1_003N`, and it is announced nowhere in the file.
-
-So the sentence this chapter will bear is that the Census API is two services wearing one name: an open catalog and a gated data service. The open half is where the information about how American democracy gets measured actually lives. Sharper: of `r nrow(v)` catalog rows, `r n_ident` are identifiers, and `r n_adult` of the remaining `r n_data` are the same tables recomputed for adults because the Voting Rights Act needs voting-age population. Of `r nrow(g)` geography rows, `r n_part` are fragments of levels already listed. **The catalog's apparent generosity is mostly a statute and mostly bookkeeping.**
-
-What cannot be said is anything about what the gated half returns, since no live query was run. Nor that the published numbers are the numbers enumerators recorded. Publication involves withholding, rounding, and, since 2020, noise added on purpose. The number in the JSON is a processed number.
-
-Three questions stay open. Whether the gate should exist at all for a dataset produced at public expense under constitutional mandate. Whether silent failure is defensible, given that returning a documented error code to a machine request would cost nothing. And whether the 2030 catalog will be comparable to this one. The 2024 revision of the federal race and ethnicity standards merges race and Hispanic origin into a single question. That will change the shape of P1 through P4, and with it every trend anybody has computed across decades.
-
-The last of those is the one to sit with. This chapter read a 1975 statute off a column list `r nrow(v)` rows long. A reader in 2031 will open the same endpoint, find a different list, and be able to read a different law off it. That is either a remarkable property of public data or an uncomfortable one, depending on whether you think a government should be that readable.
+- Request a free key at <https://api.census.gov/data/key_signup.html> and ask the gated half for one number: total population, `P1_001N`, for your own county. Treat the key like the password it is while you do it.
+- Fetch the same two catalog files for the American Community Survey's five-year release, which carries tens of thousands of variables. Does its shape read like curiosity, or like another stack of obligations?
 
 ## Sources
 
 **Data**
 
 - U.S. Census Bureau, Census Data API, open metadata endpoints for the 2020
-  Decennial Census P.L. 94-171 Redistricting Data:
-  `variables.json` and `geography.json` at
-  <https://api.census.gov/data/2020/dec/pl.html>. Converted here to the two
-  small CSVs the tables above are drawn from.
+  Decennial Census P.L. 94-171 Redistricting Data: `variables.json` and
+  `geography.json`, listed at <https://api.census.gov/data/2020/dec/pl.html>.
+  Fetched August 2026 and converted to the two CSVs below; the raw responses
+  are kept beside them, unmodified.
+
+**Statute and literature**
+
+- Public Law 94-171 (1975), codified at 13 U.S.C. §141(c), requiring delivery of
+  redistricting tabulations to the states.
+- U.S. Census Bureau, 2020 Census Redistricting Data Program — the decade-long
+  program through which states suggest block boundaries and submit their voting
+  districts for tabulation. National Conference of State Legislatures,
+  *Redistricting Law 2020* (Denver: NCSL, October 2019), ch. 1, states plainly
+  that the voting-district submission is voluntary.
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986) — the case whose first precondition
+  makes voting-age population by race the operative quantity.
+- Office of Management and Budget (2024). "Revisions to OMB's Statistical Policy
+  Directive No. 15: Standards for Maintaining, Collecting, and Presenting
+  Federal Data on Race and Ethnicity." *Federal Register* 89: 22182 (29 March
+  2024).
+- Prewitt, K. (2013). *What Is Your Race? The Census and Our Flawed Efforts to
+  Classify Americans.* Princeton: Princeton University Press.
 
 **The data itself**
 
@@ -311,43 +193,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`api_geography.csv`](data/derived/api_geography.csv), [`api_variables.csv`](data/derived/api_variables.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `api_variables.csv` holds every variable the interface will answer for, with a `label` and a `concept`. Group by `concept`. What is this catalog mostly about, and what is barely in it at all?
-- Read down the `label` column in `api_variables.csv` and find a variable whose name does not tell you what it holds. How would you have found that out without the label?
-- `api_geography.csv` lists the levels you may ask for, each with a numeric `level` code. Sort by the code. Which geographies sit at the top of the hierarchy, and which ones are missing that you expected to see?
-- Pick one question you would genuinely want answered about your own county. Find the variable and the geography level that would answer it, or establish that neither exists.
-
-**Statute and literature**
-
-- Public Law 94-171 (1975), codified at 13 U.S.C. §141(c), requiring delivery of
-  redistricting tabulations to the states.
-- U.S. Census Bureau, 2020 Census Redistricting Data Program, established by
-  *Federal Register* notice on 15 July 2014 — the five phases through which the
-  states suggest block boundaries, submit voting districts, receive the file,
-  return their enacted plans and evaluate the round.
-- National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
-  NCSL, October 2019), ch. 1 and Exhibit 1.3, which set out those phases and
-  state plainly that the voting-district submission is voluntary.
-- *Thornburg v. Gingles*, 478 U.S. 30 (1986) — the case whose first precondition
-  makes voting-age population by race the operative quantity.
-- Office of Management and Budget (2024). "Revisions to OMB's Statistical Policy
-  Directive No. 15: Standards for Maintaining, Collecting, and Presenting
-  Federal Data on Race and Ethnicity." *Federal Register* 89: 22182 (29 March
-  2024).
-
-**Further reading**
-
-- Prewitt, K. (2013). *What Is Your Race? The Census and Our Flawed Efforts to
-  Classify Americans.* Princeton: Princeton University Press.
-
-**How the figures were made**
-
-The two open metadata endpoints were fetched once and converted to the two CSVs above. The JSON excerpt in Figure 6 is read out of the committed response itself, rather than paraphrased. Every count above is computed from those files at the moment this document is rendered: the table sizes, the shared-label matrix, the fragment tallies. No network request is made when it is rendered, and no key exists anywhere here.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

@@ -19,122 +19,53 @@ dd_read_chunks("poll-simulation-code.R")
 ```{r d3-load, results='asis', eval=knitr::is_html_output()}
 ```
 
-`r close_n` states in 2024, carrying `r close_ev` electoral votes between them, were decided by a margin narrower than the **±`r pc(moe(1000), 2)` points** a standard poll of a thousand people advertises as its own precision. The electoral college that year was `r max(tapply(st$ev, st$winner, sum))` to `r min(tapply(st$ev, st$winner, sum))`; those `r close_ev` votes were more than enough to reverse it.
+A poll says a candidate has 51%, with a margin of error of three points — a statement of how far off the estimate could be and still be doing its job. The election arrives and the candidate gets 46. Everyone says the poll was wrong. Was it? The answer turns on what that ± actually promised, and the promise is narrower than almost anyone who reads it knows.
 
-The ± attached to a poll is a specific, narrow, mathematically exact promise. Almost nobody who reads it knows what it promises, and the races that decide American elections sit inside it.
+The question is not academic. `r close_n` states in 2024, carrying `r close_ev` electoral votes between them, were decided by less than the ±`r pc(moe(1000), 2)` points a standard poll of a thousand people advertises as its own precision. The electoral college that year was `r max(tapply(st$ev, st$winner, sum))` to `r min(tapply(st$ev, st$winner, sum))`; those `r close_ev` votes were more than enough to reverse it. The races that decide American elections sit inside the error bar of the instrument used to describe them. So: what does the margin of error cover — and are the errors that have actually been moving polls the covered kind?
 
-## Polls are not merely reported, they are acted on
+## The test
 
-Polls are not merely reported; **they are acted on.** They decide which candidates are treated as viable, which states get campaign money, which get visits, and which arguments are made about whether an election was normal. A poll error is not a private embarrassment for a pollster — it redistributes attention and resources before anyone votes.
+You cannot watch a poll fail unless you already know the right answer. Political polls are the one opinion measure that eventually gets graded by a real event, the election itself — which is what separates this brief from the rest of its section, where the [surveys chapter](../surveys-source/surveys-source-brief.html) explains what a sample can establish that no record can, and nothing ever grades the answers. But even for political polls the grade arrives too late to help. By the time the election settles the question, the population has changed, and the poll cannot be re-run against it.
 
-And the errors are not evenly distributed. They matter most where the race is closest, which is precisely where the polls are least able to help.
+So the test here is a country built on purpose. Construct a population of `r cnt(N)` voters split at a fixed, known number, then poll it thousands of times — honestly, and then with exactly one thing going wrong. Holding the truth fixed and varying one thing is the only way to separate the error a poll advertises from the error that has been going wrong, and no archive of real polls can do it, however large.
 
-## Whether the polling industry is in crisis is genuinely disputed
+One real table anchors the exercise: the 2024 presidential result in every state, from a public compilation of the fifty-one separate state canvasses, which sets the scale of what a poll is asked to resolve. Every draw runs from a fixed random seed, so the figures are the same each time the page is built, and the central result is checked against algebra rather than against a lucky draw.
 
-The dispute is real. One reading is that three consecutive presidential cycles understated the same candidate, that response rates have fallen below 1%, and that the instrument has broken. The other is that national polling error in recent cycles has been within its historical range. On this reading, critics grade polls against a standard polls never claimed to meet, namely calling the winner, and the visible failures are concentrated in state polls with thin budgets.
+## The data
 
-The simulation below does not settle that. It establishes something narrower and harder to argue with: **the quantity the industry publishes as its uncertainty is not the quantity that has been going wrong.**
+The real table is `pres2024_states.csv`: `r nrow(st)` rows, one per state plus Washington DC, with the columns `state`, `abbrev`, `ev` (electoral votes), `harris`, `trump` and `other` (percentages of the vote), `winner`, and `margin` (Trump minus Harris, in points). It was cut from Timm's *PresElectionResults* compilation, whose `pres_by_state.rda` holds every presidential election back to 1864, and every difference between the two is a decision. The build kept one election and discarded the rest. It renamed the party columns `democrat` and `republican` to the candidates `harris` and `trump`, which is right for 2024 and nonsense for any other year. Electoral votes are not in the source at all; they were keyed in from the 2020 apportionment and checked against `r sum(st$ev)`. And the source carries percentages, not vote counts, so nothing here can be summed to a national total.
 
-## One real file, and a country that was manufactured on purpose
-
-This chapter has two data objects and they could hardly be less alike. The first is real: `r nrow(st)` rows of 2024 presidential results by state, with each state's electoral votes and each candidate's share. It was copied from the electoral-map chapter's folder so that this one stands alone, and it traces back to a private compilation of the fifty-one separate state canvasses. As the election-returns chapter explains at length, no federal agency produces a national table of American election results. It carries percentages and electoral votes and no vote counts at all, which is enough for what it is used for here and would not be enough for much else.
-
-The second object has no source, because **it was built.** The population polled below was stipulated: a million voters split at a fixed number, and then sampled. That is the design and not a compromise, and the reason is worth stating flatly.
-
-You cannot watch a poll fail unless you already know the right answer, and with real polling data you never do. Not on the day the poll is published, and not afterwards either: by the time the election settles the question, the population has changed and the poll cannot be re-run against it. Holding the truth fixed and varying exactly one thing is the only way to separate the error a poll advertises from the error that has actually been going wrong. No archive of real polls can do that, however large.
-
-Two honest disclosures follow, and the first is an exception to a rule this book otherwise keeps. **The stipulated split is typed, not computed.** It sits in the setup chunk as a constant, chosen to sit near the 2024 national two-party result. It could not be worked out from the file kept here, because that file holds percentages by state and no counts to add up.
-
-The second is that **the response gap is invented**. Twenty percent is a plausible-looking number, not a measured one; the shape of what it does is what transfers, and the size of it transfers nowhere. The later sections say what else follows from those two choices.
-
-What that buys is a kind of cleaning question that mostly does not arise: there was nothing to clean. The state file arrived tidy and was copied unchanged. The population was made here rather than collected, so it has no missing values, no coding conventions and nobody else's decisions inside it. That is precisely why it cannot stand in for a real electorate.
-
-That is the price of making a dataset instead of finding one. **It can only be asked the questions its author already knew to build into it.** This population has three dials: how many people are interviewed, how differently the two sides answer the phone, and what the pollster reweights on. Those are the three things the chapter can demonstrate.
-
-It has no dial for a likely-voter screen that guesses wrong, or a question worded to lead, or a sample that never reaches the people it should. It is silent on all of them, and its silence should not be mistaken for their absence.
-
-The one precaution is that every draw in the chapter runs from a fixed random seed, so the figures are the same each time the page is built. The central result is checked against algebra rather than against a draw. A reader who wants the real version of this argument should go to the Cooperative Election Study. It publishes tens of thousands of interviews per cycle, with the weights attached and a written account of how they were built.
-
-## The file arrived clean because somebody else cleaned it
-
-"There was nothing to clean" is true of the file kept here and false of the data. The cleaning happened one folder over, and it is worth looking at, because a file that arrives tidy is the most dangerous kind: there is no friction to make you ask who decided what.
-
-What the compilation actually ships is not a CSV at all. It is `pres_by_state.rda`, an R binary object on GitHub. Loading it and asking R what is inside gives this:
-
-```{r rawrda}
-```
-
-`r cnt(RN)` rows, `r RC` columns, every presidential election from 1864 to 2024 in one object. Here are four of the 2024 rows:
-
-```{r rawrda2}
-```
-
-Now the same four states in `pres2024_states.csv`, the file this chapter opens:
-
-```{r cleanstates}
-```
-
-Set the two side by side and every difference is a decision somebody made.
-
-**The unit changed.** `r cnt(RN)` state-elections became `r nrow(st)` states, by keeping one election and discarding every other one in the file. Nothing warns you that the discarded rows exist; the clean file has no `year` column at all, so a reader cannot tell from it which election it describes.
-
-**A party became a candidate.** The raw columns are `democrat` and `republican` — *parties*, correctly, because a table that runs back to Lincoln cannot have a `harris` column. The build renames them `harris` and `trump`, which is right for 2024 and would be nonsense for any other row in the source. That rename is the whole reason the file cannot be extended without being rebuilt.
-
-**A blank became a zero.** Alabama's `other` is `NA` in the source and `0` here. Those are not the same claim: one says nobody voted for anyone else, the other says the compiler did not record it. The build chose the first reading, and because `other` is never summed in this chapter the choice does no damage — but it is a choice, and it is invisible in the clean file.
-
-**Two columns were typed in by hand.** Electoral votes are not in the source and are not derivable from it; they are the 2020 apportionment, keyed in as a constant and checked against `r sum(st$ev)`. The `col` and `row` columns place each state on the tile grid a few pages down, and they were invented outright. They are an opinion about where Delaware goes, and no data anywhere implies them.
-
-**And `margin` is arithmetic**, `trump - harris` rounded to two places, computed because the question needs it and no source publishes it.
-
-What none of that produces is vote counts. The source carries percentages, so the clean file carries percentages, and no amount of care downstream can put back a number that was never in the file. That is why the stipulated split at the heart of this chapter had to be typed rather than derived: **there is nothing here to sum.**
-
-## The margin a poll would have had to resolve
-
-Start with the real data, because it sets the scale of what a poll is being asked to do.
-
-```{r one-record}
-```
-
-One row per state, `r nrow(st)` rows, `r sum(st$ev)` electoral votes. The margin column is the thing a poll is trying to estimate. In Pennsylvania it was `r pc(st$margin[st$state == "Pennsylvania"], 2)` points.
-
-Here is every state whose actual result came in tighter than the ±`r pc(moe(1000), 2)` a standard national poll of 1,000 people advertises.
-
-```{r close-states}
-```
-
-The tightest of them, `r st$state[which.min(st$abs_margin)]`, came in at `r pc(min(st$abs_margin), 2)` points — a tenth of the interval a poll would have brought to the question.
-
-Here is the whole country arranged as a grid: one square per state, roughly where the state sits on the map. No square is bigger than any other, so Wyoming is as visible as California.
-
-```{r gridmap-static, eval=!knitr::is_html_output(), fig.height=4.8}
-```
-
-```{r gridmap-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 1. The 2024 presidential election, one square per state.** Squares are placed roughly where the state sits on the map and shaded by how close the result was, so Wyoming is as visible as California. The `r close_n` squares with a black outline were decided by less than the ±`r pc(moe(1000), 2)` points a poll of 1,000 advertises; together they carry `r close_ev` electoral votes. The tightest was `r st$state[which.min(st$abs_margin)]`, at `r pc(min(st$abs_margin), 2)` points.
-
-**The races that decide American elections sit inside the error bar of the instrument used to describe them**, which means everything about how that error bar is computed matters. Working out what it does and does not cover requires something no real election supplies: a case where the answer is known before the poll is taken.
-
-## A country we can see all of
-
-So build one. Construct `r cnt(N)` voters with a **stipulated** split: Harris `r pc(100 * truth, 2)`%, Trump `r pc(100 * (1 - truth), 2)`%, roughly the 2024 two-party result. Then poll them.
+That last fact forces the one exception to this book's rule that every number is computed. **The simulated country's split is typed, not derived**: Harris `r pc(100 * truth, 2)`% of the two-party vote, Trump `r pc(100 * (1 - truth), 2)`%, a constant chosen to sit near the 2024 national result, because the file kept here holds nothing to add up. The population built from it has no missing values and nobody else's decisions inside it — which is exactly why it cannot stand in for a real electorate.
 
 ```{r population}
 ```
 
-**That number is an input, not a finding.** It is the one unrealistic thing here, and it is the only thing that makes the exercise possible: we know the answer, so we can grade every poll below.
+The second invented number is the **response gap**: in the biased polls below, Harris voters are `r pc(100 * GAP, 0)`% likelier to answer than Trump voters. Twenty percent is a plausible-looking number, not a measured one. The shape of what it does transfers to the real world; the size of it transfers nowhere.
 
-## Three honest polls, three answers
+Here is what the real table says a poll would have had to resolve — every state whose result came in tighter than the ±`r pc(moe(1000), 2)` a poll of 1,000 advertises:
+
+```{r close-states}
+```
+
+The tightest, `r st$state[which.min(st$abs_margin)]`, came in at `r pc(min(st$abs_margin), 2)` points — a tenth of the interval a poll would have brought to the question.
+
+> **Before you read on, commit to a number.** A poll of 1,000 people
+> advertises a margin of error of ±`r pc(moe(1000), 2)` points; a poll of
+> `r cnt(100000)` people advertises ±`r pc(moe(1e5), 2)`, a claim of
+> near-certainty. In 2024 the response rate to a typical telephone poll was
+> under 1%. Suppose the people who pick up are not a random slice — suppose
+> Harris voters are `r pc(100 * GAP, 0)`% likelier to answer. **How far off
+> will the poll of `r cnt(100000)` people be?** Write down a number of points
+> before you read on.
+
+## What it says about democracy
+
+Poll the built country honestly three times, 1,000 people each, drawn perfectly at random:
 
 ```{r three-polls}
 ```
 
-Three honest polls of 1,000 people, drawn perfectly at random, and three different answers. That wobble is **sampling error**, and it is the only kind of error the ± describes.
-
-## The promise, and whether it is kept
-
-Run a thousand honest polls, and beside them a thousand polls drawn from a pool where Harris voters are `r pc(100 * GAP, 0)`% likelier to pick up the phone.
+Three honest polls, three different answers. That wobble is **sampling error**, the error that comes from asking 1,000 people instead of everyone, and it is the only kind of error the ± describes. Now run a thousand honest polls, and beside them a thousand polls drawn from a pool where Harris voters are `r pc(100 * GAP, 0)`% likelier to pick up the phone.
 
 ```{r honest-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -142,46 +73,24 @@ Run a thousand honest polls, and beside them a thousand polls drawn from a pool 
 ```{r honest-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. A thousand honest polls, and the same thousand polls with a response gap.** Each poll asks 1,000 people. Gray: honest polls, drawn perfectly at random, centered on the truth at `r pc(100 * truth, 2)`%. Orange: the same polls when Harris voters are `r pc(100 * GAP, 0)`% likelier to answer, centered on `r pc(avg_biased, 2)`%. **Both distributions are equally tight.** Only one of them is in the right place, and nothing about the width of either says which.
+**Figure 1. A thousand honest polls, and the same thousand polls with a response gap.** Two histograms, because the question is about the spread of many polls, not any single one. Gray: honest polls, centered on the truth at `r pc(100 * truth, 2)`%. Orange: the same polls when Harris voters are `r pc(100 * GAP, 0)`% likelier to answer, centered on `r pc(avg_biased, 2)`%. **Both distributions are equally tight.** Only one is in the right place, and nothing about the width of either says which.
 
 ```{r coverage}
 ```
 
-**The promise is kept exactly.** About 95% of the polls land inside ±`r pc(moe(1000), 2)`, and the average of them is the truth to two decimal places.
+**The advertised promise is kept exactly.** About 95% of the honest polls land inside ±`r pc(moe(1000), 2)`, and their average is the truth to two decimal places. Read carefully, the promise says: *if my only problem is that I asked 1,000 people instead of all of them, I will usually be within three points.* It says nothing whatever about any other problem.
 
-Now read the promise carefully, because it is narrower than it sounds. It says: *if my only problem is that I asked 1,000 people instead of all of them, I will usually be within three points.* **It says nothing whatever about any other problem.**
-
-## Bigger polls are more precise
+Bigger samples buy more of the same promise:
 
 ```{r moe-table}
 ```
 
-Familiar, and true. Precision improves with the square root of the sample, so a hundredfold increase buys a tenfold improvement. At `r cnt(100000)` respondents the poll advertises **±`r pc(moe(1e5), 2)` points** — a claim of near-certainty.
-
-> **Before you read on, commit to a number.** Everything about that table assumed
-> that when you call somebody, they answer. In 2024 the response rate to a typical
-> telephone poll was **under 1%**. Suppose the 1% who pick up are not a random
-> 1% — suppose Harris voters are `r pc(100 * GAP, 0)`% likelier to answer.
->
-> **How far off will a poll of `r cnt(100000)` people be?** Write down a number of
-> points, in the same units as the ±`r pc(moe(1e5), 2)` it advertises, before you
-> read on.
-
-## The same poll, when people decline to answer
+Precision improves with the square root of the sample, so a hundredfold increase buys a tenfold improvement. Now grade the biased polls against it:
 
 ```{r the-pivot}
 ```
 
-Most readers write down something smaller than the ±3 they started with, reasoning that a poll a hundred times larger cannot be worse than a small one. A margin of error is a claim about how far off a poll could be.
-
-**A poll of `r cnt(100000)` people reports a margin of error of ±`r pc(moe(1e5), 2)` points and misses by `r pc(abs(draw[3] - 100 * truth), 2)`** — about `r pc(abs(draw[3] - 100 * truth) / moe(1e5), 0)` times its own stated precision.
-
-And it does not drift toward the truth as the sample grows. It **converges** — on `r pc(asym(GAP), 2)`%, which is not the answer.
-
-```{r asymptote}
-```
-
-Drawn as a funnel, the two behaviors are impossible to confuse. Each band is where 95% of polls of that size land.
+Most readers write down something smaller than the ±3 they started with, reasoning that a poll a hundred times larger cannot be worse than a small one. Instead, **a poll of `r cnt(100000)` people reports a margin of ±`r pc(moe(1e5), 2)` points and misses by `r pc(abs(draw[3] - 100 * truth), 2)`** — about `r pc(abs(draw[3] - 100 * truth) / moe(1e5), 0)` times its own stated precision. And it does not drift toward the truth as the sample grows. It converges on `r pc(asym(GAP), 2)`%, which is not the answer.
 
 ```{r fan-static, eval=!knitr::is_html_output(), fig.height=6.0}
 ```
@@ -189,26 +98,14 @@ Drawn as a funnel, the two behaviors are impossible to confuse. Each band is whe
 ```{r fan-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Where polls land, as the sample grows.** The horizontal axis is the number of people polled, on a log scale. The gray band is where 95% of honest polls fall. The orange band is where 95% fall once Harris voters are `r pc(100 * GAP, 0)`% likelier to answer, and the orange dots are the three polls in the table above.
+**Figure 2. Where polls land, as the sample grows.** The gray band is where 95% of honest polls fall; the orange band is where 95% fall under the response gap, with the three polls from the table as dots. Both bands narrow at the same rate, but only one narrows onto the truth. Past about `r cnt(ncross)` respondents the orange band is narrower than the `r pc(bias, 2)`-point bias, so from there on **the poll's own interval never contains the truth again**, and it gets worse with every extra respondent.
 
-Both bands narrow at the same rate, but only one of them narrows onto the truth. Past about `r cnt(ncross)` respondents the orange band is narrower than the `r pc(bias, 2)`-point bias. From there on **the poll's own interval never contains the truth again**, and it gets worse with every extra respondent.
+That convergence point is algebra, not a draw: if Harris voters answer `r pc(100 * GAP, 0)`% more readily, the responding pool is `r pc(asym(GAP), 2)`% Harris no matter how many of them you talk to. **More data makes you more confident about the wrong number.** The tight orange cluster is not evidence of accuracy but of agreement, and every poll in it agrees on a figure `r pc(asym(GAP) - 100 * truth, 2)` points from the truth. Averaging them changes nothing, because they are all wrong in the same direction — which is exactly what a polling average does, and why its narrow interval does not mean what readers take it to mean.
 
-That value is algebra, not a lucky draw: if Harris voters answer `r pc(100 * GAP, 0)`% more readily, the responding pool is `r pc(asym(GAP), 2)`% Harris no matter how many of them you talk to.
-
-**More data makes you more confident about the wrong number.** The tight clustering in the orange distribution above is not evidence of accuracy. It is evidence of agreement, and every one of those polls agrees on a figure `r pc(asym(GAP) - 100 * truth, 2)` points from the truth. Averaging them changes nothing, because they are all wrong in the same direction. That is exactly what a polling average does, and exactly why a polling average's narrow interval does not mean what readers take it to mean.
-
-## How small does the gap have to be?
-
-`r pc(100 * GAP, 0)`% sounds like a large distortion. It is not obvious that it is.
+How big does the gap have to be before it matters? Smaller than intuition says:
 
 ```{r gaps}
 ```
-
-**A `r pc(100 * gs[2], 0)`% difference in willingness to answer the phone produces `r pc(asym(0.05) - 100 * truth, 2)` points of bias.** No pollster could detect a gap that size, and it sounds like nothing. The two-party margin this simulation is built around is `r pc(true_margin, 2)` points.
-
-The temptation is to look at that row and be reassured, because `r pc(asym(0.05) - 100 * truth, 2)` is smaller than ±`r pc(moe(1000), 2)`. That is the wrong comparison. **The bias should be measured against the size of the thing you are trying to detect**, not against the size of a different error you have already accounted for. Against a `r pc(true_margin, 2)`-point election, it is most of the answer.
-
-Note also that the two quantities behave differently. The advertised margin shrinks with sample size and does not respond to the gap at all; the bias responds to the gap and does not respond to sample size. **They are not commensurable, and publishing only one of them is a choice.**
 
 ```{r gapbell-static, eval=!knitr::is_html_output(), fig.height=5.6}
 ```
@@ -216,16 +113,11 @@ Note also that the two quantities behave differently. The advertised margin shri
 ```{r gapbell-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. What each response gap costs, against what the poll advertises.** One row per response gap. The hollow gray dot is the ±`r pc(mm1, 2)` a poll of 1,000 advertises — identical on every row, because sample size is the only thing it responds to. The filled orange dot is the bias that gap actually produces. `r sum(bi > mm1)` of the `r length(bi)` gaps put the bias past the advertised margin, and `r sum(bi > true_margin)` of `r length(bi)` put it past the `r pc(true_margin, 2)`-point margin of the election itself.
+**Figure 3. What each response gap costs, against what the poll advertises.** One row per gap. The hollow gray dot is the ±`r pc(mm1, 2)` a poll of 1,000 advertises, identical on every row because sample size is the only thing it responds to. The filled orange dot is the bias the gap actually produces: `r sum(bi > mm1)` of the `r length(bi)` gaps put the bias past the advertised margin, and `r sum(bi > true_margin)` of `r length(bi)` put it past the `r pc(true_margin, 2)`-point margin of the election itself.
 
-## Weighting works when you already know what is wrong
+A `r pc(100 * gs[2], 0)`% difference in willingness to answer produces `r pc(asym(0.05) - 100 * truth, 2)` points of bias. No pollster could detect a gap that size, and it sounds like nothing. Measured against the `r pc(true_margin, 2)`-point election this simulation is built around, it is most of the answer — and that, not the advertised margin, is the right yardstick, because the bias should be compared to the thing you are trying to detect.
 
-Pollsters know all of this, and they correct for it. If you know one group is over-represented, count its answers for less. Build a population where response is driven by something other than the vote, say trust in institutions, and try.
-
-```{r weighting}
-```
-
-The mechanism is easiest to see as a four-cell grid. Two things are true of every simulated voter: how they voted, and whether they trust institutions. The poll reaches the four kinds of person at very different rates.
+Pollsters know all this, and they correct for it by **weighting**: counting some answers more than others, to fix a sample that does not look like the country. Build a population where answering the phone is driven by something other than the vote — trust in institutions, say — and try it.
 
 ```{r wmatrix-static, eval=!knitr::is_html_output(), fig.height=5.4}
 ```
@@ -233,72 +125,49 @@ The mechanism is easiest to see as a four-cell grid. Two things are true of ever
 ```{r wmatrix-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 5. Who the poll reached, and who it should have reached.** One cell per combination of vote and trust in institutions, shaded by the poll's share of that cell minus the population's: orange where the poll over-represents, purple where it under-represents. Nothing in the grid is about the vote directly. The poll over-samples people who trust institutions. It is only because trust and vote go together that Harris comes out at `r pc(raw_est, 1)`% of the poll against `r pc(true_share, 1)`% of the country.
+**Figure 4. Who the poll reached, and who it should have reached.** One cell per combination of vote and trust, shaded by the poll's share of that cell minus the population's: orange over-represented, purple under. Nothing in the grid is about the vote directly. The poll over-samples people who trust institutions, and only because trust and vote go together does Harris come out at `r pc(raw_est, 1)`% of the poll against `r pc(true_share, 1)`% of the country.
 
-Weighting means counting some answers more than others, to correct a sample that does not match the country. Weighting on the thing that actually drives non-response takes the error from `r sg(raw_est - true_share)` to `r sg(est_right - true_share)`. Weighting on a variable that is real, measurable and irrelevant moves the estimate essentially not at all — `r sg(est_wrong - true_share)`.
+```{r weighting}
+```
 
-**So weighting works, exactly and only when you already know what is wrong.** After 2016 the industry discovered it had not been weighting by education and added it. In 2020 it missed again, in the same direction. The variable you have not thought of is invisible by construction, and no amount of arithmetic finds it.
+Weighting on the thing that actually drives non-response takes the error from `r sg(raw_est - true_share)` to `r sg(est_right - true_share)`. Weighting on a real, measurable, irrelevant variable moves it essentially not at all, to `r sg(est_wrong - true_share)`. **Weighting works exactly and only when you already know what is wrong.** After 2016 the industry discovered it had not been weighting by education and added it; in 2020 it missed again, in the same direction, and the AAPOR review could not identify the mechanism. The variable you have not thought of is invisible by construction, and no amount of arithmetic finds it.
 
-## The margin of error describes the smallest problem
+The record outside the simulation says the mechanism is real. Meng (2018) proves the formal version — the *big data paradox*, "the more the data, the surer we fool ourselves" — and computes that a self-selected sample of 2.3 million voters in 2016 carried the same error as a random sample of about 400. Bradley and colleagues (2021) watched it happen outside politics: a 250,000-response-per-week survey overstated vaccine uptake by up to 17 points while a small random sample was close. The margin of error, honest within its terms, describes the smallest problem a poll has — and for the states that decide elections, the problem it describes was never the one going wrong.
 
-A margin of error is a statement about sample size and nothing else. It is honest within its own terms: the coverage check above found 95% of honest polls inside it, exactly as promised. And it is silent about every other source of error a poll can have.
+## What this brief cannot tell you
 
-Put the two quantities side by side and the asymmetry is the whole point. With a `r pc(100 * GAP, 0)`% response gap, a poll of `r cnt(100000)` people advertises ±`r pc(moe(1e5), 2)` and carries a bias of `r pc(asym(GAP) - 100 * truth, 2)` points. No increase in sample size reduces the second number by anything at all, and every increase shrinks the first — which is why the two grow further apart the more money a pollster spends.
+It is a simulation, and a simulation is not evidence about the world. The `r pc(100 * GAP, 0)`% response gap was invented to make the mechanism visible; nothing here says real polls are biased by `r pc(asym(GAP) - 100 * truth, 2)` points, or that Harris voters really answered more often. Real non-response is many variables tangled together and shifting between elections, not one tidy dial, and a real gap's size cannot be measured — a gap that could be measured would already have been weighted away.
 
-None of which licenses the reverse inference. Nothing here says real polls are biased by `r pc(asym(GAP) - 100 * truth, 2)` points, or that Harris voters really do answer `r pc(100 * GAP, 0)`% more often. **Those were inputs, chosen to make the mechanism visible.** The shape of the argument transfers; the size of any particular number in it does not. A simulation is not evidence about the world.
+The sampling here is independent draws, while real polls cluster, stratify and re-contact, all of which change the effective sample in ways the square-root rule does not capture. And the real 2024 file is thin: percentages and electoral votes, no counts, no archive of actual polls, so it shows how hard the task was rather than how any particular poll performed at it. Whether the polling industry is in crisis is genuinely disputed — three cycles erring in the same direction is a pattern, not a mechanism — and this brief settles none of that. It establishes something narrower: the quantity published as a poll's uncertainty is not the quantity that has been going wrong.
 
-## The formal version, and the empirical case
+## What you should have learned
 
-**Meng (2018)** gives the formal version of the funnel above, and it is sharper than the simulation. Meng breaks survey error into three factors: data quality, data quantity, and problem difficulty. The factor measuring the link between responding and the thing being measured is multiplied by the square root of the *population* size. The consequence he calls the **big data paradox**: *the more the data, the surer we fool ourselves.* On that calculation, a self-reported 1% sample of American voters in 2016, about 2.3 million people, carried the same mean squared error as a genuine random sample of roughly 400.
+- The margin of error covers sampling error only — the promise is kept exactly, with about 95% of honest polls inside ±`r pc(moe(1000), 2)` — and it is silent about everything else.
+- A `r pc(100 * GAP, 0)`% response gap makes a poll of `r cnt(100000)` people miss by `r pc(abs(draw[3] - 100 * truth), 2)` points while advertising ±`r pc(moe(1e5), 2)`; bias responds to the gap and not to sample size, so the two quantities are not commensurable.
+- Past about `r cnt(ncross)` respondents, a biased poll's own interval never contains the truth again; more data buys agreement, not accuracy.
+- A gap of `r pc(100 * gs[2], 0)`%, too small for any pollster to detect, produces `r pc(asym(0.05) - 100 * truth, 2)` points of bias — most of a `r pc(true_margin, 2)`-point election.
+- Weighting fixes only the imbalances you already know about, which is why the 2016 education failure could repeat in 2020.
 
-**Bradley et al. (2021)** demonstrated it outside politics. Two very large surveys, one with 250,000 responses per week, overstated US COVID-19 vaccine uptake by up to 17 percentage points against the administrative record. A much smaller random-sample survey was close. Size was not merely unhelpful. It made the confidence intervals narrow enough to exclude the truth.
+## Extensions
 
-**The AAPOR reviews are the empirical case.** Kennedy et al. (2018) found that 2016 state polls over-represented college graduates and largely failed to weight on education, which is the weighting failure above exactly. The 2020 task force found error in the same direction again, and was unable to identify the mechanism. That is the uncomfortable part.
-
-**Groves (2006)** supplies the caution that keeps this from becoming a slogan. Non-response bias is not a function of the non-response *rate*; it depends on the covariance between responding and the measured variable. A 1% response rate is not automatically fatal, and a 60% response rate is not automatically safe. This is why "response rates have collapsed" is a reason for concern rather than a finding.
-
-**Bailey (2024)** argues the discipline should stop treating non-response as a nuisance to be weighted away and start modeling it explicitly, with assumptions stated and tested. His central claim is close to the one the gap table makes: the quantity that should be published alongside a poll is its assumed response model, and nobody publishes one.
-
-**The counter-case deserves a hearing.** Polls remain excellent at large differences and poor at small ones. A poll showing a twenty-point race is almost certainly right about who leads. National polling error in 2024 was not historically unusual. The honest position is that the direction of error has been consistent across three cycles without a settled explanation — which is worse than a large error with a known cause.
-
-## What a built country can testify to
-
-The strength of this evidence is that the answer was known before the poll was taken, which is the one thing no real election ever offers. Every poll above can therefore be graded rather than argued about. The mechanism is visible because it was made small on purpose: one variable, one response gap, one consequence. And the central result is arithmetic rather than luck. The value the biased polls converge on, `r pc(asym(GAP), 2)`%, is algebra rather than a product of the random seed, and it would not move if every draw in this chapter were taken again.
-
-The costs of that clarity are five, and they run in one direction. **It is a simulation**: the response gap was invented, and nothing here is evidence about any real pollster. **Real non-response is not one variable** but many, tangled together and shifting between elections. The weighting grid used a single tidy variable so the mechanism could be seen, and reality offers no such favour.
-
-**The gap here is fixed and known**, which in practice it is neither. A pollster who knew the gap would already have corrected it. **Sampling here is independent draws**, while real polls cluster, stratify and re-contact, all of which change the effective sample size in ways the square-root rule does not capture.
-
-And **the 2024 state file, though real, is thin**: percentages and electoral votes, no counts, no archive of polls. It shows how hard the task was, rather than how any particular poll performed at it.
-
-Four questions stay open, and the first is open by construction. How large the real response gaps are cannot be measured, because a gap that could be measured would already have been weighted away. Whether the recent polling errors share a cause is suggestive and unexplained: three cycles in the same direction is a pattern, not a mechanism. Whether the industry's proposed fix is even possible depends on assumptions about non-respondents that no data can validate, which is the objection Bailey's own proposal has to answer. And what a poll should publish has no accepted answer at all. There is no standard format for reporting error that does not come from sampling, which is why the only number on the page is the one describing the smallest problem a poll has.
-
-That is the sentence to carry out. The `r close_n` states that decided 2024 were closer than a poll's advertised precision, and the advertised precision is the part of a poll's error that was never the problem.
+- `pres2024_states.csv` holds the real result in every state, with `margin` and `ev`. Sort by `margin`. How many electoral votes sat inside a margin a normal poll could not resolve?
+- Take the states with the smallest `margin` values in `pres2024_states.csv` and add their `ev` together. What is the smallest set of states a polling error would have to get wrong to change the outcome?
+- Pick a state in `pres2024_states.csv` and imagine a poll off by three points in the same direction everywhere. Work down the `margin` column and count how many states flip.
+- A margin of error covers sampling and nothing else. List three things that could go wrong in polling the states in `pres2024_states.csv` outside the sampling, and say which would be hardest to detect.
+- **Stretch:** the Cooperative Election Study publishes tens of thousands of real interviews per cycle with the weights attached. Fetch one year and compare its weighted and unweighted presidential vote shares: how much work are the weights doing?
+- **Stretch:** read Meng (2018) and work out his effective-sample formula for a poll you have seen reported this year. What would its honest sample size be under a small response gap?
 
 ## Sources
 
 **Data**
 
-- `pres2024_states.csv` — 2024 presidential results by state, from the
-  compilation used earlier in the course. Everything else in this document is
-  simulated.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`pres2024_states.csv`](data/derived/pres2024_states.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `pres2024_states.csv` holds the real result in every state, with `margin` and `ev`. Sort by `margin`. How many electoral votes sat inside a margin a normal poll could not resolve?
-- Take the states with the smallest margins and add their `ev` together. What is the smallest set of states a polling error would have to get wrong to change the outcome?
-- A margin of error covers sampling and nothing else. List three things in this file's states that could go wrong outside the sampling, and say which would be hardest to detect.
-- Pick a state and imagine a poll off by three points in the same direction everywhere. Work through `pres2024_states.csv` and see how many states flip.
+- `pres2024_states.csv` — 2024 presidential results by state, cut from Timm's
+  *PresElectionResults* compilation
+  (<https://github.com/jaytimm/PresElectionResults>), which rests on the
+  fifty-one separate state canvasses; electoral votes keyed in from the 2020
+  apportionment. Everything else in this document is simulated, from a
+  stipulated population, and is evidence about mechanisms rather than about
+  any real poll.
 
 **Academic literature**
 
@@ -318,6 +187,12 @@ tables you just opened.
   2020 General Election Polls*. American Association for Public Opinion
   Research. <https://aapor.org/>
 
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`pres2024_states.csv`](data/derived/pres2024_states.csv)
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

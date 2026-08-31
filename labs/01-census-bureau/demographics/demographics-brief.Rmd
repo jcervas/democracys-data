@@ -1,5 +1,5 @@
 ---
-title: "Measuring Race at Eight Geographic Scales"
+title: "Measuring Race at Eight Geographic Scales, 2020"
 type: brief
 subtitle: "What the 2020 census says about race, at eight scales, and why only the smallest one describes anyone"
 author: "Democracy's Data"
@@ -16,471 +16,156 @@ dd_read_chunks("demographics-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Eight Mile Road runs east and west along the northern city limit of Detroit. South of it is the city. North of it are the suburbs — Ferndale, Warren, Eastpointe. In 2002 a film called *8 Mile*, starring the rapper Eminem, took its title from that road. It took it because of what the road separates: the mostly Black city on one side, and the largely White suburbs on the other.
+Eight Mile Road runs east and west along the northern city limit of Detroit. South of it is the city. North of it are the suburbs — Ferndale, Warren, Eastpointe. In 2002 the film *8 Mile* took its title from that road, because of what the road separates: the mostly Black city on one side, the largely White suburbs on the other.
 
-In the film the road is not a setting. It is the line the whole story is about being on the wrong side of. That is why a state highway in Michigan is a phrase the rest of the country recognizes without being told where it is.
+The 2020 census can say how literally true that is. In the last 500 meters inside the city, the population is `r FV("prof_in500_black")`% Black. In the first 500 meters outside it, `r FV("prof_out500_black")`%. That is a fall of `r FV("prof_jump_black")` points across one road.
 
-The census can say how literally true that is. Take every census block within 2.5 km of Detroit's northern boundary, along the whole width of the city. That is `r n(FV("profile_blocks"))` blocks holding `r n(FV("profile_pop"))` people. Sort them by which side of the line they sit on, and how far from it.
+Now the claim you have heard. The United States is more diverse than ever, and the 2020 census was reported everywhere in roughly those words. As a description of the whole country, the claim is true. But nobody lives in the whole country. So turn the claim into a question: **what is the racial makeup of your neighborhood — and does the answer depend on how big you draw "neighborhood"?**
 
-In the last 500 metres inside the city, the population is `r FV("prof_in500_black")`% Black. In the first 500 meters outside it, `r FV("prof_out500_black")`%. **That is a fall of `r FV("prof_jump_black")` points across one road.**
+## The test
 
-The shape of it matters as much as the size. This is not a city fading into its suburbs. Composition is flat for two and a half kilometers on the south side, steps at the boundary, and is flat again for two and a half kilometers on the north side. Nothing diffuses. Whatever produced this was operating on the line itself, and not on distance from anywhere.
+Every number here comes out of one file: the [2020 Census Redistricting Data (P.L. 94-171) Summary File](https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/), fetched `r FV("fetched")` with no key needed. It records the `r n(FV("us_pop"))` people counted in the fifty states and the District of Columbia on 1 April 2020, and sorts each one into exactly one of `r FV("n_categories")` race-and-ethnicity categories. The [decennial census chapter](../census-decennial/census-decennial-brief.html) is the biography of that count — who is in it, who made it, and why. This brief borrows the file for one experiment.
 
-Now the fact that this chapter exists to explain. Along that stretch, Eight Mile is not only the city limit. It is also the county line: Wayne County to the south, Macomb and Oakland to the north. Which means that **a boundary this sharp, and this widely known, does not appear in county data at all.**
+The experiment holds everything fixed except one thing. Same people, same categories; only the size of the unit the average is computed over changes. The file publishes the same counts at every level of census geography. It holds the nation, `r FV("units_region")` regions, `r FV("units_division")` divisions, and `r n(FV("units_state"))` states with the District of Columbia. Below those sit `r n(FV("n_counties"))` counties, `r n(FV("n_tracts"))` census tracts, `r n(FV("n_blockgroups"))` block groups and `r n(FV("n_blocks"))` blocks. A census tract is a Bureau-drawn unit of roughly 4,000 people, the closest official thing to a neighborhood; a block is a city block. That is eight scales, and the same `r n(FV("us_pop"))` people are added up at each one.
 
-Each of those three counties publishes one row of numbers. In that row, its own side of the step has already been averaged together with a great deal of ground far away from it. The line is not concealed and it is not disputed. It is invisible by arithmetic rather than by omission. And it is invisible in exactly the statistics that reporting, funding formulas and most social science reach for first.
+One measure is computed at every rung: the multigroup entropy index, a standard segregation measure, reported here as a diversity score from 0 to 100. A score of 0 means everyone in the unit is in one category; 100 means the eight categories are perfectly even (Theil 1972; Reardon and Firebaugh 2002).
 
-This chapter is a zoom. It takes the 2020 census and holds the people and the categories fixed. Then it changes one thing only: the size of the box the average is computed over. The boxes run from the whole country down through regions, states, counties, tracts and block groups, to the blocks along that road. The finding is the one the road already suggests: **the national numbers everyone quotes describe a place that almost no American actually lives in.**
+Why this source, of all sources? The question needs every box filled from the same records, and needs the smallest box to be genuinely small. The decennial census counts everyone rather than sampling, and this file reaches down to individual blocks. The usual alternative, the American Community Survey, stops at the block group. At small sizes its margin of error, the stated range for how far off an estimate could be, is often as large as the estimate itself. For a question about scale there is no second source.
 
-There is a second finding, and it has to come first, because it is about the boxes rather than the map. The categories counted below are not facts about people. They are a federal administrative decision, rewritten in 1997 and rewritten again in 2024, and the chapter ends by showing what a number does when the category moves and nobody does.
+## The data
 
-## A file the law required, borrowed for a question it never asked
+Congress ordered this file into existence. Public Law 94-171, passed in 1975, requires the Bureau to hand every state small-area counts within a year of Census Day, so that legislative districts can be redrawn on time. Nobody built it to answer a question about neighborhoods, which is exactly why it can be asked one.
 
-Every number in this chapter comes out of one file, and that file exists because Congress ordered it. Public Law 94-171, passed in 1975, requires the Census Bureau to hand every state legislature small-area population counts within a year of Census Day. That is so districts can be redrawn on time. The Redistricting Data Summary File is what discharges that duty.
+It does not arrive as a table, and it does not arrive in one piece. There is no national block file: the Bureau ships one archive per state, so building the ladder meant `r n(FV("units_state"))` downloads plus a national roll-up. Inside each archive is a geographic header file and numbered data segments with no column names anywhere, joined on a shared record number. Which count sits at which position is something you learn from a published layout, not from the file.
 
-Nobody at the Bureau produced it to answer a question about diversity, or about neighborhoods, or about Eight Mile Road. It was produced so that map-drawers would have blocks to add up. That is exactly why it can be asked the question this chapter asks.
+The build makes three decisions worth knowing. Every geographic identifier is kept as text, so a state code stays `"01"` rather than becoming `1`. Puerto Rico is dropped, because it has a file but is not in the national total. And the build refuses to finish unless the eight categories account for the whole population at every level of every state, and each state's blocks sum to the state.
 
-It was fetched on `r FV("fetched")`, with no key needed. It holds the nation, four regions, nine divisions, the states and the District of Columbia, `r n(FV("n_counties"))` counties, `r n(FV("n_tracts"))` tracts, `r n(FV("n_blockgroups"))` block groups and `r n(FV("n_blocks"))` blocks. The same `r n(FV("us_pop"))` people, added up `r nrow(lad)` different ways.
+The tables this brief hands over carry one row per unit. Each row holds `total` and the eight categories (`hispanic`, `nh_white`, `nh_black`, `nh_asian`, `nh_two`, `nh_aian`, `nh_sor`, `nh_nhpi`), which cover every person exactly once. The `entropy` column is computed here, and the Wayne County tables add `largest` and `largest_pct`, the biggest group in the unit and its share. The county and state tables also carry each race counted two ways, `white_alone` beside `white_any` and so on, because a person who marks two races appears in the second count and not the first. Both counts are official, and the [`census-race`](../census-race/census-race-brief.html) lab takes that pair of questions apart. Here the eight non-overlapping categories do the work, because a mixing measure needs categories every person falls into exactly once.
 
-That is the property nothing else has. A chapter whose only moving part is the size of the box needs every box filled from the same records, and needs the smallest box to be genuinely small. The American Community Survey is the usual alternative, and it stops at the block group. It also attaches a margin of error to every estimate — a stated range for how far off the estimate could be. At those sizes that range is frequently as large as the number it qualifies.
+One more fact about the boxes, told now because it hangs over every number below. The categories are not the Bureau's. The Office of Management and Budget sets them for every federal agency, rewrote them in 1997 to allow more than one mark, and rewrote them again in 2024 (`r FV("std2024_cite")`). They are a federal decision, not a fact about people.
 
-It could not reach the blocks along Eight Mile at all. For this question there is no better file. There is not really a second one.
+> **Before the first figure, commit to a number.** On the 0-to-100 mixing
+> scale, the whole United States scores `r FV("div_nation")`. Write down the
+> score you expect for the census tract the average American lives in. Higher
+> than the country, or lower — and by a little, or by a lot?
 
-What the file cannot do it cannot do for anyone. A full count is a design, not an outcome. The Bureau's own follow-up survey concluded that 2020 missed some populations on net and double-counted others. None of that is marked in any row here.
-
-The count of people is also not a count of anything a person *is*. The eight boxes are a federal decision that has been rewritten twice. That is a subject of this chapter rather than a defect to be cleaned out of it.
-
-And the 2010 file used for the decade comparison holds the same tables in a different physical shape. That makes lining the two up mechanically easy and treacherous by definition.
-
-None of it arrives as a table. "Legacy format" means a geographic header file plus numbered data segments, with no column names anywhere, joined on a record number. The fact that Hispanic origin by race begins at field 77 of segment one is something you learn from a published layout rather than from the file.
-
-The 2010 header is fixed width where the 2020 header is pipe-separated, and its segments are comma-separated where 2020's use pipes. Same fields, same order, two different readers.
-
-Both are read here, with every geographic identifier forced to text so that a state code stays `"01"` rather than becoming `1`. Puerto Rico is dropped on purpose, because it is not in the national total.
-
-The build then refuses to finish unless the eight categories account for the whole population at every level of every state, and each state's blocks sum to the state.
-
-Nor does it arrive in one piece. There is no national block file. The Bureau ships one archive per state, so assembling it meant `r nrow(sta)` downloads plus a national roll-up. The compressed archives are enormously larger than the few hundred kilobytes they were boiled down to.
-
-That is tedious rather than hard, and anyone can run it again. No key, no attention needed, and checkable against the same addresses. The boundaries were not even fetched twice. The state outlines and the Michigan tracts are read from two other chapters in this book. That keeps the book from disagreeing with itself, and it also means those chapters' shapes are now this chapter's shapes.
-
-One table on this page came a different way entirely. The three federal directives below were not downloaded from anywhere. Their dates, citations and category counts were read off the Federal Register by a person and typed in by hand. A rule published as prose in 1977 has no machine-readable version and never will.
-
-It appears here as a tidy table, and that is precisely the risk. Nothing about it distinguishes a typed date from a computed one. It cannot be fetched again or compared against anything, and if a digit in it is wrong, the only way to find out is to go back to the *Register* and read.
-
-## The line the whole chapter is a reading of
-
-"Legacy format" is easier to see than to describe. Here are eight rows of the national roll-up exactly as the Bureau ships them: four from the geographic header, four from the segment that carries the counts. Every number in the rest of this section is computed out of them in front of you.
-
-Here is the United States, in the geographic header file:
-
-```{r pl-raw-geo}
-```
-
-Those empty fields are not damage. There are `r RS("national_geo_fields") - sum(nzchar(G))` of them, one for each kind of geography a country is not: no county code, no tract, no school district. The row is `r RS("national_geo_fields")` fields wide because every row in the file is, whether it is the United States or a census block in Kansas. Field 3, `r G[3]`, is the **summary level**. It is the only thing distinguishing this row from the `r n(FV("n_counties"))` county rows, the `r n(FV("n_tracts"))` tract rows, and the region and division rows that share the file. Here are three more, chosen one per level, with the fields that separate them pulled out of rows that are otherwise identical in shape:
-
-```{r pl-raw-levels}
-```
-
-`010`, `020`, `030`, `040`: nation, region, division, state. **Four different kinds of thing, in one file, told apart by a three-digit code that appears nowhere in the row's own name.**
-
-Now the same four records in the file that holds the counts. This is the United States, all `r length(A)` fields of it:
-
-```{r pl-raw-seg}
-```
-
-Five label fields, then `r length(A) - 5` numbers with nothing attached to them. Field 6 is `r n(A[6])`, the population of the United States. Field 78 is `r n(A[78])`, the Hispanic population. Field 8 is `r n(A[8])`, the number of people who marked White and nothing else. **The file says none of that.** The layout is published as a separate document, and a reader without it has a line of digits.
-
-Two of this chapter's headline numbers are in that line and one of them is not in it anywhere. `r n(A[8])` people marked White alone. But `r n(nat$white_any)` marked White *at all*, and no field holds that figure: it is field 8 plus every one of the multiple-race fields that includes White, which is `r NW - 1` more of them.
-
-```{r pl-anyfig, fig.height=2.4}
-```
-
-**Where "White alone or in combination" comes from.** The 71 fields of Table P1 for one row of the file. The dark cell is "White alone". The `r NW - 1` mid-tone cells are the multiple-race combinations that include White; adding all `r NW` together is the only way to get the second number, and nothing in the file marks which cells to add.
-
-Everything above is arithmetic anyone can check, and this chapter checks it: the chunk that drew that figure refuses to run unless adding those `r NW` fields out of the captured line reproduces `r n(nat$white_any)` exactly.
-
-And here is the row this chapter reads, alongside the position each number came from:
-
-```{r pl-clean-nation}
-```
-
-Six decisions stand between the pipes and that table.
-
-**A code decides what kind of thing a row is.** `010` is the nation and `040` is a state, and the build selects on those codes. The national roll-up holds `r n(RS("national_geo_records"))` records across `r n(RS("national_sumlevels"))` summary levels; this chapter uses four of them and reads the rest of its ladder out of `r nrow(sta)` separate state archives.
-
-**Two files are joined on a number that means nothing outside them.** The geographic header carries `r G[8]` in field 8; segment 1 carries `r A[5]` in field 5. That is the only thing tying the counts to the place. It is unique inside this archive and meaningless outside it, which is why the join happens before anything else does.
-
-**The United States has an empty identifier, and the emptiness is a fact.** The identifier cell for the nation is blank because there is no code for the country. Not because a value went missing.
-
-**A blank meaning "no such thing" and a blank meaning "we do not know" look identical in every table ever printed.** Only the person who wrote the file can tell you which one this is.
-
-**Two ways of being White are both published, and both are kept.** `r n(A[8])` alone; `r n(nat$white_any)` alone or in any combination. Neither is the right one. The [`census-race`](../census-race/census-race-brief.html) lab next door reads this same file and keeps only the first, because its question is about the two-question form rather than about multiple race. **Same line, two chapters, different columns — and the file did not choose.**
-
-**The `_any` columns are summed by generated index, not typed.** Getting `white_any` means knowing the order of the 63 combination fields. Two-race combinations come first, then three, then four, five, six, each in alphabetical order over the six races. That index is generated rather than typed. Typing `r NW - 1` field numbers by hand is how exactly one of them comes out wrong and nothing complains.
-
-The check in this document is the same idea pointed backwards.
-
-**The diversity measure is computed, and computed over the eight categories rather than the sixty-three.** `entropy` is in no census file. It is calculated here from the eight non-overlapping categories, and it has to be those eight. A measure of how a population divides needs categories that every person falls into exactly once, and the alone-or-in-combination counts do not have that property. **The choice of which published table to measure over is the whole measurement**, and this chapter comes back to it at every rung of the ladder.
-
-## What the census counted
-
-Start with the count itself. On 1 April 2020 the census recorded `r n(FV("us_pop"))` people in the fifty states and the District of Columbia, and sorted every one of them into exactly one of eight categories.
+## What it says about democracy
 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r fig1-static, eval=!knitr::is_html_output(), fig.height=3.0}
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=3.5}
 ```
 
-**Figure 1. The United States in 2020, as the census sorted it.** Eight mutually exclusive categories, in true proportion. Because five of them are under six percent, the last `r pc(sum(NPC[CAT[-(1:4)]]))`% of the bar is drawn again beneath it, enlarged. `r pc(NPC[["nh_white"]], 1)`% of the country is non-Hispanic White, `r pc(NPC[["hispanic"]], 1)`% is Hispanic or Latino, `r pc(NPC[["nh_black"]], 1)`% is non-Hispanic Black. The smallest category, non-Hispanic Native Hawaiian and Other Pacific Islander, is `r n(NP[["nh_nhpi"]])` people, or `r pc(NPC[["nh_nhpi"]], 2)`%.
+**Figure 1. Eight rungs, the same `r n(FV("us_pop"))` people, one measure.** Each step is the diversity score of the unit the average American lives in at that scale. The line is a staircase rather than a slope, because the rungs are eight separate calculations, not points on a path. The dashed line is the control: the identical people shuffled at random into units of the identical sizes.
 
-That table is the one most reporting uses, and it has a property worth naming before anything else. **Every person falls into exactly one of its eight rows, and nobody falls into none.**
+The score falls from `r FV("div_nation")` for the country to `r FV("div_state")` for states, `r FV("div_county")` for counties, `r FV("div_censustract")` for tracts and `r FV("div_censusblock")` for blocks. Nobody moves. Only the box shrinks.
 
-Hispanic origin is asked as a separate question from race, so the Bureau has to decide what to do with the millions of people who answer both. The arrangement above settles it by counting Hispanic respondents once, as Hispanic, whatever they said about race. That decision is the subject of the [`census-race`](../census-race/census-race-brief.html) chapter, which takes apart Questions 8 and 9 of the 2020 form, the write-in boxes, and the strange career of "Some Other Race." Nothing here repeats it.
+The control line is what makes that fall meaningful. Finer units always look more segregated, even under random assignment, because small units are noisy. Shuffled, the score stays flat at the national value all the way down to the block-group rung, so the observed fall is people rather than arithmetic. Only at the block rung, where units hold a few dozen people, does randomness begin to produce apparent sorting on its own.
 
-What matters here is only this. A decision was made, a different one was available, and the eight rows above are its output rather than a fact about people.
+Said without any index: **`r FV("pop_tract_80plus")`% of Americans live in a census tract where at least four residents in five are in the same category.** `r FV("pop_tract_90plus")`% live in one where at least nine in ten are. Only `r FV("pop_tract_under50")`% live in a tract whose largest group is under half. The country's headline diversity is real, and it is assembled out of neighborhoods that are mostly not diverse at all.
 
-## Nobody at the Census Bureau chose these boxes
-
-The categories are not the Bureau's. They are set by the **Office of Management and Budget**, in a document called Statistical Policy Directive No. 15. They bind every federal agency that collects data on race: the Bureau of Labor Statistics, the Department of Education, the FBI's crime reporting, the census. The Bureau's job is to implement them.
-
-The directive has been issued three times.
-
-```{r standards-table}
-```
-
-Three provisions of those three documents do most of the work in this chapter.
-
-**1977 allowed one mark.** Somebody of mixed ancestry was to be reported, in the directive's words, in "the category which most closely reflects the individual's recognition in his community."
-
-There was no arithmetic for a person of two races, because there was no such person in the data.
-
-**1997 required more than one.** The revision published on `r format(as.Date(SD("1997","issued")), "%d %B %Y")` (`r SD("1997","citation")`) says that people "shall be offered the option of selecting one or more racial designations."
-
-It also split the single 1977 category "Asian or Pacific Islander" into two. The first census to run under it was `r SD("1997","first_census")`.
-
-**2024 collapsed the two questions into one.** The revision of `r format(as.Date(SD("2024","issued")), "%d %B %Y")` (`r SD("2024","citation")`) requires "a combined race and ethnicity question." It moves Hispanic or Latino into the same list as the races. And it adds a new minimum category: **Middle Eastern or North African**.
-
-There are now `r SD("2024","categories")` minimum categories rather than `r SD("1997","categories")`.
-
-Figure 2 draws all of it: which box a person could actually be counted in, in each census since 1980, with the two revisions marked where they fall.
+One county shows how the averaging works. **Wayne County, Michigan** holds `r n(FV("wayne_pop"))` people, contains Detroit, and has no majority group at all: `r FV("wayne_nh_white_pct")`% White, `r FV("wayne_nh_black_pct")`% Black, `r FV("wayne_hispanic_pct")`% Hispanic and `r FV("wayne_nh_asian_pct")`% Asian. Its diversity score of `r FV("wayne_div")` puts it in the most diverse `r pc(100 * rank(-cou$entropy)[cou$geoid == "26163"] / nrow(cou))`% of all `r n(FV("n_counties"))` American counties. From the county row alone, you would call it one of the more integrated places in the country.
 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.5}
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.0}
 ```
 
-**Figure 2. Which box you could be counted in, by census year.** Each filled cell is a category somebody could actually be recorded as in that census. The red rules are the two revisions of the federal standard. Every appearance and every disappearance in the figure sits against one of them. "Two or More Races" does not exist before 2000, because until the 1997 revision the form did not allow a second mark.
+**Figure 2. Wayne County, Michigan, at three scales.** The same `r n(FV("wayne_pop"))` people and the same ground in all three panels; only the size of the unit changes. Color is the largest category in each unit, and stronger color is a larger share, so the deep colors are the near-uniform units.
 
-"Middle Eastern or North African" appears only in the last column, planned for 2030. Before that, the 1977 directive defined White as covering "origins in any of the original peoples of Europe, North Africa, or the Middle East," so the category absorbed them. Orange is the separate ethnicity question, and the dashed cell in the final column is that question being folded into the race list.
+Split into `r n(FV("wayne_tracts"))` tracts, the no-majority county becomes two counties: `r FV("wayne_tracts_white_largest")` tracts where the largest group is White and `r FV("wayne_tracts_black_largest")` where it is Black, with a visible boundary between them and very little in between. **The median Wayne County tract is `r FV("wayne_tract_median_largest")`% a single category.** `r n(FV("wayne_tracts_80_black"))` tracts are at least 80% Black and `r n(FV("wayne_tracts_80_white"))` are at least 80% White, and together those tracts hold `r FV("wayne_pop_80_pct")`% of the county's population. Both sentences describe Wayne County in 2020, the no-majority county and the county of four-fifths neighborhoods — and only the second is about anybody's street.
 
-Two things follow, and the second is the one that matters for the rest of this chapter.
-
-The first is that **a category is not a discovery.** "Two or More Races" was not found in the population in 2000. It was created in 1997 by a sentence in the Federal Register, and the eleven million people it described in 2000 had been in the country all along, in other boxes.
-
-The second is that **once a person can mark two boxes, every count has two correct versions.** A man who marks White and American Indian is one person. He appears once in the count of people who are White *alone or in any combination*, and not at all in the count of people who are White *alone*. Both counts are published. Neither is a correction of the other.
-
-> **Before you read on, commit to a number.** Below, each of the six race
-> categories is counted both ways: alone, and alone-or-in-combination. **Which
-> category grows the most, in proportion, when you allow the second mark — and
-> by what factor?** Write down the name and a multiplier. Is the largest one
-> half again as big, twice as big, five times as big?
+The boundary in the middle panel is the road this brief opened on. It is Eight Mile Road, Detroit's northern city limit, and it fell out of a map colored by largest group; nobody drew it in. Figure 3 walks up to it. The corridor was selected geographically, from the Bureau's own published city boundary, before anyone looked at who lived in it. It takes every block within 2.5 km of the line along its whole length: `r n(FV("profile_blocks"))` blocks holding `r n(FV("profile_pop"))` people.
 
 ```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r fig3-static, eval=!knitr::is_html_output(), fig.height=3.1}
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=3.6}
 ```
 
-**Figure 3. The same six races, counted twice.** The open circle is the count of people who marked that race and no other; the filled circle is everyone who marked it at all. The multiplier on the right is the ratio between them. **American Indian and Alaska Native goes from `r n(FN("us_aian_alone"))` to `r n(FN("us_aian_any"))`, a factor of `r FV("us_aian_ratio")`.**
+**Figure 3. A line you can stand on.** Left: every census block in a `r pc(diff(range(wtx$cx)), 0)` km window of Detroit's northern boundary, shaded by the share of residents who are non-Hispanic Black; the heavy line is the city limit as the Bureau publishes it. Right: composition against distance from that boundary, in 250-meter bands, sharing the map's vertical axis — so the step in the profile and the line on the map are the same object seen twice.
 
-Native Hawaiian and Other Pacific Islander nearly doubles, at `r FV("us_nhpi_ratio")`. White moves by the largest absolute amount, `r n(FN("us_white_gap"))` people, and by the smallest proportion, `r FV("us_white_ratio")`. Horizontal position is on a square-root scale so the smaller categories remain visible beside White.
+South of the line the corridor is `r FV("prof_south_black")`% Black, and it is that at every distance. North of it, `r FV("prof_north_black")`%. **Between the last 500 meters inside the city and the first 500 meters outside it, the Black share falls from `r FV("prof_in500_black")`% to `r FV("prof_out500_black")`%: `r FV("prof_jump_black")` points across one road.**
 
-The answer people give is Black or White, because those are the categories a reader has been thinking about for two pages. It is neither.
+The shape matters as much as the size. The profile is not a gradient. It is flat, then a step, then flat again, so composition does not fade with distance from the city the way something spreading outward would. Whatever produced this pattern operated on the line itself — on which side of a municipal border a house sits. Redlining, restrictive covenants and municipal incorporation all work exactly that way, and the [`redlining`](../../05-ordinary-people/redlining/redlining-brief.html) lab follows one of those mechanisms from a 1939 appraisal form to the ground.
 
-**The category that nearly triples is American Indian and Alaska Native.** The reason is not mysterious once seen. A group of `r n(FN("us_aian_alone"))` people has far more of its identifying population married into and descended from other groups, proportionally, than a group of two hundred million does. The smaller the category, the more the second mark matters. So the choice between "alone" and "alone or in combination" moves the small categories most. And the small categories are exactly the ones that voting-rights law, tribal funding formulas and civil-rights enforcement are written about.
+Now the payoff, and it is administrative. Along this stretch, Eight Mile is not only the city limit but also the county line: Wayne County to the south, Macomb and Oakland to the north. The corridor spans `r FV("transect_counties")` counties, and **a boundary this sharp, and this widely known, appears in no county statistic at all.** Each county publishes one row in which its own side of the step has already been averaged together with ground far away from it. The line is not concealed and it is not disputed. It is invisible by arithmetic — and invisible in exactly the numbers that reporting, funding formulas and most social science reach for first.
 
-## A decade that mostly did not happen
+That is what the ladder says about democracy. Representation, school funding and Voting Rights Act claims are all computed over some unit, and the choice of unit changes the answer. The `r n(FV("n_counties"))` counties of the United States are `r n(FV("n_counties"))` averages; every one of them has boundaries; and there is no reason to expect those boundaries to be demographically quiet. Segregation is real and sharp at ground level, and the county row cannot see it.
 
-Now put the two censuses side by side. The second mark is not only a fact about a form; it is the reason the most widely reported demographic number of the last decade is unreadable.
+## What this brief cannot tell you
 
-```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
-```
+**Whether any of this survives the next set of categories.** Every score here is computed over eight boxes that the 2024 revision of the federal standard (`r FV("std2024_cite")`) is due to replace. Race and Hispanic origin become one question, Middle Eastern or North African is added, and the minimum list grows from `r FV("std1997_n")` race categories to `r FV("std2024_n")`. Merge two categories and the diversity score falls; split one and it rises; nobody has to move.
 
-```{r fig4-static, eval=!knitr::is_html_output(), fig.height=3.4}
-```
+**How the country changed since 2010.** Between the two censuses the Bureau redesigned how write-in answers were captured and coded. Its own analysts attribute much of the resulting jump to those improvements rather than to demographic change (Jones et al. 2021). In the same pair of files, the count of people who are White alone falls `r mag("chg_white_alone")`% while the count who are White in any combination rises `r mag("chg_white_any")`%. This data will not support a clean time series of race, and the honest thing is to say so rather than draw one.
 
-**Figure 4. Seven counts of the same country, ten years apart, each set to 100 in 2010.** The shaded band is not empty space. Between these two censuses the Bureau changed how it processed answers. It added write-in areas under "White" and under "Black or African American." It raised the characters captured from each write-in from 30 to 200. And it began assigning up to six detailed codes per answer instead of narrowing to two.
+**Exact block counts.** To protect respondents, the 2020 census added deliberate statistical noise before publication: state totals were held exact, but block-level counts were altered, and the noise is proportionally largest where units are smallest. The control in Figure 1 shows that block-level sorting is overwhelmingly real; no single block count here should be treated as exact.
 
-**White alone falls `r mag("chg_white_alone")`% and White in any combination rises `r mag("chg_white_any")`%.** Two or More Races rises `r mag("chg_two_plus")`% and Some Other Race in combination rises `r mag("chg_sor_any")`%. Any line drawn across this band measures the population and the processing at once. The figure cannot separate them.
+**Anything about voters.** Everything counted here is total population, children and non-citizens included. Voting-age population sits in the same file and gives different numbers.
 
-The Census Bureau says so itself, and it is worth quoting exactly, because it is unusually blunt for an agency describing its own product. Of the jump in Some Other Race the Bureau's own analysts wrote that the change "could be attributed to a number of factors, including demographic change since 2010. But we expect they were largely due to the improvements to the design of the two separate questions for race and ethnicity, data processing and coding."
+**Why anybody lives where they live.** A step at a municipal boundary is strong evidence that something operated on the boundary; nothing in this file says what. And a companion lab, [`areal-units`](../areal-units/areal-units-brief.html), shows how far a statistic can move from redrawing units alone — the reason Figure 1 needed its shuffled control.
 
-**Largely due to the improvements.** Not to migration, not to births, not to anybody changing their mind about who they are. The country did change over the decade. It grew by `r n(FN("pop_2020") - FN("pop_2010"))` people, and the Hispanic share went from `r FV("d10_hispanic_pct")`% to `r FV("d20_hispanic_pct")`%. But the headline numbers of that decade, the ones about a declining White majority and an exploding multiracial population, are partly an artifact of a better form.
+## What you should have learned
 
-So **this data will not support a clean time series of race.** The honest thing is to say so rather than draw one. That is the whole cross-decade lesson, and it is worth more than the trend line would have been.
+- The same `r n(FV("us_pop"))` people score `r FV("div_nation")` on the mixing scale as one country and `r FV("div_censustract")` as a set of census tracts. The unit is part of every demographic answer.
+- The fall down the ladder is people, not arithmetic: shuffled at random into units of the same sizes, the score stays flat until the block rung.
+- A county with no majority group can still be a county of near-uniform neighborhoods. The median Wayne County tract is `r FV("wayne_tract_median_largest")`% one category.
+- The sharpest boundaries can sit on administrative lines and vanish from those units' own statistics: `r FV("prof_jump_black")` points across Eight Mile Road, averaged away in all `r FV("transect_counties")` counties it separates.
+- The categories under every number are a federal decision, rewritten in 1997 and again in 2024, and every score in this brief changes when they do.
 
-Note what this is *not*. 2010 and 2020 were the easy pair. Both ran under the same 1997 standard, with the same categories, in the same file format, with the same fields in the same order. Everything that could have been held constant was held constant, and the comparison still fails. A comparison that crosses 1997, or that will cross the 2024 revision, has no chance at all.
+## Extensions
 
-## Where people are
-
-Turn from time to place, where the data is far better behaved. Composition varies enormously across the country, and the four census regions are the coarsest way to see it. Figure 5 draws them: every state in exactly one division, every division in exactly one region.
-
-```{r fig5-prep, include=FALSE}
-```
-
-```{r fig5-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r fig5-static, eval=!knitr::is_html_output(), fig.height=4.0}
-```
-
-**Figure 5. The four census regions and nine divisions.** The Bureau's own grouping of states, from the same file as every count in this chapter: summary level `020` is a region, `030` a division, and each is exactly a union of states. The heavy lines are the division boundaries. Alaska and Hawaii, both in the Pacific division, are drawn inset at reduced scale; the District of Columbia, in the South Atlantic division, is on the map but too small to label. The outlines and projection are the ones Figure 6 reuses, and the four hues are the ones [`regional-shift`](../regional-shift/regional-shift-brief.html) gives the same four regions.
-
-```{r region-table}
-```
-
-The `r reg$name[reg$kind == "region"][which.max(reg$entropy[reg$kind == "region"])]` is the most mixed of the four and the `r reg$name[reg$kind == "region"][which.min(reg$entropy[reg$kind == "region"])]` the least, and the gap between them is wide. But regions are enormous. The smallest holds `r n(min(reg$total[reg$kind == "region"]))` people, and averaging at that size destroys almost everything. States are better, and Figure 6 maps all six of the largest categories across all fifty-one of them.
-
-```{r fig6-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r fig6-static, eval=!knitr::is_html_output(), fig.height=4.4}
-```
-
-**Figure 6. Six categories, fifty-one states, one projection.** Each panel is scaled to its own maximum, because the categories differ enormously in size. The darkest state and its value are printed under each title. The patterns are the familiar ones, and they are geographic rather than random.
-
-Hispanic population runs along the southern border and into the industrial Northeast. Black population runs through the South Atlantic and East South Central divisions. Asian population sits on the Pacific coast and around Washington and New York.
-
-American Indian and Alaska Native concentrate in Alaska, Oklahoma and the Mountain division.
-
-Alaska and Hawaii are moved and rescaled in the conventional way.
-
-State-level composition ranges from `r pc(100 * min(sta$entropy) / log(8))` on this chapter's diversity score in `r sta$name[which.min(sta$entropy)]` to `r pc(100 * max(sta$entropy) / log(8))` in `r sta$name[which.max(sta$entropy)]`. Only `r sum(sta$largest != "White")` of the fifty-one have a largest group that is not White: `r paste(sta$name[sta$largest != "White"], collapse = ", ")`.
-
-## The number that keeps moving
-
-Here is where the chapter turns. Everything so far has described containers: the country, four regions, fifty-one states. Each container has been reported by its average. But an average over a container the size of Texas is not a description of anywhere. So keep the population absolutely fixed, keep the categories absolutely fixed, and change only the size of the box you compute the average over.
-
-To make that produce a number rather than a series of prettier maps, this chapter uses one measure at every rung: the **multigroup entropy index**. For any unit, entropy is
-
-$$E_i \;=\; \sum_{r} p_{ir}\,\ln\!\left(\frac{1}{p_{ir}}\right)$$
-
-where $p_{ir}$ is the share of unit $i$ in category $r$. It is zero when everyone in the unit is in one category. It is at its maximum, $\ln 8 = `r pc(FN("E_max"), 3)`$, when the eight categories are perfectly even. It is reported below as a percentage of that maximum. So a **diversity score of 100 means the eight categories are equally represented, and a score of 0 means everyone is in the same one.**
-
-The United States as a whole scores **`r FV("div_nation")`**. The question is what the average American's *surroundings* score, when "surroundings" is allowed to get smaller.
-
-Why entropy and not the dissimilarity index, which is the more famous segregation statistic? Because dissimilarity takes exactly two groups. With eight categories that means either twenty-eight separate numbers, or a decision that one contrast, almost always Black against White, is *the* contrast. That decision is a substantive claim about the country, and the measure should not be making it quietly on our behalf. Entropy takes all eight at once. Its limitations are set out at the end of the chapter, and the first of them is the one this chapter has already spent four pages on: **change the categories and every number below changes.**
-
-```{r fig7-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r fig7-static, eval=!knitr::is_html_output(), fig.height=3.5}
-```
-
-**Figure 7. Eight rungs, the same `r n(FV("us_pop"))` people, one measure.** Each step is the average diversity score of the units at that level, counted by population. It is the score of the unit the average person is in. It falls from `r FV("div_nation")` for the country as a whole to `r FV("div_censustract")` for census tracts and `r FV("div_censusblock")` for blocks. The dashed line is the control: the identical people shuffled at random into units of the identical sizes.
-
-It stays flat at the national value down to the block-group rung. That means **the fall is not a side effect of using smaller boxes.** Only at the block rung, where units hold a few dozen people, does randomness begin to produce apparent segregation on its own.
-
-Read the two lines together. The matching segregation index is the share of national diversity missing from the average person's unit. It is `r FV("H_county")` across counties and `r FV("H_censustract")` across tracts, against a random-shuffle baseline of `r FV("H0_censustract")`. Essentially all of it is people rather than arithmetic.
-
-That control matters because a companion chapter, [`areal-units`](../areal-units/areal-units-brief.html), shows the opposite lesson on exactly this kind of ladder. Add Fulton County's blocks upward and the spread of Black share collapses, extremes vanish, and a correlation flips sign. All of it without anybody moving. That lab is about the *measuring instrument*. This figure is what is left when you subtract the instrument, and something is left.
-
-**In plain terms: the United States is `r FV("div_nation")` on this scale and the average American's neighborhood is `r FV("div_censustract")`.** More concretely still, and without any index at all. **`r FV("pop_tract_80plus")`% of Americans live in a census tract where at least four residents in five are in the same category.** `r FV("pop_tract_90plus")`% live in one where at least nine in ten are. Only `r FV("pop_tract_under50")`% live in a tract whose largest group is under half.
-
-## One county with no majority
-
-Statistics at that scale are still abstractions. So take one county, and take one where the county-level number looks like good news.
-
-**Wayne County, Michigan** holds `r n(FV("wayne_pop"))` people, contains Detroit, and has no majority group at all: it is `r FV("wayne_nh_white_pct")`% White, `r FV("wayne_nh_black_pct")`% Black, `r FV("wayne_hispanic_pct")`% Hispanic and `r FV("wayne_nh_asian_pct")`% Asian. Its diversity score is `r FV("wayne_div")`, which puts it in the most diverse `r pc(100 * rank(-cou$entropy)[cou$geoid == "26163"] / nrow(cou))`% of all `r n(FV("n_counties"))` American counties. If you had to characterize it from the county row alone you would call it one of the more integrated places in the country.
-
-```{r fig8-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r fig8-static, eval=!knitr::is_html_output(), fig.height=3.0}
-```
-
-**Figure 8. Wayne County, Michigan, at three scales.** The same `r n(FV("wayne_pop"))` people and the same ground in all three panels; only the size of the unit changes. As one county it is a single unit whose largest group is `r tolower(FV("wayne_largest"))`, at `r FV("wayne_largest_pct")`%. Split into `r n(FV("wayne_tracts"))` tracts it is two counties: `r FV("wayne_tracts_white_largest")` tracts where the largest group is White and `r FV("wayne_tracts_black_largest")` where it is Black, with a visible boundary between them and very little in between. Split again into `r n(FV("wayne_bg"))` block groups the boundary sharpens rather than blurring. Color strength is the size of the largest group's share, so the deep colors are the near-uniform units.
-
-The numbers behind the middle panel are the ones to carry away. **The median Wayne County tract is `r FV("wayne_tract_median_largest")`% a single category.** `r n(FV("wayne_tracts_80_black"))` of its tracts are at least 80% Black, and `r n(FV("wayne_tracts_80_white"))` are at least 80% White. Between them, those `r n(FN("wayne_tracts_80_black") + FN("wayne_tracts_80_white"))` tracts hold `r FV("wayne_pop_80_pct")`% of the county's population. `r n(FV("wayne_tracts_90"))` tracts are at least 90% one category, holding `r FV("wayne_pop_90_pct")`% of the people.
-
-A county in the most diverse seven percent of the United States, in which most residents live in a neighborhood that is at least four-fifths one group. Both sentences describe Wayne County in 2020 and neither is a distortion of the other. **The county row and the tract rows are answers to different questions, and only the tract rows are about anybody's street.**
-
-## One street
-
-The boundary visible in the middle panel of Figure 8 is the road this chapter opened on. It was not put there to make a point. It is Eight Mile Road, the northern city limit of Detroit. It fell out of a map coloured by which category is largest, and it is possible to walk across it.
-
-Figure 9 does two things at once. On the left is a `r pc(diff(range(wtx$cx)), 0)` km stretch of that line, drawn block by block. It covers `r n(FV("transect_blocks"))` census blocks holding `r n(FV("transect_pop"))` people, in `r FV("transect_counties")` different counties, because along this stretch the city limit is *also* the county line. On the right is the composition of every block within 2.5 km of the boundary along its entire length, by distance from it. The corridor was selected geographically, from the Census Bureau's own published city boundary, before anyone looked at who lived in it.
-
-```{r fig9-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r fig9-static, eval=!knitr::is_html_output(), fig.height=3.6}
-```
-
-**Figure 9. A line you can stand on.** Left: every census block in a `r pc(diff(range(wtx$cx)), 0)` km window of Detroit's northern boundary, shaded by the share of its residents who are non-Hispanic Black. The heavy line is the city limit as the Census Bureau publishes it. Right: composition against distance from that boundary, computed over `r n(FV("profile_blocks"))` blocks and `r n(FV("profile_pop"))` people along its whole length, in 250-meter bands. The two panels share a vertical axis.
-
-South of the line the corridor is `r FV("prof_south_black")`% Black and `r FV("prof_south_white")`% White, and it is that at every distance. North of it, `r FV("prof_north_black")`% Black and `r FV("prof_north_white")`% White. **Between the last 500 metres inside the city and the first 500 metres outside it, the Black share falls from `r FV("prof_in500_black")`% to `r FV("prof_out500_black")`%. That is `r FV("prof_jump_black")` points across one road.**
-
-Look at the shape of the profile rather than its levels. It is not a gradient. It is flat, then a step, then flat again. Composition does not fade with distance from Detroit the way something spreading out would. It changes at the boundary and then stops changing.
-
-Whatever produced this pattern was working on the line itself, on which side of a municipal border a house sits. Not on distance from a city centre.
-
-Redlining, restrictive covenants, unequal mortgage access and municipal incorporation all work exactly that way. The [`redlining`](../../05-ordinary-people/redlining/redlining-brief.html) chapter follows one of them from a 1939 appraisal form to the ground.
-
-And the administrative point, which was the claim on the first page and now has a figure under it. **The step in the right-hand panel is invisible in every county-level statistic ever published.** The corridor drawn on the left spans `r FV("transect_counties")` counties, for no reason except that the boundary is itself a county boundary. Each of those counties reports a single row in which the step has already been averaged away.
-
-What Figure 9 adds to the opening is the shape. A reader who only had the two county rows would be entitled to imagine a gradient, a city shading into its suburbs over some miles. There is no gradient. There is a step, and the counties are drawn along it.
-
-Figure 7 is why this generalizes past one road. National and state numbers describe places nobody lives; Figure 9 is what that sentence looks like from the pavement. The `r n(FV("n_counties"))` counties of the United States are `r n(FV("n_counties"))` averages; every one of them has boundaries; and there is no reason to expect those boundaries to be demographically quiet.
-
-## The ground did not move
-
-One number from Figure 4 deserves the last word, because it is the exact mirror of the road.
-
-Between 2010 and 2020 the White population of the United States fell by `r n(FN("d10_white_alone") - FN("d20_white_alone"))` people. That is a drop of `r mag("chg_white_alone")` percent, the first decline ever recorded in an American census, and it was reported that way everywhere.
-
-Nobody left.
-
-There was no emigration, no epidemic, no annexation. The country grew by `r mag("chg_pop")` percent over the decade and the number of people the census reported as White went down by nineteen million. Held against the same two censuses, a second count of the same population shows the White population *rising* by `r mag("chg_white_any")` percent. That count is equally official, published in the same table, from the same answers on the same forms.
-
-Both numbers are correct. They are not two estimates of one quantity, one of which is mistaken. They are answers to two different questions: *who marked this box and nothing else*, and *who marked this box at all*. Nothing in the last twenty years has settled which of the two a country is meant to ask.
-
-Set that beside Eight Mile Road and the pair covers the whole failure. At Eight Mile the ground is real, sharp, and sitting still, and the statistic cannot see it. In Figure 4 nothing on the ground moves and the statistic moves anyway, in both directions at once, depending on which of the two counts is read. Nobody is lying in either case. In both, the number and the thing are not the same object, and the gap between them is a property of the instrument rather than of the country.
-
-And the instrument is about to be rebuilt. The revision published on `r format(as.Date(SD("2024","issued")), "%d %B %Y")` (`r SD("2024","citation")`) folds race and Hispanic origin into a single question. It also adds Middle Eastern or North African, taking the minimum list from `r SD("1997","categories")` categories to `r SD("2024","categories")`. Every number in this chapter was computed over `r FV("n_categories")` boxes that will not exist in 2030.
-
-The diversity score depends on that box list, so it will move. The share of Americans living in a tract that is four-fifths one category depends on it too, so that will move. Eight Mile Road will not move.
-
-Which leaves the two questions this chapter had to ask of every number in it, and that are worth asking of any number about a population. **What is the unit?** The same people score `r FV("div_nation")` as a country and `r FV("div_censusblock")` as a set of blocks, without anybody crossing a street.
-
-**And what are the boxes?** Between 2010 and 2020 the ground did not move. The question did.
-
-## What this data can and cannot support
-
-**Strengths.** The 2020 Census counts everyone rather than sampling, so there is no sampling error. The file used here is the one the Bureau is required by law to deliver to every state legislature for redistricting. It reaches down to the individual census block, so the same categories can be counted at eight nested scales with no interpolation and no crosswalk. A crosswalk translates one set of areas into another, and none was needed here. Every number in this chapter is a sum of the same records.
-
-**Weaknesses, in the order they would mislead you.**
-
-- **The categories are the finding as much as the data is.** Everything here is
-  computed over eight boxes chosen by OMB and implemented by the Bureau. The
-  diversity score in particular is a function of the category list: merge two
-  categories and it falls, split one and it rises, without a single person
-  moving. Under the 2024 revision it would be computed over
-  `r SD("2024","categories")` categories, and every number in Figure 7 would change.
-- **No time series.** For the reasons in Figure 4, this data cannot support a
-  clean statement about how the racial composition of the United States has
-  changed. It can support a statement about how the *measurement* changed, and
-  that is what Figure 4 is.
-- **The block rung is the least trustworthy.** The 2020 census applied a
-  disclosure-avoidance system based on differential privacy: state total
-  populations were held invariant and were not altered, but **block-level
-  population counts were**, and the noise is proportionally largest exactly
-  where the units are smallest. The random-shuffle control in Figure 7 shows
-  block-level segregation is still overwhelmingly real, but no single block
-  count in this chapter should be treated as exact.
-- **Residents, not voters.** Everything counted here is total population,
-  including children and non-citizens. Voting-age population is published in
-  the same file and gives different numbers; nothing here is about turnout.
-- **One county, one street.** Wayne County was chosen because its county-level
-  number is misleading in an instructive direction, not because it is typical.
-  The national ladder in Figure 7 is what stops the Wayne example doing work it
-  cannot do.
-- **Description, not explanation.** Nothing in this chapter establishes why
-  anybody lives where they live. A step function at a municipal boundary is
-  strong evidence that something operated on the boundary; it does not say what.
-
-## What remains genuinely open
-
-- **Whether the 2024 categories will be in use for 2030.** The revision is in
-  force, and the Census Bureau has said it is preparing to implement it in the
-  2027 American Community Survey and the 2030 Census, with a combined question
-  fielded in the 2026 Census Test. The compliance deadlines have already been
-  extended twice.
-- **What happens to forty years of statistics when the categories change.**
-  Every federal series about race is anchored to Directive 15. A person counted
-  as White in 2020 and as Middle Eastern or North African in 2030 has not
-  changed, and no series will say so.
-- **Whether the right unit for a claim about segregation is the tract.** It is
-  the conventional choice, and it is a choice. See
-  [`areal-units`](../areal-units/areal-units-brief.html) for what depends on
-  it.
-
----
+- `ladder.csv` measures the same country at all eight scales. Read `diversity` and `pct_single_group` down the rungs. At which scale does America stop looking mixed and start looking sorted?
+- `counties.csv` carries both `white_alone` and `white_any` for every county. Take the difference and sort it. Where does that one qualifier do the most work?
+- `wayne_tracts.csv` gives each tract a `largest` group and its `largest_pct`. Count the tracts where one group is more than nine residents in ten. Then group the blocks in `wayne_transect.csv` by `side` and compare their summed `nh_black` against their summed `total`.
+- `states.csv` has an `entropy` column. Sort it. Which states sit at the two ends, and does the answer match the map in your head?
+- Stretch: the archive in Sources holds one file per state. Fetch your own state's blocks, find a boundary you know, and walk it the way Figure 3 walks Eight Mile Road.
+- Stretch: put `decades.csv` beside `standards.csv` and decide, category by category, how much of the 2010-to-2020 change could be people and how much is the question changing under them.
 
 ## Sources
 
 **Data**
 
 - U.S. Census Bureau, *2020 Census Redistricting Data (P.L. 94-171) Summary
-  File*, legacy format — Tables P1 and P2, for the nation, four regions, nine
-  divisions, `r n(FV("units_state"))` states and the District of Columbia,
+  File*, legacy format — Tables P1 and P2, for the nation, regions, divisions,
+  `r n(FV("units_state"))` states and the District of Columbia,
   `r n(FV("n_counties"))` counties, `r n(FV("n_tracts"))` tracts,
   `r n(FV("n_blockgroups"))` block groups and `r n(FV("n_blocks"))` blocks.
-  Fetched `r FV("fetched")`. Keyless; no Census API is used anywhere in this
-  lab.
+  Fetched `r FV("fetched")`; keyless.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
 - U.S. Census Bureau, *2010 Census Redistricting Data (P.L. 94-171) Summary
-  File*, national file, for Figure 4 only.
+  File*, national file, read for the decade table handed over below.
   <https://www2.census.gov/census_2010/redistricting_file--pl_94-171/National/>
-- U.S. Census Bureau, *TIGER/Line Shapefiles*, 2020 — state, tract, block group,
-  block and place boundaries.
+- U.S. Census Bureau, *TIGER/Line Shapefiles*, 2020 — the county, tract, block
+  group, block and place boundaries behind Figures 2 and 3.
   <https://www2.census.gov/geo/tiger/TIGER2020/>
+
+**The standards and the measure**
+
+- Office of Management and Budget, *Statistical Policy Directive No. 15*,
+  `r format(as.Date(FV("std1977_issued")), "%d %B %Y")`; revised
+  `r format(as.Date(FV("std1997_issued")), "%d %B %Y")`
+  (`r FV("std1997_cite")`) and
+  `r format(as.Date(FV("std2024_issued")), "%d %B %Y")`
+  (`r FV("std2024_cite")`). The three documents that set the categories.
+- Nicholas Jones, Rachel Marks, Roberto Ramirez and Merarys Ríos-Vargas, "2020
+  Census Illuminates Racial and Ethnic Composition of the Country," U.S.
+  Census Bureau, 12 August 2021 — the Bureau's own account of the 2010-to-2020
+  processing changes.
+- Theil, H. (1972). *Statistical Decomposition Analysis.* Amsterdam:
+  North-Holland. Reardon, S. F. and Firebaugh, G. (2002). "Measures of
+  Multigroup Segregation." *Sociological Methodology* 32(1): 33–67. The
+  diversity measure, and why entropy rather than a two-group index when there
+  are eight categories.
 
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`categories.csv`](data/derived/categories.csv), [`counties.csv`](data/derived/counties.csv), [`decades.csv`](data/derived/decades.csv), [`eightmile_profile.csv`](data/derived/eightmile_profile.csv), [`ladder.csv`](data/derived/ladder.csv), [`nation.csv`](data/derived/nation.csv), [`regions.csv`](data/derived/regions.csv), [`standards.csv`](data/derived/standards.csv), [`states.csv`](data/derived/states.csv), [`tract_largest.csv`](data/derived/tract_largest.csv), [`us_divisions.csv`](data/derived/us_divisions.csv), [`us_maplabels.csv`](data/derived/us_maplabels.csv), [`us_rings.csv`](data/derived/us_rings.csv), [`wayne_bg.csv`](data/derived/wayne_bg.csv), [`wayne_bg_rings.csv`](data/derived/wayne_bg_rings.csv), [`wayne_block_rings.csv`](data/derived/wayne_block_rings.csv), [`wayne_detroit_rings.csv`](data/derived/wayne_detroit_rings.csv), [`wayne_outline.csv`](data/derived/wayne_outline.csv), [`wayne_tract_rings.csv`](data/derived/wayne_tract_rings.csv), [`wayne_tracts.csv`](data/derived/wayne_tracts.csv), [`wayne_transect.csv`](data/derived/wayne_transect.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `ladder.csv` measures the same country at every scale from the nation down. Read `pct_single_group` down the ladder. At which scale does America stop looking mixed and start looking sorted?
-- `counties.csv` has both `white_alone` and `white_any`. Take the difference for every county and sort it. Where does that one qualifier do the most work?
-- `decades.csv` puts one decade beside the next for every category. Find the category that grew most. Then use `standards.csv` and `categories.csv` to work out how much of that is people changing and how much is the question changing.
-- `wayne_tracts.csv` gives each tract a `largest` group and a `largest_pct`. Count the tracts where one group is almost everybody. Then follow `wayne_transect.csv` across the county line and find where the change happens, and how sharply.
-
-**The standards**
-
-- Office of Management and Budget, *Statistical Policy Directive No. 15: Race
-  and Ethnic Standards for Federal Statistics and Administrative Reporting*,
-  `r format(as.Date(SD("1977","issued")), "%d %B %Y")`.
-- Office of Management and Budget, *Revisions to the Standards for the
-  Classification of Federal Data on Race and Ethnicity*,
-  `r SD("1997","citation")`, `r format(as.Date(SD("1997","issued")), "%d %B %Y")`.
-- Office of Management and Budget, *Revisions to OMB's Statistical Policy
-  Directive No. 15*, `r SD("2024","citation")`,
-  `r format(as.Date(SD("2024","issued")), "%d %B %Y")`.
-- Nicholas Jones, Rachel Marks, Roberto Ramirez and Merarys Ríos-Vargas, "2020
-  Census Illuminates Racial and Ethnic Composition of the Country," U.S. Census
-  Bureau, 12 August 2021 — the source of the quotation in Figure 4.
-
-**The measure**
-
-- Theil, H. (1972). *Statistical Decomposition Analysis.* Amsterdam:
-  North-Holland. The information index used here.
-- Reardon, S. F. and Firebaugh, G. (2002). "Measures of Multigroup
-  Segregation." *Sociological Methodology* 32(1): 33–67. Why entropy rather
-  than dissimilarity when there are more than two groups.
-- Massey, D. S. and Denton, N. A. (1988). "The Dimensions of Residential
-  Segregation." *Social Forces* 67(2): 281–315.
-
-## Related labs
-
-[`census-race`](../census-race/census-race-brief.html) takes apart the two questions on the 2020 form and the write-in boxes behind them. [`areal-units`](../areal-units/areal-units-brief.html) shows what changing the unit does to a statistic, and is the control this chapter's Figure 7 needed. [`census-geography`](../census-geography/census-geography-brief.html) explains why the nesting in Figure 8 works at all. [`redlining`](../../05-ordinary-people/redlining/redlining-brief.html) follows one of the mechanisms that could produce Figure 9. [`surnames`](../surnames/surnames-brief.html) and [`bisg-check`](../../06-putting-data-together/bisg-check/bisg-check-brief.html) are about what happens when race has to be *inferred* because nobody recorded it.
-
-## The lab
-
-`demographics.Rmd` here runs the same sequence as numbered steps with the code exposed, and ends with four things you can change and re-run.
-
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
+[`ladder.csv`](data/derived/ladder.csv), [`nation.csv`](data/derived/nation.csv), [`states.csv`](data/derived/states.csv), [`counties.csv`](data/derived/counties.csv), [`decades.csv`](data/derived/decades.csv), [`standards.csv`](data/derived/standards.csv), [`wayne_tracts.csv`](data/derived/wayne_tracts.csv), [`wayne_bg.csv`](data/derived/wayne_bg.csv), [`wayne_transect.csv`](data/derived/wayne_transect.csv), [`eightmile_profile.csv`](data/derived/eightmile_profile.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

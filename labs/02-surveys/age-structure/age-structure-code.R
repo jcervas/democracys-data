@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -233,82 +234,49 @@ for (i in seq_along(BANDS)) {
 par(op)
 
 ## ---- fig2-d3
+# ---------------------------------------------------------------------------
 # Over-representation as one number per band per election: share of voters
 # minus share of adults. Zero means a band votes exactly in proportion to its
 # size, which is the only interesting reference line here.
-mk <- function(i) {
-  z <- sh[sh$band == BANDS[i] & sh$year %in% PRES, ]
-  z <- z[order(z$year), ]
-  paste0('{b:"', SHORT[i], '",c:"', BCOL[i], '",p:[',
-         paste0("[", z$year, ",", z$gap, ",", z$pop_share, ",",
-                z$vote_share, "]", collapse = ","), ']}')
+#
+# Drawn with the shared library (_lib/dd-charts.js) as a four-series line.
+# The series classes replace the old hand-picked band colours, so the corpus
+# restyles in one place; the static twin keeps BCOL for print. d3 = FALSE
+# because Figure 1 is a bespoke slider chart and already carries the d3 tag.
+# ---------------------------------------------------------------------------
+w2 <- data.frame(year = PRES)
+for (i in seq_along(BANDS)) {
+  z <- sh[sh$band == BANDS[i], ]
+  z <- z[match(PRES, z$year), ]
+  w2[[paste0("g", i)]] <- z$gap
+  w2[[paste0("p", i)]] <- z$pop_share
+  w2[[paste0("v", i)]] <- z$vote_share
 }
-cat(paste0('
-<div id="gap" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const S=[', paste(vapply(seq_along(BANDS), mk, character(1)), collapse = ","), '];
-const W=770,H=400,M={t:18,r:78,b:52,l:66};
-const box=d3.select("#gap");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const all=S.flatMap(s=>s.p);
-const x=d3.scaleLinear().domain(d3.extent(all,p=>p[0])).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([d3.min(all,p=>p[1])-0.6,
-                                 d3.max(all,p=>p[1])+0.6]).range([H-M.b,M.t]);
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(0)).attr("y2",y(0))
-  .attr("stroke","#CBD3D8").attr("stroke-width",1.4);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(8));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).ticks(6).tickFormat(d=>(d>0?"+":"")+d));
-svg.append("text").attr("transform","rotate(-90)")
-  .attr("x",-(M.t+(H-M.b))/2).attr("y",16).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#4E5A63")
-  .text("share of voters minus share of adults, in points");
-svg.append("text").attr("x",M.l+6).attr("y",y(0)-6).attr("font-size","11px")
-  .attr("fill","#76838C").text("votes exactly in proportion to its size");
-const ln=d3.line().x(p=>x(p[0])).y(p=>y(p[1]));
-S.forEach(function(s){
-  svg.append("path").attr("fill","none").attr("stroke",s.c).attr("stroke-width",2.4)
-     .attr("d",ln(s.p));
-  // selectAll() takes a CSS selector, and the band labels do not make valid
-  // ones: "c"+"65+" is "c65+", which throws, so the markers for every band
-  // were silently never drawn. selectAll(null) is the d3 idiom for joining
-  // into a fresh empty selection, which is what this always meant.
-  svg.selectAll(null).data(s.p).join("circle")
-     .attr("cx",p=>x(p[0])).attr("cy",p=>y(p[1])).attr("r",2.8).attr("fill",s.c);
-  const last=s.p[s.p.length-1];
-  svg.append("text").attr("x",x(last[0])+7).attr("y",y(last[1])+4)
-     .attr("font-size","12px").attr("font-weight","600").attr("fill",s.c)
-     .text(s.b);
-});
-const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#12181D").attr("stroke-dasharray","3 3").attr("opacity",0);
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","transparent")
-  .on("mousemove",function(e){
-    const yr0=x.invert(d3.pointer(e,this)[0]+M.l);
-    const yrs=S[0].p.map(p=>p[0]);
-    const yr=yrs.reduce((a,b)=>Math.abs(b-yr0)<Math.abs(a-yr0)?b:a);
-    rule.attr("x1",x(yr)).attr("x2",x(yr)).attr("opacity",0.5);
-    const r=box.node().getBoundingClientRect();
-    tip.style("opacity",1).style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-10)+"px")
-       .html("<b>"+yr+"</b><br>"+S.map(function(s){
-          const p=s.p.find(q=>q[0]===yr); if(!p) return "";
-          return "<span style=\\"color:"+s.c+"\\">&#9632;</span> "+s.b+": "+
-                 (p[1]>0?"+":"")+p[1].toFixed(1)+
-                 " <span style=\\"color:#8A8F94\\">("+p[2].toFixed(1)+
-                 "% of adults, "+p[3].toFixed(1)+"% of voters)</span>";
-       }).filter(Boolean).join("<br>"));
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);rule.attr("opacity",0);});
-})();
-</script>'))
+sers <- lapply(seq_along(BANDS), function(i)
+  list(field = paste0("g", i), label = SHORT[i],
+       class = paste0("series-", i)))
+dd_fig("gap", "line", w2, d3 = FALSE,
+  size = list(w = 770, h = 400, m = list(t = 18, r = 78, b = 52, l = 66)),
+  x = list(field = "year", fmt = "d", ticks = 8),
+  y = list(field = "g4", label = "share of voters minus share of adults, in points",
+           domain = c(min(sh$gap) - 0.6, max(sh$gap) + 0.6),
+           fmt = "signed0", ticks = 6),
+  series = list(fields = sers),
+  points = TRUE, endLabels = TRUE,
+  annotations = list(
+    list(type = "hline", y = 0, class = "zero", dash = FALSE),
+    list(type = "text", x = min(PRES) + 1, y = 0, dy = -6,
+         text = "votes exactly in proportion to its size", class = "foot")),
+  tip = dd_js('function(d){
+    var B=[["1","g1","p1","v1"],["2","g2","p2","v2"],
+           ["3","g3","p3","v3"],["4","g4","p4","v4"]];
+    var LAB={"1":"18–24","2":"25–44","3":"45–64","4":"65+"};
+    return "<b>"+d.year+"</b><br>"+B.map(function(b){
+      return "<span class=\'series-"+b[0]+"-txt\'>&#9632;</span> "+LAB[b[0]]+": "+
+        (d[b[1]]>0?"+":"")+d[b[1]].toFixed(1)+
+        " ("+d[b[2]].toFixed(1)+"% of adults, "+d[b[3]].toFixed(1)+"% of voters)";
+    }).join("<br>");
+  }'))
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

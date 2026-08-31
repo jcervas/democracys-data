@@ -82,27 +82,6 @@ names(o) <- c("institution", "variable", "year", "answered", "great deal %",
               "only some %", "hardly any %")
 o
 
-## ---- one-record
-o <- con[con$year == Y1, c("institution", "variable", "year", "n",
-                           "great_deal", "only_some", "hardly_any")]
-names(o) <- c("institution", "GSS variable", "year", "respondents",
-              "great deal (%)", "only some (%)", "hardly any (%)")
-o
-
-## ---- scope
-data.frame(
-  quantity = c("Institutions asked about", "Survey years", "Period",
-               "Institution-years in this file",
-               "Respondents per item (smallest, largest)"),
-  value = c(nrow(it), length(unique(cf$year)), paste(Y1, "to", Y2),
-            n(nrow(cf)), paste(n(min(cf$n)), "to", n(max(cf$n)))))
-
-## ---- congress
-o <- con[con$year %in% c(1973, 1980, 1990, 2000, 2010, 2018, Y2),
-         c("year", "n", "great_deal", "only_some", "hardly_any")]
-names(o) <- c("year", "respondents", "great deal (%)", "only some (%)", "hardly any (%)")
-o
-
 ## ---- bands-d3
 # ---------------------------------------------------------------------------
 # The three shares of the Congress item at every survey year, stacked. Both

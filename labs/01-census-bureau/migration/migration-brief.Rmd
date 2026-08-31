@@ -16,105 +16,23 @@ dd_read_chunks("migration-code.R")
 ```{r setup, include=FALSE}
 ```
 
-The American Community Survey asks a sample of American households several dozen questions about plumbing, heating, income, schooling, rent and the journey to work. One of them asks about the past:
+Every few months a headline announces that Americans are fleeing one state for another. Fleeing California for Texas, fleeing New York for Florida, fleeing taxes, rents, and each other. The claim arrives with maps full of confident arrows. Is it true? Who actually moves, between which states, and how would anyone know?
 
-> **Where did you live one year ago?**
+The United States does not record moves. There is no register that learns your address when you change it, because the country has repeatedly declined to build one. What stands in its place is a single question on the American Community Survey: **Where did you live one year ago?** Cross the answers against where each household lives now, scale the sample up, and out comes a `r nrow(st)` × `r nrow(st)` table — `r n(mn("n_pairs"))` ordered pairs of places, a number printed in every cell.
 
-Nobody answering it is thinking about the House of Representatives. But the Census Bureau does not follow anyone around, and that single retrospective question is the entire national measurement of who moves in America. Cross the answer against where the household lives now, scale the sample up to the country, and out comes a `r nrow(st)` × `r nrow(st)` table. Rows are where people live now. Columns are where they lived a year ago, plus one more column for people who were outside the country. `r n(mn("n_pairs"))` ordered pairs of places, and a number printed in every cell.
+One of those cells is `r mv("largest_fail_pair")`. It reads `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`. The second number is the Bureau's published 90 percent margin of error: how far off the estimate could be and still be doing its job. Read the two together and the federal government is saying that the number of people who made that move was somewhere between nobody at all and about `r n(mn("largest_fail_est") + mn("largest_fail_moe"))`. **The estimate is smaller than its own uncertainty.** Every figure in this brief carries a margin like that, and almost none of them is ever printed with it.
 
-One of those cells is `r mv("largest_fail_pair")`. It reads `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`.
+## The test
 
-That is not a misprint, and the second number is not decoration. It is the Bureau's own 90 percent margin of error: the range it states for how far off the estimate could be while still doing its job. It is published in the same release, in the column beside the estimate. Read the two together and the federal government is saying that the number of people who made that move last year was somewhere between nobody at all and about `r n(mn("largest_fail_est") + mn("largest_fail_moe"))`. **The estimate is smaller than its own uncertainty.**
+The test is the Census Bureau's own flow table: *State-to-State Migration Flows* from the `r mv("acs_year")` American Community Survey one-year estimates, fetched on `r format(as.Date(mv("fetched")), "%d %B %Y")` from the address in the sources below. For the long view it is joined by the Current Population Survey's mover series, which has asked the same question every year since `r mn("cps_first")`. The ACS is a survey, and the [American Community Survey chapter](../census-acs/census-acs-brief.html) is its biography: roughly 3.5 million addresses a year, weighted up to the country, a margin of error published beside every estimate.
 
-Every figure in this chapter carries a margin like that. Almost none of them are ever printed with it.
+It is the right source because there is no better one, and the near misses are instructive. The Internal Revenue Service builds county-to-county migration from the addresses on consecutive tax returns, an administrative record with no margin of error at all. But it covers only tax filers and the people claimed on their returns, which leaves out the poor and the young, and they are the most mobile people in the country. The Postal Service knows every forwarding order and publishes no flow table. A survey with honest margins is what remains, and the margins turn out to be the story.
 
-## Nobody votes on this
+## The data
 
-Every ten years the House of Representatives is redistributed among the states according to where people live. Nobody votes on that redistribution. It is settled by millions of private decisions about jobs, rent, marriages and elderly parents. Those decisions are made one household at a time, by people who are not thinking about the House of Representatives at all.
+The workbook the Bureau publishes was built to be looked at, not computed with. Its first eight rows are headers, one of which explains in a sentence where the headers are. Column names arrive with footnote markers welded on, so `Residence 1 year ago2` is a name carrying a footnote. And every state-to-itself cell holds the letter `X` in a numeric column: people who did not leave their state are suppressed, not counted.
 
-**Migration is apportionment, and apportionment is power.** A state that gains people gains House seats and electoral votes. One that loses them loses both. The transfer happens without an election, a court, or anyone deciding that it should.
-
-It also changes *who is represented where*. The share of a state's residents born in that state is a rough measure of how much of its politics is made by people who chose the place rather than inherited it. Across the fifty states and the District of Columbia, that share runs from `r pc(min(S$born_state_pct))`% to `r pc(max(S$born_state_pct))`%.
-
-And a large popular claim rests on all of it. Since Bill Bishop's *The Big Sort* (2008), a widely repeated account has held that Americans increasingly move to places that match them politically. That, the account says, is why the electoral map has hardened into landslide counties. **The claim is contested, and the contest is about exactly this data.**
-
-Mummolo and Nall (2017), Martin and Webster (2020) and Chen and Rodden (2013) all find the effect far weaker than advertised. The disagreement is not about whether the map is polarized. It is about whether **moving** did it.
-
-## Five spreadsheets, four vintages, and two different surveys
-
-**America measures moving by asking, because it decided not to record it.** A number of countries keep a population register. Change your address and the state knows, because you told it. Their national migration table is then a by-product of an administrative fact. The United States has repeatedly declined to build one, for reasons that are political rather than technical. What stands in its place is a question on a household survey.
-
-So the reason every figure in this chapter arrives with a margin of error is not that the Census Bureau is careless. It is that the country chose the instrument that has margins.
-
-**Five separate releases sit behind these pages**, all fetched on `r format(as.Date(mv("fetched")), "%d %B %Y")`. They are the `r mv("acs_year")` state-to-state flow table, the place-of-birth table from the same release, the county-to-county flows pooled over `r mv("c2c_window")`, the Current Population Survey's mobility series, and the shapes the maps are drawn on.
-
-The first four are Census products, and they are not one dataset.
-
-**They are appropriate because there is no better public measurement of who moved, and the near misses are instructive.** The Internal Revenue Service publishes county-to-county migration built from the addresses on consecutive tax returns. It is an administrative record rather than a sample, so it has no margin of error at all.
-
-It also covers only filers and the people claimed on their returns. That leaves out the poor and the young in disproportionate numbers, and they are the most mobile people in the country. A file with no uncertainty about the wrong population is not an improvement. The Postal Service knows about every forwarding order and does not publish a flow table.
-
-What would actually have been better is the register nobody built. Its absence is the reason this chapter is about margins.
-
-**The hard part is that the four sources are not interchangeable, and one of them is a different survey.** A state flow here is a single year. A county flow is an average of five years.
-
-So the county numbers are not a year's worth of anything, and cannot be set beside the state numbers without a translation nobody can perform. The long trend is the sharpest case. The Current Population Survey has asked about moving since `r mn("cps_first")`, decades before the American Community Survey existed. So the century-scale decline this chapter reports, and the state table printed next to it, come from different samples, different questionnaires and different offices.
-
-Underneath the file-level problems is a problem of definition that no instrument fixes. A move is not a clean event. A student, a person with two homes, a household halfway through a move on the day the form arrives: each has to be assigned one usual residence by rule. And the question asks where they lived a year ago, which is a question about memory.
-
-**None of the five arrives as data.** Four are spreadsheets built to be looked at. They have merged header rows, footnote markers inside numeric cells, and each estimate alternating with its margin across the columns. The county workbook alone is about 30 MB.
-
-The build reads all five and writes eight small tables. It also does one thing worth pausing on. It picks the focus state, the contrast state and the focus county **from the data**: largest net flow, fewest usable inflows, most movement. None of them comes from a list somebody wrote down.
-
-The chapter's examples are therefore not chosen to suit its argument. The raw spreadsheets are not shipped, so a reader rebuilding this would start by refetching them, and would meet the merged headers first.
-
-Getting them, though, is the easy end of the business. Every one is a public address on the Census Bureau's own server. No key, no account, no guestbook, nothing scraped off a page and nothing typed in from paper. The expense lands in two other places, and they are worth keeping apart. The first is the format above. A spreadsheet built to be looked at charges whoever wants to compute with it.
-
-The second is knowing what to ask for, and it is the larger of the two.
-
-**There is no Census product called "migration."** There is a state-to-state table. A place-of-birth table from the same release. A county workbook pooled across five years. A historical series kept by a different survey in a different office. And a boundary file.
-
-Each is on its own schedule and its own vintage. The mismatch this section is about is not a defect in any one of them. It follows from which ones somebody knew to go and get. A reader who did not already know that a one-year state flow and a five-year county flow are different objects would not be told so by the download.
-
-## Where the file comes from, and what it is for
-
-The historical series is the odd file out, and it deserves its own account. It comes from the Current Population Survey, and the CPS is not a migration survey. It is the Census Bureau's monthly labor-force survey, run jointly with the Bureau of Labor Statistics, and the reason it exists is the unemployment rate. Every month its interviewers ask a national sample of households who worked, who looked for work, and who gave up. The moving question rides on that machine as a supplement — the same arrangement that produces the country's turnout estimates, which the [validated-turnout chapter](../../06-putting-data-together/validated-turnout/validated-turnout-brief.html) puts on trial.
-
-**Who is in it, and how they got there.** Households, drawn into the Bureau's sample and answering an interviewer's questions. The mover rate is the share of them who said they lived somewhere else a year earlier, weighted up to the country. That is the same retrospective question the ACS asks, put by a different survey with a different sample, and the two are not comparable cell by cell.
-
-**Who it was made for.** The labor market. A monthly estimate of unemployment needs a survey too large and too frequent for a question about moving ever to have justified on its own. Moving got measured because the machine was already running and one more question is cheap to add — which is the entire reason this series reaches back decades before anybody built a survey for migration.
-
-**What it costs to get.** Nothing beyond what the other four cost: a public address on the Bureau's server, no key, no account.
-
-**What has already been done to it.** The file is a table, not the interviews. Each year's answers were weighted and turned into shares before publication, so what arrives is the Bureau's estimates with nothing underneath them. And the survey below the table did not hold still: its sample and methods have been redesigned more than once across the series, while the table prints one continuous line anyway. That is why the long decline it shows is trusted here for its direction and never set on the same axis as the state numbers.
-
-## A spreadsheet built to be looked at
-
-Here is the top-left corner of the state-to-state workbook. It is an `.xlsx`, so this is its cells printed out rather than a slice of the file, but every value below is exactly what sits in that cell:
-
-| Row | A | B | C | D |
-|---:|:---|:---|:---|:---|
-| 1 | Table with row labels in columns A and B and column labels headers in rows 5 through 8. | *(empty)* | *(empty)* | *(empty)* |
-| 2 | Table 1. State-to-State Migration Flows1: 2024 American Community Survey 1-Year Estimates | *(empty)* | *(empty)* | *(empty)* |
-| 3 | Universe: Population 1 year and over | *(empty)* | *(empty)* | *(empty)* |
-| 4 | *(empty)* | *(empty)* | *(empty)* | *(empty)* |
-| 5 | Current residence | Residence 1 year ago2 | Movers to current residence… | *(empty)* |
-| 6 | *(empty)* | *(empty)* | *(empty)* | *(empty)* |
-| 7 | *(empty)* | *(empty)* | *(empty)* | *(empty)* |
-| 8 | *(empty)* | *(empty)* | Estimate | Margin of error3 |
-| 9 | Alabama | Alabama | X | X |
-| 10 | Alabama | Alaska | 387 | 404 |
-| 11 | Alabama | Arizona | 2055 | 1402 |
-
-**The first eight rows are not data, and row 1 says so in a sentence.** The workbook opens by explaining, in prose, in cell A1, where its own headers are. That is a courtesy to a person and useless to a program. It is also the clearest possible statement that this file was published to be read rather than computed with.
-
-**The column names have footnotes welded onto them.** `Residence 1 year ago2` is not a variable called *Residence 1 year ago2*; it is a variable called *Residence 1 year ago* carrying footnote 2. Same with `Margin of error3`. Strip nothing and the footnote lives in the name forever; strip digits blindly and the next table's `Under 18` becomes `Under `.
-
-**Row 9 is `X`, not a number.** Alabama to Alabama, meaning people who did not move between states, is suppressed rather than reported. The suppression is a letter sitting in a numeric column. Read the column as numbers and every one of those becomes `NA` silently; sum it without noticing and nothing complains.
-
-And the pairing runs across, not down: **every estimate has its margin of error in the next column.** That is the layout decision the rest of this chapter is about. The margin is not metadata tucked in a corner; it is half the table, and a reader who imports only the odd-numbered columns has thrown away the file's own statement of how much it knows.
-
-Here is what that corner becomes:
+The build script parses that workbook into `flows.csv`, one row per ordered pair of states. Its columns are `from_state`, `to_state`, the estimate `est`, its margin `moe`, the interval ends `lo` and `hi`, and a flag `sig`. Here is the top of it:
 
 ```{r clean-mig}
 ```
@@ -122,46 +40,40 @@ Here is what that corner becomes:
 ```{r shape-mig}
 ```
 
-### The four decisions
+Three cleaning decisions sit in those columns, and each is a judgment. The `X` cells were read as absence rather than zero: `r mv("n_suppressed")` of the `r n(mn("n_pairs"))` pairs carry no usable estimate, and turning them into zeros would assert that nobody made those moves. The interval ends are the estimate plus and minus its margin, with the bottom held at zero, because a negative number of movers is not a thing. That clamp quietly makes some intervals lopsided. And `sig` is this brief's arithmetic, not the Bureau's: it asks only whether the interval clears zero.
 
-**The diagonal is gone.** A state-to-itself cell is `X` in the source and has no row in `flows.csv`. That is right, because this chapter is about moving between states. It also means the file cannot answer how many people stayed put, which is the largest number in the whole subject.
+Two companion tables travel with the flows. `states.csv` has one row per state: arrivals `in_est`, departures `out_est`, the difference `net`, each with its margin, plus `born_state_pct`, the share of residents born in the state they live in. `mobility.csv` is the Current Population Survey series: for each year since `r mn("cps_first")`, the share of Americans who moved at all (`movers`) and the share who crossed a state line (`diff_state`).
 
-**`X` was read as absence, not as zero.** `r mv("n_suppressed")` of the `r mv("n_pairs")` ordered pairs carry no usable estimate. Turning those into zeros would have asserted that nobody made those moves, when what the Bureau said is that it will not report a figure.
-
-**Every estimate got an interval, and the bottom of the interval was clamped.** `lo` and `hi` are the estimate plus and minus its margin. For Alaska to Alabama that arithmetic gives a lower bound below zero, and a negative number of people is not a thing, so it is held at zero. **The clamp is a judgment**, and it quietly makes the interval asymmetric — which is worth knowing before reading any of the intervals below as if they were symmetric.
-
-**A significance flag was computed, not supplied.** `sig` is this chapter's arithmetic on the Bureau's two numbers, not a column the Bureau published. It asks only whether the interval clears zero. `r mv("n_fail")` of the pairs fail that test. The section on margins is what happens when you take that seriously, instead of reporting the estimates as though the margins were not printed right next to them.
-
-## Most moving is local
-
-Before the state-to-state table there is a simpler accounting, and it puts the rest of the chapter in proportion.
+Before any arrows are drawn, the proportions:
 
 ```{r what-it-is}
 ```
 
-Overwhelmingly, people who move do not go far. `r n(mn("us_movers_within_state"))` moved inside their own state against `r n(mn("us_movers_between_states"))` who crossed a state line, so the interstate migration everyone argues about is about `r pc(100 * mn("us_movers_between_states") / (mn("us_movers_within_state") + mn("us_movers_between_states")), 0)`% of all domestic moving. It is also **a one-year snapshot**: somebody who moved in March and moved back in November is invisible here, and somebody who moved three times is counted once. And it is **a sample**, so every figure in that table is an estimate with a margin attached, including the ones large enough that the margin never comes up.
+`r n(mn("us_movers_within_state"))` people moved inside their own state against `r n(mn("us_movers_between_states"))` who crossed a state line. The interstate migration everyone argues about is roughly `r pc(100 * mn("us_movers_between_states") / (mn("us_movers_within_state") + mn("us_movers_between_states")), 0)`% of domestic moving, and about `r pc(100 * mn("us_movers_between_states") / mn("us_pop1"), 1)`% of the population in a year. The flows are real, and they are small beside the stayers.
 
-## The state with the largest imbalance
+> **Before you read on, commit to two numbers.** There are
+> `r n(mn("n_pairs"))` ordered pairs of states in this table. **How many of
+> them describe a flow the survey can tell apart from zero?** Write down a
+> count, or a share of `r n(mn("n_pairs"))`. Then a second number: **of all
+> the people who moved between states that year, what share are in the pairs
+> that fail?**
 
-Take the state with the biggest gap between arrivals and departures. The data picks it, not us: **`r FOCUS`**.
+## What it says about democracy
+
+```{r gainers, include=FALSE}
+```
+
+Migration is apportionment, and apportionment is power. Every ten years the House of Representatives is redistributed by where people live: a state that gains people gains seats and electoral votes, and one that loses them loses both. Nobody votes on the transfer. It is settled by millions of private decisions about jobs, rent, and elderly parents, which is why this table gets argued over for the nine years between counts.
+
+Start with the state with the biggest gap between arrivals and departures. The data picks it, not us: **`r FOCUS`**.
 
 ```{r focus-row}
 ```
 
-**`r FOCUS` lost `r n(-F1$net)` more people to other states than it gained from them.** That is the largest net domestic outflow of any state. It is far larger than its own margin of error, so it is not a trick of the survey.
-
-Notice the fourth row. **`r n(F1$abroad_est)` people arrived from outside the country** — `r pc(100 * F1$abroad_est / F1$in_est, 0)`% as many as arrived from every other state and the District of Columbia combined. That row is a different kind of number from the three above it, and it needs its own treatment further down.
-
-Everything else in the table can be drawn. Each arc below runs between two states' **population centres**. That is the point around which a state's residents actually are, rather than the middle of its outline. So the arcs leave from where the people are, not from where the map-making is.
+**`r FOCUS` lost `r n(-F1$net)` more people to other states than it gained from them**, the largest net domestic outflow of any state. That figure is larger than its own margin of error, so it is not a trick of the survey. The biggest gainers are `r G$state[1]` and `r G$state[2]`, up `r n(G$net[1])` and `r n(G$net[2])`. Those loud claims stand; the trouble begins with the quiet ones.
 
 ```{r arcwidth-facts, include=FALSE}
 ```
-
-**Arc width is the number of people, and nothing else is.** The scale is a square root. These arrivals run from `r n(min(aw$est))` people to `r n(max(aw$est))`, a spread of about `r pc(w_est, 0)` to one. Drawn straight, the small arcs would vanish while the big ones became blobs.
-
-The square root still leaves the widest arc about `r pc(w_lwd, 0)` times the width of the narrowest. The scale is also **absolute**: the same thickness means the same number of movers in every map in this chapter. That is why the key in the corner can be read off.
-
-**Color is not a second copy of that number.** It says whether the flow is large enough that the survey can tell it apart from zero: blue if it is, gray if it is not. Nothing in the shape of the map depends on that distinction, which is precisely why it has to be carried by a channel of its own.
 
 ```{r arcmap-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -169,73 +81,19 @@ The square root still leaves the widest arc about `r pc(w_lwd, 0)` times the wid
 ```{r arcmap-static, eval=!knitr::is_html_output(), fig.width=7.2, fig.height=2.8}
 ```
 
-**Figure 1. Interstate migration into and out of `r FOCUS`, drawn between population-weighted state centers.** Arc width is the number of people and nothing else. It uses an absolute square-root scale, keyed by the reference arcs at the lower right, so a given thickness means the same number of movers in every map in this chapter.
+**Figure 1. Interstate migration into and out of `r FOCUS`, drawn between population-weighted state centers.** An arc map fits because the data is pairs of places: each arc is one pair, its width the number of people, on an absolute square-root scale keyed at lower right. Color carries a separate fact — blue means the estimate clears its own margin of error, gray means the survey cannot tell the flow apart from zero. In the browser the buttons switch direction; in print the two directions sit side by side.
 
-These arrivals run from `r n(min(aw$est))` people up to `r n(INMX)`, a spread of about `r pc(w_est, 0)` to one, drawn across a range of widths about `r pc(w_lwd, 0)` to one. Colour carries a different fact entirely. Blue means the estimate clears its own margin of error; grey means it does not. The heaviest arc in the country runs both ways between `r FOCUS` and `r PART`: `r n(OUTMX)` people one way, `r n(INMX)` the other. In the browser the buttons choose a direction; in print the two directions are drawn side by side.
+The heaviest arc runs both ways, and it is the same arc. `r FOCUS` and `r PART` exchange more people than any other pair of states in the country: `r n(OUTMX)` one way, `r n(INMX)` back. A net migration figure is a small difference between two very large numbers, which is exactly the situation where a margin of error matters most.
 
-Two facts are visible in that figure and in no table.
-
-**The heaviest arc runs both ways, and it is the same arc.** `r FOCUS` and `r PART` exchange more people than any other pair of states in the country, and the two directions nearly cancel. That is `r n(OUTMX)` out against `r n(INMX)` in. **A net migration figure is a small difference between two very large numbers**, which is exactly the situation in which a margin of error matters most.
-
-**The arcs are not symmetric.** The departures reach much further into the interior and the South than the arrivals do. `r FOCUS` draws from a different country than it sends to.
-
-## Two ways to rank fifty-one places, and they disagree
-
-There are two ways to put every state on one chart, and they do not agree. **Net migration per 1,000 residents** puts Wyoming and Texas on the same scale; **raw net people** is the number that actually moves House seats. Each is drawn below with the Bureau's 90 percent interval laid over the bar.
-
-```{r diverge-setup, include=FALSE}
-```
-
-```{r diverge-static, eval=!knitr::is_html_output(), fig.height=6.4}
-```
-
-```{r diverge-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. Net interstate migration for all `r nrow(S)` jurisdictions, on the two scales that disagree about who is winning.** The black line laid over each bar is the Bureau's published 90 percent interval.
-
-Per 1,000 residents the leader is `r S$state[TOPR]` at `r pc(S$net_per1k[TOPR], 1)`. That is `r n(S$net[TOPR])` people, and it ranks `r RKN[TOPR]` of `r nrow(S)` on the raw count. The raw count is led instead by `r S$state[TOPN]` with `r n(S$net[TOPN])` people, which ranks `r RKR[TOPN]` of `r nrow(S)` per resident.
-
-Green bars are net gains and red bars net losses. But the bars that matter most are the grey ones. For `r nrow(S) - mn("n_states_net_sig")` of these `r nrow(S)` jurisdictions, the net migration figure cannot be told apart from zero at all. In the browser the two scales are a toggle; in print they are drawn as two panels.
-
-The pattern is familiar: the Northeast, the industrial Midwest and `r FOCUS` losing people, the South and interior West gaining them.
-
-**Which state is "highest" depends on which panel you read.** Per resident the top is `r S$state[TOPR]`, at `r pc(S$net_per1k[TOPR], 1)` per 1,000. But that is only `r n(S$net[TOPR])` people, and on the raw count `r S$state[TOPR]` ranks `r RKN[TOPR]` of `r nrow(S)`. The raw count is led by `r S$state[TOPN]` with `r n(S$net[TOPN])` people, and on the per-resident scale it ranks `r RKR[TOPN]` of `r nrow(S)`. The two orderings agree well enough overall that readers assume they are the same list. They are not the same list at the top, and the top is the only part anybody quotes.
-
-**The per-capita leader does not survive its own margin of error either.** `r S$state[TOPR]`'s rate is `r pc(S$net_per1k[TOPR], 1)` per 1,000, give or take `r pc(S$rate_moe[TOPR], 1)`. That is a range running from `r pc(S$rate_lo[TOPR], 1)` up to `r pc(S$rate_hi[TOPR], 1)`. **`r length(OVL)` other jurisdictions have rate intervals reaching into that band**, among them `r paste(head(S$state[OVL[order(-S$net_per1k[OVL])]], 4), collapse = ", ")`. The estimate is real. The *ranking* is not.
-
-Per-head tables are dominated by small states. A fixed amount of uncertainty becomes an enormous share of a small number. That is exactly why `r S$state[TOPR]` is at the top of one panel and the middle of the other.
-
-Now look at the gray bars. **For `r nrow(S) - mn("n_states_net_sig")` of the `r nrow(S)` jurisdictions on that chart, the net migration figure cannot be told apart from zero.** That is the fifty states and the District of Columbia. Not small. Unresolvable. That is `r pc(100 * (nrow(S) - mn("n_states_net_sig")) / nrow(S), 0)`% of the country's jurisdictions with no usable net migration figure, every one of which appears in the published table with a definite-looking number printed in it.
-
-Every figure so far has carried a ±, and the natural thing to do with a ± is read past it. So it is worth fixing on a guess before going on. There are `r n(mn("n_pairs"))` ordered pairs of states in this table. How many of them describe a flow the survey can actually distinguish from zero?
-
-## An estimate smaller than its own margin of error
-
-The Bureau publishes a 90 percent margin beside every cell in that table. Nothing is hidden and nothing has to be modeled: the test is whether an estimate is larger than the uncertainty attached to it by the agency that produced it. Apply that test to every ordered pair of states and count.
-
-> **Before you read on, commit to a number.** There are `r n(mn("n_pairs"))`
-> ordered pairs of states in that table. **How many of them describe a flow the
-> survey can tell apart from zero?** Write down a count, or a share of
-> `r n(mn("n_pairs"))`. Then commit to a second number before you look at
-> either: **of all the people who moved between states that year, what share
-> are in the pairs that fail?**
+Now the prediction. The Bureau prints a margin beside every cell, so the test is arithmetic on the Bureau's own two columns, applied to all `r n(mn("n_pairs"))` pairs:
 
 ```{r moe-accounting}
 ```
 
-Almost everyone writes down something in the nineties for the first number. It is `r pc(mn("pct_sig_of_pairs"), 0)`%. **`r n(mn("n_fail"))` of `r n(mn("n_pairs"))` state pairs do not survive it, or `r pc(mn("pct_fail_of_pairs"), 0)`% of them.** More than a third of the connections in the national migration table are not measurements of anything.
-
-Having just read that, most readers revise the second number upward. It goes the other way. **Those `r n(mn("n_fail"))` failed pairs contain `r pc(mn("pct_volume_in_failed_pairs"), 2)`% of the people who moved.**
-
-A margin of error does not fall evenly across a table. It is set, roughly, by how many sampled households happened to make a given move. So it is close to a fixed amount, which wipes out thin flows and barely grazes thick ones. The middle surviving flow is `r n(mn("median_est_sig"))` people; the middle failed one is `r n(mn("median_est_fail"))`.
-
-So the table is wrong in a very particular way, and it is not the way people usually fear. It is **not** unreliable about volume. Nearly all American interstate movement travels along flows large enough to measure, and statements about how many people left `r FOCUS` or arrived in `r S$state[TOPN]` stand up without qualification. What it is unreliable about is **connections** — and connections are the entire reason anyone draws a flow map. The long thin unexpected arc between a small state and a distant one is the arc that makes the picture look like a discovery, and it is exactly the arc that is not there.
+Most readers write something in the nineties for the first number. It is `r pc(mn("pct_sig_of_pairs"), 0)`%: **`r n(mn("n_fail"))` of the `r n(mn("n_pairs"))` pairs fail**, or `r pc(mn("pct_fail_of_pairs"), 0)`% of the table. Having read that, most readers revise the second number upward, and it goes the other way. **The failed pairs hold `r pc(mn("pct_volume_in_failed_pairs"), 2)`% of the people who moved.** A margin of error is set, roughly, by how many sampled households made a given move, so it is close to a fixed amount. It wipes out thin flows and barely grazes thick ones: the middle surviving flow is `r n(mn("median_est_sig"))` people, the middle failed one `r n(mn("median_est_fail"))`.
 
 ```{r cater-setup, include=FALSE}
 ```
-
-A dozen of them are drawn below with their published intervals attached: the four largest flows in the country, and the eight largest that fail.
 
 ```{r cater-static, eval=!knitr::is_html_output(), fig.height=3.3}
 ```
@@ -243,107 +101,14 @@ A dozen of them are drawn below with their published intervals attached: the fou
 ```{r cater-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Twelve state-to-state flows with the 90 percent interval the Census Bureau publishes beside each one.** The top four are the largest flows in the country, where the interval is a rounding error beside the estimate. The eight below are the largest flows whose interval reaches zero, drawn in red: the estimate is a real number, and the survey cannot rule out that nobody at all made the move. The largest of them is `r mv("largest_fail_pair")` at `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`. The median flow that clears its margin is `r n(mn("median_est_sig"))` people; the median flow that does not is `r n(mn("median_est_fail"))`.
+**Figure 2. Twelve flows with the 90 percent interval the Bureau publishes beside each one.** The top four are the largest flows in the country, where the interval is a rounding error beside the estimate. The eight below, in red, are the largest flows whose interval reaches zero: the survey cannot rule out that nobody at all made the move. The largest of them is `r mv("largest_fail_pair")`, at `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`.
 
-Nothing about the failing eight is exotic. They are ordinary pairs of ordinary states, and the reason they fail is not that the move is rare in the country but that it is rare **in the sample**. Which raises a question about whose migration can be described at all.
+So the table is wrong in a particular way, and it is not the way people usually fear. It is reliable about **volume**: nearly all interstate movement travels along flows large enough to measure. It is unreliable about **connections**, and the long, thin, surprising arc is precisely the one that makes a flow map look like a discovery. Nothing about the failing pairs is exotic. They are ordinary pairs of mostly small states, whose moves are rare in the sample rather than rare in the country. The pattern runs all the way up: for `r nrow(S) - mn("n_states_net_sig")` of these `r nrow(S)` jurisdictions, even the statewide net migration figure cannot be told apart from zero.
 
-## Whose map can be drawn at all
+One more exhibit reframes all of it. The Current Population Survey has asked the same question since `r mn("cps_first")`. It is a different survey with a different sample, so its levels do not belong on the ACS's axis, but its direction is unambiguous.
 
-`r FOCUS` came through that test almost untouched: `r F1$sig_in_n` of its `r NOR` possible origins clear their own margin of error. That is not a property of `r FOCUS`, or of its restlessness, or of its place in the national imagination. **It is a property of being large.**
-
-The state with the fewest usable inflows is **`r CONTRAST`**, with `r C1$sig_in_n` of the same `r NOR`. Same country, same survey, same year, same projection, and most of `r CONTRAST`'s map is dotted gray.
-
-```{r contrast-static, eval=!knitr::is_html_output(), fig.width=7.2, fig.height=2.8}
+```{r mob-facts, include=FALSE}
 ```
-
-```{r contrast-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. The same survey, the same year, the same projection, and two completely different maps.** Both panels show arrivals only. Flows that fail their own margin of error are drawn as dotted grey hairlines instead of at full width. `r FOCUS` keeps `r F1$sig_in_n` of its `r NOR` possible origins; `r CONTRAST` keeps `r C1$sig_in_n`. In print the two are drawn side by side. In the browser the buttons above redraw Figure 1 for one state and then the other, and the checkbox removes the failing arcs entirely.
-
-`r CONTRAST` is not less connected to the rest of the country than `r FOCUS`. It is smaller, so fewer of its movers land in the sample, and what the survey cannot resolve it reports as an estimate it cannot stand behind. Across all `r nrow(S)` jurisdictions the relationship is close to mechanical.
-
-```{r sigscatter-facts, include=FALSE}
-```
-
-```{r sigscatter-static, eval=!knitr::is_html_output(), fig.height=2.9}
-```
-
-```{r sigscatter-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 5. How many of a state's `r NOR` possible origins the survey can resolve, against how many people live in the state.** Each point is one of the `r nrow(S)` jurisdictions. The horizontal scale is population aged 1 and over, compressed so the small states are visible. The correlation between the two is r = `r pc(SIGCOR, 2)`.
-
-At the top of the scale `r BIG$state` resolves all `r BIG$sig_in_n`. At the bottom, `r SMALL$state`, with `r n(SMALL$pop1)` residents, resolves `r SMALL$sig_in_n`. The two circled points are `r FOCUS` and `r CONTRAST`.
-
-**A flow map of a small state is largely a picture of the sample size.** It is worth knowing that before admiring one. It also has a consequence that runs the wrong way for anybody interested in representation. The states whose migration can be described with confidence are the big ones. The states that gain and lose a House seat on a few thousand people frequently cannot.
-
-## Flows are a year, stocks are a century
-
-The survey also asks where you were born, and the share of a state's residents born there records every migration that ever happened to the place, not just the ones that happened last year.
-
-```{r born-extremes}
-```
-
-**In `r o$state[1]`, `r pc(o$born_state_pct[1])`% of residents were born in the state; in `r o$state[nrow(o)]`, `r pc(o$born_state_pct[nrow(o)])`% were.** The national figure is `r pc(mn("us_born_state_pct"))`% — a `r pc(o$born_state_pct[1] - o$born_state_pct[nrow(o)])`-point gap in what it means to be from somewhere. Break the same populations into where they *did* come from:
-
-```{r stack-setup, include=FALSE}
-```
-
-```{r stack-static, eval=!knitr::is_html_output(), fig.height=3.2}
-```
-
-```{r stack-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 6. Where the residents of twelve states were born.** The six states with the largest share of residents born in the state, and the six with the smallest. Each bar is divided into people born in that state, people born elsewhere in the United States or Puerto Rico, and people born in another country. The range is `r pc(o$born_state_pct[1])`% in `r o$state[1]` down to `r pc(o$born_state_pct[nrow(o)])`% in `r o$state[nrow(o)]`, against a national figure of `r pc(mn("us_born_state_pct"))`%. Unlike every other figure in this chapter, nothing here is gray.
-
-These estimates are built on the whole resident population rather than on the small group who moved last year. Even the least precise of them is `r pc(min(S$born_state_est / S$born_state_moe), 0)` times its own margin of error.
-
-**The two ends of this chart are two different kinds of state.** One is made mostly of people who never left; the other mostly of people who arrived — and the arrivals split very differently. `r S$state[which.max(S$born_otherstate_pct)]` is `r pc(max(S$born_otherstate_pct))`% people born in other U.S. states, while `r S$state[which.max(S$born_foreign_pct)]` is `r pc(max(S$born_foreign_pct))`% people born in another country.
-
-**A caution about reading this politically.** Born-in-state share correlates only weakly with which states are gaining people now (r = `r pc(cor(S$born_state_pct, S$net_per1k), 2)`). It records a hundred years of movement, not this year's: a state can be full of natives and growing, or full of newcomers and shrinking.
-
-## A residence category, not a legal one
-
-The fourth row of the `r FOCUS` table has been waiting. `r n(mn("us_movers_from_abroad"))` people moved to the United States from outside it in the survey year, against `r n(mn("us_movers_between_states"))` who moved between states, and where they arrived is not evenly spread.
-
-```{r abroad-table}
-```
-
-Two things need stating precisely, because this is where imprecision does damage.
-
-**"From abroad" is a statement about geography, not about citizenship or legal status.** It counts anyone living outside the 50 states and DC a year ago. That includes returning U.S. citizens, military families, students, arrivals from Puerto Rico and the U.S. Island Areas who are already citizens and nationals, and immigrants.
-
-Of the `r n(F1$abroad_est)` arrivals in `r FOCUS`, `r n(F1$foreignorigin_est)` came from a foreign country and the rest from U.S. territory. **The data separates nothing further, and no legal status can be read off it.**
-
-**The survey only interviews people who live here**, so there is no matching number for people who left. **Emigration is invisible in this dataset** — not small, not zero, *unmeasured*.
-
-Notice the last column.
-
-**`r sum(h$net < 0)` of the `r nrow(h)` states taking the most arrivals from abroad per resident are at the same time losing people to other states.**
-
-Two populations move in opposite directions through the same place. A single "net migration" headline cancels them against each other.
-
-## Finer grain, worse estimate
-
-The Bureau publishes the same table for counties, and there the arithmetic of margins does not merely repeat. It takes over.
-
-Below is `r CTY` in `r FOCUS`, the county with the most movement in the state. This file is a **five-year** estimate (`r mv("c2c_window")`), pooling five years of sample to make small numbers reportable at all. It is a different instrument from the one-year table used above, and the two cannot go on the same axis.
-
-```{r county-table}
-```
-
-Those are the largest, and all solid. Now the whole county:
-
-```{r county-accounting}
-```
-
-**`r n(mn("county_all_sig"))` of `r n(mn("county_all_pairs"))` county pairs survive.** That is `r pc(100 * mn("county_all_sig") / mn("county_all_pairs"))`%, against `r pc(mn("pct_sig_of_pairs"))`% at state level — and it is *after* pooling five years of sample instead of one. A county-to-county flow map drawn without this filter shows `r pc((mn("county_all_pairs") - mn("county_all_sig")) / mn("county_all_sig"), 1)` arcs of noise for every arc of signal.
-
-## The mechanism is running slower every decade
-
-One more source, and it changes the frame around everything above. The Current Population Survey has asked the same question since `r mn("cps_first")`. **It is a different survey from the ACS.** Different sample, different design, and not comparable cell by cell. But it is the only instrument that reaches back that far, and what it shows is unambiguous.
 
 ```{r mobility-static, eval=!knitr::is_html_output(), fig.height=3.2}
 ```
@@ -351,69 +116,59 @@ One more source, and it changes the frame around everything above. The Current P
 ```{r mobility-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 7. The share of Americans who moved in the previous year, from `r mo$year[1]` to `r mo$year[nrow(mo)]`.** The upper line is all movers. Beneath it come moves within the same county, moves to a new county in the same state, and moves across a state line. Every line falls.
+**Figure 3. The share of Americans who moved in the previous year, `r mo$year[1]` to `r mo$year[nrow(mo)]`.** One line per kind of move, because the question is change over time. Every line falls: moving at all drops from `r pc(f$movers)`% to `r pc(l$movers)`%, and interstate moving from `r pc(f$diff_state)`% to `r pc(l$diff_state)`% — now `r pc(100 * l$diff_state / f$diff_state, 0)`% of its `r f$year` rate.
 
-All moving drops from `r pc(mo$movers[1])`% to `r pc(mo$movers[nrow(mo)])`% of the population, and interstate moving from `r pc(mo$diff_state[1])`% to `r pc(mo$diff_state[nrow(mo)])`%, leaving it at `r pc(100 * mo$diff_state[nrow(mo)] / mo$diff_state[1], 0)`% of its earlier rate. This is the Current Population Survey, a different instrument from the one behind every other figure here. Its levels do not belong on the same axis as theirs. What it is good for is the direction.
+Every argument about Americans sorting themselves across the country is taking place against this decline. The flows are real. They are also small, shrinking, and at their edges unmeasurable.
 
-```{r mobility-numbers}
-```
+## What this brief cannot tell you
 
-**In `r f$year`, `r pc(f$movers)`% of Americans had moved in the previous year. By `r l$year` it was `r pc(l$movers)`%.** Interstate moving fell from `r pc(f$diff_state)`% to `r pc(l$diff_state)`% — **it is now `r pc(100 * l$diff_state / f$diff_state, 0)`% of what it was.**
+**Why anybody moved.** There is no political column and no reason recorded anywhere in the file. The popular claim since Bishop's *The Big Sort*, that Americans move toward politically like-minded places, cannot be tested here. The research that can test it finds the effect far weaker than advertised (Mummolo and Nall 2017).
 
-Every argument about Americans sorting themselves across the country is taking place against a long decline in Americans moving at all. That does not settle the argument, but any account of rising sorting has to explain how it happens while the mechanism runs slower every decade.
+**Who left the country.** The survey interviews only people living in the United States, so there is no matching figure for anyone who departed. Emigration in this data is not small and not zero; it is unmeasured. And "moved from abroad" is a statement about geography, not legal status: it mixes returning citizens, military families, students and immigrants, and separates nothing further.
 
-## The argument this data cannot settle
+**Anything finer than a state, reliably.** The county version of this table pools five years of sample (`r mv("c2c_window")`), and even then only `r n(mn("county_all_sig"))` of the `r n(mn("county_all_pairs"))` county flows into `r CTY` clear their own margins. Finer grain means worse estimates.
 
-**The dispute over American political geography is not about the flows. It is about what causes them.**
+**A trend, from the flow table alone.** It is a one-year snapshot: someone who moved in March and returned in November is invisible, and someone who moved three times counts once. The long decline in Figure 3 comes from a different instrument, trusted here for its direction and never for cell-by-cell comparison.
 
-*The Big Sort* argument (Bishop 2008) holds that Americans increasingly choose neighbors who agree with them, and that this is why the map has hardened into landslide counties.
+## What you should have learned
 
-**The strongest counter-evidence is methodological.** Mummolo and Nall (2017) showed that when people are asked what they want in a neighbourhood, politics ranks far below cost, commute, schools and housing type. Even partisans who say they want like-minded neighbours mostly do not act on it, because the housing market does not offer that choice at a price they will pay. Martin and Webster (2020) find residential moves explain little of the growth in geographic polarization.
+- One retrospective survey question is the entire national measurement of
+  moving. In `r mv("acs_year")`, it found `r n(mn("us_movers_between_states"))`
+  people crossing state lines while `r n(mn("us_movers_within_state"))` moved
+  within their own state.
+- `r pc(mn("pct_fail_of_pairs"), 0)`% of the `r n(mn("n_pairs"))` state pairs
+  fail their own published margins of error, but those pairs carry only
+  `r pc(mn("pct_volume_in_failed_pairs"), 2)`% of the movers: the table is
+  reliable about volume and unreliable about connections.
+- The loud findings survive: `r FOCUS` lost `r n(-F1$net)` people net, several
+  times its margin, while `r G$state[1]` gained `r n(G$net[1])`.
+- The uncertainty sits exactly where the interesting-looking pattern is: the
+  more specific a flow claim sounds, the more likely it is a product of sample
+  size.
+- Interstate moving has fallen to `r pc(100 * l$diff_state / f$diff_state, 0)`%
+  of its `r f$year` rate, so whatever sorting is happening is happening while
+  the mechanism slows.
 
-**Chen and Rodden (2013) add a possibility that requires nobody to move at all.** Suppose Democrats are concentrated in dense cities for reasons that predate the current party alignment. Then electoral bias follows from the geography itself, and from drawing connected districts over it. What looks like sorting can be produced by people staying put while party labels move around them.
+## Extensions
 
-**None of that can be adjudicated from this data**, and the reason is worth being precise about: there is no political variable in it anywhere. It records where people were and where they are, and it is silent on why, which is the one quantity the argument turns on. What it can supply is a constraint, and the constraint is Figure 7. Whatever sorting is going on, it is going on while the mechanism that would have to produce it runs at `r pc(100 * l$diff_state / f$diff_state, 0)`% of its `r f$year` speed.
-
-**A second argument is about the data itself, and that one this chapter can settle.** The Bureau publishes margins of error on every cell. Newspapers, think tanks and state development offices routinely republish the estimates without them, and stories about which state is "beating" which are frequently built on differences smaller than the uncertainty in either number. That is a failure downstream of the Census Bureau rather than inside it, and everything above shows how easy it is to commit.
-
-## What a survey of movers can testify to
-
-```{r gainers, include=FALSE}
-```
-
-The evidence assembled here is unusually strong in one respect and unusually fragile in another, and both deserve stating without hedging.
-
-It is strong first because there is nothing else. This is the only consistent national measurement of internal migration in the United States. It has been produced every year since 2005, and it is published with its uncertainty attached rather than stripped off. The ± that this chapter has spent its length on is not a reconstruction or an estimate of an estimate. It is a column in the source file.
-
-Behind it stands an earlier series from a second survey, reaching back to `r mn("cps_first")`. It also carries a standing measure, place of birth, alongside the flow measure. Very few subjects have both. Most sources can tell you this year's change, or the accumulated result of a century. This one does both.
-
-The things it says loudest are things it is entitled to say. `r FOCUS` is down `r n(-F1$net)` net to other states. `r G$state[1]` and `r G$state[2]` are up `r n(G$net[1])` and `r n(G$net[2])`. Every one of those is several times its own margin of error.
-
-`r pc(mn("us_born_state_pct"))`% of Americans live in the state they were born in, ranging across states from `r pc(min(S$born_state_pct))`% to `r pc(max(S$born_state_pct))`%. And of the `r n(mn("n_pairs"))` state-to-state connections, the `r n(mn("n_sig"))` that can be told apart from zero carry `r pc(100 - mn("pct_volume_in_failed_pairs"), 1)`% of everybody who moved. So the volume of American migration is well measured even though most of its connections are not.
-
-**The uncertainty sits exactly where the interesting-looking pattern is.** That inverts the usual instinct. The more distinctive and specific a flow claim sounds, the more likely it is to be a product of sample size.
-
-It is fragile because every figure in it is an estimate before it is anything else, and the finer the grain the less of it survives contact with its own margins. `r pc(mn("pct_fail_of_pairs"), 0)`% of state pairs fail; at county level only `r pc(100 * mn("county_all_sig") / mn("county_all_pairs"), 0)`% of pairs survive, and that is after pooling five years of sample rather than one. Nor are those tables interchangeable with each other. The one-year ACS, the five-year ACS and the CPS back-series are three different instruments, and putting them on a single axis compares measuring devices rather than years.
-
-It is fragile, too, in what the question itself can reach. It asks about one year of a person's life, so somebody who moved in March and returned in November cancels out and somebody who moved three times counts once. The survey interviews people who live here, so there is no matching figure for anybody who left. **Emigration in this data is not small and it is not zero. It is unmeasured.**
-
-And no reason for any move is recorded anywhere in the file. That is why the sorting argument cannot be tested here, and could not be tested here with a hundred times the sample.
-
-Two of its categories need handling with care for reasons that have nothing to do with sampling. "From abroad" is a statement about geography, not about citizenship or legal status. It mixes returning U.S. citizens, military families, students, and arrivals from Puerto Rico and the Island Areas who are already citizens and nationals, together with immigrants.
-
-Of the `r n(F1$abroad_est)` such arrivals in `r FOCUS`, `r n(F1$foreignorigin_est)` came from a foreign country and the rest from U.S. territory. The data separates nothing further. Puerto Rico itself sits awkwardly in the file. It appears in the flow table as an origin and a destination, and it is drawn on the maps above. But its place-of-birth categories are built differently, so it is excluded from every state ranking here.
-
-Three questions are left genuinely open, and none of them will be closed by a larger version of this table.
-
-Whether political preference affects where people move cannot be answered from a file with no political column in it. It is contested in the literature that can address it, and the honest summary of that literature is that the effect looks much smaller than the popular account claims. Why American mobility has fallen by more than half since the 1940s is live and unsettled. Housing costs, two-earner households that must satisfy two job markets at once, occupational licensing that does not travel across state lines, and an ageing population are all in contention. Figure 7 documents the decline without explaining any of it.
-
-And how much apportionment really turns on flows this uncertain is unclear even in principle. House seats are allocated from the decennial count, not from these estimates. But these estimates are what gets argued about in the nine years in between, and they are what a governor cites when claiming to be winning.
-
-The household that answered the question about last year did not think it was doing anything in particular. Multiply it by a sample, scale it up to a country, and it yields two things at once.
-
-First, that `r n(-F1$net)` more people left `r FOCUS` for other states than arrived from them. That is true and it will stand.
-
-Second, that `r mv("largest_fail_pair")` was `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`. That is not a fact about anybody's movement at all. Both sit in the same file, in the same format, in the same typeface. The only thing that tells them apart is printed in the very next column.
+- Every pair of states appears in `flows.csv` twice, once in each direction
+  of `from_state` and `to_state`. Find a pair where the two directions are
+  wildly unequal, and a pair where they almost cancel. What kind of state
+  pair gives you each?
+- Count the FALSE rows in the `sig` column of `flows.csv`, then look at which
+  states they connect. Are the unusable pairs scattered, or concentrated on
+  the small states?
+- Sort `states.csv` by `born_state_pct`, then compare it with `net_per1k`.
+  Are the states people are least likely to be born in also the states
+  gaining the most people now?
+- In `mobility.csv`, follow `diff_state` down the years and find the decade
+  where the fall is steepest. Then go and read what else was happening then.
+- **Stretch.** Fetch the previous year's release of the same table from the
+  Bureau's server and rerun the margin test: do the same pairs fail, or does
+  the set of failures churn from year to year?
+- **Stretch.** The IRS publishes county-to-county migration built from tax
+  returns, with no margins at all. Compare its picture of one state with this
+  one, and work out which differences come from who each source can see.
 
 ## Sources
 
@@ -438,46 +193,19 @@ Second, that `r mv("largest_fail_pair")` was `r pm(mn("largest_fail_est"), mn("l
 
 Margins of error throughout are the Bureau's published 90 percent margins.
 
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`arcs.csv`](data/derived/arcs.csv), [`county_focus.csv`](data/derived/county_focus.csv), [`flows.csv`](data/derived/flows.csv), [`map_insets.csv`](data/derived/map_insets.csv), [`map_states.csv`](data/derived/map_states.csv), [`meta.csv`](data/derived/meta.csv), [`mobility.csv`](data/derived/mobility.csv), [`states.csv`](data/derived/states.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- Every pair of states is in `flows.csv` twice, once in each direction. Find a
-  pair where the two directions are wildly unequal, and a pair where they
-  almost cancel out. What kind of state pair gives you each?
-- `sig` is TRUE only where a flow can be told apart from zero. Count the FALSE
-  rows. What share of this table can you actually use?
-- `states.csv` carries `born_state_pct`, the share of a state's residents born
-  in it. Sort by it. Then check whether the states people are least likely to
-  be born in are the states gaining the most people now.
-- `mobility.csv` goes back to the 1940s, and Americans move far less than they
-  did. Find the decade where the fall is steepest, then go and read what else
-  was happening then.
-
 **Academic literature**
 
 - Bishop, Bill, with Robert G. Cushing (2008). *The Big Sort: Why the Clustering
   of Like-Minded America Is Tearing Us Apart.* Houghton Mifflin.
 - Mummolo, Jonathan, and Clayton Nall (2017). "Why Partisans Do Not Sort: The
   Constraints on Political Segregation." *The Journal of Politics* 79(1): 45–59.
-- Martin, Gregory J., and Steven W. Webster (2020). "Does residential sorting
-  explain geographic polarization?" *Political Science Research and Methods*
-  8(2): 215–231.
-- Chen, Jowei, and Jonathan Rodden (2013). "Unintentional Gerrymandering:
-  Political Geography and Electoral Bias in Legislatures." *Quarterly Journal of
-  Political Science* 8(3): 239–269.
 
-**How the figures were made**
+**The data itself**
 
-The five Census files listed above are parsed into the tables every figure here is drawn from. The URL each came from, and the counts that came back, are recorded alongside the file. Every number printed in this chapter, in the prose and in the captions alike, is computed from those files at the moment the document is rendered.
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`arcs.csv`](data/derived/arcs.csv), [`county_focus.csv`](data/derived/county_focus.csv), [`flows.csv`](data/derived/flows.csv), [`map_insets.csv`](data/derived/map_insets.csv), [`map_states.csv`](data/derived/map_states.csv), [`meta.csv`](data/derived/meta.csv), [`mobility.csv`](data/derived/mobility.csv), [`states.csv`](data/derived/states.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

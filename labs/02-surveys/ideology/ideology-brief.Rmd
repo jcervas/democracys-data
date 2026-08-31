@@ -16,21 +16,21 @@ dd_read_chunks("ideology-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Ask Americans to place themselves from extremely liberal to extremely conservative and about a fifth of them will decline. This is not a refusal, and it is not missing data. **The survey offers them the exit, out loud, as part of the question.**
+America is a conservative country. You have heard that claim, usually backed by a poll: self-described conservatives outnumber self-described liberals, and they have for as long as anyone has asked. Is it true? The answer depends on a question, and the question contains something the headline never mentions.
 
-The result is a scale with two things in the middle: the people who chose the midpoint, and the people who would not choose at all. They sit next to each other in the distribution and they are different in almost every way the file can measure.
+Ask Americans to place themselves from extremely liberal to extremely conservative and about a fifth of them will decline. That is not a refusal, and it is not missing data. **The survey offers them the exit, out loud, as part of the question.** The result is a scale with two things in the middle: the people who chose the midpoint, and the people who would not choose at all. They sit next to each other in the distribution and they are different in almost every way the file can measure.
 
-## Where the file comes from, and what it is for
+## The test
 
-The liberal-conservative self-placement has been on the American National Election Studies since 1972 — `r nrow(pl)` studies. It is the standard measure of ideology in American survey research, and the reason it can be read across fifty-two years is that ANES kept the wording and the coding fixed on purpose.
+The measure is ideological self-placement from the ANES Time Series Cumulative Data File, 1972–2024, obtained from the [American National Election Studies](https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/). The question has been on the study since 1972 — `r nrow(pl)` studies — and it is the standard measure of ideology in American survey research. The [ANES chapter](../anes/anes-brief.html) introduces the cumulative file and the codebook discipline this brief depends on.
 
-**Why it fits the question.** Ideology, like partisanship, has no administrative existence. There is no register of liberals. It exists as something people say about themselves in response to a specific question, so the question's construction is not a detail — it is the thing being measured.
+Only a survey can hold this question, because ideology has no administrative existence. There is no register of liberals; the thing exists only as something people say in response to specific words. And no election ever grades the answer, the way a vote poll is eventually graded by a count, so the question's construction is not a detail sitting under the measurement — it *is* the measurement. The series can be read across five decades only because ANES kept the wording and the coding fixed on purpose, study after study.
 
-**What it costs to get.** Requested, not handed over: the download page returns 403 to a script and 200 to a browser, so a person has to fetch it. The file is 163 MB and is not redistributed with this chapter.
+The test has two parts. First, follow all four shares — liberal, moderate, conservative, and *declined to place* — from 1972 to 2024, and see which of them the conservative-country claim survives. Second, compare the two middles head to head, because whether they can be merged decides what "moderate America" even means.
 
-**What has already been done to it.** ANES reconciled the wording across studies. It also made a decision, important for this chapter, about how to classify the people who take the exit. That decision is visible, which is more than can be said for its neighbour. See the last section.
+## The data
 
-## The question contains its own escape hatch
+The cumulative file carries the answer as `VCF0803`, one column with seven scale codes and one more. Here is the question as the interviewer reads it, and the codebook's own accounting of the codes.
 
 ```{r raw, comment="", class.output="rawblock"}
 ```
@@ -39,29 +39,25 @@ Read the question again. The interviewer does not ask where you place yourself a
 
 Then look at where the codebook files the answer. Code 9 is in the **Valid** block. Code 0, meaning no interview or not administered, is in Missing. ANES has decided that "haven't thought much about it" is a response, and a person who drops the nines as missing data is not cleaning the file. They are overruling its classification of what counts as an answer.
 
-`r nn(NDK)` respondents took the exit. `r nn(NMOD)` placed themselves at the midpoint. The first group is `r p1(DKSHARE)`% of the two combined.
+Three tables are built from this. `placement.csv` gives every study year's share in four groups: `liberal` (codes 1–3), `moderate` (code 4), `conservative` (codes 5–7), and `not_placed` (code 9), with the year's `n`. `middles.csv` compares moderates and non-placers on what the file can measure about them: education from `VCF0110`, turnout from `VCF0703`, strength of partisanship from `VCF0301`, interest in the campaign from `VCF0310`. `collapse.csv` records what the convenience column `VCF0804` does with each code. Only code 0 is dropped anywhere; nothing is weighted, a choice discussed below. In the pooled file, `r nn(NDK)` respondents took the exit and `r nn(NMOD)` placed themselves at the midpoint, so the exit-takers are `r p1(DKSHARE)`% of the two middles combined.
 
 > **Before you read on, commit to a view.** You are computing a mean ideology
 > score for each state. **What do you do with the nines — drop them, score them
 > as 4, or something else?** Whichever you pick, say what your answer would
 > mean if it turned out the nines are concentrated in particular states.
 
-## The two middles are not the same people
+## What it says about democracy
+
+Start with the two middles, because every count of liberals and conservatives depends on what you do with them.
 
 ```{r tab1}
 ```
 
-The largest gap is education, and it is not close: **`r p1(EDM)`% of moderates hold a college degree against `r p1(EDD)`% of non-placers**, a difference of more than three to one. Non-placers vote less (`r p1(VTD)`% against `r p1(VTM)`%) and follow campaigns less closely.
+The largest gap is education, and it is not close: **`r p1(EDM)`% of moderates hold a college degree against `r p1(EDD)`% of non-placers**, a difference of more than three to one. Non-placers vote less (`r p1(VTD)`% against `r p1(VTM)`%) and follow campaigns less closely. None of that is surprising. The liberal-conservative scale is a piece of specialist vocabulary, and declining to use it tracks the things that predict familiarity with specialist vocabulary.
 
-None of that is surprising. The liberal-conservative scale is a piece of specialist vocabulary, and declining to use it tracks the things that predict familiarity with specialist vocabulary.
-
-**Now the row that is surprising.** Non-placers are *more* likely to be strong partisans than moderates are — `r p1(SPD)`% against `r p1(SPM)`%.
-
-A person can be a strong Democrat or a strong Republican and still not place themselves on the ideological scale. Party identity does not require the vocabulary; it is available through family, group, and habit, and it arrives without a theory attached. Ideology asks for something else, and the people who decline it are not moderate, disengaged, or in the middle of anything. They are simply not answering in the language offered.
+**Now the row that is surprising.** Non-placers are *more* likely to be strong partisans than moderates are — `r p1(SPD)`% against `r p1(SPM)`%. A person can be a strong Democrat or a strong Republican and still not place themselves on the ideological scale. Party identity does not require the vocabulary; it arrives through family, group, and habit, without a theory attached. The people who decline the scale are not moderate, disengaged, or in the middle of anything. They are simply not answering in the language offered.
 
 This is why the two middles cannot be merged. Fold the nines into the moderates and the resulting "center" is a mixture of the most educated non-partisans and the least educated strong partisans in the sample. That group has no politics in common. It is an artifact of a coding decision.
-
-## What happened to the middle
 
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.5}
 ```
@@ -69,42 +65,51 @@ This is why the two middles cannot be merged. Fold the nines into the moderates 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Ideological self-placement, 1972–2024.** The dashed line is the share who declined to place themselves. Hovering reads all four at any year; the buttons mute a series. Mute *haven't thought much* and watch what is left: as it falls the two wings grow and the midpoint does not, which is the point the chapter is about to make.
+**Figure 1. Ideological self-placement, 1972–2024.** Four lines on one time axis, because the question is where a fixed total went: when one series falls, the form shows which of the others caught it. The dashed line is the share who declined to place themselves. Hovering reads all four at any year; the buttons mute a series. Mute *haven't thought much* and watch what is left — as it falls, the two wings grow and the midpoint does not.
 
-In `r FIRST`, `r p1(r1$not_placed)`% of respondents would not place themselves. In `r LAST` it is `r p1(r2$not_placed)`% — a fall of `r p1(r1$not_placed - r2$not_placed)` points.
+Now the conservative-country claim. In `r LAST`, conservatives are `r p1(r2$conservative)`% of respondents and liberals `r p1(r2$liberal)`%, so the label *conservative* does outnumber the label *liberal*, as it has in every study here. But neither label comes near a majority, and the claim quietly ignores the `r p1(r2$not_placed)`% who declined the vocabulary altogether. The country the headline describes is the part of the country willing to use these two words.
 
-Where did they go? Not to the middle. Moderates went from `r p1(r1$moderate)`% to `r p1(r2$moderate)`%, slightly **down**. Liberals rose `r p1(r2$liberal - r1$liberal)` points and conservatives rose `r p1(r2$conservative - r1$conservative)`.
+And the middle has a history the headline also misses. In `r FIRST`, `r p1(r1$not_placed)`% of respondents would not place themselves; by `r LAST` it is `r p1(r2$not_placed)`% — a fall of `r p1(r1$not_placed - r2$not_placed)` points. Where did they go? Not to the middle. Moderates went from `r p1(r1$moderate)`% to `r p1(r2$moderate)`%, slightly **down**. Liberals rose `r p1(r2$liberal - r1$liberal)` points and conservatives rose `r p1(r2$conservative - r1$conservative)`. The ideological vocabulary spread through the public over fifty years, and the people who acquired it did not settle in the center. Whether they learned where they already stood, or learning the words taught them where to stand, is a question this file cannot answer.
 
-The ideological vocabulary spread through the American public over fifty years, and the people who acquired it did not settle in the center. Did they learn where they already stood, or did learning the words teach them where to stand? This file cannot answer that. But note that a chart of "moderates" alone would show a flat line and hide the entire story.
-
-> **A second prediction.** Suppose the non-placers keep shrinking and reach
-> zero. **Would American politics be more polarized than it is now, or would we
-> merely be measuring it better?** Say what evidence would distinguish those.
-
-## The neighbouring column, and the one that hides its decision
-
-The file offers a tidy three-category version of this scale, `VCF0804`.
+The file itself takes a position on the nines, and it is worth reading.
 
 ```{r tab2}
 ```
 
-Note what it does **not** do. The nines survive the collapse as their own category. ANES declined to fold them into the moderates, and the convenience column preserves the distinction this chapter is about.
+Note what the collapse does **not** do. The nines survive as their own category: ANES declined to fold them into the moderates, so the convenience column preserves the distinction this brief is about. Hold that next to the [party identification brief](../party-id/party-id-brief.html), because the same file makes the opposite choice one variable away. Party ID's convenience column, `VCF0303`, folds the leaners into the parties and says so only in a note. One design decision preserved a judgment call; the other resolved it silently. Both are defensible, and neither is announced anywhere a hurried user would look.
 
-That is worth holding next to the party identification chapter, because the same file makes the opposite choice one variable away. Party ID's convenience column, `VCF0303`, collapses seven points to three. It folds the *leaners*, people who called themselves independent, into the two parties, and says so only in a note. One design decision preserved a judgment call; the other resolved it silently. Both are defensible. Neither is announced anywhere a hurried user would look.
-
-The lesson is not that ANES is careless. It is the opposite: this is a carefully built file, and even here the difference between a distinction preserved and a distinction dissolved comes down to which column you happened to reach for.
-
-## What this chapter cannot tell you
+## What this brief cannot tell you
 
 The comparison of the two middles pools every study year from 1972 onward, so it describes the two groups on average across five decades rather than today. The education gap in particular should be read against a country where the share of adults with degrees rose throughout the period.
 
-Nothing here is weighted; `VCF0009z` sits in the file unused. Every percentage describes ANES respondents rather than the country.
+Nothing here is weighted; `VCF0009z` sits in the file unused. Every percentage describes ANES respondents rather than the country, which matters most for exactly the kind of level claim — what share of America is conservative — this brief interrogates.
 
-Self-placement is not the only way to measure ideology, and it may not be the best one. A long literature builds *operational* ideology from issue positions instead and finds that many self-described conservatives take liberal positions on specific policies. This chapter deliberately does not go there: it is about what one question does, and adding a second measure would change the subject from measurement to the thing measured.
+Self-placement is not the only way to measure ideology, and it may not be the best one. A long literature builds *operational* ideology from issue positions instead and finds that many self-described conservatives take liberal positions on specific policies. This brief deliberately does not go there: it is about what one question does, and adding a second measure would change the subject from measurement to the thing measured.
 
 Finally, "haven't thought much about it" is what the respondent said, not necessarily what is true of them. Some of those `r nn(NDK)` people have thought about it a great deal and rejected the frame. The file records an answer to a question; it does not record a state of mind.
 
+## What you should have learned
+
+- The scale has two middles: `r nn(NMOD)` respondents chose the midpoint and `r nn(NDK)` declined to place themselves, and the second group is `r p1(DKSHARE)`% of the two combined.
+- The two middles are different people: `r p1(EDM)`% of moderates hold a degree against `r p1(EDD)`% of non-placers, yet non-placers are *more* likely to be strong partisans, `r p1(SPD)`% against `r p1(SPM)`%.
+- Conservatives outnumber liberals in `r LAST`, `r p1(r2$conservative)`% to `r p1(r2$liberal)`%, but neither is close to a majority and `r p1(r2$not_placed)`% declined the vocabulary entirely.
+- The non-placers fell `r p1(r1$not_placed - r2$not_placed)` points since `r FIRST` and the moderates did not grow; the vocabulary spread to the wings.
+- The refusal is data: the codebook files code 9 under Valid, and dropping the nines overrules the file's own classification of what counts as an answer.
+
+## Extensions
+
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
+
+- `placement.csv` keeps `moderate` and `not_placed` as separate columns for every year. Plot them together. Are the people in the middle and the people who refuse the question moving the same way?
+- `middles.csv` sets the two middles side by side, one `measure` per row. Decide which of them belongs in a headline about moderate America, and write the sentence you would stand behind.
+- `collapse.csv` shows how the seven-point answers fold into three, with each group's `respondents`. Find where the folding is doing the most work. Who disappears when a survey reports three categories?
+- Sort `placement.csv` by `not_placed`. Find the years where declining is most common. Is that a change in the public, or in how the question was put?
+
+Two stretch ideas point past the spreadsheet. The GSS asks a near-identical question, `polviews`, in a file any script can fetch — rebuild Figure 1 from it and check whether the non-placers shrink there too. And pick one policy question from the ANES file, such as government health insurance (`VCF0806`), and test the operational-ideology critique: how many self-placed conservatives take the liberal side of it?
+
 ## Sources
+
+**Data**
 
 - American National Election Studies. *ANES Time Series Cumulative Data File
   (1948–2024)*, version of 5 February 2026. Ann Arbor, MI and Palo Alto, CA:
@@ -112,11 +117,14 @@ Finally, "haven't thought much about it" is what the respondent said, not necess
   <https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/>
 - ANES. *Time Series Cumulative Data File Codebook*, same release. The question
   wording and the placement of code 9 in the Valid block are quoted directly.
+
+**Academic literature**
+
 - Converse, Philip E. (1964). "The Nature of Belief Systems in Mass Publics,"
   in David E. Apter, ed., *Ideology and Discontent.* Free Press.
 - Ellis, Christopher and James A. Stimson (2012). *Ideology in America.*
   Cambridge University Press. The symbolic-versus-operational distinction this
-  chapter sets aside.
+  brief sets aside.
 - Kinder, Donald R. and Nathan P. Kalmoe (2017). *Neither Liberal nor
   Conservative: Ideological Innocence in the American Public.* University of
   Chicago Press.
@@ -127,14 +135,3 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`collapse.csv`](data/derived/collapse.csv), [`middles.csv`](data/derived/middles.csv), [`placement.csv`](data/derived/placement.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `placement.csv` keeps `moderate` and `not_placed` as separate columns for every year. Plot them together. Are the people in the middle and the people who refuse the question moving the same way?
-- `middles.csv` sets the two middles side by side. Decide which of them belongs in a headline about moderate America, and write the sentence you would stand behind.
-- `collapse.csv` shows how the seven-point answers get folded into three. Find where the folding is doing the most work. Who disappears when a survey reports three categories?
-- Sort `placement.csv` by `not_placed`. Find the years where refusal is highest. Is that a change in the public, or in how the question was put?
-

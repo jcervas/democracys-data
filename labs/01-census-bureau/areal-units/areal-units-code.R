@@ -17,7 +17,6 @@ D  <- "data"
 fc <- read.csv(file.path(D, "derived/facts.csv"),        stringsAsFactors = FALSE)
 ls_ga <- read.csv(file.path(D, "derived/ladder_state.csv"),  stringsAsFactors = FALSE)
 lf <- read.csv(file.path(D, "derived/ladder_fulton.csv"), stringsAsFactors = FALSE)
-dn <- read.csv(file.path(D, "derived/dens_fulton.csv"),  stringsAsFactors = FALSE)
 mu <- read.csv(file.path(D, "derived/map_units.csv"),    stringsAsFactors = FALSE)
 sm <- read.csv(file.path(D, "derived/zoning_summary.csv"), stringsAsFactors = FALSE)
 sw <- read.csv(file.path(D, "derived/zoning_sweep.csv"), stringsAsFactors = FALSE)
@@ -134,98 +133,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- pl-raw
-Z <- file.path(D, "raw/ga2020.pl.zip")
-zl <- utils::unzip(Z, list = TRUE)
-
-# One pass over the geographic header: count its rows, count the kinds of
-# geography in it, and keep the first row whose summary level is 750, "block".
-# SUMLEV is field 3, and the first two fields are fixed-width, so it can be
-# read off the characters without splitting the line.
-pl <- local({
-  con <- unz(Z, "gageo2020.pl", open = "rb")
-  on.exit(close(con))
-  nrow_geo <- 0L; sl <- integer(0); first <- NULL; at <- NA_integer_
-  repeat {
-    ln <- readLines(con, n = 50000L, warn = FALSE)
-    if (!length(ln)) break
-    s  <- substr(ln, 9L, 11L)
-    sl <- c(sl, as.integer(names(table(s))))
-    if (is.null(first)) {
-      w <- which(s == "750")
-      if (length(w)) { first <- ln[w[1]]; at <- nrow_geo + w[1] }
-    }
-    nrow_geo <- nrow_geo + length(ln)
-  }
-  list(rows = nrow_geo, levels = length(unique(sl)), line = first, at = at)
-})
-
-# The segments are in the same LOGRECNO order as the header, so the counts for
-# that block are on the same line number of segment 1.
-seg1 <- local({
-  con <- unz(Z, "ga000012020.pl", open = "rb")
-  on.exit(close(con))
-  readLines(con, n = pl$at, warn = FALSE)[pl$at]
-})
-
-gf <- strsplit(pl$line, "|", fixed = TRUE)[[1]]
-sf <- strsplit(seg1,    "|", fixed = TRUE)[[1]]
-
-# One field per row. The "what it means" column is filled in only where this
-# chapter can say so from the Bureau's layout document -- everywhere else it is
-# a dash, and the dashes are the point: the file supplies positions, and the
-# names live in a PDF published somewhere else.
-NSHOW <- 24L
-mean_g <- rep("—", length(gf))
-mean_g[1]  <- "file identifier"
-mean_g[2]  <- "state abbreviation"
-mean_g[3]  <- "summary level — 750 means this row is a block"
-mean_g[8]  <- "logical record number, the only join key in the file"
-mean_g[9]  <- "the GEOID, with its summary-level prefix"
-mean_g[10] <- "the block's 15-character GEOID"
-data.frame(
-  Field = c(as.character(seq_len(NSHOW)),
-            paste0(NSHOW + 1L, "–", length(gf))),
-  Value = c(ifelse(nzchar(gf[seq_len(NSHOW)]), gf[seq_len(NSHOW)], "(empty)"),
-            "mostly 99999 or empty"),
-  What_it_means = c(mean_g[seq_len(NSHOW)],
-                    paste0(length(gf) - NSHOW, " further fields")))
-
-## ---- pl-raw-seg
-# Same treatment as the header row. Field 5 is the join key -- it matches
-# field 8 of the row above -- and field 6 is the count the chapter goes on to
-# use; the rest are the race and ethnicity detail, nearly all of it zero for a
-# block of this size.
-NSEG <- 14L
-mean_s <- rep("—", length(sf))
-mean_s[1] <- "file identifier"
-mean_s[2] <- "state abbreviation"
-mean_s[5] <- "logical record number — matches field 8 above"
-mean_s[6] <- "total population of the block"
-data.frame(
-  Field = c(as.character(seq_len(NSEG)),
-            paste0(NSEG + 1L, "–", length(sf))),
-  Value = c(ifelse(nzchar(sf[seq_len(NSEG)]), sf[seq_len(NSEG)], "(empty)"),
-            "race and ethnicity detail, nearly all 0"),
-  What_it_means = c(mean_s[seq_len(NSEG)],
-                    paste0(length(sf) - NSEG, " further fields")))
-
-## ---- pl-fields
-data.frame(
-  field = c(3, 8, 10),
-  value = c(gf[3], gf[8], gf[10]),
-  meaning = c("summary level: 750 means this row is a block",
-              "logical record number, the only join key in the file",
-              "the block's 15-character GEOID"))
-
-## ---- pl-clean
-o <- read.csv(file.path(D, "derived/ga_block_race.csv"),
-              colClasses = c(GEOID20 = "character"),
-              stringsAsFactors = FALSE, nrows = 3)
-names(o) <- c("GEOID20", "pop", "black alone", "black any", "vap",
-              "black any vap")
-o
-
 ## ---- p1-layout
 # The same reconstruction the build does: every combination of the six race
 # categories, in publication order, and the ones that include Black.
@@ -248,16 +155,6 @@ data.frame(
             n(FV("ful_blocks")), n(FV("ful_blocks_pop")), n(FV("ful_pop")),
             n(FV("ful_black")), pc(FV("ful_black_pct"), 2),
             pc(FV("ful_bvap_pct"), 2)))
-
-## ---- step2
-eg <- mv[mv$lev == "b", ]
-eg <- eg$unit[which.max(eg$pop)]          # a real, populous Fulton block
-data.frame(
-  unit = c("State", "County", "Census tract", "Block group", "Census block"),
-  `characters of the GEOID` = c("1-2", "1-5", "1-11", "1-12", "all 15"),
-  value = c(substr(eg, 1, 2), substr(eg, 1, 5), substr(eg, 1, 11),
-            substr(eg, 1, 12), eg),
-  check.names = FALSE)
 
 ## ---- scale-d3
 PW <- 208L; GAP <- 10L; TOP <- 42L; BOTPAD <- 40L
@@ -301,7 +198,7 @@ ramp <- paste0("[", paste0('"', RAMP, '"', collapse = ","), "]")
 
 cat(paste0('
 <div id="scl" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
+<!-- d3 v7 is loaded once, by the first figure above -->
 <script>
 (function(){
 const PAN=[', paste(PAN, collapse = ","), '],L=', lab, ',R=', ramp, ';
@@ -335,9 +232,6 @@ svg.append("text").attr("x",KX-8).attr("y",KY+6).attr("text-anchor","end")
   .attr("font-size","8.5px").attr("fill","#888").text("share of the unit that is Black");
 })();
 </script>
-<p style="font-size:0.86em;color:#444;margin:0.4em 0 0 0">Fulton County, 2020
-Census, any part Black. One color ramp for all four panels. "Spread" is the
-population-weighted standard deviation of the units’ Black shares.</p>
 '))
 
 ## ---- scale-static
@@ -370,18 +264,6 @@ text(0.385, 0.57, "share of the unit that is Black", pos = 2, cex = 0.52, col = 
 par(op)
 layout(1)
 
-## ---- ladder-fulton
-o <- data.frame(
-  level = lf$level,
-  units = n(lf$units),
-  `median people` = n(lf$median_pop),
-  `weighted mean Black share (%)` = pc(lf$mean_share, 2),
-  `weighted SD (points)` = pc(lf$sd_share),
-  `10th pct (%)` = pc(lf$p10_share),
-  `90th pct (%)` = pc(lf$p90_share),
-  check.names = FALSE)
-o
-
 ## ---- ladder-state
 o <- data.frame(
   level = ls_ga$level,
@@ -392,100 +274,6 @@ o <- data.frame(
   `corr with under-18 share` = pc(ls_ga$corr_child, 3),
   check.names = FALSE)
 o
-
-## ---- dens-d3
-DL <- c("Census block", "Block group", "Census tract")
-COLS <- c("#9ec6e0", "#3f8dc0", "#12395a")
-W <- 900; H <- 330; L <- 54; R <- 22; T0 <- 46; B <- 54
-ymax <- max(dn$y[dn$level %in% DL], na.rm = TRUE)
-ser <- vapply(seq_along(DL), function(i) {
-  z <- dn[dn$level == DL[i], ]
-  paste0('{"n":"', DL[i], '","c":"', COLS[i], '","p":[',
-         paste0("[", formatC(z$x, format = "f", digits = 1), ",",
-                formatC(z$y, format = "f", digits = 5), "]", collapse = ","),
-         ']}')
-}, character(1))
-cv  <- LF("County", "mean_share")
-leg <- vapply(seq_along(DL), function(i)
-  paste0('{"n":"', DL[i], '","c":"', COLS[i], '","s":"SD ',
-         pc(LF(DL[i], "sd_share")), ' pts"}'), character(1))
-
-cat(paste0('
-<div id="dns" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first figure above -->
-<script>
-(function(){
-const S=[', paste(ser, collapse = ","), '],LG=[', paste(leg, collapse = ","), '];
-const W=', W, ',H=', H, ',L=', L, ',R=', R, ',T0=', T0, ',B=', B, ',YM=', ymax, ';
-const CV=', formatC(cv, format = "f", digits = 3), ';
-const CVL="the County: one value, ', pc(cv, 2), '%";
-const svg=d3.select("#dns").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([L,W-R]);
-const y=d3.scaleLinear().domain([0,YM*1.06]).range([H-B,T0]);
-// 50% rule
-svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",T0-6).attr("y2",H-B)
-  .attr("stroke","#C41230").attr("stroke-width",1.2).attr("stroke-dasharray","4 3");
-svg.append("text").attr("x",x(50)+5).attr("y",T0+4).attr("font-size","12px")
-  .attr("fill","#C41230").attr("font-weight","600").text("50%");
-const ar=d3.area().x(d=>x(d[0])).y0(y(0)).y1(d=>y(d[1])).curve(d3.curveBasis);
-const ln=d3.line().x(d=>x(d[0])).y(d=>y(d[1])).curve(d3.curveBasis);
-S.forEach(s=>{
-  svg.append("path").attr("d",ar(s.p)).attr("fill",s.c).attr("fill-opacity",0.16);
-  svg.append("path").attr("d",ln(s.p)).attr("fill","none").attr("stroke",s.c)
-    .attr("stroke-width",2.2);
-});
-// the county: one number, no distribution at all
-svg.append("line").attr("x1",x(CV)).attr("x2",x(CV)).attr("y1",T0-6).attr("y2",H-B)
-  .attr("stroke","#b3651a").attr("stroke-width",2.6);
-// The label text is formatted in R, not by JS. R rounds half to even and
-// JavaScript rounds half up, so 44.775 prints as 44.78 in the PDF and 44.77
-// in the browser if each side formats it for itself.
-svg.append("text").attr("x",x(CV)+7).attr("y",T0+(H-B-T0)*0.40).attr("text-anchor","start")
-  .attr("font-size","13px").attr("font-weight","600").attr("fill","#b3651a").text(CVL);
-d3.range(0,101,10).forEach(v=>svg.append("text").attr("x",x(v)).attr("y",H-B+18)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#aaa").text(v+"%"));
-svg.append("line").attr("x1",L).attr("x2",W-R).attr("y1",H-B).attr("y2",H-B)
-  .attr("stroke","#ddd");
-svg.append("text").attr("x",L).attr("y",H-10).attr("font-size","12.5px")
-  .attr("fill","#888").text("share of the unit that is Black");
-svg.append("text").attr("x",8).attr("y",T0-14).attr("font-size","12.5px")
-  .attr("fill","#888").text("share of Fulton’s people living in a unit of that Black share");
-const lg=svg.append("g").attr("transform","translate("+(W-R-210)+","+(T0+14)+")");
-LG.forEach((d,i)=>{
-  lg.append("rect").attr("y",i*20-9).attr("width",16).attr("height",4).attr("fill",d.c);
-  lg.append("text").attr("x",23).attr("y",i*20-3).attr("font-size","13px")
-    .attr("fill","#333").text(d.n+"  ("+d.s+")");});
-})();
-</script>
-'))
-
-## ---- dens-static
-DL <- c("Census block", "Block group", "Census tract")
-COLS <- c("#9ec6e0", "#3f8dc0", "#12395a")
-ymax <- max(dn$y[dn$level %in% DL], na.rm = TRUE)
-par(mar = c(3.4, 3.0, 2.4, 1.0))
-plot(NA, xlim = c(0, 100), ylim = c(0, ymax * 1.10), axes = FALSE, ann = FALSE)
-abline(v = 50, col = "#C41230", lty = 2, lwd = 1.1)
-for (i in seq_along(DL)) {
-  z <- dn[dn$level == DL[i], ]
-  polygon(c(z$x, rev(z$x)), c(z$y, rep(0, nrow(z))),
-          col = adjustcolor(COLS[i], 0.16), border = NA)
-  lines(z$x, z$y, col = COLS[i], lwd = 2)
-}
-cv <- LF("County", "mean_share")
-abline(v = cv, col = "#b3651a", lwd = 2.2)
-text(cv + 1.8, ymax * 0.60, sprintf("the County: one value, %.2f%%", cv),
-     adj = 0, cex = 0.6, font = 2, col = "#b3651a")
-axis(1, seq(0, 100, 10), paste0(seq(0, 100, 10), "%"), cex.axis = 0.6,
-     col = "#ddd", col.axis = "#999", tck = -0.02, mgp = c(2, 0.3, 0))
-mtext("share of the unit that is Black", side = 1, line = 1.7, cex = 0.6, col = "#888")
-mtext("share of Fulton's people in a unit of that Black share", side = 2,
-      line = 0.6, cex = 0.6, col = "#888")
-legend("topleft", paste0(DL, "   (SD ", vapply(DL, function(l) pc(LF(l, "sd_share")),
-       character(1)), " pts)"), col = COLS, lwd = 2, bty = "n", cex = 0.62)
-title(sprintf("Same people, four groupings, common bandwidth of %s points",
-              FV("dens_bw")), cex.main = 0.85, adj = 0, line = 0.8)
 
 ## ---- rules
 data.frame(
@@ -633,7 +421,7 @@ hdr <- vapply(c("lo", "hi"), function(tg) paste0(
 
 cat(paste0('
 <div id="pln" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first figure above -->
+<script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const B=[', mkp(1), ',', mkp(2), '],BK=', mkd(TRUE), ',OT=', mkd(FALSE), ';
@@ -702,30 +490,6 @@ par(op)
 legend("bottom", c("any part Black", "everyone else"), pch = 19, horiz = TRUE,
        col = c("#C41230", "#9aa7b0"), bty = "n", cex = 0.6, pt.cex = 0.8,
        inset = c(0, -0.02))
-
-## ---- contig
-data.frame(
-  question = c("Plans built",
-               paste("Plans where all", FV("K"), "units are literally one piece"),
-               paste0("Plans where every unit has >=", FV("contig_thr"),
-                      "% of its people in one piece"),
-               "Majority-Black units across all plans",
-               "Majority-Black units across the effectively contiguous plans"),
-  answer = c(n(FV("n_plans")), n(FV("plans_strict_contig")), n(FV("plans_contig")),
-             paste(FV("maj_min"), "to", FV("maj_max")),
-             paste(FV("contig_maj_min"), "to", FV("contig_maj_max"))))
-
-## ---- contig-plans
-z <- pu[pu$plan %in% c("fewest_contig", "most_contig"), ]
-o <- data.frame(
-  plan = ifelse(z$plan == "fewest_contig", "fewest, contiguous", "most, contiguous"),
-  rule = paste0(z$family, " at ", z$angle, " deg"),
-  unit = z$unit,
-  people = n(z$pop),
-  `Black share (%)` = pc(z$share, 2),
-  `Black share of voting age (%)` = pc(z$bvap, 2),
-  check.names = FALSE)
-o
 
 ## ---- on-mark-halo
 # A label lying across a saturated or mid-toned mark, where neither the

@@ -16,29 +16,25 @@ dd_read_chunks("census-coverage-code.R")
 ```{r setup, include=FALSE}
 ```
 
-The census is an attempt to count everyone, and it does not succeed. That much the [decennial chapter](../census-decennial/census-decennial-brief.html) established, using the national rates by race the Bureau put in its press release: Black residents `r p2(abs(GR("Black or African American")))`% undercounted, Hispanic residents `r p2(abs(GR("Hispanic or Latino")))`% undercounted, non-Hispanic White residents `r p2(GR("Non-Hispanic White alone"))`% *over*counted.
+The census sets out to count every person in the country, once, at the right address. The rest of American politics then treats the result as exact: House seats, electoral votes and federal money are all handed out on the published numbers. So the claim behind the whole arrangement is that the count comes close enough. Is that true — how close does the census actually come, and who gets missed?
 
-This chapter opens the same measurement in the two directions that press release did not. **Where** were people missed — which states, on a map. And **who** was missed, on cuts other than race: by age, by sex, by whether a household owns or rents.
+The Census Bureau answers that question about itself. After each census it runs a second survey whose only job is to grade the first, and it publishes the grade. This brief reads the 2020 grade in both directions: **who** the count missed, by age, sex, race and housing, and **where**, state by state. The two answers do not look alike, and the reason they differ is the thing worth carrying out of here.
 
-The two answers do not look alike, and the reason they do not is the thing worth carrying out of here.
+## The test
 
-## The instrument that measures the instrument
+The data is the Bureau's evaluation of the 2020 census: the **Post-Enumeration Survey**, published in two reports in 2022 — the [national estimates by demographic group](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/national-census-coverage-estimates-by-demographic-characteristics.pdf) in March and the [estimates by state](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/census-coverage-estimates-for-people-in-the-united-states-by-state-and-census-operations.pdf) in May. After the count, interviewers went back to a sample of about `r nn(FN("pes_blocks"))` blocks and counted the people living there from scratch, without reference to what the census had found. The two lists were then matched person by person, across roughly `r nn(FN("pes_interviews"))` completed household interviews. Someone the survey found and the census did not is evidence of an omission; someone the census has twice is evidence of a duplicate. The gap between the estimated true population and the published count is **net coverage error**.
 
-After each census the Bureau runs a second, entirely separate survey called the **Post-Enumeration Survey**. Interviewers go back to a sample of blocks and count the people living there from scratch, without reference to what the census found. Then the two lists are matched person by person. Someone the survey found and the census did not is evidence of an omission; someone the census has twice is evidence of a duplicate. Out of that comparison comes an estimate of the true population, and the gap between it and the published count is **net coverage error**.
+This is the right source because it is the only one there is. No independent register of American residents exists to check a census against, so the only instrument that can grade a count is another count, done carefully on a sample and matched name by name. What an enumeration is, and why nothing else can stand in for one, is the subject of the [census chapter](../census-source/census-source-brief.html).
 
-For 2020 the survey counted about `r nn(FN("pes_blocks"))` blocks from scratch, roughly `r nn(FN("pes_units"))` housing units, and completed about `r nn(FN("pes_interviews"))` household interviews.
+Three properties of the design decide everything below. **It is a sample**, so every number it produces is an estimate with a margin printed beside it, a stated figure for how far off the estimate could be. **It is a net measure**: a state where 40,000 people were missed and 40,000 counted twice comes out at zero, the same as a state where nothing went wrong. **And it covers the household population only.** People in dormitories, prisons, nursing homes and shelters are evaluated separately, so about `r nn(FN("not_evaluated"))` residents appear in no figure in this brief.
 
-Three properties of that design decide everything that follows.
+## The data
 
-**It is a sample, so nothing it produces is a count.** The census count of Texas is a count. The estimate of how far off that count was is an estimate, and the Bureau prints a margin next to it saying how firm it considers that estimate to be. Two columns, always together.
+Both reports exist only as PDF. No CSV, no spreadsheet and no API anywhere on the Bureau's site carries these numbers, so every table here was taken out of the text layer of a printed report. Two details of that work matter to anyone repeating it. The reports set minus as an en dash, so every undercount fails to read as a number until that is undone. And the indentation of a row label is the only thing recording that "On Reservation" is a subdivision of the American Indian or Alaska Native row rather than a category beside it.
 
-**It is a net measure.** A state where 40,000 people were missed and 40,000 were counted twice comes out at zero, the same as a state where nothing went wrong. Net coverage error near zero is not a certificate of accuracy; it is a statement about the *balance* of two errors, not their size.
+The state table, `states.csv`, holds one row per state plus the District of Columbia: the certified `census_count`, the 2020 estimate `est_2020`, the margin `se_2020`, and the people the rate implies, `implied_people`. The column `bureau_states_it` records the Bureau's own mark. In the report it is an asterisk meaning the agency will say which way that state's count went; `direction` says which way. Each row also carries `self_response`, the share of housing units that answered on their own, merged in from the Bureau's response-rate file.
 
-**It covers the household population only.** People in dormitories, prisons, nursing homes and shelters are enumerated by a different operation and evaluated separately, and the Remote Alaska areas are outside it altogether. The survey's national base is `r nn(FN("us_household_pop"))` people against a census resident population of `r nn(FN("us_household_pop") + FN("not_evaluated"))` — about **`r nn(FN("not_evaluated"))` people who are in no figure in this chapter.**
-
-The national line reads as an undercount of **`r p2(abs(FN("us_est")))`%**, about `r nn(FN("missed_us"))` people, with a margin of `r p2(FN("us_se"))` beside it and **no mark**. The Bureau publishes the number and declines to say the country was undercounted. **That combination, a number plus a refusal to stand behind it, is the shape of most of this chapter.**
-
-What follows is that same survey, cut finer.
+The demographic tables (`race.csv`, `age.csv`, `age_sex.csv` and `tenure.csv`) carry the same three columns for national groups: the estimate, the margin, and the mark. `components.csv` breaks the national count into correct enumerations, duplicates and the rest. Before anything was written, the build checked what it read:
 
 ```{r checks}
 ```
@@ -47,24 +43,11 @@ What follows is that same survey, cut finer.
 > coverage error for each of the 50 states and the District of Columbia — 51
 > numbers — and marks the rows where it is willing to say which way the count
 > went. **On how many of the 51 do you think it puts that mark?** Write the
-> number down before you turn the page.
+> number down before you look at the map.
 
-## Fifty-one numbers
+## What it says about democracy
 
-Here is the whole state table as a distribution, before any of it is mapped.
-
-```{r summary}
-```
-
-Read the middle rows first. The estimates are centred essentially on zero, with a mean of `r sg(mean(st$est_2020))` and a median of `r sg(median(st$est_2020))`. They scatter widely around it, from `r sg(FN("largest_undercount"))` in `r F("largest_undercount_state")` to `r sg(FN("largest_overcount"))` in `r F("largest_overcount_state")`. A `r p2(sd(st$est_2020))`-point standard deviation across states, around a national figure of `r p2(abs(FN("us_est")))`%, is the first sign that the country's near-perfect total is an average over parts that are not.
-
-Now read the last three rows, because they are what the middle rows are made of. **The margin the Bureau prints beside a state's number is usually wider than the number itself.** The median margin is `r p2(FN("se_state_median"))` points; the median estimate is `r p2(abs(median(st$est_2020)))`. When a publisher hedges a number by more than the number is worth, it is telling you something, and here it tells you exactly how far the table can be pushed.
-
-So the Bureau marks `r N_UNDER + N_OVER` rows of `r nrow(st)`. **`r N_UNDER` states it calls undercounted**: `r knitr::combine_words(UND)`. **`r N_OVER` it calls overcounted**: `r knitr::combine_words(OVR)`. On the remaining **`r N_NONE`**, which is every other state plus the District of Columbia, it publishes a number and says nothing about which way the count went.
-
-This is the whole reading problem of the chapter, and it is not a problem about statistics. It is the ordinary problem of this book: **the source shipped a caveat attached to every number, and the caveat is the part that falls off first.** A table with 51 rows travels; a table with 51 rows, 51 margins and 14 marks does not fit in a sentence. What follows is what the full table looks like when none of it is dropped.
-
-## The map
+Start with the national line. The survey reads it as an undercount of `r p2(abs(FN("us_est")))`%, about `r nn(FN("missed_us"))` people, with a margin of `r p2(FN("us_se"))` beside it and **no mark**. The Bureau publishes the number and declines to say the country was undercounted. That combination, a number plus a refusal to stand behind it, is the shape of most of what follows.
 
 ```{r map-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -72,155 +55,77 @@ This is the whole reading problem of the chapter, and it is not a problem about 
 ```{r map-static, eval=!knitr::is_html_output(), fig.width=7.2, fig.height=5.6}
 ```
 
-**Figure 1. Net coverage error in the 2020 census, by state.** Fill is the number the Bureau published: rust where the count is estimated to have missed people, slate where it is estimated to hold more people than live there. The outline is the Bureau's own mark — whether it will say, for that state, which way the count went. Only `r N_UNDER + N_OVER` states carry the heavy outline. `r if (knitr::is_html_output()) "Hover any state for its estimate, its margin, and what the rate implies in people." else ""`
+**Figure 1. Net coverage error in the 2020 census, by state.** A map, because the question is where; two channels, because the source has two columns. Fill is the number the Bureau published — rust where the count is estimated to have missed people, slate where it holds more people than live there. The outline is the Bureau's mark: only the heavy-outlined states are ones it will characterise. `r if (knitr::is_html_output()) "Hover any state for its estimate, its margin, and what the rate implies in people." else ""`
 
-**Two channels, because the source has two columns and dropping either one produces a different map.** Color only the `r N_UNDER + N_OVER` marked states and `r N_NONE` published numbers vanish from the record. Color all `r nrow(st)` without the outlines and the map claims more than the Bureau did. It invites you to see a rust-colored Montana and conclude something about Montana that the agency which measured Montana would not put its name to.
+The answer to the question you wrote down is `r N_UNDER + N_OVER`. **The Bureau calls `r N_UNDER` states undercounted**: `r knitr::combine_words(UND)`. **It calls `r N_OVER` overcounted**: `r knitr::combine_words(OVR)`. On the remaining `r N_NONE`, it publishes a number and says nothing about which way the count went. The state report card is mostly blank.
 
-Look for a pattern in the fill and you will half-find one. The deep rust runs along the Gulf and the lower Mississippi; the deep slate sits in New England, the upper Midwest and Hawaii. Now look at the outlines, and watch most of that pattern turn out to be shading the Bureau printed without endorsing. `r F("largest_insig_state")` posts `r sg(FN("largest_insig"))`, the largest number on the map that carries no mark, and it is thin-outlined. So are Montana, Nevada and Louisiana, each of them past three points.
-
-**A thin outline does not mean the state was counted well.** It means this survey did not see enough of that state to say. Those are different claims, and the map is drawn the way it is so that they stay different.
-
-## The bigger number is not the safer one
-
-Put five states side by side, exactly as the source prints them.
+The blanks are not modesty about small numbers. The median margin printed beside a state is `r p2(FN("se_state_median"))` points; the median estimate is `r p2(abs(median(st$est_2020)))`. When a publisher hedges a number by more than the number is worth, it is telling you how far the table can be pushed. `r F("largest_insig_state")` posts `r sg(FN("largest_insig"))`, the largest number on the map, and carries no mark at all. Put five rows side by side and the logic shows:
 
 ```{r contrast}
 ```
 
-Illinois's number says the count missed `r p2(abs(S("Illinois", "est_2020")))`% of its people. Louisiana's says `r p2(abs(S("Louisiana", "est_2020")))`% — nearly twice as much. **The Bureau calls Illinois undercounted and says nothing about Louisiana.**
+Illinois's number says the count missed `r p2(abs(S("Illinois", "est_2020")))`% of its people, Louisiana's nearly twice that. **The Bureau calls Illinois undercounted and says nothing about Louisiana.** The difference is the middle column: the survey saw Illinois closely enough to describe it and did not see Louisiana closely enough to describe it. The mark tracks the margin, not the size of the number. So the rule for using this table needs no arithmetic: read across the row, because a number quoted without its margin and its mark is not the Bureau's claim.
 
-That is not a claim that Louisiana was counted better. Look at the middle column. Illinois's margin is `r p2(S("Illinois", "se_2020"))` points and Louisiana's is `r p2(S("Louisiana", "se_2020"))`: the survey looked at Illinois closely enough to describe it and did not look at Louisiana closely enough to describe it. Same table, same census, different amount of evidence underneath.
-
-The smallest number on the page the Bureau *will* characterise is `r F("smallest_sig_state")`'s `r sg(FN("smallest_sig"))`, carrying a margin of `r p2(FN("smallest_sig_se"))`. The largest it will not is `r F("largest_insig_state")`'s `r sg(FN("largest_insig"))`, carrying a margin of `r p2(FN("largest_insig_se"))`. **The mark tracks the second column, not the first.**
-
-Where do the margins come from? Mostly from how much of each state the survey saw. `r F("se_min_state")`, the largest state, has the narrowest margin on the map at `r p2(FN("se_min"))` points; `r F("se_max_state")` has the widest at `r p2(FN("se_max"))`. **The width of a margin is a fact about the survey, not about how well a state was counted** — and it is what decides whether the state shows up in anybody's headline.
-
-So the practical rule for using this table is short, and it needs no arithmetic: **read across the row.** A number from Appendix Table 3 quoted without its margin and its mark is not the Bureau's claim. It is a number that was standing next to the Bureau's claim.
-
-### What the rates are in people
-
-Percentages are easy to nod at, so here are three of them as bodies.
-
-```{r people}
-```
-
-The arithmetic is not the one you would reach for first. A coverage rate is measured against the *true* population rather than the published one, so the implied gap is the published count divided by one plus the rate, minus the published count. Texas's `r p2(abs(S("Texas", "est_2020")))`% works out to `r nn(FN("missed_texas"))` people rather than the `r nn(S("Texas", "census_count") * abs(S("Texas", "est_2020")) / 100)` that taking the rate straight off the published count would give.
-
-Hold those next to a House seat. The 2020 apportionment gave one seat per `r nn(FN("people_per_seat"))` people, so Florida's implied gap is `r p1(100 * FN("missed_florida") / FN("people_per_seat"))`% of a seat, Texas's `r p1(100 * FN("missed_texas") / FN("people_per_seat"))`%, and New York's excess `r p1(100 * FN("excess_newyork") / FN("people_per_seat"))`%. Not one of the `r nrow(st)` clears a whole seat outright, and Florida comes within a fraction of one — but a whole seat is not the bar these have to clear. The last seat in the 2020 apportionment turned on a margin of a few dozen people, which is the subject of the [apportionment chapter](../apportionment/apportionment-brief.html). **The rates in Figure 1 are not a rounding concern.**
-
-Adding the 51 implied figures together would not give a national total. `r N_NONE` of them rest on numbers the Bureau itself will not characterise, and adding those to the 14 it will would produce a total nobody published and nobody could defend. The national figure of `r nn(FN("missed_us"))` comes from the national rate applied to the national count, which is a different calculation and one the source supports.
-
-## Who answered on their own, which is a different question
-
-Alongside coverage error the Bureau publishes something that looks related and is not. It is the **self-response rate**: the share of housing units that filled the form in by internet, phone or mail, before anyone was sent to knock. Nationally `r p1(FN("srr_national"))`% did, with `r p1(FN("srr_internet_national"))` points of that online. It is the first census where most of the country answered over the internet.
-
-That number is a *count*, not an estimate. Every housing unit either responded or it did not, the Bureau knows which, and this column arrives with no margin beside it and no mark on it — there is nothing to hedge. By state it runs from `r p1(FN("srr_min"))`% in `r F("srr_min_state")` to `r p1(FN("srr_max"))`% in `r F("srr_max_state")`.
-
-It is tempting to treat it as a proxy for accuracy — states that answered less were counted worse. Test it.
-
-```{r cor-fig, fig.height=4.3}
-```
-
-**Figure 2. Self-response against net coverage error, by state.** Each circle is a state; the dashed line is the least-squares fit. The correlation is **`r p2(FN("cor_est_srr"))`**.
-
-`r p2(FN("cor_est_srr"))` is nothing. Alaska had the lowest self-response in the country at `r p1(FN("srr_min"))`% and came out `r sg(S("Alaska", "est_2020"))`, an overcount. Minnesota had the highest at `r p1(FN("srr_max"))`% and came out `r sg(S("Minnesota", "est_2020"))`, also an overcount, and one the Bureau states. Illinois answered at `r p1(S("Illinois", "self_response"))`%, well above the national rate, and is one of the six states the Bureau calls undercounted.
-
-The reason is not mysterious once the operation is in view. A household that does not answer is not thereby uncounted — it is *followed up*, in person, by a census taker, and in 2020 that operation reached `r p1(100 - FN("srr_national"))`% of housing units. Self-response measures how much of the count came in by mail and internet rather than by knocking. **Nonresponse is a cost, not an omission.**
-
-There is a relationship in this data, but it is with the other column.
-
-```{r cor2}
-```
-
-Self-response is `r p2(abs(FN("cor_se_srr")))` correlated with the *margin* — states where fewer households answered are states the Bureau hedged harder about. That is a statement about the evaluation rather than about the count. Harder-to-reach populations are harder to reach for the follow-up operation, and harder to reach for the survey that grades it. So the places where you would most want a sharp estimate are the places where the estimate is blurriest. It is also only a correlation across 51 points, and states differ in a hundred other ways at the same time.
-
-**Two numbers about the same state, both published by the same agency, that answer different questions.** One is an exact count of how the form came back. The other is a sampled estimate of who is missing. Neither substitutes for the other, and the temptation to let the precise one stand in for the uncertain one is exactly the move to resist.
-
-## Where the signal is
-
-The same survey, cut by demographic group instead of by state, stops being blank. Here is age.
-
-```{r agetab}
-```
-
-And age crossed with sex, which is where it gets sharp.
-
-```{r agesextab}
-```
+Cut the same survey by demographic group instead of by state and it stops being blank.
 
 ```{r demofig, fig.height=5.0}
 ```
 
-**Figure 3. Every national demographic number in this chapter, with the margin the Bureau prints beside it.** Filled circles are the rows the Bureau characterises; hollow circles are the rows where it publishes a number and says nothing. Rust is an undercount, slate an overcount. The bars are the published margin drawn to scale, and the thing to notice is how short they are: a median of `r p2(FN("se_demo_median"))` points here against `r p2(FN("se_state_median"))` for a state on Figure 1. **This is the same survey, hedged far less.**
+**Figure 2. Every national demographic estimate in this brief, with the margin the Bureau prints beside it drawn to scale.** Filled circles are rows the Bureau characterises; hollow circles are rows where it says nothing. The bars are short, a median of `r p2(FN("se_demo_median"))` points here against `r p2(FN("se_state_median"))` for a state, because a national group is measured with the whole sample while a state gets only its own slice.
 
-Four things in that figure are worth saying out loud.
+This is the differential undercount, and four rows of it are worth saying out loud. **Children under five are undercounted by `r p2(abs(G(age, "0 to 4")))`%**, one of the largest rates in the survey and one of the most persistent across censuses; children aged 5 to 9 come in at `r sg(G(age, "5 to 9"))`, unmarked. **Men aged 30 to 49 are undercounted `r p2(abs(G(A20, "30-to-49 males")))`%** while women the same age come in near zero, a gap that age alone would average away. **Renters are undercounted `r p2(abs(G(T20, "Renter")))`% and owners overcounted `r p2(G(T20, "Owner"))`%**, a pair that has appeared in each of the last four censuses. And the race rows repeat what the [decennial chapter](../census-decennial/census-decennial-brief.html) reported from the press release: Black residents `r p2(abs(GR("Black or African American")))`% undercounted, Hispanic residents `r p2(abs(GR("Hispanic or Latino")))`%, non-Hispanic White residents `r p2(GR("Non-Hispanic White alone"))`% *over*counted.
 
-**Children under five are undercounted by `r p2(abs(G(age, "0 to 4")))`%** — one of the largest rates in the whole survey, and one of the most persistent across censuses. Older children are not: 5-to-9-year-olds come in at `r sg(G(age, "5 to 9"))` and 10-to-17-year-olds at `r sg(G(age, "10 to 17"))`, and the Bureau characterises neither. Whatever goes wrong is going wrong on the form, in households, about the youngest people in them.
+One indented pair in the race table deserves its own sentence. American Indian and Alaska Native residents living on reservations were undercounted `r p2(abs(GR("On Reservation")))`%, the worst rate in the survey, while those living elsewhere came in at `r sg(GR("Balance of the United States"))`. The Bureau's headline rate for the group, `r p2(abs(GR("American Indian or Alaska Native")))`%, is the average of the two — smaller than the rate in the places where the problem is worst.
 
-**Age and sex together separate what either alone would hide.** Men aged 30 to 49 are undercounted `r p2(abs(G(A20, "30-to-49 males")))`%. Women in the same age band come in at `r sg(G(A20, "30-to-49 females"))`, which the Bureau declines to characterise. Men aged 18 to 29, `r sg(G(A20, "18-to-29 males"))`; women, `r sg(G(A20, "18-to-29 females"))`. Read only the age groups and you would see a modest `r sg(G(age, "30 to 49"))` for everyone in their thirties and forties, which is the average of a large undercount and nothing.
+An overcount is not a harmless error in the other direction. It is duplicates and people counted in the wrong place: women over 50, at `r p2(G(A20, "50-and-over females"))`%, and homeowners generally. It inflates a group's weight just as surely as an omission deflates another's.
 
-**Women aged 50 and over are overcounted `r p2(G(A20, "50-and-over females"))`%**, the largest overcount in the demographic tables. An overcount is not a harmless error in the other direction: it is duplicates and people counted in the wrong place, and it inflates a population just as surely as an omission deflates it.
+Why does this matter for democracy rather than just for statistics? Because the count is the currency of representation, and an undercount is not neutral. The 2020 apportionment handed out one House seat per `r nn(FN("people_per_seat"))` people. Texas's rate implies about `r nn(FN("missed_texas"))` people missing, `r p1(100 * FN("missed_texas") / FN("people_per_seat"))`% of a seat; Florida's implies `r nn(FN("missed_florida"))`, `r p1(100 * FN("missed_florida") / FN("people_per_seat"))`% of a seat; New York's overcount implies `r nn(FN("excess_newyork"))` in excess. The last seat in 2020 turned on a margin of a few dozen people, the subject of the [apportionment chapter](../apportionment/apportionment-brief.html).
 
-**Renters are undercounted `r p2(abs(G(T20, "Renter")))`% and owners overcounted `r p2(G(T20, "Owner"))`%.** That gap has been in every one of the last four censuses.
+Federal money moves on the same numbers. And Figure 2 says who pays: the people the count misses are disproportionately renters, young children, and Black, Hispanic and Native residents. The people counted twice are disproportionately owners and the settled old. Representation and money drift, quietly, from the first list toward the second.
 
-```{r tenuretab}
-```
+The grade cannot fix any of it. Congress lets the Bureau sample in its work "except for the determination of population for purposes of apportionment", and in 1999 the Supreme Court read that to bar a sampled apportionment count. After 1990 the Secretary of Commerce declined to adjust the census using that decade's version of this survey, and the Court upheld the refusal in *Wisconsin v. City of New York* (1996). So the Post-Enumeration Survey exists to describe the problem, not to repair it: an agency's careful measurement of how wrong its own flagship product is, published in full, with no mechanism attached.
 
-And race, the cut the [decennial chapter](../census-decennial/census-decennial-brief.html) opened, in the Bureau's full detail rather than the six rows of the press release:
+## What this brief cannot tell you
 
-```{r racetab}
-```
+**Net coverage error is not accuracy.** About `r p1(FN("omissions_pct"))`% of people were omissions, and about `r p1(FN("imputations_pct"))`% of the published count were whole-person imputations, records the Bureau filled in by guessing a person from the household around them. Both dwarf the `r p2(abs(FN("us_est")))`% net they produce. A state at zero is not a state where nothing happened; it is a state where the errors came out even.
 
-These rows are **alone or in combination**: someone who marked two races appears in two of them, so the column does not add to anything and should not be made to. The two indented rows under American Indian or Alaska Native are parts of it. They are the `r p2(abs(GR("On Reservation")))`% undercount on reservations, against `r p2(abs(GR("Balance of the United States")))`% for American Indian and Alaska Native residents living elsewhere. The Bureau averaged those two into the `r p2(abs(GR("American Indian or Alaska Native")))`% above them. That is why the headline rate for the group is smaller than the rate in the places where the problem is worst.
+**No state-by-race table exists.** The Bureau does not publish coverage by state crossed with race, age or tenure, so you cannot get from Figure 2 to a claim about who was missed in Georgia. Anyone who applies the national rates to one state's counts is illustrating, not estimating.
 
-## Why the map and the tables do not reconcile
+**A blank is not a clean bill of health.** On `r N_NONE` states the survey did not see enough to say which way the count went. That gets reported as "this state was fine" constantly, and the correct reading is "we do not know".
 
-You now have two pictures of one survey. The demographic tables are sharp: large rates, short margins, and the Bureau willing to characterise nearly every row. The map is mostly blank: `r N_NONE` of `r nrow(st)` states where it publishes a number and stops there.
+**The 2010 comparison does not work at the state level.** The state table labels the 2020 margin a standard error and the 2010 one a wider quantity that also covers a bias the newer method removed. Subtracting the columns hands you a change for every state, and the Bureau marked none of them.
 
-They are not in tension, and the reason is about how much evidence sits under each row rather than about the country.
+**The household population is the whole frame.** The `r nn(FN("not_evaluated"))` people in group quarters and Remote Alaska are outside every figure here, and Puerto Rico was evaluated on a separate design and published separately.
 
-**A national group is measured with the whole sample; a state is measured with one state's slice of it.** Every one of the 114,000 interviews contributes to the estimate for renters. Only the interviews conducted in Wyoming contribute to the estimate for Wyoming. That is the entire difference, and it shows up as the width of the interval — a median of `r p2(FN("se_demo_median"))` points against `r p2(FN("se_state_median"))`.
+## What you should have learned
 
-**A state's number is a mixture, and mixtures cancel.** A state is not undercounted or overcounted as such; the *people* in it are, at rates that differ by age, sex, tenure and race. A state with many renters and many young men and many older women is pulling in both directions at once, and its net figure is what is left after the pulls have partly cancelled. Hawaii's `r sg(S("Hawaii", "est_2020"))` and Arkansas's `r sg(S("Arkansas", "est_2020"))` are the residue of that mixing, not a property of the place.
+- The census grades itself: the 2020 survey reads the national count as
+  `r p2(abs(FN("us_est")))`% short, about `r nn(FN("missed_us"))` people, and
+  the Bureau still declines to state a direction for the country.
+- The state report card is mostly blank: the Bureau marks
+  `r N_UNDER + N_OVER` of `r nrow(st)` states, and the mark tracks the margin
+  beside a number, not the size of the number.
+- The undercount is differential: children under five at
+  `r p2(abs(G(age, "0 to 4")))`%, renters at
+  `r p2(abs(G(T20, "Renter")))`%, residents on reservations at
+  `r p2(abs(GR("On Reservation")))`%, while owners and older women are counted
+  twice often enough to show as overcounts.
+- An undercount moves representation and money away from the people missed:
+  Florida's implied gap is `r p1(100 * FN("missed_florida") / FN("people_per_seat"))`%
+  of a House seat, and the law forbids using this survey to correct any of it.
+- A net figure near zero is a balance of errors, not an absence of them.
 
-**So the demographic tables are the mechanism and the map is the consequence, imperfectly observed.** If you want to know who the census misses, read Figure 3. If you want to know what that did to a particular state's count, the honest answer for `r N_NONE` states is the one the Bureau itself gives. Here is a number, and we are not going to tell you which way it points.
+## Extensions
 
-## What the survey is allowed to do
+None of these is answered above, and every one can be answered by sorting or
+grouping in a spreadsheet.
 
-Nothing. The Post-Enumeration Survey cannot correct the census, and it was never going to be able to.
+- `states.csv` carries `bureau_states_it` beside `census_count`. Count the TRUE rows, then add up the population living in them. What share of the country's people got an answer the Bureau was prepared to stand behind?
+- `states.csv` also has `self_response` and `internet_response`. Sort by `self_response` and set it against `est_2020`. Do the states that answered on their own get counted better, or is answering by mail a different thing from being counted?
+- `race.csv` puts `est_2020` beside `est_2010` for each group. Which groups moved, and in which direction? Then ask whether that is the count improving or the measure changing.
+- `components.csv` breaks the count into correct enumerations and everything else in its `percent` column. Work out what share of the published count is not a correct enumeration, and decide whether that number surprises you.
 
-The rule is narrow and it is the important one. Congress told the Bureau it may use sampling in its work "except for the determination of population for purposes of apportionment". In 1999 the Supreme Court read that section to bar a sampled apportionment count. The survey in this chapter is a sample. The counts that hand out House seats therefore have to be the counts that were taken, whatever this survey says about them.
-
-**Nor is the Bureau obliged to adjust anything else, and that was settled on this instrument.** After the 1990 census the Bureau ran a post-enumeration survey, found an undercount, and the Secretary of Commerce declined to use it to correct the published figures. New York City and others sued, because an uncorrected count cost them representation and money. In *Wisconsin v. City of New York* (1996) the Court upheld the refusal as a reasonable exercise of the discretion Congress gave the Secretary.
-
-So this survey exists to describe a problem, not to repair it. It is a rare kind of official document: an agency's careful measurement of how wrong its own flagship product is, published in full, with no mechanism attached for acting on it. The [decennial chapter](../census-decennial/census-decennial-brief.html) sets out the statute and the three cases.
-
-That is worth holding next to the two refusals this chapter has already shown. The Bureau declines to characterise `r N_NONE` states because the survey did not see enough of them. It declines to correct any state because the law does not permit it. **The first is a limit of evidence and the second is a limit of authority**, and they are easy to mistake for each other on a page where both produce the same blank.
-
-## What this chapter cannot tell you
-
-**Net coverage error is not accuracy**, and the Bureau's own components table is the proof. Every headline number in this chapter is a *balance*; here is what the national balance is made of.
-
-```{r comptab}
-```
-
-About `r p1(FN("omissions_pct"))`% of people were omissions and about `r p1(FN("imputations_pct"))`% of the published count were whole-person imputations — a record the Bureau filled in because nothing usable came back for that person. Both are an order of magnitude larger than the `r p2(abs(FN("us_est")))`% net they produce. **A state at zero is not a state where nothing happened**; it is a state where a great deal happened in both directions and the two sides came out close to even.
-
-**No state-by-race table exists, and it is the table everybody wants.** The Bureau does not publish coverage by state crossed with race, age or tenure. The [decennial chapter](../census-decennial/census-decennial-brief.html) illustrates the scale by putting national rates on one state's counts and says plainly that this is an illustration rather than an estimate. Nothing here improves on that. **You cannot get from Figure 3 to a claim about who was missed in Georgia.**
-
-**A blank is not a clean bill of health.** On `r N_NONE` states the Bureau publishes a number and declines to characterise it. That is the agency saying *this survey did not see enough of this state to tell you*, and it gets reported as *this state was fine* constantly. The correct reading of a thin outline on Figure 1 is **we do not know**, and staring harder at the number will not change it — the missing evidence is missing.
-
-**The 2020 and 2010 margins are not the same quantity, so the two columns do not subtract.** The state table labels the 2020 margin a standard error and the 2010 one a root mean squared error. The 2010 estimates carried a bias that the 2020 modeling removed, and the Bureau widened the older margin to cover it. Subtraction will hand you a change for every state, and the Bureau marked none of them, so this chapter reports none. **"It got worse since 2010" is a claim the source does not support at the state level.**
-
-**Puerto Rico is absent from the map**, because the state table does not evaluate it. The Post-Enumeration Survey covered Puerto Rico on a separate design and published it separately, and folding an estimate from one design into a map of another would have been the wrong kind of completeness.
-
-**Three numbers here were keyed in rather than read.** The `r nn(FN("pes_blocks"))` blocks, `r nn(FN("pes_units"))` housing units and `r nn(FN("pes_interviews"))` interviews are the survey's design, which the Bureau states in prose rather than publishing as data; they were transcribed. Every estimate, every margin and every one of the Bureau's marks was taken out of the reports mechanically instead, so nothing that carries an argument depends on somebody having typed it correctly.
-
-**Secondary summaries of this survey are not always right, and one worth naming got a sign backwards.** The National Conference of State Legislatures' *Redistricting Law 2020* summarises the 2010 results for legislators and their staff. Most of its figures match the Bureau's: Black residents undercounted by about `r p2(abs(GR10("Black or African American")))`%, Hispanic residents by about `r p2(abs(GR10("Hispanic or Latino")))`%, residents on reservations by about `r p2(abs(GR10("On Reservation")))`%. But it reports the non-Hispanic White population as **undercounted** by 0.8% in 2010, where the Bureau's own table gives an *overcount* of `r p2(GR10("Non-Hispanic White alone"))`%. The direction is the whole point of that row, and a reader taking the summary on trust would have it exactly reversed. Read the agency's table, not a description of it.
-
-**The estimates are frozen at the 2022 releases.** These are the March 2022 demographic report and the May 2022 state report as published. The Bureau has revised a PES table before. A note in the state report records that Figure 2 and one appendix table were revised after first release, and a later revision would not be noticed here.
-
-**A count is not made true by being measured.** The Post-Enumeration Survey is itself a survey, with its own nonresponse, its own matching errors, and its own model. It is the best available evidence about the census and it is evidence of the same general kind as the thing it evaluates. The Bureau's own accuracy report is candid about this; nothing in a coverage estimate is a fact in the way a count of returned forms is a fact.
+Two stretch ideas, beyond the spreadsheet. Fetch the Bureau's 2010 coverage report, whose national demographic tables use a comparable design, and build the same picture as Figure 2 to ask whether the differential undercount is narrowing. Or take the six undercounted and eight overcounted states and re-run the 2020 apportionment with their counts adjusted by `est_2020`, to see whether any seat actually changes hands.
 
 ## Sources
 
@@ -228,12 +133,10 @@ About `r p1(FN("omissions_pct"))`% of people were omissions and about `r p1(FN("
 
 - U.S. Census Bureau. *Census Coverage Estimates for People in the United
   States by State and Census Operations*, 2020 Post-Enumeration Survey
-  Estimation Report, May 2022 release. Appendix Table 3 is the state table used
-  throughout: census count, 2020 estimate, the margin beside it, and the 2010
-  estimate with its own margin. The asterisks in that table are the Bureau's
-  marks — its footnote calls them estimates "significantly different from
-  zero", which is the agency's way of saying *this is a row we will
-  characterise* — and they are what the outlines in Figure 1 draw.
+  Estimation Report, May 2022 release. Appendix Table 3 is the state table
+  used throughout: census count, 2020 estimate, the margin beside it, and the
+  Bureau's asterisks, which its footnote calls estimates "significantly
+  different from zero" — the marks the outlines in Figure 1 draw.
   <https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/census-coverage-estimates-for-people-in-the-united-states-by-state-and-census-operations.pdf>
 - U.S. Census Bureau. *National Census Coverage Estimates for People in the
   United States by Demographic Characteristics*, 2020 Post-Enumeration Survey
@@ -241,49 +144,15 @@ About `r p1(FN("omissions_pct"))`% of people were omissions and about `r p1(FN("
   Table 6 tenure across four censuses, Table 10 age crossed with sex, Table 11
   age alone.
   <https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/national-census-coverage-estimates-by-demographic-characteristics.pdf>
-- Both of those are **PDFs, and there is no data release behind them** — no
-  CSV, no spreadsheet, no API endpoint anywhere on the Bureau's site carries
-  these numbers. Anyone who wants them in a table has to take them out of the
-  text layer of a printed report, which is what was done here for all
-  `r nrow(st)` states and all four demographic tables. Two details are worth
-  knowing if you go and do it yourself: the reports set minus as an en dash, so
-  every undercount fails to parse as a number until that is undone, and the
-  indentation of a row label is the only thing recording that "On Reservation"
-  is a subdivision of the row above it rather than a category beside it.
 - U.S. Census Bureau. *2020 Census self-response rates*, the file behind the
-  Bureau's response-rate map, `decennialrr2020.csv` — every geography, one row
-  per posting date, no key required.
+  Bureau's response-rate map, `decennialrr2020.csv`. The rates in `states.csv`
+  are the column `CRRALL` at the final posting, `r F("srr_date")`; the
+  similarly named `CMAX` is the maximum over the geographies inside a state
+  and belongs to some tract, not to the state.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/tracking-response-rates/self-response-rates-map/>
-  A trap in that file is worth naming, because its column names invite the
-  mistake: `CRRALL` is the geography's own cumulative self-response rate, while
-  `CMAX` is the *maximum over the geographies inside it*. `r F("trap_state")`'s `CRRALL` is
-  `r p1(FN("trap_crrall"))` and its `CMAX` is `r p1(FN("trap_cmax"))`; the
-  second number belongs to some tract in `r F("trap_state")`, not to
-  `r F("trap_state")`. The rates above are `CRRALL` at the
-  final posting, `r F("srr_date")`, and the national figure comes back at
-  `r p1(FN("srr_national"))`% exactly as published.
 - State outlines are the Census cartographic-boundary state file, projected
-  and simplified for the
-  [migration chapter](../migration/migration-brief.html) and reused here
-  unchanged rather than re-derived — a second projection of the same
-  boundaries would only drift out of agreement with the first.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`age.csv`](data/derived/age.csv), [`age_sex.csv`](data/derived/age_sex.csv), [`components.csv`](data/derived/components.csv), [`map_bins.csv`](data/derived/map_bins.csv), [`map_insets.csv`](data/derived/map_insets.csv), [`map_states.csv`](data/derived/map_states.csv), [`race.csv`](data/derived/race.csv), [`states.csv`](data/derived/states.csv), [`tenure.csv`](data/derived/tenure.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `states.csv` carries `est_2020` beside `se_2020`, and `bureau_states_it` records whether the Bureau was willing to say the number out loud. Count the TRUE rows. What share of the country got an answer it was prepared to stand behind?
-- `states.csv` also has `self_response` and `internet_response`. Sort by `self_response` and set it against `est_2020`. Do the states that answered on their own get counted better?
-- `race.csv` puts the 2020 estimate beside the 2010 one for each group. Which groups moved, and in which direction? Then ask whether that is the count improving or the measure changing.
-- `components.csv` breaks the count into correct enumerations and everything else. Work out what share is not a correct enumeration, and decide whether that number surprises you.
+  and simplified for the [migration chapter](../migration/migration-brief.html)
+  and reused here unchanged.
 
 **Statute and cases**
 
@@ -293,28 +162,13 @@ tables you just opened.
   to adjust the 1990 count using that decade's post-enumeration survey, upheld.
 - *Department of Commerce v. U.S. House of Representatives*, 525 U.S. 316
   (1999) — sampling barred for the apportionment count.
-- National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
-  NCSL, October 2019), ch. 1, whose sidebar summarises the 2010 coverage
-  results for legislative staff. Cited above as a worked example of a
-  secondary summary disagreeing with its own source.
 
-**Related**
+**The data itself**
 
-- U.S. Census Bureau. "2020 Census Undercounts in Six States, Overcounts in
-  Eight," *America Counts*, 19 May 2022 — the Bureau's own summary of the state
-  table.
-  <https://www.census.gov/library/stories/2022/05/2020-census-undercount-overcount-rates-by-state.html>
-- U.S. Census Bureau. *Source and Accuracy of the 2020 Post-Enumeration Survey
-  Estimates* — what the survey itself can and cannot do.
-- The [decennial census chapter](../census-decennial/census-decennial-brief.html)
-  for the instrument being evaluated, and the
-  [apportionment chapter](../apportionment/apportionment-brief.html) for what a
-  few hundred thousand people are worth in seats.
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
 
-**What the build verified before writing any of the above**
-
-```{r checks-repeat}
-```
+[`states.csv`](data/derived/states.csv), [`race.csv`](data/derived/race.csv), [`age.csv`](data/derived/age.csv), [`age_sex.csv`](data/derived/age_sex.csv), [`tenure.csv`](data/derived/tenure.csv), [`components.csv`](data/derived/components.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

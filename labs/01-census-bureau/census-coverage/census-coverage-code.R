@@ -35,7 +35,7 @@ p2 <- function(x) formatC(as.numeric(x), format = "f", digits = 2)
 sg <- function(x) paste0(ifelse(as.numeric(x) > 0, "+", ""), p2(x), "%")
 S  <- function(nm, col) st[[col]][st$state == nm]
 
-# the two demographic tables, at the census this chapter is about
+# the two demographic tables, at the census this brief is about
 A20 <- agesex[agesex$year == 2020, ]
 T20 <- ten[ten$year == 2020, ]
 G   <- function(d, g) d$est[d$group == g]
@@ -60,7 +60,7 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 RAMP <- c("#8A3B2C", "#C08268", "#EBD6CB", "#C3D8DE", "#5F92A2", "#1C4C5C")
 SIGB <- "#111111"      # the outline a marked state gets
 INSB <- "#b9b9b9"      # and the one everyone else gets
-ACC  <- "#1C4C5C"; WARN <- "#8A3B2C"; GRY <- "#8d8d8d"
+ACC  <- "#1C4C5C"; WARN <- "#8A3B2C"
 
 MW <- 1000; MH <- 620                      # the borrowed drawing frame
 mdec <- function(p) {                      # "x0 y0 dx dy ..." -> coordinates
@@ -68,7 +68,7 @@ mdec <- function(p) {                      # "x0 y0 dx dy ..." -> coordinates
   list(x = cumsum(v[c(TRUE, FALSE)]), y = cumsum(v[c(FALSE, TRUE)]))
 }
 # The District of Columbia is a handful of pixels wide at this scale and the
-# chapter names it three times, so it gets a leader out to open water. The
+# brief names it more than once, so it gets a leader out to open water. The
 # anchor is its own ring rather than a typed coordinate.
 dcz  <- mdec(mp$pts[mp$fips == "11"][1])
 DCX  <- mean(range(dcz$x)); DCY <- mean(range(dcz$y))
@@ -86,29 +86,6 @@ OVR <- st$state[st$direction == "overcount"]
 
 ## ---- checks
 data.frame(Check = ck$check, Value = ck$value)
-
-## ---- summary
-q <- quantile(st$est_2020, c(0, .25, .5, .75, 1))
-data.frame(
-  Statistic = c("Estimates published", "Mean", "Median",
-                "Standard deviation", "Range",
-                "Interquartile range",
-                "Rows the Bureau marks",
-                "Margin printed beside it, narrowest",
-                "Margin printed beside it, widest",
-                "Margin printed beside it, median"),
-  Value = c(
-    nn(nrow(st)),
-    sg(mean(st$est_2020)), sg(median(st$est_2020)),
-    paste0(p2(sd(st$est_2020)), " points"),
-    paste0(sg(q[1]), " (", st$state[which.min(st$est_2020)], ") to ",
-           sg(q[5]), " (", st$state[which.max(st$est_2020)], ")"),
-    paste0(sg(q[2]), " to ", sg(q[4])),
-    paste0(nn(N_UNDER + N_OVER), " of ", nrow(st),
-           " — ", N_UNDER, " undercounts, ", N_OVER, " overcounts"),
-    paste0(p2(FN("se_min")), " points (", F("se_min_state"), ")"),
-    paste0(p2(FN("se_max")), " points (", F("se_max_state"), ")"),
-    paste0(p2(FN("se_state_median")), " points")))
 
 ## ---- map-d3
 rg <- paste(sprintf('["%s","%s"]', mp$fips, mp$pts), collapse = ",")
@@ -240,70 +217,8 @@ data.frame(State = d$state,
                                            "overcounted"),
                                     "nothing"))
 
-## ---- people
-pk <- c("Texas", "Florida", "New York")
-d <- st[match(pk, st$state), ]
-data.frame(State = d$state,
-           Census_count = nn(d$census_count),
-           Rate = sg(d$est_2020),
-           Implied = paste0(nn(abs(d$implied_people)), " ",
-                            ifelse(d$implied_people > 0, "missed", "in excess")))
-
-## ---- cor-fig
-op <- par(mar = c(4.2, 4.4, 1.2, 1.2), mgp = c(2.6, 0.7, 0))
-# room above and below for the point labels, which otherwise clip at the frame
-yl <- range(st$est_2020) + c(-1.1, 1.1)
-plot(st$self_response, st$est_2020, type = "n", ylim = yl,
-     xlab = "self-response rate, 2020 (% of housing units)",
-     ylab = "net coverage error (%)", las = 1, cex.lab = 0.9, cex.axis = 0.85)
-abline(h = 0, col = "#cccccc")
-abline(lm(est_2020 ~ self_response, data = st), col = GRY, lty = 2, lwd = 1.2)
-points(st$self_response, st$est_2020, pch = 21, cex = 1.15, lwd = 0.8,
-       col = ifelse(st$bureau_states_it, "#111111", "#b0b0b0"),
-       bg = ifelse(st$bureau_states_it,
-                   ifelse(st$est_2020 < 0, WARN, ACC), "#f0f0f0"))
-# each label placed on the side of its point that is not already occupied
-LAB <- c(Alaska = 4, "West Virginia" = 3, Minnesota = 2, Hawaii = 4,
-         Arkansas = 4, Illinois = 4, Louisiana = 2, Texas = 1)
-for (nm in names(LAB))
-  text(S(nm, "self_response"), S(nm, "est_2020"), nm,
-       pos = LAB[[nm]], offset = 0.45, cex = 0.62, col = "#555")
-legend("topleft", bty = "n", cex = 0.68, pt.cex = 1.1, pch = 21,
-       col = c("#111111", "#111111", "#b0b0b0"),
-       pt.bg = c(WARN, ACC, "#f0f0f0"),
-       legend = c("the Bureau calls it undercounted",
-                  "the Bureau calls it overcounted",
-                  "the Bureau says nothing"))
-par(op)
-
-## ---- cor2
-data.frame(
-  Comparison = c("Self-response against the coverage estimate",
-                 "Self-response against that estimate's standard error"),
-  Correlation = c(p2(FN("cor_est_srr")), p2(FN("cor_se_srr"))),
-  Reading = c("no relationship worth naming",
-              "states that answered less got a wider margin"))
-
-## ---- agetab
-ind <- strrep(" ", age$level)
-data.frame(Age = paste0(ind, age$group),
-           Net_coverage_error = sg(age$est),
-           Margin = p2(age$se),
-           The_Bureau_says = ifelse(age$bureau_states_it,
-                                    ifelse(age$est < 0, "undercounted",
-                                           "overcounted"), "nothing"))
-
-## ---- agesextab
-d <- A20[grepl("males|females", A20$group), ]
-data.frame(Group = sub("-to-", " to ", d$group),
-           Net_coverage_error = sg(d$est),
-           Margin = p2(d$se),
-           The_Bureau_says = ifelse(d$bureau_states_it,
-                                    ifelse(d$est < 0, "undercounted",
-                                           "overcounted"), "nothing"))
-
 ## ---- demofig
-# One picture of every 2020 demographic estimate this chapter has, on one axis,
+# One picture of every 2020 demographic estimate this brief has, on one axis,
 # with the margin the Bureau prints beside it drawn either side. Not a
 # confidence interval the reader is asked to interpret -- the published hedge,
 # to scale, so that "the Bureau hedges these far less than the states" is
@@ -361,34 +276,6 @@ for (b in unique(D$blk)) {
        cex = 0.66, font = 2, col = "#666666")
 }
 par(op)
-
-## ---- tenuretab
-w <- reshape(ten[ten$group != "Total", c("group", "year", "est", "bureau_states_it")],
-             idvar = "group", timevar = "year", direction = "wide")
-data.frame(Tenure = w$group,
-           `2020` = paste0(sg(w$est.2020), ifelse(w$bureau_states_it.2020, "", " (ns)")),
-           `2010` = paste0(sg(w$est.2010), ifelse(w$bureau_states_it.2010, "", " (ns)")),
-           `2000` = paste0(sg(w$est.2000), ifelse(w$bureau_states_it.2000, "", " (ns)")),
-           `1990` = paste0(sg(w$est.1990), ifelse(w$bureau_states_it.1990, "", " (ns)")),
-           check.names = FALSE)
-
-## ---- racetab
-ind <- strrep(" ", race$level)
-data.frame(Group = paste0(ind, race$group),
-           Net_2020 = sg(race$est_2020),
-           Margin = p2(race$se_2020),
-           The_Bureau_says = ifelse(race$bureau_states_it,
-                                    ifelse(race$est_2020 < 0, "undercounted",
-                                           "overcounted"), "nothing"),
-           Net_2010 = sg(race$est_2010))
-
-## ---- comptab
-data.frame(Component = comp$component,
-           Percent = paste0(p2(comp$percent), "%"),
-           Standard_error = ifelse(is.na(comp$se), "—", p2(comp$se)))
-
-## ---- checks-repeat
-data.frame(Check = ck$check, Value = ck$value)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

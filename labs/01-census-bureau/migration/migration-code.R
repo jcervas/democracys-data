@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -41,13 +42,12 @@ C1    <- st[st$state == CONTRAST, ]
 NOR   <- nrow(st) - 1     # origins available to any one state: everywhere else
 
 # Whether an estimate clears its own 90 percent margin of error is the question
-# this chapter turns on, so the helper that prints an estimate together with its
+# this brief turns on, so the helper that prints an estimate together with its
 # margin is defined once here and used everywhere below.
 pm <- function(e, m) sprintf("%s ± %s", n(e), n(m))
 
 # ---- palette -------------------------------------------------------------
-RED <- "#C41230"; BLU <- "#2c7fb8"; GRN <- "#4d9221"
-ORG <- "#e08214"; PUR <- "#8856a7"; GRY <- "#999999"
+RED <- "#C41230"; BLU <- "#2c7fb8"; GRY <- "#999999"
 INK <- "#12161c"; LAND <- "#1e2732"; EDGE <- "#2f3d4d"
 ARC <- "#5fb0e5"; KEYTX <- "#9fb3c8"
 
@@ -57,9 +57,7 @@ ARC <- "#5fb0e5"; KEYTX <- "#9fb3c8"
 # version -- so the same thickness always means the same number of movers and
 # the key in the corner of each map can be read off. The transform is a square
 # root: these flows span roughly 300 to 1, and drawn linearly the small arcs
-# vanish while the big ones become blobs. Square root is the standard
-# perceptual compromise for line thickness, and it still delivers a much wider
-# span of widths than the flattened version this replaces.
+# vanish while the big ones become blobs.
 WREF <- 50000     # a flow of this many people ...
 WLWD <- 5.0       # ... is drawn this thick
 WMIN <- 0.40      # and nothing is drawn thinner than this, or it disappears
@@ -97,7 +95,7 @@ arckey <- function(cexs = 1) {
   }
 }
 
-# one arc panel, base R -- used for the PDF build of every arc figure
+# one arc panel, base R -- used for the PDF build of the arc figure
 arcpanel <- function(hub, dir, title, grey_insig = FALSE, cexs = 1) {
   d <- ar[ar$hub == hub & ar$dir == dir, ]
   d <- d[order(d$est), ]
@@ -166,6 +164,9 @@ data.frame(
   estimate = c(pm(F1$in_est, F1$in_moe), pm(F1$out_est, F1$out_moe),
                pm(F1$net, F1$net_moe), pm(F1$abroad_est, F1$abroad_moe)))
 
+## ---- gainers
+G <- head(S[order(-S$net), ], 2)          # the two biggest net gainers
+
 ## ---- arcwidth-facts
 aw    <- ar[ar$hub == FOCUS & ar$dir == "in", ]
 ao    <- ar[ar$hub == FOCUS & ar$dir == "out", ]
@@ -188,7 +189,7 @@ inbx  <- paste(sprintf('{"l":"%s","x":%d,"y":%d,"w":%d,"h":%d}', ins$label,
                        ins$x0, ins$y0, ins$x1 - ins$x0, ins$y1 - ins$y0),
                collapse = ",")
 hubxy <- paste(sprintf('{"n":"%s","x":%.1f,"y":%.1f}',
-                       c(FOCUS, CONTRAST), c(F1$mx, C1$mx), c(F1$my, C1$my)),
+                       FOCUS, F1$mx, F1$my),
                collapse = ",")
 cat(sprintf('
 <div id="arcwrap" style="margin:1em 0">
@@ -205,7 +206,7 @@ cat(sprintf('
 <script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
-const A={"%s":[%s],"%s":[%s]};
+const A={"%s":[%s]};
 const PATHS=[%s], BX=[%s], HUB=[%s];
 const W=%d,H=%d;
 const svg=d3.select("#arc").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
@@ -241,7 +242,6 @@ WKEY.forEach((v,i)=>{
     .attr("font-size","13px").attr("fill",KEYTX).text(d3.format(",")(v));
 });
 const g=svg.append("g");
-const dots=svg.append("g");
 const hubg=svg.append("g");
 const tip=d3.select("#arc").append("div").attr("style",
  "position:absolute;pointer-events:none;background:#000;color:#fff;padding:6px 9px;"+
@@ -273,7 +273,6 @@ function draw(){
     `each other state. Showing ${d.length} of ${nAll} arcs, `+
     `${d3.format(".1%%")(shown/total)} of the people. Hover any arc.`);
 }
-dots.selectAll("circle").data(HUB).join("circle");
 function hubdots(){
   const h=HUB.find(z=>z.n===HUBN);
   hubg.selectAll("circle").data([h]).join("circle")
@@ -283,10 +282,9 @@ function hubdots(){
 d3.selectAll(\'input[name="dir"]\').on("change",draw);
 d3.select("#onlysig").on("change",draw);
 hubdots(); draw();
-window.__setHub=function(nm){HUBN=nm;hubdots();draw();};
 })();
 </script>
-', FOCUS, FOCUS, FOCUS, mk(FOCUS), CONTRAST, mk(CONTRAST), paths, inbx, hubxy,
+', FOCUS, FOCUS, FOCUS, mk(FOCUS), paths, inbx, hubxy,
    MW, MH, INK, LAND, EDGE, EDGE,
    ARC, GRY, KEYTX, WREF, WLWD, WMIN, paste(WKEY, collapse = ","),
    FOCUS, RED))
@@ -295,124 +293,6 @@ window.__setHub=function(nm){HUBN=nm;hubdots();draw();};
 par(mfrow = c(1, 2))
 arcpanel(FOCUS, "in",  sprintf("Arriving in %s", FOCUS), cexs = 1.5)
 arcpanel(FOCUS, "out", sprintf("Leaving %s", FOCUS),     cexs = 1.5)
-
-## ---- diverge-setup
-# the margin of error on a rate is the margin on the count, divided by the same
-# population the rate was divided by
-S$rate_moe <- 1000 * S$net_moe / S$pop1
-S$rate_lo  <- S$net_per1k - S$rate_moe
-S$rate_hi  <- S$net_per1k + S$rate_moe
-
-TOPR <- which.max(S$net_per1k)     # highest rate
-TOPN <- which.max(S$net)           # highest raw count
-# every other jurisdiction whose rate interval reaches into the leader's
-OVL  <- which(S$rate_hi >= S$rate_lo[TOPR] & seq_len(nrow(S)) != TOPR)
-RKN  <- rank(-S$net); RKR <- rank(-S$net_per1k)
-SPR  <- cor(S$net, S$net_per1k, method = "spearman")
-
-## ---- diverge-static
-# The HTML build of this figure is one chart with a toggle. Print cannot toggle,
-# so it gets both panels at once: same 51 jurisdictions, two orderings.
-divpanel <- function(v, m, ttl, xlab) {
-  o <- order(v); vv <- v[o]; mm <- m[o]
-  par(mar = c(4.2, 5.0, 1.8, 1.2))
-  bp <- barplot(vv, horiz = TRUE, border = NA, names.arg = rep("", length(vv)),
-                col = ifelse(!S$net_sig[o], GRY, ifelse(vv > 0, GRN, RED)),
-                xlim = range(c(vv - mm, vv + mm)) * 1.04, xlab = xlab)
-  axis(2, at = bp, labels = S$state[o], las = 1, cex.axis = 0.36,
-       tick = FALSE, line = -0.7)
-  segments(vv - mm, bp, vv + mm, bp, col = "#00000099", lwd = 0.6)
-  segments(0, min(bp) - 0.5, 0, max(bp) + 0.5, col = "#333", lwd = 1)
-  mtext(ttl, side = 3, line = 0.4, cex = 0.66, adj = 0)
-}
-par(mfrow = c(1, 2))
-divpanel(S$net_per1k, S$rate_moe, "per 1,000 residents",
-         "net per 1,000 residents")
-divpanel(S$net / 1000, S$net_moe / 1000, "raw net people",
-         "net people (thousands)")
-legend("topleft", bty = "n", cex = 0.5, fill = c(GRN, RED, GRY), border = NA,
-       legend = c("net gain", "net loss", "not distinguishable from zero"))
-
-## ---- diverge-d3
-rows <- paste(sprintf('{"s":"%s","v":%.2f,"r":%.2f,"n":%d,"m":%d,"g":%d}',
-        gsub('"', "", S$state), S$net_per1k, S$rate_moe, S$net, round(S$net_moe),
-        as.integer(S$net_sig)), collapse = ",")
-cat(sprintf('
-<div id="dvwrap" style="margin:1em 0">
- <div style="margin:0 0 .5em 0;font:13px/1.4 inherit"><b>Measure:</b>
-  <label><input type="radio" name="dvm" value="rate" checked>
-   net per 1,000 residents</label>
-  <label style="margin-left:.9em"><input type="radio" name="dvm" value="raw">
-   raw net people</label>
- </div>
- <div id="dv" style="position:relative"></div>
- <p id="dvcap" style="font-size:0.85em;color:#666;margin:.35em 0 0 0"></p>
-</div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=720,M={t:26,r:30,b:40,l:132};
-const svg=d3.select("#dv").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const gx=svg.append("g").attr("transform",`translate(0,${H-M.b})`);
-const gy=svg.append("g").attr("transform",`translate(${M.l},0)`);
-const gb=svg.append("g"), ge=svg.append("g");
-const zero=svg.append("line").attr("stroke","#333");
-const xlab=svg.append("text").attr("x",(W+M.l)/2).attr("y",H-6)
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#444");
-const tip=d3.select("#dv").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-const cap=d3.select("#dvcap");
-[["%s","net gain"],["%s","net loss"],["%s","not distinguishable from zero"]]
- .forEach((c,i)=>{
-  svg.append("rect").attr("x",M.l+8+i*168).attr("y",6).attr("width",11).attr("height",11).attr("fill",c[0]);
-  svg.append("text").attr("x",M.l+24+i*168).attr("y",15.5).attr("font-size","10.5px")
-    .attr("fill","#555").text(c[1]);});
-function draw(){
-  const raw=d3.select(\'input[name="dvm"]:checked\').property("value")==="raw";
-  const V=d=>raw?d.n:d.v, E=d=>raw?d.m:d.r;
-  const A=D.slice().sort((a,b)=>V(a)-V(b));
-  const x=d3.scaleLinear().domain([d3.min(A,d=>V(d)-E(d)),d3.max(A,d=>V(d)+E(d))])
-    .nice().range([M.l,W-M.r]);
-  const y=d3.scaleBand().domain(A.map(d=>d.s)).range([M.t,H-M.b]).padding(0.18);
-  const T=svg.transition().duration(500);
-  gx.transition(T).call(d3.axisBottom(x).ticks(8)
-    .tickFormat(raw?d3.format("~s"):null));
-  gy.transition(T).call(d3.axisLeft(y).tickSize(0))
-    .call(g=>g.select(".domain").remove());
-  gy.selectAll("text").attr("font-size","9.5px");
-  gb.selectAll("rect").data(A,d=>d.s).join("rect")
-    .attr("fill",d=>!d.g?"%s":(V(d)>0?"%s":"%s"))
-    .on("mousemove",function(e,d){tip.style("opacity",1).html(
-       `<b>${d.s}</b><br>${d3.format("+,")(d.n)} &plusmn; ${d3.format(",")(d.m)} people`+
-       `<br>${d3.format("+.2f")(d.v)} &plusmn; ${d3.format(".2f")(d.r)} per 1,000`+
-       (d.g?"":`<br><span style="color:#ffb0bd">not distinguishable from zero</span>`))
-     .style("left",Math.min(e.offsetX+14,W-230)+"px").style("top",(e.offsetY-6)+"px");})
-    .on("mouseleave",()=>tip.style("opacity",0))
-    .transition(T)
-    .attr("x",d=>Math.min(x(0),x(V(d)))).attr("y",d=>y(d.s))
-    .attr("width",d=>Math.abs(x(V(d))-x(0))).attr("height",y.bandwidth());
-  ge.selectAll("line").data(A,d=>d.s).join("line")
-    .attr("stroke","#00000099").attr("stroke-width",1).transition(T)
-    .attr("x1",d=>x(V(d)-E(d))).attr("x2",d=>x(V(d)+E(d)))
-    .attr("y1",d=>y(d.s)+y.bandwidth()/2).attr("y2",d=>y(d.s)+y.bandwidth()/2);
-  zero.transition(T).attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t).attr("y2",H-M.b);
-  xlab.text(raw?"net interstate migration, people":
-                "net interstate migration per 1,000 residents");
-  // the two leaders are named in R and passed in as strings, so this caption
-  // and the prose around the figure cannot pick different states
-  cap.html(`Sorted by ${raw?"the raw count":"the rate"}. `+
-    `<b>%s</b> leads per 1,000 residents; <b>%s</b> leads on the raw `+
-    `count. The black line on each bar is the 90 percent interval published `+
-    `with the estimate: where two of them overlap, the survey does not `+
-    `establish which of those two states is higher.`);
-}
-d3.selectAll(\'input[name="dvm"]\').on("change",draw);
-draw();
-})();
-</script>
-', rows, GRN, RED, GRY, GRY, GRN, RED, S$state[TOPR], S$state[TOPN]))
 
 ## ---- moe-accounting
 data.frame(
@@ -486,189 +366,8 @@ svg.append("text").attr("x",(W+M.l)/2).attr("y",H-6).attr("text-anchor","middle"
 </script>
 ', rows, BLU, RED))
 
-## ---- contrast-static
-par(mfrow = c(1, 2))
-arcpanel(FOCUS, "in", sprintf("%s: %d of %d usable", FOCUS, F1$sig_in_n, NOR),
-         grey_insig = TRUE, cexs = 1.5)
-arcpanel(CONTRAST, "in", sprintf("%s: %d of %d usable", CONTRAST, C1$sig_in_n, NOR),
-         grey_insig = TRUE, cexs = 1.5)
-
-## ---- contrast-d3
-cat(sprintf('
-<div id="arcwrap2" style="margin:1em 0">
- <div style="margin:0 0 .5em 0;font:13px/1.4 inherit"><b>Hub state:</b>
-  <label><input type="radio" name="hub2" value="%s" checked> %s (%d of %d usable)</label>
-  <label style="margin-left:.9em"><input type="radio" name="hub2" value="%s"> %s (%d of %d usable)</label>
- </div>
-</div>
-<p style="font-size:0.85em;color:#666;margin:.2em 0 0 0">
-These buttons redraw the map above. Dotted gray arcs are flows the survey cannot
-distinguish from zero; switch on "hide flows not distinguishable from zero" to
-see what is left.</p>
-<script>
-(function(){
-d3.selectAll(\'input[name="hub2"]\').on("change",function(){
-  window.__setHub(this.value);
-  document.getElementById("arc").scrollIntoView({behavior:"smooth",block:"center"});
-});
-})();
-</script>
-', FOCUS, FOCUS, F1$sig_in_n, NOR, CONTRAST, CONTRAST, C1$sig_in_n, NOR))
-
-## ---- sigscatter-facts
-# how tightly usable-inflow count tracks size. Computed once here so the caption
-# and the sentence beneath it quote the same correlation.
-SIGCOR <- cor(log(S$pop1), S$sig_in_n)
-SMALL  <- S[which.min(S$pop1), ]
-BIG    <- S[which.max(S$pop1), ]
-
-## ---- sigscatter-static
-par(mar = c(4.0, 4.2, 1.0, 1.0))
-plot(S$pop1, S$sig_in_n, log = "x", pch = 19, cex = 0.9,
-     col = adjustcolor(BLU, 0.75), xaxt = "n",
-     ylim = c(min(S$sig_in_n) - 2, max(S$sig_in_n) + 4),
-     xlab = "state population aged 1 and over (log scale)",
-     ylab = sprintf("usable inflows (of %d)", NOR))
-at <- c(6e5, 1e6, 3e6, 1e7, 3e7)
-axis(1, at = at, labels = c("600k", "1m", "3m", "10m", "30m"), cex.axis = 0.75)
-lab <- S$state %in% c(FOCUS, CONTRAST, "Texas", "Florida", "Wyoming", "Vermont",
-                      "New York", "North Dakota")
-text(S$pop1[lab], S$sig_in_n[lab], S$state[lab], pos = 3, cex = 0.55, col = "#444")
-points(S$pop1[S$state %in% c(FOCUS, CONTRAST)], S$sig_in_n[S$state %in% c(FOCUS, CONTRAST)],
-       pch = 21, cex = 1.3, col = RED, lwd = 1.6)
-
-## ---- sigscatter-d3
-rows <- paste(sprintf('{"s":"%s","p":%d,"k":%d,"h":%d}', gsub('"', "", S$state),
-       S$pop1, S$sig_in_n, as.integer(S$state %in% c(FOCUS, CONTRAST))),
-       collapse = ",")
-cat(sprintf('
-<div id="sc" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=380,M={t:16,r:24,b:46,l:60};
-const svg=d3.select("#sc").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLog().domain(d3.extent(D,d=>d.p)).nice().range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,52]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6,"~s"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(W+M.l)/2).attr("y",H-6).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#444")
-  .text("state population aged 1 and over (log scale)");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",14).attr("text-anchor","middle").attr("font-size","11.5px")
-  .attr("fill","#444").text("inflows distinguishable from zero (of %d)");
-const tip=d3.select("#sc").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.p)).attr("cy",d=>y(d.k)).attr("r",d=>d.h?6:4.5)
-  .attr("fill",d=>d.h?"%s":"%s").attr("fill-opacity",0.8)
-  .attr("stroke",d=>d.h?"#fff":"none").attr("stroke-width",1.3)
-  .on("mousemove",function(e,d){tip.style("opacity",1)
-    .html(`<b>${d.s}</b><br>${d3.format(",")(d.p)} people<br>${d.k} of %d inflows usable`)
-    .style("left",Math.min(e.offsetX+14,W-190)+"px").style("top",(e.offsetY-6)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-', rows, NOR, RED, BLU, NOR))
-
-## ---- born-extremes
-o <- S[order(-S$born_state_pct), c("state", "born_state_pct")]
-hi <- head(o, 5); lo <- tail(o, 5)
-data.frame(
-  `most born in state` = sprintf("%s (%s%%)", hi$state, pc(hi$born_state_pct)),
-  `fewest born in state` = sprintf("%s (%s%%)", rev(lo$state), pc(rev(lo$born_state_pct))),
-  check.names = FALSE)
-
-## ---- stack-setup
-K <- rbind(head(S[order(-S$born_state_pct), ], 6),
-           head(S[order( S$born_state_pct), ], 6))
-K <- K[order(K$born_state_pct), ]
-K$other_us <- K$born_otherstate_pct + K$born_pr_pct
-SEG <- c(BLU, GRN, ORG)
-SLAB <- c("born in this state", "born in another U.S. state or Puerto Rico",
-          "born in a foreign country")
-
-## ---- stack-static
-par(mar = c(4.2, 7.2, 2.2, 1.0))
-m <- t(as.matrix(K[, c("born_state_pct", "other_us", "born_foreign_pct")]))
-bp <- barplot(m, horiz = TRUE, col = SEG, border = "white", names.arg = rep("", ncol(m)),
-              xlim = c(0, 100), xlab = "% of residents")
-axis(2, at = bp, labels = K$state, las = 1, cex.axis = 0.62, tick = FALSE, line = -0.6)
-legend("top", inset = c(0, -0.13), xpd = NA, bty = "n", cex = 0.58, ncol = 3,
-       fill = SEG, border = "white", legend = SLAB)
-
-## ---- stack-d3
-rows <- paste(sprintf('{"s":"%s","a":%.2f,"b":%.2f,"c":%.2f}', gsub('"', "", K$state),
-       K$born_state_pct, K$other_us, K$born_foreign_pct), collapse = ",")
-cat(sprintf('
-<div id="sk" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], SEG=["%s","%s","%s"],
- LAB=["born in this state","born in another U.S. state or Puerto Rico","born in a foreign country"];
-const W=760,H=390,M={t:34,r:20,b:40,l:132};
-const svg=d3.select("#sk").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.s)).range([H-M.b,M.t]).padding(0.22);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).tickSize(0))
-  .call(g=>g.select(".domain").remove()).selectAll("text").attr("font-size","10px");
-const tip=d3.select("#sk").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-D.forEach(d=>{
-  const v=[d.a,d.b,d.c]; let acc=0;
-  v.forEach((q,i)=>{
-    svg.append("rect").attr("x",x(acc)).attr("y",y(d.s))
-      .attr("width",x(q)-x(0)).attr("height",y.bandwidth())
-      .attr("fill",SEG[i]).attr("stroke","#fff").attr("stroke-width",0.8)
-      .on("mousemove",function(e){const w=d3.select("#sk").node().clientWidth;
-        tip.style("opacity",1).html(`<b>${d.s}</b><br>${LAB[i]}<br>${q.toFixed(1)}%%`)
-         .style("left",Math.min(e.offsetX+14,w-230)+"px").style("top",(e.offsetY-6)+"px");})
-      .on("mouseleave",()=>tip.style("opacity",0));
-    acc+=q;});
-});
-LAB.forEach((l,i)=>{
-  svg.append("rect").attr("x",M.l+i*208).attr("y",10).attr("width",11).attr("height",11)
-    .attr("fill",SEG[i]);
-  svg.append("text").attr("x",M.l+16+i*208).attr("y",19.5).attr("font-size","10px")
-    .attr("fill","#555").text(l);});
-})();
-</script>
-', rows, SEG[1], SEG[2], SEG[3]))
-
-## ---- abroad-table
-o <- S[order(-S$abroad_per1k), ]
-h <- head(o, 6)
-data.frame(state = h$state,
-           `arrivals from abroad` = pm(h$abroad_est, h$abroad_moe),
-           `per 1,000 residents` = pc(h$abroad_per1k),
-           `net interstate migration` = sprintf("%s%s", ifelse(h$net > 0, "+", ""), n(h$net)),
-           check.names = FALSE)
-
-## ---- county-table
-h <- head(cy, 6)
-data.frame(
-  `moved from` = sprintf("%s, %s", h$county_a, h$state_a),
-  `people, with margin` = pm(h$into_b, h$into_b_moe),
-  `distinguishable from zero` = ifelse(h$sig_in, "yes", "no"),
-  check.names = FALSE)
-
-## ---- county-accounting
-data.frame(
-  quantity = c(sprintf("Counties with a reported inflow to %s", CTY),
-               "Of those, distinguishable from zero",
-               "Share that survive (%)",
-               "Share of state pairs that survived, for comparison (%)"),
-  value = c(n(mn("county_all_pairs")), n(mn("county_all_sig")),
-            pc(100 * mn("county_all_sig") / mn("county_all_pairs")),
-            pc(mn("pct_sig_of_pairs"))))
+## ---- mob-facts
+f <- mo[1, ]; l <- mo[nrow(mo), ]
 
 ## ---- mobility-static
 par(mar = c(3.8, 4.0, 1.6, 9.2))
@@ -677,66 +376,31 @@ plot(NA, xlim = range(mo$year), ylim = c(0, max(mo$movers) * 1.04),
 axis(1, cex.axis = 0.78); axis(2, las = 1, cex.axis = 0.78); box(col = "#ccc")
 V <- list(c("movers", GRY, "all movers"),
           c("same_county", BLU, "within the same county"),
-          c("same_state_diff_county", GRN, "same state, new county"),
+          c("same_state_diff_county", "#4d9221", "same state, new county"),
           c("diff_state", RED, "to a different state"))
 for (v in V) lines(mo$year, mo[[v[1]]], col = v[2], lwd = 2.2)
 for (v in V) text(max(mo$year) + 1.2, mo[[v[1]]][nrow(mo)], v[3], pos = 4,
                   cex = 0.55, col = v[2], xpd = NA)
 
 ## ---- mobility-d3
-rows <- paste(sprintf('{"y":%d,"a":%.1f,"b":%.1f,"c":%.1f,"d":%.1f}', mo$year,
-       mo$movers, mo$same_county, mo$same_state_diff_county, mo$diff_state),
-       collapse = ",")
-cat(sprintf('
-<div id="ts" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const K=[["a","%s","all movers"],["b","%s","within the same county"],
-         ["c","%s","same state, new county"],["d","%s","to a different state"]];
-const W=760,H=380,M={t:16,r:150,b:42,l:52};
-const svg=d3.select("#ts").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain(d3.extent(D,d=>d.y)).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.a)*1.05]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6).tickFormat(d=>d+"%%"));
-K.forEach(k=>{
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",k[1]).attr("stroke-width",2.2)
-    .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[k[0]])));
-  const last=D[D.length-1];
-  svg.append("text").attr("x",W-M.r+8).attr("y",y(last[k[0]])+3).attr("font-size","10.5px")
-    .attr("fill",k[1]).text(k[2]);
-});
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",13)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#444")
-  .text("%% who moved in the previous year");
-const tip=d3.select("#ts").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l).attr("height",H-M.b-M.t)
- .attr("fill","none").attr("pointer-events","all")
- .on("mousemove",function(e){
-   const yr=Math.round(x.invert(d3.pointer(e,this)[0]+M.l));
-   const d=D.reduce((p,q)=>Math.abs(q.y-yr)<Math.abs(p.y-yr)?q:p);
-   tip.style("opacity",1).html(`<b>${d.y}</b><br>all movers ${d.a}%%`+
-     `<br>different state ${d.d}%%`)
-    .style("left",Math.min(e.offsetX+14,W-170)+"px").style("top",(e.offsetY-6)+"px");})
- .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-', rows, GRY, BLU, GRN, RED))
-
-## ---- mobility-numbers
-f <- mo[1, ]; l <- mo[nrow(mo), ]
-data.frame(
-  measure = c("Share who moved at all (%)", "Share who moved to a different state (%)"),
-  `first year` = c(pc(f$movers), pc(f$diff_state)),
-  `last year`  = c(pc(l$movers), pc(l$diff_state)),
-  check.names = FALSE)
-
-## ---- gainers
-G <- head(S[order(-S$net), ], 2)          # the two biggest net gainers
+# Drawn with the shared chart library rather than hand-written D3: this is a
+# plain multi-series line chart, which is exactly what the library is for.
+# d3 itself was loaded once by the arc map above, so dd_fig() is told not to
+# emit it a second time; it still emits dd-charts.js.
+dd_fig("mobility", "line",
+  mo[, c("year", "movers", "same_county", "same_state_diff_county",
+         "diff_state")],
+  d3 = FALSE,
+  x = list(field = "year", fmt = "d"),
+  y = list(domain = c(0, ceiling(max(mo$movers) * 1.05)),
+           label = "% who moved in the previous year", fmt = "f1"),
+  series = list(fields = list(
+    list(field = "movers", label = "all movers"),
+    list(field = "same_county", label = "within the same county"),
+    list(field = "same_state_diff_county", label = "same state, new county"),
+    list(field = "diff_state", label = "to a different state"))),
+  endLabels = TRUE,
+  size = list(h = 380, m = list(r = 170)))
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

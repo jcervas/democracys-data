@@ -1,7 +1,7 @@
 ---
-title: "One Poll, Five Answers"
+title: "How Weighting Choices Change a Poll's Result: Florida, 2016"
 type: brief
-subtitle: "867 Florida voters, the weights that turned them into a result, and the winner that changes when you turn the dial"
+subtitle: "One poll, five answers — 867 Florida voters, the weights that turned them into a result, and the winner that changes when you turn the dial"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 3
@@ -16,40 +16,46 @@ dd_read_chunks("poll-weighting-code.R")
 ```{r setup, include=FALSE}
 ```
 
-On 20 September 2016 *The New York Times* published a poll of Florida and then did something almost no pollster does. It gave the raw file away.
+Two pollsters holding the same interviews can publish different winners. That sounds like an accusation, and it is not one; it is a documented event, and the document is public. On 20 September 2016 *The New York Times* published a poll of Florida and then did something almost no pollster does: it gave the raw file away.
 
-The Times and Siena College had interviewed `r F("n")` Florida voters and published a result: Clinton by one point. Alongside it, the Upshot handed the respondent-level data to four outside pollsters and asked each to produce the estimate themselves. The four came back with four different answers, spread across five points, and they did not agree on who was ahead.
+The Times and Siena College had interviewed `r F("n")` Florida voters and published a result, Clinton by one point. Alongside it, the Upshot handed the respondent-level data to four outside pollsters and asked each to produce the estimate themselves. The four came back with four different answers, spread across five points, and they did not agree on who was ahead.
 
-Nobody cheated and nobody made an arithmetic error. The `r F("n")` people were the same `r F("n")` people in every case. What differed was the **weighting**: counting some answers more than others, so that a sample which does not look like the electorate can be made to. This chapter is about those decisions, because **the file the Upshot released is still public and you can turn the dial yourself.**
+Nobody cheated and nobody made an arithmetic error. The `r F("n")` people were the same `r F("n")` people in every case. What differed was the **weighting**: counting some answers more than others, so that a sample which does not look like the electorate can be made to. How does the same file honestly yield different winners — and which decisions inside the weighting actually move the answer? The file that lets anyone check is still public, so this brief turns the dials and watches.
 
-## Where this file came from
+## The test
 
-Everything below is built from `upshot-siena-polls.csv`, released by the Times on GitHub: `r n(FN("src_rows"))` respondents across six state-waves, of which the September Florida wave is the `r F("n")` this chapter reads.
+The data is the [2016 Times/Siena respondent-level poll file](https://github.com/TheUpshot/2016-upshot-siena-polls), released by the Times on GitHub: `r n(FN("src_rows"))` respondents across six state-waves, of which the September Florida wave is the `r F("n")` this brief reads. Florida's certified November result — the answer sheet — comes from this book's [historical campaigns chapter](../../03-elections/historical-campaigns/historical-campaigns-brief.html).
 
-Getting it takes one line and no permission. There is no key, no account and no guestbook, which is worth pausing on rather than enjoying. A respondent-level poll file is normally the last thing a pollster releases, because it is the only thing that lets somebody else disagree with them in public. The Upshot released one on purpose, so that four rival pollsters could contradict it in the same week.
+Why this source, of all polls? Because it is very nearly the only one of its kind. A respondent-level poll file is normally the last thing a pollster releases, since it is the only thing that lets somebody else disagree with them in public; the Upshot released one on purpose, so that four rivals could contradict it in the same week. It carries the interviews *and* the two weights the Times applied, so the published answer can be checked rather than taken on trust — and every rival scheme can be rebuilt on the same people.
 
-What that ease costs is the other half of the story. This is a newspaper's file on a code-hosting site, not an archive. No statute obliges anyone to keep it there, no agency will notice if it goes, and the version you fetch tomorrow is whatever the repository holds tomorrow. The small derived files in this chapter's folder are committed for exactly that reason.
+The mechanics of weighting are this section's subject, and its [weighting chapter](../ces-class/ces-class-brief.html) walks through them on the largest survey that publishes its own. The short version to carry in: weighting is only the statistical step that makes a sample resemble a chosen picture of the electorate. The picture itself — how many college graduates, how many seniors — is benchmarked from outside, ultimately against the Census Bureau's counts. This brief is about choosing the picture.
 
-**The file is unusually complete for what this chapter needs.** It carries the two weights the Times itself applied, so the published answer can be checked rather than taken on trust. It also carries the raw material of the rival schemes. There is what each respondent said about their own education and race. And separately, what the *voter file* says about their party registration, race, age and turnout history. That second set is what a pollster weighting to registration data would reach for, and the disagreement between the two sets turns out to matter.
+## The data
 
-## Before you read on
+Everything below is built from `upshot-siena-polls.csv`, fetched with one line and no permission: no key, no account, no guestbook. That ease has a cost worth naming. This is a newspaper's file on a code-hosting site, not an archive; no statute obliges anyone to keep it there, and the version you fetch tomorrow is whatever the repository holds tomorrow. The small derived files in this brief's folder are committed for exactly that reason.
 
-`r mnote("Write the number down. The gap between the guess and the answer is the chapter.")`
+The build keeps the `r F("n")` September Florida respondents and writes three tables. `fl_respondents.csv` holds one row per person: `vote`, the Times' two weights `rvweight` and `lvweight`, and six columns describing who the person is — `educ4`, `race4`, `race_said`, `party3`, `age4`, `turnout3`, `region5`. Two of those deserve a flag. `race_said` is the race the respondent gave the interviewer; `race4` is the race Florida's voter file records for the same person, and the two will matter separately below. `party3` and `turnout3` also come from the voter file: registration and vote history are records, not answers.
 
-The published poll said **Clinton +1**. Those `r F("n")` people were interviewed, and their answers were then weighted to produce that figure.
+`schemes.csv` holds one row per weighting scheme — a `margin` and a `leader` for each way of treating the same people. And `targets.csv` holds what each scheme assumes the electorate looks like, variable by variable. Its Times columns are not copied from anywhere: they are recovered from the published weights, by a trick worth knowing because it applies to any survey that ships them. A weighted tabulation *is* a target. Weight the sample by the Times' likely-voter weight and tabulate education, and what comes back is the education profile the Times assumed Florida's likely voters had, because the weights were built to hit it.
 
-**What was Clinton's margin among the respondents before anybody weighted anything?** Not the published number — the raw count of who said what.
+Of the `r F("n")` respondents, `r F("n_twoparty")` named one of the two major candidates; the other `r F("n_other")` named somebody else, refused, or said they would not vote. Every margin below is computed over the `r F("n_twoparty")`.
 
-## The ladder
+> **Before you read on, commit to a view.** The published poll said
+> **Clinton +1**. **What was Clinton's margin among the respondents before
+> anybody weighted anything?** Not the published number — the raw count of
+> who said what. Write it down; the gap between your guess and the answer
+> is the brief.
 
-Three numbers, from the same `r F("n_twoparty")` people who named one of the two major candidates. The other `r F("n_other")` named somebody else, refused, or said they would not vote.
+## What it says about democracy
+
+### The ladder
+
+Three numbers, from the same `r F("n_twoparty")` people.
 
 ```{r ladder-table}
 ```
 
-**As collected, Clinton led by `r p1(F("margin_raw"))` points.** Published, she led by `r p1(F("margin_lv"))`. The same people, `r p1(F("weighting_moves"))` points apart.
-
-Most readers guess the raw figure at two or three points above the published one. It is more than eight. Weighting is not a rounding step applied to a result that already exists — it is most of how the result came to exist at all.
+**As collected, Clinton led by `r p1(F("margin_raw"))` points.** Published, she led by `r p1(F("margin_lv"))`. The same people, `r p1(F("weighting_moves"))` points apart. Most readers guess the raw figure at two or three points above the published one. It is more than eight. Weighting is not a rounding step applied to a result that already exists — it is most of how the result came to exist at all.
 
 ```{r ladder-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -57,45 +63,35 @@ Most readers guess the raw figure at two or three points above the published one
 ```{r ladder-static, eval=!knitr::is_html_output(), fig.height=2.9}
 ```
 
-*Figure 1. The same `r F("n_twoparty")` respondents under three weights. The red rule is Florida's actual two-party margin, `r sg(F("actual_margin"))`.*
+**Figure 1. The same `r F("n_twoparty")` respondents under three weights**, drawn as bars from zero because the question is distance from a tie. The red rule is Florida's actual two-party margin, `r sg(F("actual_margin"))`.
 
-## What the four pollsters were asked to do
+### What the four pollsters were asked to do
 
-The Upshot's exercise was not a test of arithmetic. Each pollster received the same respondents and made their own decisions about two separate things.
-
-**Which people count as the electorate.** A poll of adults is not a poll of voters. Every pollster applies some rule about who will actually turn out, and the rules disagree: a stated intention to vote, a record of having voted before, a modeled score, or some combination.
-
-**What the electorate is assumed to look like.** Once you have decided who counts, you decide what they look like in aggregate. How many are college graduates, how many are registered Democrats, how many are over 65. Then you scale the respondents until your sample matches that picture.
+The Upshot's exercise was not a test of arithmetic. Each pollster received the same respondents and made their own decisions about two separate things. First, **which people count as the electorate**: every pollster applies some rule about who will actually turn out — a stated intention, a record of having voted before, a modeled score — and the rules disagree. Second, **what the electorate is assumed to look like**: how many college graduates, how many registered Democrats, how many over 65. Then each scaled the respondents until the sample matched their picture.
 
 Their published answers, as the article reported them:
 
 ```{r four-table}
 ```
 
-`r mnote("These five figures are quoted from the article, not computed here. The pollsters described their methods in prose rather than publishing code, and two of them used targets that are not in the released file. Nothing in this chapter claims to have reproduced them.")`
+`r mnote("These five figures are quoted from the article, not computed here. The pollsters described their methods in prose rather than publishing code, and two of them used targets that are not in the released file. Nothing in this brief claims to have reproduced them.")`
 
-That table is the reason this chapter exists, and it is also the one thing in it this chapter cannot rebuild. What can be rebuilt is the mechanism the five answers came out of, on the file they all worked from.
+That table is the reason this brief exists, and it is also the one thing in it this brief cannot rebuild. What can be rebuilt is the mechanism the five answers came out of, on the file they all worked from.
 
-## The electorate the Times assumed, recovered from its own weights
+### The electorate the Times assumed, recovered from its own weights
 
-You are not told what any pollster's targets were. You can work them out anyway, and the trick is worth knowing because it applies to any survey that ships its weights.
-
-**A weighted marginal is a target.** Weight the sample by the Times' likely-voter weight and tabulate education, and what comes back is the education profile the Times assumed Florida's likely voters had. The weights were built to hit that profile, so reading them backwards recovers it.
+Read the Times' recovered targets against the standard story about 2016 and one of them runs the wrong way.
 
 ```{r targets-table}
 ```
 
-Read the education block against the standard story about 2016 and it runs the wrong way. Everyone knows state polls that year held too many college graduates. So weighting should have pushed that share down.
+Everyone knows state polls that year held too many college graduates, so weighting should have pushed that share down. **It pushed it up.** `r p1(F("bach_collected"))`% of the respondents held at least a bachelor's degree, and the electorate the Times weighted to was `r p1(F("bach_likely"))`% — `r p1(F("bach_move"))` points *more* educated, not less. The reason is not an error. Likely voters really are better educated than registered voters, and the target was a likely-voter electorate, so the correction for one thing moved the other the wrong way.
 
-**It pushed it up.** `r p1(F("bach_collected"))`% of the respondents held at least a bachelor's degree, and the electorate the Times weighted to was `r p1(F("bach_likely"))`% — `r p1(F("bach_move"))` points *more* educated, not less. The reason is not an error. Likely voters really are better educated than registered voters, and the target was a likely-voter electorate, so the correction for one thing moved the other the wrong way.
+`r mnote("An earlier version of this brief's build script asserted the familiar direction as a check, and the check failed on correct data. The direction is now recorded rather than assumed.")`
 
-`r mnote("An earlier version of this chapter's build script asserted the familiar direction as a check, and the check failed on correct data. The direction is now recorded rather than assumed.")`
+### Turn the dial yourself
 
-## Turn the dial yourself
-
-Here is the whole exercise, on the `r F("n")` respondents.
-
-Two sets of controls, because a pollster makes two separate decisions and they do not have the same consequences. **Which variables** get corrected at all, on the left. **What the electorate is assumed to look like** on each of them, on the right. The margin recomputes as you change either.
+Here is the whole exercise, on the `r F("n")` respondents. Two sets of controls, because a pollster makes two separate decisions and they do not have the same consequences. **Which variables** get corrected at all, on the left. **What the electorate is assumed to look like** on each of them, on the right. The margin recomputes as you change either.
 
 The numbers on the right are shares of that assumed electorate, not shares of the `r F("n")` people who answered. The levels of a variable therefore always add to 100%, and raising one lowers the others. Each slider is marked where the Times' own target sat, so you can see how far you have pushed it.
 
@@ -105,9 +101,9 @@ The numbers on the right are shares of that assumed electorate, not shares of th
 ```{r rake-static, eval=!knitr::is_html_output(), fig.height=3.2}
 ```
 
-*Figure 2. In the browser, two sets of controls: which variables are corrected, and what the electorate is assumed to look like on each. In print, eight fixed schemes instead, every one of them reachable with those controls.*
+**Figure 2. In the browser, two sets of controls: which variables are corrected, and what the electorate is assumed to look like on each.** In print, eight fixed schemes instead, every one of them reachable with those controls.
 
-## Which dial actually matters
+### Which dial actually matters
 
 Turn only the education slider and very little happens. Turn on party registration and the winner changes.
 
@@ -118,15 +114,15 @@ Turn only the education slider and very little happens. Turn on party registrati
 
 That is the answer to the question the controls are really asking. The target you set matters, and it matters less than which variable you decided was worth setting a target for. A pollster who never thought about party registration never sees the number that flips the state, and nothing in the output announces the absence.
 
-## Two files disagree about who these people are
+### Two files disagree about who these people are
 
-One more thing sits inside the file, and it is the reason race is a harder dial than it looks.
-
-Every respondent has a race twice. There is the race they gave the interviewer, and there is the race the voter file records. **They disagree about `r F("race_disagree")` of the people who answered the question**, which is `r p1(F("race_disagree_pct"))`% of them.
+One more thing sits inside the file, and it is the reason race is a harder dial than it looks. Every respondent has a race twice: the race they gave the interviewer, and the race the voter file records. **They disagree about `r F("race_disagree")` of the people who answered the question**, which is `r p1(F("race_disagree_pct"))`% of them.
 
 Neither column is the truth. A pollster weighting to census categories uses the first, a pollster weighting to registration data uses the second, and the two are choosing between different people before either one sets a target. The [BISG chapter](../../06-putting-data-together/bisg-check/bisg-check-brief.html) grades a method that guesses race from a name and a neighbourhood against a state's own record; this is the same problem arriving one step earlier, in a poll.
 
-## What this chapter cannot tell you
+Put the pieces together and the finding about democracy is this. **A published poll is an estimate plus a set of judgments, and honest judgments disagree.** Both the Times' answer and its opposite are reachable from the same interviews by decisions that are defensible one at a time. Reading polls well does not mean finding the pollster who cheated — nobody here cheated. It means knowing which dial moved, and noticing that the printed margin of error says nothing about any of the dials.
+
+## What this brief cannot tell you
 
 **It cannot reproduce the four pollsters' answers.** Their methods were described in prose, not published as code. Two of the four used targets that are not in the released file, including a modeled estimate of the 2016 electorate. The five figures in the table above are quoted from the article.
 
@@ -138,15 +134,27 @@ Neither column is the truth. A pollster weighting to census categories uses the 
 
 **And `r F("n")` people is a small number.** Before any of this, a sample that size carries a margin of error of roughly three points on a two-party split — how far off the estimate could be and still be doing its job. Several of the gaps in Figure 2 are smaller than that.
 
-## What it does establish
+## What you should have learned
 
-The published result was Clinton +`r p1(F("margin_lv"))` and the respondents as collected were Clinton +`r p1(F("margin_raw"))`. Weighting accounts for `r p1(F("weighting_moves"))` points of margin on `r F("n_twoparty")` people who never changed their answers.
+- The published result was Clinton +`r p1(F("margin_lv"))` and the respondents as collected were Clinton +`r p1(F("margin_raw"))`: weighting accounts for `r p1(F("weighting_moves"))` points of margin on `r F("n_twoparty")` people who never changed their answers.
+- The choice of which variables to correct spans `r p1(F("scheme_spread"))` points across the schemes in Figure 2 and crosses zero, so the same interviews can honestly produce either winner.
+- Which variable you correct matters more than the target you set on it: education moved this poll by under a fifth of a point, party registration by more than nine.
+- A survey that ships its weights has told you its assumed electorate, whether it meant to or not — a weighted tabulation is a target, and reading the weights backwards recovers it.
+- A margin of error describes sampling only. Here the weighting did more work than the sampling did, and none of it is visible in a published topline.
 
-The choice of which variables to correct spans `r p1(F("scheme_spread"))` points across the schemes in Figure 2, and crosses zero. Both the Times' published answer and its opposite are reachable from the same interviews by decisions that are defensible one at a time.
+## Extensions
 
-**None of that is visible in a published poll.** What gets printed is a margin and a margin of error, and the margin of error describes only the sampling — not the weighting, which did more work here than the sampling did.
+- `schemes.csv` gives each weighting scheme a `margin` and a `leader`. Decide which scheme you would have run, before you look at which one was right.
+- `targets.csv` shows what each scheme assumed the electorate looks like, column by column. Find the variable the schemes disagree about most. Is that an empirical question or a judgment call?
+- `fl_respondents.csv` carries both `rvweight` and `lvweight` for every person. Sort by the ratio. Which kinds of respondent get pulled hardest when a pollster decides who is likely to vote?
+- Take one respondent from `fl_respondents.csv` with a large `lvweight`. Work out how many people they are standing in for, then decide whether you are comfortable with that.
+- Compare `race_said` with `race4` in `fl_respondents.csv`, group by group. Which groups do the survey answer and the voter file disagree about most?
+- *Stretch:* the released file holds five other state-waves. Run the ladder — raw, registered, likely — on another state, and see whether weighting always moves the margin the same direction it did here.
+- *Stretch:* find a 2024 poll whose write-up names its weighting variables. List the dials it turned, the dials this file shows can matter, and which of them the write-up never mentions.
 
 ## Sources
+
+**Data**
 
 - **Poll data.** New York Times Upshot / Siena College, 2016 voter-file polls.
   `upshot-siena-polls.csv`, `r n(FN("src_rows"))` respondents,
@@ -160,10 +168,8 @@ The choice of which variables to correct spans `r p1(F("scheme_spread"))` points
   rather than retyped, so the two cannot disagree.
 - **Build.** `data/build-data.R` downloads the poll file, extracts the
   `r F("n")` September Florida respondents, recovers the Times' targets from
-  its own published weights, and writes the five files this chapter reads.
-  Every number above is computed at the moment this document was rendered.
-
-### Checks
+  its own published weights, and writes the tables this brief reads. Every
+  number above is computed at the moment this document was rendered.
 
 **The data itself**
 
@@ -172,15 +178,7 @@ open in a spreadsheet, and they are yours to take further.
 
 [`fl_respondents.csv`](data/derived/fl_respondents.csv), [`schemes.csv`](data/derived/schemes.csv), [`targets.csv`](data/derived/targets.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `schemes.csv` gives each weighting scheme a `margin` and a `leader`. The same people produce different winners. Decide which scheme you would have run, before you look at which one was right.
-- `targets.csv` shows what each scheme assumed the electorate looks like, column by column. Find the variable the schemes disagree about most. Is that an empirical question or a judgment call?
-- `fl_respondents.csv` carries both `rvweight` and `lvweight` for every person. Sort by the ratio. Which kinds of respondent get pulled hardest when a pollster decides who is likely to vote?
-- Take one respondent from `fl_respondents.csv` with a large weight. Work out how many people they are standing in for, then decide whether you are comfortable with that.
+**Checks**
 
 ```{r checks-table}
 ```

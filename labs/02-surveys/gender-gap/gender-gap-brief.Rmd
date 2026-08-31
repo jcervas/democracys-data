@@ -16,52 +16,55 @@ dd_read_chunks("gender-gap-code.R")
 ```{r setup, include=FALSE}
 ```
 
-In 1972 the General Social Survey asked Americans which party they identified with. Men came out `r sg(F("men_first"))` net Democratic. Women came out `r sg(F("women_first"))`.
+Women lean Democratic and men do not. You have heard that claim, usually with a number attached: **the gender gap**, one of the most-quoted figures in American politics. This brief asks the two questions the quote skips. How big is the gap, really — and is it growing because women moved, because men moved, or both?
 
-Fifty-two years later the same question, asked the same way, returns `r sg(F("men_last"))` for men and `r sg(F("women_last"))` for women. The difference between those two numbers is `r p1(F("gap_last"))` points, and that difference has a name. **The gender gap** is one of the most-quoted numbers in American politics.
+The gap is a subtraction. Somebody computes a number for women, computes a number for men, and prints the difference between them. What almost never gets printed is the pair, and the pair is where the story is.
 
-It is also a subtraction. Somebody computes a number for women, computes a number for men, and prints the gap between them. What almost never gets printed is the pair.
+## The test
 
-## Before you read on
+The measure is party identification from the General Social Survey cumulative file, release 3a: `r n(FN("src_rows"))` respondents interviewed between `r F("first_year")` and `r F("last_year")`, obtained from [NORC at the University of Chicago](https://gss.norc.org/us/en/gss/get-the-data.html). The same question, in the same words, has been asked in every round since 1972. That is what a claim about change requires, and it exists only because NORC kept asking those words for fifty-two years.
 
-`r mnote("Write both numbers down. Most readers get the direction of one of them wrong.")`
+Party identification is the kind of measure no election ever grades. A poll about a vote is eventually scored against a result; a question about which party you feel you belong to never is, because there is no true national figure to score it against. So the design and the weighting carry the whole burden of the claim, where weighting means counting some answers more than others, to make the sample look like the country. The [ANES chapter](../anes/anes-brief.html) walks through that discipline for the book's Public Opinion cluster, and this brief applies it to a second file built the same way.
 
-In 1972 men and women were within a point and a half of each other, both about `r p1(F("women_first"))` points net Democratic. Today the gap between them is about `r p1(F("gap_last"))` points.
+Why the GSS and not the ANES itself? Partly access: the ANES file must be requested through a browser, and the [survey access chapter](../survey-access/survey-access-brief.html) measures those doors directly, while the GSS hands its file to anybody who asks. That is a fact about access rather than quality, and it decides which survey a student can rebuild from scratch. The test itself is simple: compute the gap the way it is usually reported, then undo the subtraction and see which of its two halves moved.
 
-**Which side moved, and by how much?** Give a number for each.
+## The data
 
-## Where this comes from, and why it is the GSS
+The GSS publishes its cumulative file as one 47 MB zip holding a 570 MB Stata file, `gss7224_r3a.dta`. The build script downloads it, reads nine columns out of 6,943, and writes the small tables this brief rests on; the giant source is not committed, the tables are.
 
-Everything below is the General Social Survey cumulative file, release 3a: `r n(FN("src_rows"))` respondents interviewed between `r F("first_year")` and `r F("last_year")`, weighted with `wtssps`.
+Three variables do the work. `partyid` runs 0 (strong Democrat) to 6 (strong Republican), with 7 for "other party." Net Democratic identification is the weighted share at codes 0–2 minus the share at codes 4–6. The leaners at codes 2 and 4 count with the party they lean toward, a decision the [party identification brief](../party-id/party-id-brief.html) takes apart. Code 7 belongs to neither side and is dropped. `sex` is the two-box item asked since 1972, and `wtssps` is the one weight that spans every year in the file, so the series carries no seam.
 
-The GSS is here partly because it is right for the question and partly because it is the one that opens. A fifty-two-year series on an unchanged question is exactly what a claim about change requires, and the [confidence chapter](../gss-confidence/gss-confidence-brief.html) explains why that consistency exists at all.
+The derived tables are three. `partyid_by_sex.csv` holds `men`, `women`, the `gap` between them, and the sample sizes `n_men` and `n_women` for every survey year. `by_decade.csv` collapses the same series into decade averages. `partyid_by_sex_marital.csv` splits each sex again by marital status.
 
-The other reason is less flattering to the field. **Two better-known sources would answer this question and neither can be fetched by a script.** The American National Election Studies sits behind a registration page. The Cooperative Election Study sits on Harvard Dataverse, which answers an automated request with a success code and an empty body, a refusal this book's [survey access chapter](../survey-access/survey-access-brief.html) measures directly. The GSS hands the file to anybody who asks.
+> **Before you read on, commit to two numbers.** In 1972 men and women were
+> within a point and a half of each other, both about `r p1(F("women_first"))`
+> points net Democratic. Today the gap between them is about
+> `r p1(F("gap_last"))` points. **Which side moved, and by how much?** Write
+> down a number for each.
 
-That is a fact about access rather than about quality. It decides which survey a student can actually work with, which is a different thing from which survey is best, and the difference is worth noticing every time it happens.
-
-## The one number
+## What it says about democracy
 
 Here is the gap, drawn the way it is usually drawn.
 
-```{r gap-only-static, fig.height=3.1}
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=3.1}
 ```
 
-*Figure 1. Women's net Democratic identification minus men's, every GSS year from `r F("first_year")` to `r F("last_year")`.*
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. Women's net Democratic identification minus men's, every GSS year from `r F("first_year")` to `r F("last_year")`.** One line on a time axis, because one number per year is exactly what gets quoted, and the form reproduces the claim before the brief takes it apart. Hovering returns the two numbers the subtraction destroyed.
 
 It starts near zero. It widens through the 1980s, peaks at `r p1(F("gap_max"))` points in `r F("gap_max_year")`, and sits at `r p1(F("gap_last"))` today.
 
 Read that figure and one story suggests itself so strongly that most people do not notice they have supplied it. The gap opened, so **women must have moved left**. Nothing in Figure 1 says that. Nothing in Figure 1 can.
 
-## The two numbers
-
-```{r two-d3, results='asis', eval=knitr::is_html_output()}
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.4}
 ```
 
-```{r two-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-*Figure 2. The same years, with the subtraction undone. In the browser, the buttons switch between the two series and the gap alone.*
+**Figure 2. The same years, with the subtraction undone.** The shaded band between the lines is the gap itself; hovering reads both series and the gap at any year.
 
 **Both lines fall.** Men went from `r sg(F("men_first"))` to `r sg(F("men_last"))`, a move of `r p1(abs(FN("men_move")))` points. Women went from `r sg(F("women_first"))` to `r sg(F("women_last"))`, a move of `r p1(abs(FN("women_move")))`.
 
@@ -72,62 +75,61 @@ Women did not become more Democratic. They became less Democratic, by more than 
 
 The decade averages say the same thing more slowly. Every column falls. The last one rises because the first two fall at different speeds.
 
-## Why this matters beyond one number
+This is worth holding onto beyond one number, because a gap is a difference, and a difference discards the level. Two series moving together by twenty points and two series moving apart by twenty points can produce the identical gap, and no amount of care in reporting the gap will recover which happened. Several of this book's most-quoted numbers run the same way. The [turnout brief](../validated-turnout/validated-turnout-brief.html) reports a gap whose halves both moved, and the [thermometers brief](../thermometers/thermometers-brief.html) finds a famous polarization number that is one half doing all the work. Ask for the pair. It is one extra number and it changes the sentence.
 
-A gap is a difference, and a difference discards the level. Two series moving together by twenty points and two series moving apart by twenty points can produce the identical gap, and no amount of care in reporting the gap will recover which happened.
-
-That is not a fault in the gender gap. It is a property of every difference this book reports, and several of them run the same way. The [turnout chapter](../validated-turnout/validated-turnout-brief.html) reports a gap between what people say and what they did, and that gap shrank while both of its halves moved. The [cost of voting chapter](../../06-putting-data-together/cost-of-voting/cost-of-voting-brief.html) ranks states against each other, which is a difference by construction, and its levels are not comparable across years at all.
-
-**Ask for the pair. It is one extra number and it changes the sentence.**
-
-## A second subtraction, larger than the first
-
-Split women by marital status and a bigger gap appears inside the smaller one.
+One more subtraction, larger than the first. Split women by marital status and a bigger gap appears inside the smaller one.
 
 ```{r marital-table}
 ```
 
-In `r LM$year`, unmarried women were `r sg(LM$unmarried_women)` and married women `r sg(LM$married_women)`. That is `r p1(F("marriage_gap_last"))` points between two groups of women, against `r p1(F("sex_gap_same_year"))` points between women and men.
+In `r LM$year`, unmarried women were `r sg(LM$unmarried_women)` and married women `r sg(LM$married_women)`. That is `r p1(F("marriage_gap_last"))` points between two groups of women, against `r p1(F("sex_gap_same_year"))` points between women and men. **The split inside the category is wider than the split between categories.** Anybody reporting one number for women is averaging across a difference larger than the one they are reporting.
 
-**The split inside the category is wider than the split between categories.** Anybody reporting one number for women is averaging across a difference larger than the one they are reporting.
+## What this brief cannot tell you
 
-## What this chapter cannot tell you
+**`sex` here is two boxes.** The GSS records sex, not gender identity, and for most of this series it was coded by the interviewer. The file gained a different item, `sexnow1`, which was asked in `r F("sexnow_years")` of `r n(FN("sexnow_answers"))` respondents. That is too few years to carry a fifty-two-year comparison, so it is counted here and not used. Nothing in this brief speaks to people for whom the two items differ.
 
-**`sex` here is two boxes.** The GSS records sex, not gender identity, and for most of this series it was coded by the interviewer. The file gained a different item, `sexnow1`, which was asked in `r F("sexnow_years")` of `r n(FN("sexnow_answers"))` respondents. That is too few years to carry a fifty-two-year comparison, so it is counted here and not used. Nothing in this chapter speaks to people for whom the two items differ.
-
-**Party identification is not a vote.** It is what somebody says they are, not what they did, and the two come apart. Whether the leaners belong with the party they lean toward is a decision this chapter made. The [party identification chapter](../party-id/party-id-brief.html) takes it apart, and finds the same choice moving a headline number by a factor of five.
+**Party identification is not a vote.** It is what somebody says they are, not what they did, and the two come apart. Whether the leaners belong with the party they lean toward is a decision this brief made, and the [party identification brief](../party-id/party-id-brief.html) finds the same choice moving a headline number by a factor of five.
 
 **These are cross-sections, not the same people.** A series that falls can fall because individuals changed their minds, or because the people who held the old view died and were replaced. Nothing here separates those, and they are different countries.
 
 **The composition of each group changed underneath the line.** "Women" in 1972 and "women" in 2024 differ in education, marital status, race and age. Some of the movement in Figure 2 is those compositions changing rather than anybody's politics.
 
-**And a gap is not an explanation.** This chapter shows which side moved. It does not say why, and the literature on why is large and unsettled.
+**And a gap is not an explanation.** This brief shows which side moved. It does not say why, and the literature on why is large and unsettled.
 
-## What it does establish
+## What you should have learned
 
-Both sexes moved away from the Democratic Party across this series. Men moved `r p1(abs(FN("men_move")))` points and women `r p1(abs(FN("women_move")))`, in the same direction, on the same question, weighted the same way.
+- Both sexes moved away from the Democratic Party across this series: men by `r p1(abs(FN("men_move")))` points and women by `r p1(abs(FN("women_move")))`, in the same direction, on the same question, weighted the same way.
+- The gap grew from `r p1(F("gap_1970s"))` points in the 1970s to `r p1(F("gap_2020s"))` in the 2020s, and every point of that growth is a difference in speed, not a difference in direction.
+- The most-quoted version of the number cannot show any of that, because one line cannot show two movements — a difference has no memory of its halves.
+- The marriage gap among women, `r p1(F("marriage_gap_last"))` points in `r LM$year`, is wider than the `r p1(F("sex_gap_same_year"))`-point gap between women and men in the same year.
 
-The gap between them grew from `r p1(F("gap_1970s"))` points in the 1970s to `r p1(F("gap_2020s"))` in the 2020s. **Every point of that growth is a difference in speed, not a difference in direction.**
+## Extensions
 
-And the most-quoted version of the number hides that completely, because one line cannot show two movements.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
+
+- `partyid_by_sex.csv` has `men` and `women` separately, and the `gap` between them. Plot all three. Which of the two lines is doing the moving?
+- `partyid_by_sex_marital.csv` splits the same people again by marital status. Compare the gap between `married_women` and `unmarried_women` against the gap between women and men. Which subtraction is bigger?
+- `by_decade.csv` collapses the series into decades. Compare its `gap` column against the year-by-year file. What does the smoothing hide?
+- `partyid_by_sex.csv` carries `n_men` and `n_women` for every year. Find the thinnest years. Would you report a gap that size off a sample that size?
+
+Two stretch ideas point past the spreadsheet. The ANES asks its own seven-point party question — fetch the cumulative file the [ANES chapter](../anes/anes-brief.html) describes and check whether its gender gap matches the GSS's in size and in timing. And the gap in *identification* is not the gap in *votes*: find a published exit-poll gender gap for a recent presidential election and decide which of Figure 2's two lines it says more about.
 
 ## Sources
+
+**Data**
 
 - **General Social Survey**, cumulative file, release 3a (2024), NORC at the
   University of Chicago. `r n(FN("src_rows"))` respondents,
   `r F("first_year")`–`r F("last_year")`, weight `wtssps`.
   <https://gss.norc.org/us/en/gss/get-the-data.html>
 - **Build.** `data/build-data.R` downloads the 47 MB zip, reads nine columns
-  out of the 570 MB Stata file, and writes the small tables this chapter
+  out of the 570 MB Stata file, and writes the small tables this brief
   reads. The source is not committed; the derived tables are. Every number
-  above is computed at the moment this document was rendered.
-- **Related chapters.** [Party identification](../party-id/party-id-brief.html)
-  on the leaner decision; [confidence in institutions](../gss-confidence/gss-confidence-brief.html)
-  on the same file and the same weight;
-  [survey access](../survey-access/survey-access-brief.html) on why this is the
-  GSS and not the CES.
+  above is computed at the moment this document was rendered, and checked
+  against the assertions below.
 
-### Checks
+```{r checks-table}
+```
 
 **The data itself**
 
@@ -135,19 +137,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`by_decade.csv`](data/derived/by_decade.csv), [`partyid_by_sex.csv`](data/derived/partyid_by_sex.csv), [`partyid_by_sex_marital.csv`](data/derived/partyid_by_sex_marital.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `partyid_by_sex.csv` has `men` and `women` separately, and the `gap` between them. Plot all three. Which of the two lines is doing the moving?
-- `partyid_by_sex_marital.csv` splits the same people again by marital status. Compare the gap between married and unmarried women against the gap between women and men. Which subtraction is bigger?
-- `by_decade.csv` collapses the series into decades. Compare it against the year-by-year file. What does the smoothing hide?
-- `partyid_by_sex.csv` carries `n_men` and `n_women` for every year. Find the thinnest years. Would you report a gap that size off a sample that size?
-
-```{r checks-table}
-```
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

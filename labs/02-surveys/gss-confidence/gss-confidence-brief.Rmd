@@ -16,52 +16,28 @@ dd_read_chunks("gss-confidence-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Since 1972 an interviewer working for the National Opinion Research Center has read the same sentence to a national sample of American adults. Same words, same place in the same interview, `r length(unique(cf$year))` times across `r Y2 - Y1` years:
+Americans have lost faith in everything. You have read that sentence, or one of its cousins: trust has collapsed, institutions are in crisis, nobody believes in anything anymore. It is repeated so often that it reads as a fact rather than a claim. Is it true — did confidence fall in every institution, in which ones, and since when?
+
+Answering needs something rare: the same question, asked the same way, for long enough to watch. Survey wording usually drifts, sponsors lose interest, and a question asked in 1975 is rarely asked in 2024 in a form anybody can compare. One battery of questions survived half a century intact, and most of what this brief can do rests on that fact.
+
+## The test
+
+The test is the [General Social Survey](https://gss.norc.org/), run by NORC at the University of Chicago and funded largely by the National Science Foundation. Since `r Y1` its interviewers have read the same sentence to a national sample of American adults, `r length(unique(cf$year))` times across `r Y2 - Y1` years:
 
 > *"I am going to name some institutions in this country. As far as the people
 > running these institutions are concerned, would you say you have a great deal
 > of confidence, only some confidence, or hardly any confidence at all in
 > them?"*
 
-Nothing about that question is clever. Its entire value is that nobody changed it. Survey data usually has a short memory. Wording drifts, sponsors lose interest, and a question asked in 1975 is rarely asked in 2024 in a form anybody can compare. So a set of questions that survived half a century intact is a rare object, and most of what this chapter can do rests on that one fact.
+Nothing about the question is clever; its entire value is that nobody changed it. No election ever grades an answer like this — there is no true national figure for confidence, which is the standing condition of the [Public Opinion cluster's data chapter](../anes/anes-brief.html). When nothing outside the survey can grade the answer, the method is the whole credential, and this survey's method held still. A survey whose product is the comparison across time has every incentive to leave its wording alone, and the GSS acted on that incentive for fifty years.
 
-Two features of the wording do a great deal of work, and both should be fixed in mind before any number arrives.
+Two features of the wording should be fixed in mind before any number arrives. **It asks about "the people running" the institution**, not the institution itself, so somebody who reveres the Supreme Court and distrusts its current members is recorded as distrusting. And **there are only three options with no neutral middle**, so a lukewarm respondent has to choose "only some." That is why the middle box is the largest almost everywhere, and why the interesting movement is at the two ends.
 
-**It asks about "the people running" the institution**, not the institution itself. Somebody can revere the Supreme Court and have hardly any confidence in the nine people currently sitting on it, and this question records the second answer. That ambiguity never resolves; it runs through every figure below.
+The battery also asks about `r nrow(it)` institutions in one interview, of the same respondents. That makes it an unusually fair test of the claim in the title: if confidence moved as a bloc, these `r nrow(it)` series should mostly move together.
 
-**There are only three options, and no neutral middle.** A respondent who is lukewarm has to choose "only some," which is why that category is the largest almost everywhere and why the interesting movement is at the two ends. What happens when even that middle starts to empty turns out to matter.
+## The data
 
-## Nobody was obliged to ask, which is why the words never changed
-
-No statute requires anyone to find out what Americans think of the Supreme Court. The General Social Survey is run by NORC at the University of Chicago and funded largely by the National Science Foundation. Its only obligation is to the researchers who will use it later.
-
-That is not a weakness of the source. It is the reason the wording survived. An agency judged on an outcome has every incentive to improve its question, and every improvement cuts the series in two. A survey whose whole product is the comparison across time has the opposite incentive, and the GSS acted on it. The question quoted above has been read out in the same words, in the same place in the interview, since `r Y1`.
-
-What this chapter reads is the cumulative file, cut down to `r n(nrow(cf))` rows. They cover `r nrow(it)` institutions in `r length(unique(cf$year))` survey years. Each row is one institution in one year, with three weighted percentages and the number of people who answered.
-
-That phrase, *cumulative file*, is carrying more than it looks. Nobody ran one survey that lasted `r max(cf$year) - Y1` years. NORC ran `r length(unique(cf$year))` separate rounds of fieldwork. Each had its own sample, its own interviewers, its own response rate, and lately its own way of conducting the interview. Then somebody stacked them: lined up the variable names, settled which items are comparable across which years, and built the weights.
-
-Weighting means counting some answers more than others, so that a sample which does not look like the country can be made to. It is what lets a 1973 respondent and a 2024 respondent count as the same kind of evidence.
-
-Getting the file is one download and a minute of waiting. Assembling it took fifty years, and none of that work happened here. **This file arrived usable because NORC made the hard decisions first, and it does not list them.**
-
-`wtssps` is the visible example. It is not a measurement of anything. It is NORC's answer to a question about comparability. It exists alongside `wtssall` because the survey's sampling and interview mode changed underneath a question that did not. Picking one of them, as the cleaning below does, is picking between two of somebody else's conclusions. That is the ordinary condition of using survey data, and it is worth noticing precisely because nothing in the file announces it.
-
-It is the right file for the question mostly by elimination. Other organizations ask about confidence, but they ask their own way and change it when it stops working. They rarely publish the underlying records that would let anyone check the weighting. What would genuinely have been better is not a longer series but a different design: a panel that asked the same *people* every few years. This file cannot tell whether Americans changed their minds or whether the Americans who held the old view died and were replaced by people who never held it. Those are different countries, and every cross-sectional series in the world confuses them.
-
-The harder problem is not in the file at all. A vote count has a right answer somewhere; confidence does not. There is no outside record against which `r pc(gg("Congress", Y1, "great_deal"))`% can be checked, and no later event that reveals what the 1973 respondents really felt. There is also no way to know whether "a great deal of confidence" means today what it meant to somebody who first heard the phrase two years after Watergate. The question records a report, and a report is all it will ever record.
-
-The file's own irregularities are minor by comparison, and they are at least visible. The survey ran every year into the 1990s and every other year after that, so the longest gap between two readings is `r max(diff(sort(unique(cf$year))))` years, and it falls across the pandemic. One institution, `r tolower(it$institution[it$first_year != Y1])`, was added to the list in `r min(it$first_year[it$first_year != Y1])` and therefore has a shorter series than the rest.
-
-Cleaning was small and each piece of it is a choice. The build script is the only one in this book that loads an R package. The cumulative file arrives in a Stata format that plain R cannot open, so `haven` reads it once and writes out the CSVs. Nothing after that depends on anything but plain R.
-
-Respondents who gave no answer to an item are dropped from that item. So every percentage below is a percentage of the people who answered, rather than of the people interviewed. An institution-year with fewer than fifty answers is not reported at all.
-
-And one weight, `wtssps`, is used throughout. It is the only one that spans every year in the file, and stitching two weights together inside a fifty-year series would put a seam exactly where the argument is. A reader rebuilding this would have to redo the download, the weighting and those three decisions; everything after them is arithmetic on `r n(nrow(cf))` rows.
-
-## One row is a person, until it is not
-
-The cumulative file is 570 megabytes of Stata holding 75,699 respondents and about six thousand variables. **One row is one person interviewed**, once, in one year. Here are the first five people interviewed in `r Y1`, in six of those six thousand columns:
+The cumulative file is 570 megabytes of Stata holding 75,699 respondents and about six thousand variables. One row is one person interviewed, once, in one year. Here are the first five people interviewed in `r Y1`, in six of those columns:
 
 | year | id | conmedic | conlegis | conarmy | wtssps |
 |---:|---:|---:|---:|---:|---:|
@@ -71,70 +47,30 @@ The cumulative file is 570 megabytes of Stata holding 75,699 respondents and abo
 | 1973 | 4 | 2 | 2 | 1 | 0.7814606 |
 | 1973 | 5 | 2 | 2 | 2 | 0.7412959 |
 
-| Column | What the codebook says it holds |
-|:---|:---|
-| year | the survey year |
-| id | the respondent's number within that year — not a person who can be followed |
-| conmedic | confidence in medicine, on the three-point scale below |
-| conlegis | confidence in Congress, same scale |
-| conarmy | confidence in the military, same scale |
-| wtssps | the survey weight this respondent carries |
+The meaning lives in the codebook, not the file. `conlegis` is confidence in Congress, coded 1 for a great deal, 2 for only some, 3 for hardly any; `wtssps` is the survey weight the respondent carries. **A `2` is not a quantity.** It is the middle of three ordered boxes, so every number below is a share of people who picked a box, never an average of the codes. Alongside the three answers sit twelve distinct ways of not answering: don't know, refused, inapplicable, skipped on web, and more. The build turns all twelve into the same blank.
 
-Nothing there says what any of it means. The meaning is carried separately, as labels attached to the column:
-
-| Column | Label | Code | What the code means |
-|:---|:---|---:|:---|
-| conlegis | "Confidence in congress" | 1 | a great deal |
-| | | 2 | only some |
-| | | 3 | hardly any |
-
-**A `2` is not a quantity.** It is the middle of three ordered boxes, and respondent 1's `2` for Congress cannot be averaged with anything. Every number in this chapter is a *share of people who picked a box*, never an average of the codes. That difference is the whole reason the three percentages are reported separately instead of collapsed into one score.
-
-The same column carries something else the print-out does not show. Alongside those three answers sit **twelve distinct ways of not answering**: don't know, refused, no answer, inapplicable, skipped on web, uncodeable, not imputable, not available in this year, and more. Reading the file turns all twelve into the same blank. Twelve different things a person did, or that happened to them, become one absence.
-
-Here is what those 1,504 people become:
+The build reduces all of that to `r n(nrow(cf))` rows. Here is what those 1,504 people become:
 
 ```{r clean-gss}
 ```
 
-One row. **What one row stands for has changed, from a person to an institution in a year.** Once that happens there is no going back. Nothing later in this chapter can ask whether the people who distrusted Congress were the same people who distrusted the press, because the rows that knew are gone.
+One row per institution per survey year, in `confidence.csv`: the institution, its GSS `variable` name, the `year`, the number who `answered`, and the weighted shares `great_deal`, `only_some` and `hardly_any`, which sum to 100. A second table, `institutions.csv`, gives each institution its `first_year`, `last_year`, `survey_years` and the `change` across the series. What one row stands for has changed, from a person to an institution in a year, and there is no going back. Nothing below can ask whether the people who distrusted Congress also distrusted the press, because the rows that knew are gone.
 
-### The four decisions inside that one row
+Four decisions sit inside that one row. **The denominator is who answered, not who was asked.** The denominator is the bottom number, the figure the percentage is divided by: `r n(gg("Congress", Y1, "n"))` of the 1,504 people interviewed in `r Y1` answered the Congress item, and the rest are simply not in the percentage. **Every percentage is weighted**, and weighting means counting some answers more than others, to make a sample that does not look like the country look like it. The build uses `wtssps` throughout, the only weight spanning every year in the file, so no seam between two weights lands inside the argument.
 
-**The denominator is who answered, not who was asked.** The denominator is the bottom number, the figure the percentage is divided by. `r n(gg("Congress", Y1, "n"))` people gave one of the three answers; 1,504 sat for the interview. The `r 1504 - gg("Congress", Y1, "n")` who did not answer this item are simply not in the percentage. That is the conventional choice and it quietly assumes the non-answerers would have split like the answerers — which, for a question about confidence in Congress, is exactly the assumption most likely to be wrong.
+**An institution-year with fewer than fifty answers is dropped**, not shown small. And **twenty columns of six thousand were kept**: everything else about these respondents stays in the source file and cannot be recovered from these tables.
 
-**Every percentage is weighted, and the weight is somebody else's conclusion.** `wtssps` is not a measurement. It is NORC's answer to a question: how do you make a 1973 respondent and a 2024 respondent count as the same kind of evidence, across a survey whose sampling and interview mode both changed? Respondent 2 above counts about twice as much as respondent 1.
+Two irregularities are the file's own. The survey ran yearly into the 1990s and every other year after that, so the longest gap between readings is `r max(diff(sort(unique(cf$year))))` years, across the pandemic. And one institution, `r tolower(it$institution[it$first_year != Y1])`, joined the battery in `r min(it$first_year[it$first_year != Y1])`, so its series is shorter than the rest.
 
-There is a second weight in the file, `wtssall`, that stops in 2018. Picking between them is picking between two of somebody else's judgments. The build picks the one that spans the whole series, so that no seam lands inside the argument.
+> **Before you read on, commit to three answers.** Of the `r nrow(it)`
+> institutions in the battery, how many fell between their first reading and
+> their last — all `r nrow(it)`? Ten? Seven? How many rose? And which single
+> institution fell the furthest? Write the three down. A guess you have not
+> written down is one you will quietly revise once you see the answer.
 
-For `r Y1` the weighting turns out to make no visible difference — weighted and unweighted agree to two decimals, and both round to the `r pc(gg("Congress", Y1, "great_deal"))`% in the table above. **That is not a reason to skip it.** You cannot know which years the weight moves until you have applied it to all of them.
+## What it says about democracy
 
-**Thin cells are dropped, not shown small.** An institution-year with fewer than fifty answers is not reported. A percentage computed on thirty people looks exactly like a percentage computed on three thousand. The file gives a reader no way to tell them apart, except the `answered` column that most readers will not look at.
-
-**Twenty columns of six thousand.** Everything about these respondents other than the confidence questions, the year and the weight was left in the source file: their age, their region, what else they thought. It is all still there, and none of it can be recovered from `confidence.csv`.
-
-## What one reading is
-
-```{r one-record}
-```
-
-One institution, one survey year, three weighted percentages summing to 100. `r n(gg("Congress", Y1, "n"))` people answered this item about Congress in `r Y1`, and `r pc(gg("Congress", Y1, "great_deal"))`% of them said they had a great deal of confidence in the people running it.
-
-**These are weighted percentages**, and which weight was used is a choice rather than a fact. The GSS ships several; this uses `wtssps`, the only one covering every year in the file, so no splicing between weights is needed. Unweighted numbers differ slightly. The choice matters little here and should be stated anyway, because a percentage whose weight is unnamed is a percentage nobody can reproduce.
-
-```{r scope}
-```
-
-The survey years are not annual. The GSS ran yearly into the 1990s and then moved to every other year, which matters as soon as anybody draws a straight line between two points and reads the space between them as data.
-
-## One series, start to finish
-
-```{r congress}
-```
-
-Confidence in the people running Congress fell from `r pc(gg("Congress",Y1,"great_deal"))`% to `r pc(gg("Congress",Y2,"great_deal"))`%. That is the number usually quoted, and the last column is the more striking one. **"Hardly any" went from `r pc(gg("Congress",Y1,"hardly_any"))`% to `r pc(gg("Congress",Y2,"hardly_any"))`%**, from about one respondent in seven to a clear majority. In `r Y1` the two ends stood at `r pc(gg("Congress",Y1,"great_deal"))`% and `r pc(gg("Congress",Y1,"hardly_any"))`%; today the second is more than nine times the first.
-
-An average would hide all of it. Because every respondent picks exactly one of three boxes, the three shares always add to 100. So the whole spread of answers can be drawn at once, and what moves is not a level but a **mix**.
+Start with the series everybody quotes. Confidence in the people running Congress fell from `r pc(gg("Congress",Y1,"great_deal"))`% with a great deal of confidence in `r Y1` to `r pc(gg("Congress",Y2,"great_deal"))`% in `r Y2`. The more striking number is at the other end: **"hardly any" went from `r pc(gg("Congress",Y1,"hardly_any"))`% to `r pc(gg("Congress",Y2,"hardly_any"))`%**, from about one respondent in seven to a clear majority.
 
 ```{r bands-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -142,34 +78,16 @@ An average would hide all of it. Because every respondent picks exactly one of t
 ```{r bands-static, eval=!knitr::is_html_output(), fig.height=3.9}
 ```
 
-**Figure 1. Confidence in the people running Congress, as a composition rather than a level.** The three answer shares at every survey year from `r Y1` to `r Y2`, stacked to 100%. "Hardly any" overtook "a great deal" in `r CROSS`, the second survey year in the file, and passed half of all respondents in `r MAJ`, marked by the dashed line. The lukewarm middle, which had nowhere else to send its respondents, fell as well, from `r pc(MID1)`% to `r pc(MID2)`%.
+**Figure 1. Confidence in the people running Congress, drawn as a composition rather than a level.** The three answer shares at every survey year, stacked to 100% — the right form here, because every respondent picks exactly one of three boxes, so what moves is not a level but a mix. "Hardly any" overtook "a great deal" in `r CROSS` and passed half of all respondents in `r MAJ`, marked by the dashed line. Even the lukewarm middle fell, from `r pc(MID1)`% to `r pc(MID2)`%.
 
-**Both of the other bands drain into the purple one**, and the middle one is the surprise. "Only some" was supposed to be the parking space for everybody without a strong view. It is still the largest or second-largest band in every year, but it is not immovable: after 2012 it stops absorbing people. Read as a single average, all of that motion collapses into one number sliding gently down a scale.
-
-## The sentence you are about to write
-
-At this point the summary is sitting there waiting to be written: *Americans have lost confidence in their institutions.* It is the sentence this dataset is most often used to support, and it may well be true.
-
-Notice what would have to hold for it to be true as stated. The claim is about institutions in general, and only one institution has been looked at. The file holds `r nrow(it)` of them, asked of the same respondents in the same interview. That is an unusually fair test. If confidence in American institutions moved as a bloc, they should mostly move together.
-
-> **Before you turn to the table, commit to three answers.** Of the
-> `r nrow(it)` institutions in that battery, how many fell between their first
-> reading and their last — all `r nrow(it)`? Ten? Seven? How many rose? And
-> which single institution fell the furthest? Write the three down. A guess you
-> have not written down is one you will quietly revise once you see the answer.
-
-## All thirteen, ranked by how far they moved
+At this point the summary is sitting there waiting to be written: *Americans have lost confidence in their institutions.* But the claim is about institutions in general, and only one has been looked at. The file holds `r nrow(it)` of them, asked of the same respondents. Here they are, ranked by how far each moved between its first reading and its last:
 
 ```{r changes}
 ```
 
-The largest decline is not a political institution at all. **Medicine is down `r pc(abs(min(it$change)))` points**, further than Congress. Organized religion, the press, television, major companies, banks and education all fall by double digits. And the **Military rose `r pc(it$change[it$institution=="Military"])` points**, the only substantial increase anywhere in the file.
+The largest decline is not a political institution at all. **Medicine is down `r pc(abs(min(it$change)))` points**, further than Congress. Organized religion, the press, television, major companies, banks and education all fall by double digits. And the **military rose `r pc(it$change[it$institution=="Military"])` points**, the only substantial increase anywhere in the file. Most readers name Congress for the steepest fall, and most put the number of risers at zero; neither holds.
 
-Most readers name Congress for the steepest fall, and most put the number of risers at zero. Neither holds, and it is the second one that does the damage.
-
-So the sentence above is not right as written. Something did happen to confidence in American institutions, but it is not uniform, it is not confined to government or even to politics, and at least one institution moved the other way.
-
-A ranked list of thirteen differences invites a second mistake, though, which is reading the small ones as movements at all. Every number in that table is an estimate from a finite sample, and the difference between two estimates carries the uncertainty of both. Figure 2 draws each institution's first and last readings with the interval that belongs to each.
+A ranked list of thirteen differences invites a second mistake, which is reading the small ones as movements at all. Every number in that table is an estimate from a finite sample, and the difference between two estimates carries the uncertainty of both.
 
 ```{r dumb-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -177,33 +95,23 @@ A ranked list of thirteen differences invites a second mistake, though, which is
 ```{r dumb-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
 
-**Figure 2. First reading against last, with the uncertainty on each.** Share with a great deal of confidence in `r min(STARTS)` (hollow circle; `r max(STARTS)` for banks) against `r Y2` (filled), one row per institution, with a 95% interval drawn on each single reading. Rows whose change does not clear the uncertainty of the two readings that produced it are drawn pale and marked *ns*. Intervals treat each survey year as a simple random sample; the GSS is clustered, so the true intervals are wider than these, which makes the small changes less secure rather than more.
+**Figure 2. First reading against last, with the uncertainty on each.** Share with a great deal of confidence in `r min(STARTS)` (hollow circle; `r max(STARTS)` for banks) against `r Y2` (filled), one row per institution, with a 95% interval on each single reading. Rows whose change does not clear the uncertainty of its two readings are drawn pale and marked *ns*. The intervals treat each year as a simple random sample; the GSS is clustered, so the true intervals are wider, which makes the small changes less secure rather than more.
 
-**`r nrow(DB) - NSIG` of the `r nrow(DB)` changes clear their own uncertainty and `r NSIG` does not.** Written out honestly, that is: **`r wd(NFELL)` institutions fell, `r wd(NROSE)` rose, and `r wd(NSIG)` did not move.** That is the count to set beside the one written down a few pages ago. Organized labor's `r pc(it$change[it$institution == "Organized labor"])` points sits inside the interval, so the right description is *no detectable change*, not *a rise*. The two apparent exceptions in the table above are really one exception and one non-event.
+Written out honestly: **`r wd(NFELL)` institutions fell, `r wd(NROSE)` rose, and `r wd(NSIG)` did not move.** Organized labor's `r pc(it$change[it$institution == "Organized labor"])` points sits inside its own uncertainty, so the right description is *no detectable change*. Everything else moved by more than sampling error can explain (sampling error is the wobble that comes from asking a sample rather than everyone), including the scientific community's `r pc(abs(it$change[it$institution == "Scientific community"]))`-point fall, the smallest real decline in the set.
 
-Everything else in the file is larger than sampling error can account for. That includes the scientific community's `r pc(abs(it$change[it$institution == "Scientific community"]))`-point fall, the smallest real decline in the set, and the military's `r pc(it$change[it$institution == "Military"])`-point rise.
-
-It is worth being clear about what that precision does not rescue. Half a point of sampling error on each reading says nothing whatever about whether the question means the same thing to a respondent in `r Y2` as it did in `r Y1`. That problem is untouched by any interval, and it is the one the argument at the end of this chapter is about.
-
-## The exception, followed properly
-
-A single rise could easily be noise, or a fluke of the two endpoints Figure 2 happens to compare. So follow the military's actual series rather than its two ends.
+The exception deserves its story, because a single rise could be a fluke of the two endpoints Figure 2 happens to compare. Follow the military's actual series:
 
 ```{r military}
 ```
 
-It is not a steady climb. **It peaks at `r pc(max(mil$great_deal))`% in `r mil$year[which.max(mil$great_deal)]`**, the year of the Gulf War, then falls back, then rises again.
+It is not a steady climb. It peaks at `r pc(max(mil$great_deal))`% in `r mil$year[which.max(mil$great_deal)]`, the year of the Gulf War, falls back, then rises again. That cuts directly against the long-slow-decline framing the Congress series invites: **confidence responds to events**, and it went up sharply when an institution did something visible and widely regarded at the time as successful. Whatever drives the other twelve series is capable of moving in both directions.
 
-This is the most useful thing in the dataset, and it cuts directly against the "long slow decline" framing that the Congress series invites. **Confidence responds to events.** It went up sharply when an institution did something visible and, at the time, widely regarded as successful. Whatever is driving the other twelve series is not an irreversible drift in national character; it is something capable of moving in both directions when institutions do things.
-
-## Where everything stands now
+Where everything stands now completes the picture:
 
 ```{r current}
 ```
 
-Sorted by the net column, a pattern appears that the individual series conceal. **The institutions people still trust are the ones that do something technical and visible** — the military, the scientific community, medicine. The ones at the bottom are the ones whose entire function is contestation: Congress, the press, television, the executive branch. Whether that reflects something about the institutions or something about how contestation looks from outside is not a question this file can answer, but the ordering is very stable and hard to dismiss.
-
-Confidence in Congress now stands at `r pc(gg("Congress",Y2,"great_deal"))`%, the lowest figure for anything asked about, and the Supreme Court at `r pc(gg("U.S. Supreme Court",Y2,"great_deal"))`%, with `r pc(gg("U.S. Supreme Court",Y2,"hardly_any"))`% reporting hardly any.
+Sorted by the net column, a pattern appears that the individual series conceal. The institutions people still trust do something technical and visible — the military, the scientific community, medicine. The ones at the bottom are the ones whose entire function is contestation: Congress, the press, television, the executive branch. Congress now stands at `r pc(gg("Congress",Y2,"great_deal"))`%, the lowest figure for anything asked about, and the Supreme Court at `r pc(gg("U.S. Supreme Court",Y2,"great_deal"))`%.
 
 ```{r lines-static, eval=!knitr::is_html_output(), fig.height=5}
 ```
@@ -211,51 +119,36 @@ Confidence in Congress now stands at `r pc(gg("Congress",Y2,"great_deal"))`%, th
 ```{r d3-lines, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. All `r nrow(it)` institutions, every survey year from `r Y1` to `r Y2`.** Share reporting a great deal of confidence in the people running each. The band narrows as it moves: institutions that began between `r pc(min(cf$great_deal[cf$year == Y1]), 0)`% and `r pc(max(cf$great_deal[cf$year == Y1]), 0)`% in `r Y1` end between `r pc(min(cf$great_deal[cf$year == Y2]), 0)`% and `r pc(max(cf$great_deal[cf$year == Y2]), 0)`%, with the military the only line that finishes above where it started.
+**Figure 3. All `r nrow(it)` institutions, every survey year from `r Y1` to `r Y2`.** Share with a great deal of confidence in the people running each. The band narrows as it moves: institutions that began between `r pc(min(cf$great_deal[cf$year == Y1]), 0)`% and `r pc(max(cf$great_deal[cf$year == Y1]), 0)`% in `r Y1` end between `r pc(min(cf$great_deal[cf$year == Y2]), 0)`% and `r pc(max(cf$great_deal[cf$year == Y2]), 0)`%, with the military the only line finishing above where it started.
 
-## What can be said, and what cannot
+So the sentence this brief opened with is not right as written. Something did happen to confidence in American institutions. But it is not uniform, it is not confined to government or even to politics, and at least one institution moved the other way. The largest loss belongs to medicine and the smallest to science, neither of which is a branch of government. That is a strange result for a story usually told about politics, and the unevenness is the finding.
 
-Confidence in the people running most American institutions fell substantially between `r Y1` and `r Y2`, the decline is not confined to government or to politics, and Medicine rather than Congress lost the most. The decline is also neither universal nor obviously irreversible: the military rose `r pc(it$change[it$institution=="Military"])` points, organized labor did not move at all, and the military's series responds visibly to events rather than sliding.
+## What this brief cannot tell you
 
-What cannot be said is whether institutions became less trustworthy, or people became less trusting, or the phrase "a great deal of confidence" simply drifted in meaning across fifty years. The question measures a report, not a relationship, and the distinction between those is where the genuine argument lies.
+Whether institutions became less trustworthy, or people became less trusting, or the phrase "a great deal of confidence" drifted in meaning across fifty years. The question records a report, not a relationship, and no amount of this series settles which changed. Citrin and Stoker (2018) add that trust measures move with partisanship: some of what looks like erosion about Congress is people disliking the party currently running it, and those people flip when control changes.
 
-## The argument about this
+Whether the decline was warranted. The `r Y1` baseline sits immediately after Watergate and Vietnam, and institutions went on to earn skepticism through visible failures. Low confidence in a body with a twenty percent approval rating may be accurate perception rather than civic decay, and the data cannot tell those apart.
 
-Whether declining confidence is a problem at all is a real dispute rather than a rhetorical hedge.
+Whether Americans changed their minds, or the Americans who held the old view died and were replaced by people who never held it. A cross-section samples new people each round; only a panel that re-asks the same people could separate the two, and this design confuses them.
 
-**Citrin and Stoker (2018)**, reviewing decades of work on political trust, note that trust measures move with partisanship and with evaluations of incumbents, which complicates reading them as attitudes toward the system itself. Some of what looks like erosion of confidence in *Congress* is people disliking the party currently running Congress, and those people flip when control changes. On that reading a good deal of Figure 1 is a partisan seesaw whose two halves happen to be pointing the same way at the moment.
+Who moved. The file built here carries no breakdowns by party, age, race or education, which is where most of the interesting variation in this literature lives. And the GSS changed how it collected answers in 2021, moving to web and mail during the pandemic. That is exactly the kind of break that can look like a trend, and it sits directly underneath every `r Y2` reading above.
 
-There is also a normative argument that some of the decline was warranted. The `r Y1` baseline sits immediately after Watergate and Vietnam. Confidence had already been shaken by then, but the survey had not yet started measuring it. Institutions went on to earn skepticism through visible failures.
+## What you should have learned
 
-On that reading, low confidence in a body with a twenty percent approval rating is accurate perception rather than civic decay. The interesting question is not why confidence fell, but why it took as long as it did.
+- One unchanged question, asked `r length(unique(cf$year))` times across `r Y2 - Y1` years, is what makes the claim testable at all; almost no other social data holds still that long.
+- The fall is real but wildly uneven: `r wd(NFELL)` of `r nrow(it)` institutions fell by more than sampling error can explain, `r wd(NROSE)` rose, and `r wd(NSIG)` did not move.
+- The steepest loss is medicine's `r pc(abs(min(it$change)))` points, not Congress's — the decline is not confined to government, or even to politics.
+- The military's series peaks at `r pc(max(mil$great_deal))`% in `r mil$year[which.max(mil$great_deal)]` and rises overall, so whatever drives the declines is not an irreversible drift in national character.
+- A percentage is a stack of decisions: who counts as answering, which weight, which cells are too thin to print. Every one of them was somebody's choice.
 
-Three cautions belong to the data itself rather than to the argument about it. The first is the wording: "the people running" an institution is not the institution, so a respondent carefully distinguishing the office from its current occupants is recorded as distrusting the office. The second is the list itself. Asking about `r nrow(it)` institutions in a row invites comparison between them. What somebody would say about Congress alone is not necessarily what they say about Congress after ten other items have set a scale in their head.
+## Extensions
 
-The third is a break in the series. **The GSS changed how it collected answers in 2021**, moving to web and mail during the pandemic. That is exactly the kind of break that can look like a trend. The `r Y2` readings, including every "now" figure in this chapter, should be read with that in mind.
-
-## What this evidence will bear
-
-The strength of this file is almost entirely its consistency. It has `r Y2 - Y1` years of identical wording, a national sample, documented weights, and `r nrow(it)` institutions asked in a single interview. So comparisons between the institutions hold up, even where comparisons across time are disputed. Very little social data looks like this.
-
-Its weaknesses limit different claims.
-
-- **Three answer options and no middle.** The question is coarse, and the
-  middle box is doing work nobody chose.
-- **"The people running."** The wording mixes up an institution with whoever
-  happens to be running it now.
-- **Every other year after the 1990s.** The gaps in Figure 3 are wider than the
-  lines make them look.
-- **The weighted percentages carry sampling error**, roughly two to three
-  points on a fifteen-hundred-person item. Small year-to-year moves mean
-  nothing at all, and Figure 2 exists to say which ones do.
-- **The 2021 change of method.** A possible break sits directly underneath the
-  most recent readings.
-- **No breakdowns** by party, age, race or education, which is where most of
-  the interesting variation in this literature actually lives.
-
-Three questions stay open. Whether the decline reflects institutions or evaluators is the central one and is not settled by any amount of this series. Whether it should be reversed is a normative question on which some skepticism is plainly earned. And what the military's exception implies is genuinely unclear. It is the one line that rose, and it is also the institution the parties fight over least. Whether the second fact explains the first is unsettled.
-
-What remains is a single sentence that fifty-one years of an unchanged question will support. Across `r nrow(it)` American institutions asked about identically since `r Y1`, `r wd(NFELL)` have lost confidence by more than sampling error can explain, `r wd(NROSE)` has gained it, and `r wd(NSIG)` has not moved. The largest loss belongs to medicine and the smallest to science, neither of which is a branch of government, which is a strange result for a story usually told about politics.
+- `institutions.csv` gives every institution a `change` across the series. Sort by it. Which institutions lost the most confidence, and which gained?
+- `institutions.csv` also has `first_year`, `last_year` and `survey_years`. Find the institutions measured for fewer years than the rest. Does a shorter series make a bigger change easier to claim?
+- `confidence.csv` keeps `great_deal`, `only_some` and `hardly_any` separately. Pick an institution whose `great_deal` fell. Did those people move to the middle, or all the way to the bottom?
+- Find a year in `confidence.csv` where many institutions move together, using the `year` column. Then go and read what happened that year. Is the survey measuring the institutions, or the mood?
+- **Stretch:** Gallup has asked its own confidence battery since 1973, with different wording and a fourth answer option. Pull its Congress series from <https://news.gallup.com/> and set it beside this one. Where the two disagree, which difference — wording, options, sample — would you blame first?
+- **Stretch:** the GSS Data Explorer at <https://gssdataexplorer.norc.org/> can cross any confidence item by party identification. Pick one institution from Figure 3 and find out whether its decline belongs to one party or both.
 
 ## Sources
 
@@ -266,27 +159,17 @@ What remains is a single sentence that fifty-one years of an unchanged question 
   reduces the cumulative file to the `r n(nrow(cf))` institution-years read
   here, using the `wtssps` weight throughout.
 
+**Academic literature**
+
+- Citrin, J. and Stoker, L. (2018). "Political Trust in a Cynical Age." *Annual
+  Review of Political Science* 21: 49–70.
+
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`confidence.csv`](data/derived/confidence.csv), [`institutions.csv`](data/derived/institutions.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `institutions.csv` gives every institution a `change` across the series. Sort by it. Which institutions lost the most confidence, and which gained?
-- `institutions.csv` also has `first_year`, `last_year` and `survey_years`. Find the institutions measured for fewer years than the rest. Does a shorter series make a bigger change easier to claim?
-- `confidence.csv` keeps `great_deal`, `only_some` and `hardly_any` separately. Pick an institution whose `great_deal` fell. Did those people move to the middle, or all the way to the bottom?
-- Find a year in `confidence.csv` where many institutions move together. Then go and read what happened that year. Is the survey measuring the institutions, or the mood?
-
-**Academic literature**
-
-- Citrin, J. and Stoker, L. (2018). "Political Trust in a Cynical Age." *Annual
-  Review of Political Science* 21: 49–70.
 
 ```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

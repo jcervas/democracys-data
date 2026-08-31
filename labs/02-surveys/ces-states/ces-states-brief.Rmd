@@ -1,7 +1,7 @@
 ---
-title: "Sixty Thousand People, and Sixty-Eight Vermonters"
+title: "Sample Size and Small States in the 2024 CES"
 type: brief
-subtitle: "What the largest political survey in America buys, where it runs out, and the difference between being precise and being right"
+subtitle: "Sixty thousand people, and sixty-eight Vermonters: what the largest political survey in America buys, where it runs out, and the difference between being precise and being right"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 3
@@ -16,52 +16,47 @@ dd_read_chunks("ces-states-code.R")
 ```{r setup, include=FALSE}
 ```
 
-In 2024 the Cooperative Election Study interviewed `r n(FN("n_total"))` Americans. That is roughly sixty times a standard national poll. The thing usually said about a sample that large is that its **margin of error** is negligible: how far off the answer could be from the luck of who happened to get drawn.
+A survey of sixty thousand people sounds enormous, and it is. In 2024 the Cooperative Election Study interviewed `r n(FN("n_total"))` Americans, roughly sixty times a standard national poll. The thing usually said about a sample that large is that its **margin of error** is negligible: how far off the answer could be from the luck of who happened to get drawn.
 
-Nationally, it nearly is. The trouble is that a national sample is not a national sample everywhere. **The same `r n(FN("n_total"))` respondents are `r n(FN("n_max"))` Texans and `r F("n_min")` Vermonters**, and the second number decides what the survey can say about Vermont.
+Nationally, it nearly is. But a national sample is not a national sample everywhere. The same `r n(FN("n_total"))` respondents are `r n(FN("n_max"))` Texans and `r F("n_min")` Vermonters, and the second number decides what the survey can say about Vermont. So the question this brief asks of the biggest political survey in America is a small one: is it big enough to say anything about a small state?
 
-## Before you read on
+## The test
 
-`r mnote("One number. Most people put it an order of magnitude too high.")`
+The data is the [2024 CES Common Content](https://doi.org/10.7910/DVN/X11EP6): `r n(FN("n_total"))` respondents interviewed around the 2024 election, released by Ansolabehere, Schaffner and Pope on Harvard Dataverse. Every state estimate it yields is then graded against the certified 2024 presidential result in that state, which this book carries in its [historical campaigns chapter](../../03-elections/historical-campaigns/historical-campaigns-brief.html).
 
-`r n(FN("n_total"))` people, spread across `r F("n_states")` jurisdictions.
+Why this source, of all surveys? Because it is the largest, and the question is precisely about what largeness buys. It is also unusually honest equipment: the CES publishes the **weights** it applies to itself — counting some answers more heavily than others, so the sample resembles the country — and this book's [weighting chapter](../ces-class/ces-class-brief.html) reads that file at length. The benchmarks those weights aim at come from the Census Bureau's counts; the weighting is only the method that pulls a sample toward them. This brief leans on that chapter for what the CES is, and asks one further question of it.
 
-**How many of them live in the smallest state cell?** Write down a number.
+And why the presidential vote, of all its 694 questions? Because it is the one question with a certified answer. A survey estimate of trust or ideology can only be compared with another survey. An estimate of the two-party vote can be graded, state by state, against what the state actually did.
 
-## The file, and the door
+## The data
 
-This is the 2024 CES Common Content: `r n(FN("n_total"))` respondents, 694 variables, 175 MB. Of them, `r n(FN("n_twoparty"))` named one of the two major presidential candidates; the other `r n(FN("n_other"))` named somebody else, did not vote, or did not answer.
+Everything below is built into one table, `states.csv`, with a row per state. It starts from three columns of the big file: `inputstate`, the state each respondent lives in as a numeric code; `CC24_364b`, the presidential vote; and `commonweight`, the survey's own weight. Of `r n(FN("n_total"))` respondents, `r n(FN("n_twoparty"))` named one of the two major candidates; the other `r n(FN("n_other"))` named somebody else, did not vote, or did not answer.
 
-It cannot be fetched by a script. The file sits on Harvard Dataverse, which answers an automated request with a success code and an empty body — a success-shaped refusal this book's [survey access chapter](../survey-access/survey-access-brief.html) measures directly. A person with a browser fetched it, and it is preserved in `../ces-class/data/raw/`, which this chapter reads rather than keeping a second copy.
+The file itself cannot be fetched by a script: Harvard Dataverse answers an automated request with a success code and a challenge page, a wall this book's [survey access brief](../survey-access/survey-access-brief.html) measures directly. A person with a browser fetched it once, and this brief reads the copy the weighting chapter keeps rather than holding a second one.
 
-Two sibling chapters supply what the CES does not. The certified 2024 returns come from [historical campaigns](../../03-elections/historical-campaigns/historical-campaigns-brief.html). The **crosswalk** comes from [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html), a table that matches one set of codes to another. It turns the numeric state codes the CES stores into the abbreviations the returns use. Neither file is typed here.
+Two sibling chapters supply what the CES does not. The certified returns come from historical campaigns. The **crosswalk** — a table that matches one set of codes to another — comes from [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html), and turns the numeric state codes into the abbreviations the returns use. Neither file is typed here. And the vote coding was verified, not assumed: the build refuses to run if the national two-party estimate lands more than five points from the certified result, which a swapped coding would trip at once.
 
-## Nationally, it works
+For each state, the table then records: `n`, the respondents in the state; `est`, the weighted two-party Democratic share they imply; `moe`, its margin of error; `deff` and `n_eff`, the design effect and effective sample size, explained below; `actual`, the certified share; `error`, the difference; and `covers`, whether the certified result falls inside the margin.
 
-The CES puts the two-party Democratic share at **`r p2(F("nat_est"))`%**. The certified national result was **`r p2(F("nat_actual"))`%**.
+> **Before you read on, commit to a view.** `r n(FN("n_total"))` people, spread
+> across `r F("n_states")` jurisdictions. **How many of them live in the
+> smallest state cell?** Write down a number. Most people put it an order of
+> magnitude too high.
 
-It misses by `r p2(abs(FN("nat_error")))` points.
+## What it says about democracy
 
-`r mnote("That miss is roughly three times the national sampling margin. Whatever produced it is not the sample size.")`
+Nationally, the machine works. The CES puts the two-party Democratic share at `r p2(F("nat_est"))`%; the certified national result was `r p2(F("nat_actual"))`%. It misses by `r p2(abs(FN("nat_error")))` points — a good result for a survey, and a bad result for the usual explanation of survey error. A sample of `r n(FN("n_twoparty"))` carries a national sampling margin of about half a point. The miss is roughly three times that, so most of it is something other than sampling.
 
-That is a good result for a survey and a bad result for the usual explanation of survey error. A sample of `r n(FN("n_twoparty"))` carries a national margin of about half a point. The miss is three times that, so most of it is something other than sampling.
-
-## Where it runs out
+### Where it runs out
 
 ```{r cells-table}
 ```
 
-**`r F("state_min")` has `r F("n_min")` respondents.** `r F("state_max")` has `r n(FN("n_max"))`, which is `r p1(F("n_ratio"))` times as many. The margin of error runs from `r p2(F("moe_min"))` points in the best-sampled state to `r p2(F("moe_max"))` in `r F("moe_max_state")`.
+**`r F("state_min")` has `r F("n_min")` respondents.** `r F("state_max")` has `r n(FN("n_max"))`, which is `r p1(F("n_ratio"))` times as many. The margin of error runs from `r p2(F("moe_min"))` points in the best-sampled state to `r p2(F("moe_max"))` in `r F("moe_max_state")`, and the median state's margin is `r p2(F("moe_median"))` points. A survey described in every write-up by one national sample size is, at the level most people want to use it, an ordinary small poll fifty-one times over.
 
-The median state's margin is `r p2(F("moe_median"))` points. A survey described in every write-up by one national sample size is, at the level most people want to use it, an ordinary small poll fifty-one times over.
+The respondent counts overstate even that. Weighting costs precision, and the cost has a name: the **design effect**, the factor by which the effective sample is smaller than the headcount. The median state's design effect is `r p2(F("deff_median"))`, so a state cell of 300 respondents carries roughly the precision of a simple random sample of about 110. Every margin above already accounts for that; the point is that the number in the press release does not.
 
-### The weights cost more than half of it
-
-The respondent counts above are not the precision the survey actually has. **Weighting** means counting some answers more heavily than others so the sample resembles the country. It costs precision to do that, and the cost has a name: the **design effect**, the factor by which the effective sample is smaller than the headcount.
-
-The median state's design effect is **`r p2(F("deff_median"))`**. A state cell of 300 respondents carries roughly the precision of a simple random sample of about 110. Every margin above already accounts for that; the point is that the number in the press release does not.
-
-## Precision is not accuracy
+### Precision is not accuracy
 
 Now grade every state against what it actually did.
 
@@ -71,79 +66,68 @@ Now grade every state against what it actually did.
 ```{r grade-static, eval=!knitr::is_html_output(), fig.height=3.6}
 ```
 
-*Figure 1. Every state twice: the margin of error it claims, and the error it actually made against the certified result. Filled points are red where the result falls outside the margin.*
+**Figure 1. Every state twice: the margin of error it claims, and the error it actually made against the certified result.** A scatter against sample size, because the question is what sample size buys. Hollow points are the claimed margins; filled points are the errors, red where the result falls outside the margin.
 
-Two correlations say the whole thing.
+Two correlations say the whole thing. A state's sample size predicts its margin of error at `r p2(F("cor_n_moe"))`. It predicts how wrong the state actually was at `r p2(F("cor_n_err"))`. **Sample size buys precision. It barely buys accuracy.** The hollow points fall away steeply to the right; the filled ones scatter almost as widely at 3,000 respondents as at 300.
 
-A state's sample size predicts its **margin of error** at `r p2(F("cor_n_moe"))`. It predicts **how wrong the state actually was** at `r p2(F("cor_n_err"))`.
+If sampling were the only thing going wrong, about 95% of states would have the certified result inside their margin — sampling error is what a margin of error describes, and nothing else. **`r F("n_covered")` of `r F("n_states_graded")` do**, which is `r p1(F("pct_covered"))`%, against the `r p1(F("expected_covered"))` states that 95% coverage predicts. The median state misses by `r p2(F("err_median"))` points; the worst, `r F("err_max_state")`, misses by `r p2(F("err_max"))`.
 
-**Sample size buys precision. It barely buys accuracy.** The hollow points fall away steeply to the right; the filled ones scatter almost as widely at 3,000 respondents as at 300.
+That shortfall is everything a margin of error does not promise. It covers who answered and who did not, whether the people in a small state's cell resemble that state, and whether a person who says they voted for somebody did. For a reader of democracy's data, the lesson is structural: most public claims about opinion in a small state rest on cells this size, and the printed margin understates the doubt. The [weighting chapter](../ces-class/ces-class-brief.html) takes the machinery apart; the [poll weighting brief](../poll-weighting/poll-weighting-brief.html) shows the judgment calls inside it on a single poll.
 
-## The margin does not cover the error
+## What this brief cannot tell you
 
-If sampling were the only thing going wrong, about 95% of states would have the certified result inside their margin. Sampling error is what a margin of error describes, and nothing else.
-
-**`r F("n_covered")` of `r F("n_states_graded")` do**, which is `r p1(F("pct_covered"))`%, against the `r p1(F("expected_covered"))` states that 95% coverage predicts.
-
-The median state misses by `r p2(F("err_median"))` points. The worst, `r F("err_max_state")`, misses by `r p2(F("err_max"))`.
-
-That shortfall is everything a margin of error does not describe. It covers who answered and who did not, whether the people in a small state's cell resemble that state, and whether a person who says they voted for somebody did. The [weighting chapter](../poll-weighting/poll-weighting-brief.html) takes one of those apart on a single poll.
-
-## What this chapter cannot tell you
-
-**It cannot tell you the CES is bad.** It is among the best survey instruments in American political science, and a `r p2(abs(FN("nat_error")))`-point national miss is a good result. The chapter is about what a large sample does and does not buy, and the CES is the right file precisely because it is large and careful.
+**It cannot tell you the CES is bad.** It is among the best survey instruments in American political science, and a `r p2(abs(FN("nat_error")))`-point national miss is a good result. The brief is about what a large sample does and does not buy, and the CES is the right file precisely because it is large and careful.
 
 **One question, one year.** Presidential vote in 2024, which is the most-asked question in the survey and the easiest to grade. Nothing here says how the CES performs on questions with no certified answer, which is most of them.
 
 **The benchmark is not the same population.** The certified result counts everyone who voted. The CES estimate counts people who said they voted a particular way, weighted to a model of the electorate. Some of the gap in Figure 1 is that difference rather than survey error.
 
-**And the design effect is estimated, not published.** The Kish formula used here reads the weights and returns the precision they imply. A design-based standard error from the survey's own documentation would differ, probably not by much, and this chapter does not have one.
+**And the design effect is estimated, not published.** The Kish formula used here reads the weights and returns the precision they imply. A design-based standard error from the survey's own documentation would differ, probably not by much, and this brief does not have one.
 
-## What it does establish
+## What you should have learned
 
-A survey of `r n(FN("n_total"))` people estimates the national two-party vote to within `r p2(abs(FN("nat_error")))` points, and estimates the median state to within `r p2(F("err_median"))`.
+- A survey of `r n(FN("n_total"))` people estimated the national two-party vote to within `r p2(abs(FN("nat_error")))` points, and the median state to within `r p2(F("err_median"))`.
+- Its smallest state cell is `r F("n_min")` people, in `r F("state_min")`; the largest is `r p1(F("n_ratio"))` times bigger; the median state's margin of error is `r p2(F("moe_median"))` points before anyone quotes the national headline.
+- Weighting costs precision: the median state's design effect of `r p2(F("deff_median"))` shrinks a cell's effective sample by well over half.
+- Sample size predicts the margin of error (`r p2(F("cor_n_moe"))`) far better than it predicts the actual error (`r p2(F("cor_n_err"))`). A survey can grow more and more precise about a number that stays the same distance from the truth.
+- A margin of error is a promise about sampling only: `r F("n_covered")` of `r F("n_states_graded")` states kept it here, where 95% coverage predicts about `r p1(F("expected_covered"))`.
 
-**Its smallest state cell is `r F("n_min")` people.** The largest is `r p1(F("n_ratio"))` times bigger, the median state's margin is `r p2(F("moe_median"))` points, and the weights cost a factor of `r p2(F("deff_median"))` in effective sample before any of that.
+## Extensions
 
-And the number that a bigger sample reliably improves is the margin of error, not the error. `r p2(F("cor_n_moe"))` against `r p2(F("cor_n_err"))`. A survey can be more and more precise about a number that stays the same distance from the truth.
+- `states.csv` has `n` next to `n_eff` and `deff`. Sort by the ratio of `n` to `n_eff`. What is a large sample actually worth once the design is accounted for, and where is the haircut steepest?
+- `states.csv` also has `moe`, `error` and `covers`. Sort by `error` rather than `moe`. Is the state with the widest margin the state that got the answer most wrong?
+- Group `states.csv` by whether `covers` is TRUE, and compare the two groups' `n`. Are the broken promises concentrated in the small cells, or spread everywhere?
+- Find the smallest `n` in `states.csv`. Work out what you would be willing to say about that state, and write the sentence you would actually publish.
+- *Stretch:* the CES publishes a Common Content every two years. Rebuild this table for 2020, and see whether the same states miss in the same direction — a pattern sampling error cannot produce.
+- *Stretch:* pick one badly-missed state and find what public state polls said in late October 2024. Did instruments built to measure that one state do better than sixty thousand people measured nationally?
 
 ## Sources
+
+**Data**
 
 - **Cooperative Election Study**, Common Content 2024, Data Release 2,
   Ansolabehere, Schaffner and Pope. doi:10.7910/DVN/X11EP6,
   `CCES24_Common_OUTPUT_vv_topost_final.csv`. `r n(FN("n_total"))`
   respondents. <https://doi.org/10.7910/DVN/X11EP6>
-  The copy read here is the one the
-  [ces-class chapter](../ces-class/ces-class-brief.html) keeps.
-- **Not scriptable.** Harvard Dataverse answers automated requests with a
-  success code and an empty body.
+  Not scriptable — Harvard Dataverse answers automated requests with a
+  success code and a challenge page — so the copy read here is the one the
+  [weighting chapter](../ces-class/ces-class-brief.html) keeps.
 - **Certified 2024 returns and the state crosswalk** are read from the
   [historical campaigns](../../03-elections/historical-campaigns/historical-campaigns-brief.html)
   and [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html)
   chapters rather than retyped.
 - **Build.** `data/build-data.R` verifies the vote coding against the certified
-  national result before proceeding, then writes the two tables this chapter
-  reads. Every number above is computed at the moment this document was
-  rendered.
-
-### Checks
+  national result before proceeding, then writes the table this brief reads.
+  Every number above is computed at the moment this document was rendered.
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
+Every figure above is drawn from this table. It is plain CSV, it opens in
+a spreadsheet, and it is yours to take further.
 
 [`states.csv`](data/derived/states.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `states.csv` has `n` next to `n_eff` and `deff`. Sort by the ratio of the two. What is a large sample actually worth once the design is accounted for?
-- `states.csv` also has `moe`, `error` and `covers`. Count the states where `covers` is FALSE. Then ask what a margin of error is promising, and to whom.
-- Sort `states.csv` by `error` rather than `moe`. Is the state with the widest margin the state that got the answer most wrong?
-- Find the smallest `n` in the file. Work out what you would be willing to say about that state, and write the sentence you would actually publish.
+**Checks**
 
 ```{r checks-table}
 ```

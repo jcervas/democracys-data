@@ -1,7 +1,7 @@
 ---
-title: "Everyone Guesses Forty"
+title: "The Perception Gap: What Each Party Thinks the Other Looks Like"
 type: brief
-subtitle: "What Americans think each party is made of, how wrong that is, and the one thing they are most wrong about"
+subtitle: "Everyone guesses forty"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,19 +16,40 @@ dd_read_chunks("perception-gap-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Out of every hundred Republicans, how many do you think earn more than $250,000 a year?
+Each party is said to caricature the other. Democrats are pictured as a party of activists and minorities, Republicans as a party of the old and the rich, and commentators repeat that the two sides no longer see each other clearly. Is that true — and if it is, by how much, and about what?
 
-The average American answer is **`r p1(fn("worst_perceived"))`**. The real figure is **`r p1(fn("worst_actual"))`**.
+One number suggests the size of the problem. Out of every hundred Republicans, how many earn more than $250,000 a year? The average American answer is **`r p1(fn("worst_perceived"))`**. The real figure is **`r p1(fn("worst_actual"))`**. That is the most quoted result from a study of what people believe the two parties are made of, and it is one of eight.
 
-That is the most quoted number from a study of what people believe the two parties are made of, and it is one of eight. This chapter shows all eight, then shows the thing the famous figure cannot: **who was doing the guessing**, and how much that changes the answer.
+## The test
 
-## The study
+In March 2015 YouGov put eight questions to `r n(fn("n_resp"))` Americans. For each party it named four groups that party is stereotyped around, and asked what percentage of that party's supporters belong to each. Four Democratic groups, four Republican ones, `r n(fn("n_answers"))` answers in all. The study was run for Douglas Ahler and Gaurav Sood, who published it in 2018; the copy read here is their replication deposit on [Harvard Dataverse](https://doi.org/10.7910/DVN/CLMQ8E).
 
-In March 2015 YouGov put eight questions to `r n(fn("n_resp"))` Americans. For each party it named four groups that party is stereotyped around, and asked what percentage of that party's supporters belong to it. Four Democratic groups, four Republican ones, `r n(fn("n_answers"))` answers in all.
+Most opinion measures can never be graded. A poll about a vote is eventually scored against a real election; a question about trust or ideology never is, which is the standing problem of the [Public Opinion cluster's data chapter](../anes/anes-brief.html). These eight questions are the rare exception. Each asks for a number that other surveys measure — the true share of each party belonging to each group. The authors computed those shares from the American National Election Studies, the Current Population Survey and a Pew report. A guess with a right answer beside it can be graded, and that is the whole design.
 
-The study was run for two researchers, Douglas Ahler and Gaurav Sood, who published the results in 2018. **The survey itself is theirs and YouGov's, and nobody else has it.** What is public is a copy of part of it, which they deposited so their results could be checked. That is a different object from the study, and the last section of this chapter measures the difference.
+Because the file also records each respondent's own party, the same grading can be run twice: once on what people say about their own side, and once on what they say about the other one. That second comparison is the study's actual argument, and the famous figure cannot show it.
 
-## Everyone is wrong, and by a lot
+## The data
+
+Everything below comes from a file of `r n(fn("n_carried"))` columns: one row per respondent, with the eight estimates, a case weight, and the respondent's own party identification in `pid7`. The weight is YouGov's answer to a known problem: the panel is people who volunteer to take surveys online. Weighting means counting some answers more than others, so that the volunteers stand in for the country.
+
+The tables the figures rest on were rebuilt from that file. `items.csv` holds the eight groups with the true share (`actual_pct`), the average guess (`perceived_pct`), the middle guess (`median`), and the gap measured both ways. `by_party.csv` splits every guess by who was answering. `dist.csv` counts how many people gave each value from 0 to 100, and `heaping.csv` counts how round the answers are. Before writing anything else, the build recomputes the published averages from the `r n(fn("n_answers"))` individual answers; they match to five decimal places.
+
+One cleaning decision matters enough to name. People who call themselves independent and then admit to leaning toward a party are counted as partisans, which is the [party-id chapter](../party-id/party-id-brief.html)'s subject. The cost of that choice is measured below.
+
+The file is a copy of part of the study, not the study. The deposit ships its own codebook, so the two can be set against each other:
+
+```{r coverage-table}
+```
+
+`r n(fn("n_unshipped"))` columns are described in the codebook and are not in the file. `r n(fn("n_undoc"))` are in the file and are not in the codebook, and one of those is `pid7`, the column half of this brief rests on. The questionnaire as administered, the panel the thousand were drawn from, everyone who started and gave up — none of that is anywhere a reader can go. When a finding rests on a public file, ask what was collected, then ask what was deposited, and do not assume the second is the first with fewer rows.
+
+> **Before you read on, commit to two numbers.** First: for the average
+> group, by how many points do you expect the average guess to miss the true
+> share? Second: of the `r n(fn("n_answers"))` answers in the file, what share
+> do you expect to be round numbers ending in a zero? Write both down. A guess
+> you have not written down is one you will quietly revise.
+
+## What it says about democracy
 
 ```{r items-table}
 ```
@@ -39,19 +60,11 @@ The study was run for two researchers, Douglas Ahler and Gaurav Sood, who publis
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The eight items.** The dark dot is the true share, the light dot is the average guess, and the bar joining them is the gap.
+**Figure 1. The eight items: the true share of each group, and what people said.** Each row is one question, drawn as a pair of dots joined by a bar, because the finding is a distance — the gap between what a party is and what people think it is. The dark dot is the true share, the light dot is the average guess.
 
-Every single group is overestimated. The average gap is **`r p1(fn("gap_mean"))` points**.
+Every single group is overestimated, and the average gap is **`r p1(fn("gap_mean"))` points**. The sizes are not alike: earning $250K+ is out by `r p1(fn("worst_gap"))` points, Southern by `r p1(fn("best_gap"))`. The pattern in those sizes is worth having first: the groups people are most wrong about are the rarest ones. Lesbian, gay or bisexual Democrats are `r p1(it$actual_pct[it$group == "LGB"])`% of their party and people said `r p1(it$perceived_pct[it$group == "LGB"])`%, while Southerners really are `r p1(it$actual_pct[it$group == "Southern"])`% of Republicans and the guess was close.
 
-The sizes are not alike. Earning $250K+ is out by **`r p1(fn("worst_gap"))` points**, which is the number everybody quotes. Southern is out by **`r p1(fn("best_gap"))`**, which nobody quotes. They are in the same figure.
-
-**The pattern in those sizes is worth having before anything else.** The groups people are most wrong about are the rarest ones. Lesbian, gay or bisexual Democrats are `r p1(it$actual_pct[it$group == "LGB"])`% of the party and people said `r p1(it$perceived_pct[it$group == "LGB"])`%. Southerners are `r p1(it$actual_pct[it$group == "Southern"])`% of the Republican party and people said `r p1(it$perceived_pct[it$group == "Southern"])`%. Where a group really is common, the guess is close.
-
-## And you are worse about the party you are not in
-
-This is the study's actual argument, and Figure 1 cannot show it. Everyone in that figure is averaged together: Democrats, Republicans and people who are neither, all guessing about both parties at once.
-
-The file records each person's own party, so the same eight items can be asked twice.
+The split by who was answering is where the claim about the parties gets its answer.
 
 ```{r party-prep, include=FALSE}
 ```
@@ -62,29 +75,16 @@ The file records each person's own party, so the same eight items can be asked t
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same eight items, split by who answered.** The blue dot is what Democratic respondents said, the red dot what Republican respondents said, and the grey tick is the truth. The top four rows ask about groups of Democrats and the bottom four about groups of Republicans.
-
-**The far dot changes colour halfway down**, and that is the finding.
+**Figure 2. The same eight items, split by who answered.** The blue dot is what Democratic respondents said, the red dot what Republican respondents said, and the grey tick is the truth. The top four rows ask about groups of Democrats, the bottom four about groups of Republicans — so the far dot changes colour halfway down, and that is the finding.
 
 ```{r party-table}
 ```
 
-Asked about their own party, people overestimate by **`r p1(fn("own_gap"))` points**. Asked about the other one, **`r p1(fn("other_gap"))`**. The worst single cell in the study is `r f("worst_cell_who")` estimating how many `r f("worst_cell_about_word")` are `r f("worst_cell_asked")`: out by **`r p1(fn("worst_cell_gap"))` points**.
+Asked about their own party, people overestimate by **`r p1(fn("own_gap"))` points**. Asked about the other one, by **`r p1(fn("other_gap"))`**. Both sides do it, and in the same direction. The worst single cell in the study is `r f("worst_cell_who")` estimating how many `r f("worst_cell_about_word")` are `r f("worst_cell_asked")`: out by `r p1(fn("worst_cell_gap"))` points. Counting leaners as partisans is a decision here; push them back out and the two numbers become `r p1(fn("own_gap_strict"))` and `r p1(fn("other_gap_strict"))` — smaller, same direction, same conclusion.
 
-You cannot meet a political party. You learn what is in the other one from people describing it to you, and what you end up with is a picture assembled out of the descriptions.
+This is the sense in which polarization runs partly on wrong facts. You cannot meet a political party. You learn what is in the other one from people describing it to you, and the picture assembled from the descriptions puts the other side's most stereotyped groups at several times their real size.
 
-**Counting leaners as partisans is a decision here**, and it is worth saying what it costs. People who call themselves independent and then admit to leaning are counted as partisans above, which is the [party-id chapter](../party-id/party-id-brief.html)'s subject. Push them back out and the two numbers become `r p1(fn("own_gap_strict"))` and `r p1(fn("other_gap_strict"))`. A smaller gap, the same direction, the same conclusion.
-
-> **Before you read on, write two numbers down.** The average gap in Figure 1 is
-> about twenty points. **First: of the `r n(fn("n_answers"))` answers behind it,
-> what share do you think were round numbers ending in a zero?** **Second: if
-> you swapped the average guess for the middle guess, the value half the
-> answers fall below, how much of that twenty-point gap do you think would
-> survive?** Commit to both before turning the page.
-
-## What the average is an average of
-
-Each point in Figure 1 is a thousand people reduced to one number. Here is what the thousand look like.
+The average guess itself deserves a look, because each point in Figure 1 is a thousand people reduced to one number.
 
 ```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -94,14 +94,7 @@ Each point in Figure 1 is a thousand people reduced to one number. Here is what 
 
 **Figure 3. Every answer, at one-point bins.** In the browser you can click any single item and see its own thousand answers against its own true share.
 
-**`r p1(fn("mult10"))`% of the answers end in a zero.** `r p1(fn("mult5"))`% end in a zero or a five. Only `r p1(fn("not_mult5"))`% use any of the other eighty values on the scale, and exactly `r n(fn("nonint"))` answer in the whole study is not a whole number: somebody typed 0.5.
-
-```{r heap-table}
-```
-
-And `r p1(fn("eq50"))`% of all answers are exactly **50**. No group here has a true share anywhere near a half. Fifty is what a person types when they do not know and the box will not let them say so.
-
-**That pile is lumpy and it leans.** A few people answering 90 pull the average up and nothing pulls it back, so the average sits well above the middle of the answers.
+**`r p1(fn("mult10"))`% of the answers end in a zero.** `r p1(fn("mult5"))`% end in a zero or a five, and `r p1(fn("eq50"))`% of all answers are exactly 50 — what a person types when they do not know and the box will not let them say so. That pile is lumpy and it leans: a few people answering 90 pull the average up and nothing pulls it back.
 
 ```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.6}
 ```
@@ -109,65 +102,39 @@ And `r p1(fn("eq50"))`% of all answers are exactly **50**. No group here has a t
 ```{r gap-table}
 ```
 
-**Figure 4. The same eight gaps, twice.** Measured from the average guess, and from the middle one.
+**Figure 4. The same eight gaps, measured from the average guess and from the middle one.** Measured off the middle, the average gap is `r p1(fn("gap_median"))` points rather than `r p1(fn("gap_mean"))`. Neither number is wrong: the average answers *what does the country believe on average*, the middle answers *what does a typical person believe*, and they are `r p1(fn("gap_mean") - fn("gap_median"))` points apart.
 
-**Measured off the middle, the average gap is `r p1(fn("gap_median"))` points rather than `r p1(fn("gap_mean"))`.** Seven of the eight shrink and one grows. Neither number is the wrong one. The average answers *what does the country believe on average*, which is what the study asked. The middle answers *what does a typical person believe*. They are `r p1(fn("gap_mean") - fn("gap_median"))` points apart and the difference is never mentioned.
+One more compression sits under everything above, and it is the subtitle. The true shares span `r p1(fn("span_actual"))` points across the eight groups; the average guesses span `r p1(fn("span_perceived"))`. The guesses do track reality, at a correlation of `r f("r_actual_perc")` on a scale where 1 is a perfect straight line. But they are squeezed into a high band: six of the eight average guesses fall between 38 and 42. Anyone answering near forty about a group really at `r p1(fn("worst_actual"))`% is `r p1(fn("worst_gap"))` points wrong automatically, so a ranking of the gaps is close to a ranking of the groups from rarest to commonest.
 
-## Everyone guesses forty
+## What this brief cannot tell you
 
-The true shares span **`r p1(fn("span_actual"))` points** across these eight groups. The average guesses span **`r p1(fn("span_perceived"))`**.
+**Why people answer near forty is not settled.** It could be that they picture the party through its stereotypes, which is the study's argument. It could be that somebody with no information gives a number in the middle of the scale, which would produce the same compression without anyone being misled. This brief can show the pattern; it cannot say what causes it.
 
-People are not answering at random. The guesses do line up with reality, at a correlation of `r f("r_actual_perc")`, on a scale where 1 is a perfect straight line. But they are squeezed into a band, and the band sits high: six of the eight average guesses fall between 38 and 42.
+**The true shares are estimates too.** Each carries a standard error; the widest is `r f("se_group")`, at `r p1(fn("se_actual"))`% — honestly somewhere between `r p1(fn("se_lo"))`% and `r p1(fn("se_hi"))`%. Small against a twenty-point gap, but the gap is a distance between two estimates, not between a guess and a fact.
 
-That is the chapter's title and it is also a warning about the measure. Anyone answering near forty about a group that is really at `r p1(fn("worst_actual"))`% is `r p1(fn("worst_gap"))` points wrong automatically. **A list of these gaps sorted from largest to smallest is very close to a list of the groups sorted from rarest to commonest.** The ranking is telling you about the groups as much as about the people guessing.
+**The panel is not the country.** YouGov recruits volunteers, and the case weight is what stands between that and a national statement. The [surveys-source chapter](../surveys-source/surveys-source-brief.html) sets out what a sample like this can establish, and the [ces-class chapter](../ces-class/ces-class-brief.html) shows what happens when the weights are turned off.
 
-## The survey, and the copy of it we have
+**Eight groups is a small and chosen list.** The authors picked groups each party is stereotyped around — the right list for their question, and a list built to produce large gaps. A different eight would give different numbers, and the actuals describe the parties as of 2015.
 
-Everything above comes from a file of `r n(fn("n_carried"))` columns. The survey it was taken from had many more.
+## What you should have learned
 
-That is not a complaint. It is the ordinary condition of published research data: a researcher deposits what their results rest on. The questionnaire as administered, the panel the thousand people were drawn from, everyone who started and gave up — none of that is deposited, and none of it is anywhere a reader can go. **YouGov does not publish this study, so the deposit is the only route to any of it.**
+- Every one of the eight groups is overestimated, by `r p1(fn("gap_mean"))` points on average, and the rarest groups are missed the worst.
+- People misjudge their own party by `r p1(fn("own_gap"))` points and the other party by `r p1(fn("other_gap"))` — both sides, in the same direction, which is how polarization can run on wrong facts.
+- `r p1(fn("mult10"))`% of the answers end in a zero and `r p1(fn("eq50"))`% are exactly 50, so the "average belief" is an average of round guesses, and it sits `r p1(fn("gap_mean") - fn("gap_median"))` points above the middle one.
+- A public replication file is not the study: `r n(fn("n_undoc"))` of its columns are undocumented, including the one Figure 2 rests on.
 
-The interesting part is that the deposit ships its own codebook, so the two can be set against each other.
+## Extensions
 
-```{r coverage-table}
-```
-
-`r n(fn("n_unshipped"))` columns are described in the codebook and are not in the file. `r n(fn("n_undoc"))` are in the file and are not in the codebook, and one of those is `pid7`, **the column the whole of Figure 2 rests on**. The codebook says as much in its own first line: it is not comprehensive.
-
-**The rule of thumb.** When a finding rests on a public file, the file is not the study. Ask what was collected, then ask what was deposited, and do not assume the second is the first with fewer rows.
-
-## If you ran this in a room
-
-Here is the block, ready to append to the class survey. Put it after the questions that ask who *you* are, because these ask who you think everybody else is, and that order keeps the second set from colouring the first.
-
-```{r form-table}
-```
-
-> The last eight questions ask you to estimate. Nobody expects you to know
-> these — guess. Give a whole number between 0 and 100. Please do not look
-> anything up: a wrong guess is useful data and a correct look-up is not.
-
-Set each item as a short answer, validated as a number between 0 and 100, shuffled within the block, all eight required. Two things there are decisions rather than formatting, and this chapter is the evidence for both.
-
-**The wording asks for a count out of a hundred, not a percentage.** The original asked for a percentage and `r p1(fn("mult10"))`% of the answers came back ending in a zero. Asking somebody to count out of a hundred will not remove that, but it invites a finer answer from anyone who does not think in percentages.
-
-**Score the room against two things, not one.** Against the true shares is whether the room is wrong. Against the national guesses is the better question: is a room of students less wrong than the country, or wrong in a different direction?
-
-**And the actuals are a decade old.** They describe the parties as of 2015. Recomputing them from a current survey is a real exercise, and the distance between the 2015 figure and today's is a finding rather than a correction.
-
-## What this chapter cannot tell you
-
-**No room has answered these questions yet.** Everything here is the national study. The class comparison is set up and not run, and nothing here is a result about any group of students.
-
-**Why people answer near forty is not settled.** It could be that they picture the party through its stereotypes, which is the study's argument. It could be that somebody with no information gives a number in the middle of the scale, which would produce the same pattern without anyone being misled about anything. This chapter can show the compression. It cannot say what causes it.
-
-**The true shares are estimates too.** Each was computed by the authors from the American National Election Studies, the Current Population Survey or a Pew report, and each carries a standard error. The widest is `r f("se_group")`: `r p1(fn("se_actual"))`%, honestly somewhere between `r p1(fn("se_lo"))`% and `r p1(fn("se_hi"))`%. For most items that is small against a twenty-point gap. It still means the gap is a distance between two estimates, and "the true share" is doing work the word "estimate" would not do.
-
-**The panel is not the country.** YouGov recruits people who volunteer to take surveys online, and the case weight is what stands between that and a national statement. The [surveys-source chapter](../surveys-source/surveys-source-brief.html) sets out what a sample like this can establish, and the [ces-class chapter](../ces-class/ces-class-brief.html) shows what happens when the weights are turned off.
-
-**Eight groups is a small and chosen list.** The authors picked groups each party is stereotyped around, which is the right list for their question and a list built to produce large gaps. A different eight, say Democrats who are veterans or Republicans who rent, would give different numbers, and this chapter has no way to say how different.
+- `items.csv` puts `actual_pct` beside `perceived_pct` for every group asked about. Which group is misjudged by the widest margin, and is it guessed too high or too low?
+- `by_party.csv` splits every guess by who is doing the guessing, with the `gap` computed per cell. Do people judge their own party more accurately than the other one? Check every item before you answer.
+- `heaping.csv` counts the answers that are multiples of ten, multiples of five, and exactly 50, item by item. Work out which item drew the roundest answers. What does that say about how precise a survey percentage really is?
+- `items.csv` gives both a `gap_mean` and a `gap_median` for the same question, and they disagree. Look at `dist.csv` to see why. Which one would you report?
+- **Stretch:** put the eight questions to a room of people, after any questions about who they are, and score the room twice — against the true shares, and against the national guesses. Is the room less wrong than the country, or wrong in a different direction?
+- **Stretch:** the true shares are a decade old. Recompute one of them from a current survey; the distance between the 2015 figure and today's is a finding, not a correction.
 
 ## Sources
+
+**Data**
 
 - The data is a **YouGov survey of `r n(fn("n_resp"))` American adults, fielded
   in March 2015** for Douglas J. Ahler and Gaurav Sood. YouGov does not publish
@@ -183,7 +150,7 @@ Set each item as a short answer, validated as a number between 0 and 100, shuffl
   Research Center report on religion.
 - The averages recomputed here from the `r n(fn("n_answers"))` individual
   answers reproduce the published ones to five decimal places, which is the
-  check this chapter runs before it writes anything else.
+  check this brief runs before it writes anything else.
 
 **The data itself**
 
@@ -191,23 +158,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`by_party.csv`](data/derived/by_party.csv), [`coverage.csv`](data/derived/coverage.csv), [`dist.csv`](data/derived/dist.csv), [`heaping.csv`](data/derived/heaping.csv), [`items.csv`](data/derived/items.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `items.csv` puts `actual_pct` beside `perceived_pct` for every group asked
-  about. Which group is misjudged by the widest margin, and is it guessed too
-  high or too low?
-- `by_party.csv` splits every guess by who is doing the guessing. Do people
-  judge their own party more accurately than the other one? Check every item
-  before you answer.
-- `heaping.csv` counts the answers that are multiples of ten, multiples of
-  five, and exactly 50. Work out what share are multiples of five. What does
-  that tell you about how precise a survey percentage really is?
-- `items.csv` gives both a mean and a median for the same question, and they
-  are far apart. Look at `dist.csv` to see why. Which one would you report?
 
 ```{r ai-prompt, results='asis'}
 ```

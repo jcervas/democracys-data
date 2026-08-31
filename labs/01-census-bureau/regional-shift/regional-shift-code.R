@@ -64,14 +64,6 @@ NETCHG <- sapply(sp, function(x) { r <- x$reps[order(x$year)]; r[length(r)] - r[
 GAPS   <- POSDEC - pmax(NETCHG, 0)
 GAPST  <- names(GAPS)[GAPS > 0]
 
-# people per seat: national (from the file) and the interstate spread (computed)
-ppr <- st[st$year >= Y1 & st$name != "District of Columbia" & !is.na(st$reps), ]
-ppr$per <- ppr$pop / ppr$reps
-spread <- do.call(rbind, lapply(split(ppr, ppr$year), function(x)
-  data.frame(year = x$year[1], ratio = max(x$per) / min(x$per),
-             lo = x$name[which.min(x$per)], hi = x$name[which.max(x$per)])))
-P1 <- nat$pop_per_rep[nat$year == 1910]; P2 <- nat$pop_per_rep[nat$year == Y2]
-
 # ---- captions -------------------------------------------------------------
 # Every figure ships twice: D3 for the browser, base R for the PDF. Its caption
 # ships ONCE, as the numbered paragraph of Markdown that follows the chunk pair,
@@ -90,159 +82,12 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- rawapp
-# Read from the committed download, not quoted here: this file is small enough
-# to keep, so the excerpt is the file rather than a copy of it.
-RL <- readLines("data/raw/apportionment_raw.csv", warn = FALSE)
-pick <- c(1L,
-          grep('^Florida,State,1960,', RL)[1],
-          grep('^Florida,State,2020,', RL)[1],
-          grep('^Puerto Rico,State,2020,', RL)[1],
-          grep('^District of Columbia,State,2020,', RL)[1])
-NRAW <- length(RL) - 1L
-NCRAW <- 1L + sum(strsplit(RL[1], "", fixed = TRUE)[[1]] == ",")
-# The header and four rows, read as a table rather than folded across the page.
-# `Geography Type` is the column the paragraph below is about, so it is easier
-# to compare four values of it down a column than across four wrapped lines.
-read.csv(text = paste(RL[pick], collapse = "\n"), stringsAsFactors = FALSE,
-         check.names = FALSE, colClasses = "character")
-
-## ---- cleanstate
-st[st$name == "Florida" & st$year %in% c(Y1, Y2),
-   c("year", "pop", "region", "south_census", "south_confed",
-     "sunbelt", "border_south")]
-
 ## ---- one-record
 o <- st[st$name == "Florida" & st$year %in% c(Y1, Y2),
         c("name", "year", "pop", "reps", "repchg", "region", "division")]
 o$pop <- n(o$pop)
 names(o) <- c("state", "year", "resident population", "seats",
               "change this decade", "region", "division")
-o
-
-## ---- file
-raw   <- read.csv("data/raw/apportionment_raw.csv", stringsAsFactors = FALSE,
-                  check.names = FALSE)
-gt    <- table(trimws(raw[["Geography Type"]])) / length(unique(nat$year))
-gt    <- gt[c("State", "Region", "Nation")]
-RAWN  <- nrow(raw)
-KB    <- round(file.size("data/raw/apportionment_raw.csv") / 1024)
-
-data.frame(
-  item = c("Source", "Rows", "Years", "Kinds of row", "Seats allocated",
-           "Key required", "Size"),
-  value = c("U.S. Census Bureau, apportionment time series",
-            paste(n(RAWN), "data rows"),
-            paste(min(nat$year), "to", max(nat$year), "by decade"),
-            paste(sprintf("%s (%d/year)", names(gt), as.integer(gt)),
-                  collapse = ", "),
-            n(sum(sc$reps_2020)), "none", paste("about", n(KB), "KB")))
-
-## ---- map-prep
-mp   <- read.csv("data/derived/statemap.csv",  stringsAsFactors = FALSE)
-dvl  <- read.csv("data/derived/divmap.csv",    stringsAsFactors = FALSE)
-mlab <- read.csv("data/derived/maplabels.csv", stringsAsFactors = FALSE)
-MH   <- ceiling(max(mp$y))                      # drawing height at width 760
-# the region hues of every figure in this chapter, mixed toward white so the
-# fills stay light enough to carry labels and heavy division borders
-MPAL <- sapply(RCOL, function(k) colorRampPalette(c("#ffffff", k))(100)[45])
-# label the states with room for two letters; the rest are readable by color,
-# and by hover in the browser
-slab <- mlab[mlab$kind == "state" & (mlab$area > 700 | mlab$abbr == "HI"), ]
-rlab <- data.frame(name = c("West", "Midwest", "Northeast", "South"),
-                   x = c(232, 445, 645, 548), y = c(20, 24, 32, 442))
-
-## ---- map-static
-par(mar = c(0, 0, 0, 0))
-plot(NA, xlim = c(0, 760), ylim = c(MH, 0), asp = 1, axes = FALSE,
-     xlab = "", ylab = "")
-for (k in split(mp, interaction(mp$name, mp$piece, drop = TRUE)))
-  polygon(k$x, k$y, col = MPAL[k$region[1]], border = "#ffffff", lwd = 0.5)
-for (k in split(dvl, interaction(dvl$division, dvl$piece, drop = TRUE)))
-  lines(k$x, k$y, col = "#4a4a4a", lwd = 1.4)
-text(slab$x, slab$y, slab$abbr, cex = 0.45, col = "#333333")
-text(rlab$x, rlab$y, toupper(rlab$name), cex = 0.95, font = 2,
-     col = RCOL[rlab$name])
-
-## ---- map-d3
-# The one d3 <script src> in this document lives here, on the first figure that
-# renders in HTML. Every later figure uses the library loaded by this chunk; a
-# second copy would silently double the payload.
-pth <- function(df, close = TRUE) paste(vapply(split(df, df$piece), function(k)
-  paste0("M", paste(sprintf("%.1f,%.1f", k$x, k$y), collapse = "L"),
-         if (close) "Z" else ""), ""), collapse = "")
-stj <- paste(vapply(unique(mp$name), function(nm) {
-  d <- mp[mp$name == nm, ]
-  i <- match(nm, sc$name)
-  seat <- if (is.na(i)) "null" else
-    sprintf('[%d,%d,%d]', sc$reps_1960[i], sc$reps_2020[i], sc$change[i])
-  sprintf('{"n":"%s","r":"%s","dv":"%s","s":%s,"p":"%s"}',
-          nm, d$region[1], d$division[1], seat, pth(d))
-}, ""), collapse = ",")
-dvj <- paste(vapply(split(dvl, dvl$division), function(d)
-  sprintf('"%s"', pth(d, close = FALSE)), ""), collapse = ",")
-slj <- paste(sprintf('{"x":%.1f,"y":%.1f,"t":"%s"}', slab$x, slab$y, slab$abbr),
-             collapse = ",")
-rlj <- paste(sprintf('{"x":%d,"y":%d,"t":"%s","c":"%s"}', rlab$x, rlab$y,
-                     toupper(rlab$name), RCOL[rlab$name]), collapse = ",")
-plj <- paste(sprintf('"%s":"%s"', names(MPAL), MPAL), collapse = ",")
-cat(sprintf('
-<div id="usmap" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const ST=[%s];
-const DV=[%s];
-const SL=[%s];
-const RL=[%s];
-const PAL={%s};
-const W=760,H=%d;
-const wrap=d3.select("#usmap");
-const svg=wrap.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const tip=wrap.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("path").data(ST).join("path")
-  .attr("d",d=>d.p).attr("fill",d=>PAL[d.r])
-  .attr("stroke","#ffffff").attr("stroke-width",0.6)
-  .on("mousemove",function(e,d){
-    d3.select(this).attr("stroke","#111").attr("stroke-width",1.2).raise();
-    const m=d3.pointer(e,wrap.node());
-    const seat=d.s===null
-      ? "counted every decade, no seat in the House"
-      : `${d.s[0]} seats in 1960 \\u2192 ${d.s[1]} in 2020`+
-        (d.s[2]===0?"":` (${d.s[2]>0?"+":""}${d.s[2]})`);
-    tip.style("opacity",1).html(`<b>${d.n}</b><br>${d.dv} division, ${d.r} region<br>${seat}`)
-      .style("left",Math.min(m[0]+16,wrap.node().clientWidth-230)+"px")
-      .style("top",(m[1]+10)+"px");
-  })
-  .on("mouseleave",function(){
-    d3.select(this).attr("stroke","#ffffff").attr("stroke-width",0.6);
-    tip.style("opacity",0);
-  });
-svg.append("g").selectAll("path").data(DV).join("path")
-  .attr("d",p=>p).attr("fill","none").attr("stroke","#4a4a4a")
-  .attr("stroke-width",1.5).attr("pointer-events","none");
-svg.append("g").selectAll("text").data(SL).join("text")
-  .attr("class","on-mark")
-  .attr("x",d=>d.x).attr("y",d=>d.y).attr("text-anchor","middle")
-  .attr("font-size","9.5px").attr("fill","#333")
-  .attr("pointer-events","none").text(d=>d.t);
-svg.append("g").selectAll("text").data(RL).join("text")
-  .attr("x",d=>d.x).attr("y",d=>d.y).attr("text-anchor","middle")
-  .attr("font-size","14px").attr("font-weight",700).attr("fill",d=>d.c)
-  .text(d=>d.t);
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Hover a state for its division, region, and seats.</p>
-', stj, dvj, slj, rlj, plj, MH))
-
-## ---- ak-hi
-o <- st[st$name %in% c("Alaska", "Hawaii") & st$year %in% c(1940, 1950, 1960),
-        c("name", "year", "pop", "reps")]
-o$pop <- n(o$pop); o$reps[is.na(o$reps)] <- "—"
-names(o) <- c("state", "year", "resident population", "seats")
 o
 
 ## ---- one-decade
@@ -283,12 +128,12 @@ text(m$change + ifelse(m$change > 0, 0.5, -0.5), bp,
 legend("bottomright", names(RCOL), fill = RCOL, border = NA, bty = "n", cex = 0.7)
 
 ## ---- bars-d3
-# Drawn with the shared library. d3 itself is loaded once, by the map figure
-# above, so dd_fig() is told not to emit it a second time; it still emits
-# dd-charts.js, which rides beside whatever loaded d3 first. The four region
-# hues are the series classes the whole chapter maps onto RCOL.
+# Drawn with the shared library. This is the first figure in the document, so
+# dd_fig() emits d3 and dd-charts.js here; the hand-written figure below rides
+# on the same d3 tag. The four region hues are the series classes the whole
+# chapter maps onto RCOL.
 m <- moved[order(-moved$change), ]
-dd_fig("bars", "bar", m[, c("name", "change", "region")], d3 = FALSE,
+dd_fig("bars", "bar", m[, c("name", "change", "region")],
   x = list(field = "change", domain = c(-17, 17), fmt = "signed0", ticks = 7),
   y = list(field = "name", band = TRUE),
   series = list(field = "region",
@@ -301,75 +146,6 @@ cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
 Hover a bar for the exact figure.</p>')
 
-## ---- slope
-tp <- sc[order(-pmax(sc$reps_1960, sc$reps_2020)), ][1:12, ]
-tp <- tp[order(-tp$reps_1960, -tp$reps_2020), ]
-# push overlapping labels apart without moving the points they belong to
-dodge <- function(v, gap) {
-  o <- order(v); s <- sort(v)
-  for (i in seq_along(s)[-1]) if (s[i] - s[i - 1] < gap) s[i] <- s[i - 1] + gap
-  s <- s - (mean(s) - mean(v))          # re-center so nothing drifts far
-  out <- numeric(length(v)); out[o] <- s; out
-}
-tp$lab60 <- dodge(tp$reps_1960, 1.5)
-tp$lab20 <- dodge(tp$reps_2020, 1.5)
-
-## ---- slope-static
-par(mar = c(0.8, 6.4, 2.2, 6.4))
-plot(NA, xlim = c(0, 1), ylim = c(0, 58), axes = FALSE, xlab = "", ylab = "")
-mtext(c(Y1, Y2), side = 3, at = c(0, 1), line = 0.2, cex = 0.9, font = 2)
-segments(0, 0, 0, 56, col = "#ccc"); segments(1, 0, 1, 56, col = "#ccc")
-for (i in seq_len(nrow(tp))) {
-  cl <- RCOL[tp$region[i]]
-  segments(0, tp$reps_1960[i], 1, tp$reps_2020[i], col = cl, lwd = 2,
-           lty = ifelse(tp$change[i] >= 0, 1, 2))
-  points(c(0, 1), c(tp$reps_1960[i], tp$reps_2020[i]), pch = 19, cex = 0.8, col = cl)
-  segments(-0.015, tp$lab60[i], 0, tp$reps_1960[i], col = cl, lwd = 0.5, xpd = NA)
-  segments(1.015, tp$lab20[i], 1, tp$reps_2020[i], col = cl, lwd = 0.5, xpd = NA)
-  text(-0.02, tp$lab60[i], paste0(tp$name[i], " ", tp$reps_1960[i]),
-       pos = 2, cex = 0.62, col = cl, xpd = NA)
-  text(1.02, tp$lab20[i], paste0(tp$reps_2020[i], " ", tp$name[i]),
-       pos = 4, cex = 0.62, col = cl, xpd = NA)
-}
-
-## ---- slope-d3
-rows <- paste(sprintf('{"s":"%s","a":%d,"b":%d,"la":%.2f,"lb":%.2f,"c":"%s"}',
-                      tp$name, tp$reps_1960, tp$reps_2020, tp$lab60, tp$lab20,
-                      RCOL[tp$region]), collapse = ",")
-cat(sprintf('
-<div id="slope" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=700,H=430,M={t:34,r:150,b:14,l:150};
-const svg=d3.select("#slope").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const y=d3.scaleLinear().domain([0,56]).range([H-M.b,M.t]);
-const xa=M.l,xb=W-M.r;
-svg.append("text").attr("x",xa).attr("y",20).attr("text-anchor","middle")
-  .attr("font-weight",600).text("%d");
-svg.append("text").attr("x",xb).attr("y",20).attr("text-anchor","middle")
-  .attr("font-weight",600).text("%d");
-[xa,xb].forEach(v=>svg.append("line").attr("x1",v).attr("x2",v)
-  .attr("y1",M.t).attr("y2",H-M.b).attr("stroke","#ddd"));
-const g=svg.append("g").selectAll("g").data(D).join("g");
-g.append("line").attr("x1",xa).attr("x2",xb).attr("y1",d=>y(d.a))
-  .attr("y2",d=>y(d.b)).attr("stroke",d=>d.c).attr("stroke-width",2.2)
-  .attr("stroke-dasharray",d=>d.b>=d.a?null:"5,3");
-g.append("circle").attr("cx",xa).attr("cy",d=>y(d.a)).attr("r",4).attr("fill",d=>d.c);
-g.append("circle").attr("cx",xb).attr("cy",d=>y(d.b)).attr("r",4).attr("fill",d=>d.c);
-g.append("line").attr("x1",xa-8).attr("x2",xa).attr("y1",d=>y(d.la))
-  .attr("y2",d=>y(d.a)).attr("stroke",d=>d.c).attr("stroke-width",0.7);
-g.append("line").attr("x1",xb+8).attr("x2",xb).attr("y1",d=>y(d.lb))
-  .attr("y2",d=>y(d.b)).attr("stroke",d=>d.c).attr("stroke-width",0.7);
-g.append("text").attr("x",xa-12).attr("y",d=>y(d.la)+4).attr("text-anchor","end")
-  .attr("font-size","11.5px").attr("fill",d=>d.c).text(d=>`${d.s} ${d.a}`);
-g.append("text").attr("x",xb+12).attr("y",d=>y(d.lb)+4)
-  .attr("font-size","11.5px").attr("fill",d=>d.c).text(d=>`${d.b} ${d.s}`);
-})();
-</script>
-', rows, Y1, Y2))
-
 ## ---- regions-seats
 o <- data.frame(g = c(REGS, "Northeast + Midwest", "South + West"),
                 s1 = c(sapply(REGS, sg, y = 1960), b60["NE+MW"], b60["S+W"]),
@@ -379,6 +155,23 @@ o$share  <- paste0(pc(100 * o$s1 / 435), "% → ", pc(100 * o$s2 / 435), "%")
 names(o) <- c("region", paste("seats", Y1), paste("seats", Y2), "change",
               "share of the House")
 o
+
+## ---- ec
+data.frame(
+  quantity = c(paste("Northeast + Midwest electoral votes,", Y1),
+               paste("Northeast + Midwest electoral votes,", Y2),
+               paste("South + West electoral votes,", Y1),
+               paste("South + West electoral votes,", Y2),
+               "Electoral votes that changed region"),
+  value = c(paste0(n(ev60["NE+MW"]), " of ", n(sum(ev60)),
+                   "  (", pc(100 * ev60["NE+MW"] / sum(ev60)), "%)"),
+            paste0(n(ev20["NE+MW"]), " of ", n(sum(ev20)),
+                   "  (", pc(100 * ev20["NE+MW"] / sum(ev20)), "%)"),
+            paste0(n(ev60["S+W"]), " of ", n(sum(ev60)),
+                   "  (", pc(100 * ev60["S+W"] / sum(ev60)), "%)"),
+            paste0(n(ev20["S+W"]), " of ", n(sum(ev20)),
+                   "  (", pc(100 * ev20["S+W"] / sum(ev20)), "%)"),
+            n(netreg["South"] + netreg["West"])))
 
 ## ---- reversals
 o <- data.frame(state = GAPST,
@@ -492,119 +285,6 @@ o$change <- paste0(ifelse(o$change > 0, "+", ""), pc(o$change), " pts")
 names(o) <- c("definition", "states", paste("share", Y1), paste("share", Y2),
               "change")
 o
-
-## ---- border
-BOR <- st[st$border_south & st$year %in% c(Y1, Y2), c("name", "year", "pop")]
-BOR$share <- 100 * BOR$pop / nat$pop[match(BOR$year, nat$year)]
-bw <- reshape(BOR[, c("name", "year", "share")], idvar = "name",
-              timevar = "year", direction = "wide")
-names(bw) <- c("name", "s1", "s2")
-bw$change <- bw$s2 - bw$s1
-bw <- bw[order(-bw$change), ]
-CONF <- dv("Confederate South (11 states)", Y2) -
-        dv("Confederate South (11 states)", Y1)
-bg <- function(k, v) bw[[v]][bw$name == k]
-
-## ---- bordertab
-o <- data.frame(unit = bw$name,
-                s1 = paste0(pc(bw$s1, 2), "%"),
-                s2 = paste0(pc(bw$s2, 2), "%"),
-                eff = paste0(ifelse(bw$change > 0, "+", ""), pc(bw$change, 2),
-                             " pts"))
-names(o) <- c("unit added", paste("share", Y1), paste("share", Y2),
-              "effect on the measured rise")
-o
-
-## ---- perseat
-data.frame(
-  quantity = c("People per representative, 1910",
-               paste("People per representative,", Y2), "Multiple",
-               "U.S. population, 1910 → 2020", "Multiple",
-               "House seats, 1910 → 2020"),
-  value = c(n(P1), n(P2), paste0(pc(P2 / P1, 2), "×"),
-            paste(n(nat$pop[nat$year == 1910]), "→", n(nat$pop[nat$year == Y2])),
-            paste0(pc(nat$pop[nat$year == Y2] / nat$pop[nat$year == 1910], 2), "×"),
-            paste(n(nat$reps[nat$year == 1910]), "→",
-                  n(nat$reps[nat$year == Y2]))))
-
-## ---- step-static
-par(mar = c(3.0, 4.6, 0.8, 1.2))
-plot(nat$year, nat$pop_per_rep / 1000, type = "s", lwd = 2.6, col = "#8856a7",
-     xlim = c(1910, 2024), ylim = c(0, 830), las = 1, xaxt = "n", xlab = "",
-     ylab = "thousands of people per representative")
-axis(1, at = seq(1910, 2020, 10), cex.axis = 0.8)
-abline(h = seq(200, 800, 200), col = "#00000015")
-points(nat$year, nat$pop_per_rep / 1000, pch = 19, cex = 0.7, col = "#8856a7")
-segments(1910, P1 / 1000, 2020, P1 / 1000, col = "#999", lty = 2)
-text(1962, P1 / 1000 + 30, "the 1910 district", col = "#666", cex = 0.72)
-text(2020, P2 / 1000, paste0(n(P2), " "), pos = 2, cex = 0.72, col = "#8856a7")
-# below the dashed 1910 rule, not on it, so the two do not overprint
-text(1910, P1 / 1000 - 34, paste0(" ", n(P1)), pos = 4, cex = 0.72, col = "#8856a7")
-
-## ---- step-d3
-pts <- paste(sprintf('[%d,%d]', nat$year, nat$pop_per_rep), collapse = ",")
-cat(sprintf('
-<div id="perrep" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=360,M={t:18,r:70,b:38,l:64};
-const svg=d3.select("#perrep").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1910,2020]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,830000]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).tickValues(D.map(d=>d[0])));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(5).tickFormat(d=>(d/1000)+"k"))
-  .call(g=>g.selectAll(".tick line").clone()
-    .attr("x2",W-M.r-M.l).attr("stroke","#00000012"));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",15).attr("text-anchor","middle").attr("font-size","12px")
-  .attr("fill","#444").text("people per representative");
-const ln=d3.line().curve(d3.curveStepAfter).x(d=>x(d[0])).y(d=>y(d[1]));
-svg.append("path").datum(D).attr("fill","none").attr("stroke","#8856a7")
-  .attr("stroke-width",2.6).attr("d",ln);
-svg.append("line").attr("x1",x(1910)).attr("x2",x(2020))
-  .attr("y1",y(D[0][1])).attr("y2",y(D[0][1]))
-  .attr("stroke","#999").attr("stroke-dasharray","4,3");
-svg.append("text").attr("x",x(1962)).attr("y",y(D[0][1])-8)
-  .attr("font-size","11px").attr("fill","#666").text("the 1910 district");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d[0])).attr("cy",d=>y(d[1])).attr("r",4).attr("fill","#8856a7")
-  .append("title").text(d=>`${d[0]}: ${d3.format(",")(d[1])} people per seat`);
-svg.append("text").attr("x",x(2020)+6).attr("y",y(D[D.length-1][1])+4)
-  .attr("font-size","11.5px").attr("fill","#8856a7")
-  .text(d3.format(",")(D[D.length-1][1]));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Hover for exact values.</p>
-', pts))
-
-## ---- spread
-o <- spread[spread$year %in% c(Y1, Y2), ]
-o$ratio <- pc(o$ratio, 2)
-names(o) <- c("year", "largest ÷ smallest", "smallest state district",
-              "largest state district")
-o
-
-## ---- ec
-data.frame(
-  quantity = c(paste("Northeast + Midwest electoral votes,", Y1),
-               paste("Northeast + Midwest electoral votes,", Y2),
-               paste("South + West electoral votes,", Y1),
-               paste("South + West electoral votes,", Y2),
-               "Electoral votes that changed region"),
-  value = c(paste0(n(ev60["NE+MW"]), " of ", n(sum(ev60)),
-                   "  (", pc(100 * ev60["NE+MW"] / sum(ev60)), "%)"),
-            paste0(n(ev20["NE+MW"]), " of ", n(sum(ev20)),
-                   "  (", pc(100 * ev20["NE+MW"] / sum(ev20)), "%)"),
-            paste0(n(ev60["S+W"]), " of ", n(sum(ev60)),
-                   "  (", pc(100 * ev60["S+W"] / sum(ev60)), "%)"),
-            paste0(n(ev20["S+W"]), " of ", n(sum(ev20)),
-                   "  (", pc(100 * ev20["S+W"] / sum(ev20)), "%)"),
-            n(netreg["South"] + netreg["West"])))
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
