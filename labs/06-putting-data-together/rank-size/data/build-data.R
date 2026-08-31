@@ -27,7 +27,7 @@ options(scipen = 999, stringsAsFactors = FALSE)
 # read exactly as its own chapter published it.
 #
 #   surnames        Census Bureau, 2010surnames genealogy file, via
-#                   ../../../01-census-bureau/surnames/data/derived/census_surnames.csv
+#                   ../../../06-putting-data-together/surnames/data/derived/census_surnames.csv
 #   counties        Census Bureau, 2020 decennial apportionment population, via
 #                   ../../../03-elections/mapping/data/derived/counties.csv
 #   receipts        Federal Election Commission, weball candidate summary, via
@@ -40,7 +40,7 @@ options(scipen = 999, stringsAsFactors = FALSE)
 #                   ../../media-attention/data/derived/wiki_attention_2024.csv
 
 SRC <- list(
-  list(key = "surnames",  file = "../../../01-census-bureau/surnames/data/derived/census_surnames.csv",
+  list(key = "surnames",  file = "../../../06-putting-data-together/surnames/data/derived/census_surnames.csv",
        col = "count", who = function(d) d$name,
        # THE BIGGEST ROW IN THE SURNAME FILE IS NOT A SURNAME. The Census
        # publishes every name held by 100 or more people and sweeps the rest

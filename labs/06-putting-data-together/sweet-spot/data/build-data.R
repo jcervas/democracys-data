@@ -40,7 +40,7 @@
 #      below.
 #
 #   5. Frequently Occurring Surnames from the 2010 Census. NOT fetched here:
-#      read from ../../../01-census-bureau/surnames/data/, which downloads it and decides how the
+#      read from ../../../06-putting-data-together/surnames/data/, which downloads it and decides how the
 #      Bureau's suppressed cells are handled. Used only by section 3b.
 #
 #   6. Lublin et al. (2020), Tables 1, 3 and 4, keyed in by hand from the
@@ -345,7 +345,7 @@ note("Members on BOTH Historian lists", sum(seated$both))
 # whether district race predicts member race, is circular: the answer would be
 # built into the measurement. The weaker method is the only admissible one.
 
-S_SRC <- "../../../01-census-bureau/surnames/data/derived/census_surnames.csv"
+S_SRC <- "../../../06-putting-data-together/surnames/data/derived/census_surnames.csv"
 must(file.exists(S_SRC),
      paste("Missing", S_SRC, "- run the surnames build first."))
 sn <- read.csv(S_SRC, stringsAsFactors = FALSE)

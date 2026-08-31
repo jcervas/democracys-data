@@ -33,7 +33,7 @@ options(scipen = 999, stringsAsFactors = FALSE)
 #   ../../bisg-check/data/derived/houston_blocks.csv
 #       the same county's census blocks, by race.
 #
-#   ../../../01-census-bureau/surnames/data/derived/census_surnames.csv
+#   ../../../06-putting-data-together/surnames/data/derived/census_surnames.csv
 #       the Census Bureau's surname list: for each of 162,254 names, the share
 #       of people carrying it who reported each race.
 #
@@ -44,7 +44,7 @@ options(scipen = 999, stringsAsFactors = FALSE)
 
 V <- "../../bisg-check/data/derived/houston_voters.csv"
 B <- "../../bisg-check/data/derived/houston_blocks.csv"
-S <- "../../../01-census-bureau/surnames/data/derived/census_surnames.csv"
+S <- "../../../06-putting-data-together/surnames/data/derived/census_surnames.csv"
 stopifnot(file.exists(V), file.exists(B), file.exists(S))
 
 vo <- read.csv(V, stringsAsFactors = FALSE, colClasses = c(GEOID20 = "character"))

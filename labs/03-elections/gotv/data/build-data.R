@@ -226,10 +226,10 @@ cat("None of it appears in Table 12-1.\n")
 # Build stamp. Records which script produced what is now in this directory --
 # every file under derived/ and raw/ with its size, hash and row count, and the
 # date this ran -- into BUILD-STAMP.tsv beside the data. See
-# ../../_lib/provenance.R. Two levels up, not three: this chapter sits at the
+# ../../../_lib/provenance.R. Three levels up: this chapter sits at the
 # labs root rather than inside a numbered part. Guarded, because a missing
 # helper must not fail a build that was otherwise fine.
-if (file.exists("../../_lib/provenance.R")) {
-  if (!exists("prov_stamp")) source("../../_lib/provenance.R")
+if (file.exists("../../../_lib/provenance.R")) {
+  if (!exists("prov_stamp")) source("../../../_lib/provenance.R")
   prov_stamp()
 }

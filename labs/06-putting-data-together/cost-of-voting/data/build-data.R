@@ -258,7 +258,7 @@ p24 <- p24[match(m24$abbr, p24$abbr), ]
 # citizens, less those a state's felony law excludes -- which is the right
 # denominator here because the cost of voting is a cost borne by people who are
 # allowed to vote.
-TURNOUT <- "../../../03-elections/turnout-denominator/data/derived/states.csv"
+TURNOUT <- "../../../06-putting-data-together/turnout-denominator/data/derived/states.csv"
 stopifnot(file.exists(TURNOUT))
 tn <- read.csv(TURNOUT)
 tn <- tn[tn$YEAR == 2024, c("STATE_ABV", "VEP_TURNOUT_RATE", "VEP")]

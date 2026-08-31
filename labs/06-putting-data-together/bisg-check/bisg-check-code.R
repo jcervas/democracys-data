@@ -15,7 +15,7 @@ options(scipen = 999)
 
 v0 <- read.csv("data/derived/houston_voters.csv", colClasses = c(GEOID20 = "character"))
 g  <- read.csv("data/derived/houston_blocks.csv",  colClasses = c(GEOID20 = "character"))
-sn <- read.csv("../../01-census-bureau/surnames/data/derived/census_surnames.csv",
+sn <- read.csv("../../06-putting-data-together/surnames/data/derived/census_surnames.csv",
                stringsAsFactors = FALSE)
 
 R  <- c("white", "black", "hispanic", "asian", "aian")

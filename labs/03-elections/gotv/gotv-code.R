@@ -7,7 +7,7 @@
 # in the brief to appear, and vice versa.
 
 ## ---- setup
-source("../../../../_syllabus-template/syllabus-helpers.R")
+source("../../../../../_syllabus-template/syllabus-helpers.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.4,
                       dpi = 96, fig.retina = 1)
@@ -180,7 +180,7 @@ rows <- paste0("{\"k\":\"", RK$short, "\",\"c\":\"", RK$col,
                RK$c_pv, "/vote\"]}", collapse = ",")
 cat(paste0('
 <div id="slp" style="position:relative;margin:1em 0"></div>
-<script src="../_lib/d3.v7.min.js"></script>
+<script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const D=[', rows, '];

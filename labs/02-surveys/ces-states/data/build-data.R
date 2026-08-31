@@ -38,7 +38,7 @@
 # THE BENCHMARK is read from a sibling chapter, not typed here:
 #   ../../../03-elections/historical-campaigns/data/derived/pres_states_1864_2024.csv
 # and the state crosswalk from
-#   ../../../03-elections/data-sources/data/derived/census_counties.csv
+#   ../../../06-putting-data-together/data-sources/data/derived/census_counties.csv
 # because `inputstate` is a FIPS code and the returns are keyed by abbreviation.
 # ---------------------------------------------------------------------------
 
@@ -78,7 +78,7 @@ check("every row carries the common weight", !any(is.na(d$w)))
 
 # --- state names ------------------------------------------------------------
 
-XW <- "../../../03-elections/data-sources/data/derived/census_counties.csv"
+XW <- "../../../06-putting-data-together/data-sources/data/derived/census_counties.csv"
 check("the sibling chapter's county file, which carries the state crosswalk, is present",
       file.exists(XW))
 cw <- read.csv(XW, stringsAsFactors = FALSE)
