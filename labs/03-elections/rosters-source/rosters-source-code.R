@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -43,6 +44,14 @@ NCEX  <- cv("Congresses in the modern exit file")
 NCAR  <- cvn("Careers in the career file")
 NGAP  <- cvn("Careers that are not one continuous interval")
 GAPP  <- car$value[car$quantity == "Share with a gap, %"]
+
+# the figure's series: mid-Congress churn as a share of the seats that existed
+exc$pct <- 100 * exc$excess / exc$seats
+PCTWORST <- max(exc$pct)
+PCTLAST  <- exc$pct[which.max(exc$year)]
+YRLAST   <- exc$year[which.max(exc$year)]
+
+ACC <- "#1C4C5C"
 
 knit_print.data.frame <- function(x, ...) {
   n <- names(x)

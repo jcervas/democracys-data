@@ -24,6 +24,8 @@ p1 <- function(x) formatC(x, format = "f", digits = 1)
 BALLOTS <- lad$units_nationally[lad$level == "ballot"]
 PRECS   <- lad$units_nationally[lad$level == "precinct"]
 COUNTIES<- lad$units_nationally[lad$level == "county"]
+JURIS   <- lad$units_nationally[lad$level == "election jurisdiction"]
+GAPRECS <- lad$units_in_georgia[lad$level == "precinct"]
 
 EP <- eco$estimate_mail[grepl("precinct", eco$computed_from)]
 EC <- eco$estimate_mail[grepl("counties", eco$computed_from)]

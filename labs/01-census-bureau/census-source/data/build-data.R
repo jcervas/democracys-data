@@ -122,6 +122,28 @@ gran <- data.frame(
   unit = c(rep("count", 6), "%", "count"))
 write.csv(gran, "derived/granularity.csv", row.names = FALSE)
 
+# --- 1b. the same blocks, sorted into size bands ----------------------------
+#
+# The chapter's one figure rests on this table. Bands rather than a raw
+# histogram because block sizes span four orders of magnitude: the question
+# the figure answers is "how many blocks are that small", which is one count
+# per band. share_of_people is the share of the state's population living in
+# blocks of that band -- the column the figure's tooltip carries and the
+# Your-turn questions lean on.
+
+edges <- c(-Inf, 0, 1, 9, 49, 199, 999, Inf)
+bands <- c("Nobody", "1 person", "2–9 people", "10–49 people",
+           "50–199 people", "200–999 people", "1,000+ people")
+band  <- cut(pop, edges, labels = bands)
+bs <- data.frame(
+  bin    = bands,
+  blocks = as.integer(table(band)),
+  people = as.integer(tapply(pop, band, sum)))
+bs$share_of_people <- round(100 * bs$people / sum(pop), 2)
+stopifnot(sum(bs$blocks) == nrow(b),          # every block lands in one band
+          sum(bs$people) == sum(pop))         # and every person with it
+write.csv(bs, "derived/blocksize.csv", row.names = FALSE)
+
 # --- 2. the consistency checks that all pass --------------------------------
 #
 # Every one of these is a value the file COULD contain if the noise were

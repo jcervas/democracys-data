@@ -18,9 +18,9 @@ dd_read_chunks("census-acs-code.R")
 
 The [decennial chapter](../census-decennial/census-decennial-brief.html) ended on a short list of things the census does not ask: income, education, language, occupation, commuting, disability, ancestry. Every one of them is asked here.
 
-The American Community Survey is where nearly everything people call "census data" actually comes from. It is published by the Census Bureau, on the Bureau's website, in the Bureau's house style — and it is **a survey**, with all the properties the [source chapter](../census-source/census-source-brief.html) gave that word. Roughly 3.5 million addresses a year, continuously, forever.
+The American Community Survey is where nearly everything people call "census data" actually comes from. The Census Bureau publishes it, on the Bureau's website, in the Bureau's house style — and it is **a survey**, with all the properties the [source chapter](../census-source/census-source-brief.html) gave that word. Roughly 3.5 million addresses a year, continuously, forever.
 
-## Two instruments, side by side
+That word decides everything else in this chapter. An enumeration tries to reach every person, and what comes out is a count. A survey reaches a **sample** — a fraction of the country, chosen so that every kind of place has a known chance of being picked — and what comes out is an **estimate**: a number that would have come out a little differently had a different sample been drawn. The ACS says how differently. Beside every estimate it publishes a **margin of error**, how far off the number could be and still be doing its job. A count is published with no margin. An estimate always has one, and that difference runs through every table below.
 
 ```{r insttab}
 ```
@@ -31,13 +31,21 @@ Then read the second row. It answers a question this chapter has been inviting s
 
 **Because you have to answer it.** Refusing to answer the American Community Survey is punishable under 13 U.S.C. § 221, the same statute that compels the decennial count. The mail package says so on the envelope: *your response is required by law.* Nothing that arrives later in this book can say that. The American National Election Studies asks about eight thousand people whether they would like to participate, and most of them decline; nobody is fined for hanging up on the General Social Survey.
 
-That difference is not a technicality about enforcement. It decides what each instrument can be made to say.
-
-A survey you may refuse has to persuade its sample to stay. So it can ask what you believe, and it cannot promise that the people who answered resemble the people who did not. A survey you may not refuse can be asked of a random three and a half million addresses. It will still return something the Bureau will publish a margin of error for, a stated range for how far off the estimate could be. It can also be run every year forever, because it is funded as an obligation rather than a grant.
-
 **Method puts the ACS with the surveys. Where the data came from puts it here.** This book is organised by where the data came from. That is why a sample of 3.5 million addresses is in *Counting People*, and a sample of eight thousand is in [Asking People](../../02-surveys/surveys-source/surveys-source-brief.html). Hold the two side by side when you get there: same country, same people, opposite obligation.
 
-## Why there is more than one window
+## Where the data comes from, and what it is for
+
+The ACS is the Bureau's replacement for the census **long form**, the detailed questionnaire that used to go to a fraction of households once a decade alongside the count. Since 2005 the Bureau has asked those questions continuously instead — a design called **rolling collection**. The survey is always in the field, every month of every year, and a published figure is a pool of many months of answers rather than a snapshot of one day.
+
+**Who is in it, and how they got there.** About 3.5 million addresses a year, drawn at random from the Bureau's national address list and spread across every county in the country. A selected household answers online, on paper, by phone, or to a visiting interviewer, and answering is not optional: refusal is an offence under the statute quoted above. Nobody volunteers into the ACS, and nobody lawfully opts out of it — which is exactly what separates it from every survey in Section II.
+
+**Who it was made for.** Governments, first. Federal formulas distribute money using figures the short census form cannot supply — income, poverty, language, disability, rent — and Section 203 of the Voting Rights Act decides from ACS tabulations which jurisdictions must provide election materials in languages other than English. States plan schools and roads with it. The public gets the tables too, but the paying customer is the government that ordered the survey, which is why it is funded as an obligation rather than a grant.
+
+**What it costs to get.** Nothing. Every table this chapter reads is a flat file on the Bureau's server, over plain HTTPS, with no key, no account and no terms to accept. The same numbers can be browsed at data.census.gov or fetched through the Bureau's API, but the files are the product, and each downloads with one request.
+
+**What has already been done to it.** Three things, and each one matters to how you read a number. The answers were **weighted** — some answers counted more than others, to make the sample's shape match the country's — against population figures the Bureau produces outside the survey. The years were pooled into windows, so a figure labelled 2023 may describe 2019 through 2023. And some totals were **controlled**: forced to agree exactly with a figure from the Bureau's Population Estimates Program rather than estimated from the sample at all. The worked example below finds the fingerprints of all three.
+
+## How the Bureau publishes it
 
 A single year of sample is thin. Spread 3.5 million addresses over a country of 3,222 counties and most counties get too few to say anything about. So the Bureau pools years, and publishes more than one product from the same survey.
 
@@ -50,7 +58,11 @@ That is the answer to why anyone uses the five-year series. It is not a preferen
 
 The floor is visible in the file. The smallest county with a one-year estimate holds **`r nn(FLOOR)` people** — just under the 65,000 the Bureau states as its threshold, because the threshold is not applied to the estimate you are reading. A stated rule and a delivered file rarely line up to the person.
 
-## The window that was closed
+Below the county, the five-year file keeps going: places, census tracts, and **block groups** — clusters of city blocks holding roughly six hundred to three thousand people. That is the survey's trade stated as a rule. The smaller the area or the shorter the window, the fewer answers sit under the number, and the wider the margin printed beside it. Five years of pooling is the price of reaching small places at all.
+
+Breadth is the other half of the catalogue. The decennial form asks a handful of questions; the ACS publishes thousands of detailed tables on dozens of subjects, from ancestry to commuting time, each in the same three-column shape: a geography, an estimate, a margin. And because the survey never leaves the field, it can show change. A one-year series for a large county is an annual film of the place, where the census offers one frame per decade. The caution is that overlapping five-year windows are not independent: 2019–2023 shares four of its five years with 2018–2022, so consecutive five-year estimates move slowly by construction.
+
+### The window that was closed
 
 There used to be three windows. Between 2007 and 2013 the Bureau also published a **three-year** series for places above 20,000. It was the middle ground between a thin single year and a five-year average reaching a long way into the past.
 
@@ -63,7 +75,12 @@ The three-year directory answers for `r LAST3` and returns **404** for every yea
 
 This is worth more than a historical note. A script written in 2014 that pointed at the three-year series did not start returning wrong numbers — it started returning nothing, which is the good case. The bad case is the analyst who quietly substituted the five-year series and did not adjust the claim, because those two files answer different questions.
 
-## The same county, two populations
+### What arrives
+
+```{r raw, comment="", class.output="rawblock"}
+```
+
+## The worked example: one county, two answers
 
 For the `r nn(CM("Counties in both files"))` counties that appear in both files, you can put the two windows side by side. Same agency, same survey, same release, same county.
 
@@ -83,12 +100,7 @@ Every one of the eight is a fast-growing exurban county, and in **every one the 
 
 Choosing a window chooses a finding. If you want to argue a county is booming, the one-year file helps you; if you want to argue it is not, the five-year file does. Both are official.
 
-> **Before you read on, commit to a view.** Every ACS estimate is published with
-> a margin of error beside it. **What fraction of the 3,222 county rows in the
-> ACS table for total population do you think carries a usable margin** — and
-> what would it mean if a Census Bureau table printed no margin at all?
-
-## Whether a number has a margin depends on which table it came from
+### Whether a number has a margin depends on which table it came from
 
 Here is the thing that decides how the rest of this chapter had to be written.
 
@@ -97,27 +109,32 @@ Here is the thing that decides how the rest of this chapter had to be written.
 
 **`r nn(SENT)` of the `r nn(C5)` county rows for total population carry no margin of error**, or `r p1(SENTP)`% of them. What they carry instead is `-555555555`, which is not a margin of minus half a billion people. It is the Bureau's code for an estimate that was **controlled**: not estimated freely from the sample at all, but forced to agree with a figure from somewhere else.
 
-That somewhere else is the Population Estimates Program, the subject of the [`census-pep`](../census-pep/census-pep-brief.html) chapter. So the ACS county population you look up is, in a real sense, not an ACS number.
+That somewhere else is the Population Estimates Program, the subject of the [next chapter](../census-pep/census-pep-brief.html). So the ACS county population you look up is, in a real sense, not an ACS number.
 
 Median household income is not controlled, and every one of its `r nn(ctrl$county_rows[2])` county rows carries a real margin. The lesson is not that one table is better. It is that **"does this number have a margin" is a question about the table, not about the ACS** — and the only way to know is to look. Arithmetic that treats the sentinel as a number produces nonsense quietly. How far the control goes is measured in the [access chapter](../census-access/census-access-brief.html): for a county's total population the one-year estimate is not merely controlled, it is the Population Estimates figure exactly.
 
-## The margin is not decoration
+### The margin is not decoration
 
 So, using a table that actually carries margins:
 
 ```{r margtab}
 ```
 
-In the largest counties the median margin on household income is **±`r p1(BIG)`%** — tight enough to compare places with. In counties under a thousand people it is **±`r p1(SMALL)`%**, which is wide enough that a county at the national median is statistically indistinguishable from one well above or below it.
+```{r marg-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```
+
+```{r marg-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. The margin of error is a function of county size.** Each bar is the median margin on median household income in the five-year file, as a share of the estimate, for counties grouped by population. A bar chart fits this because the question is one magnitude compared across six ordered groups, and length against a common baseline is the comparison the eye does best. Read top to bottom: in counties under a thousand people the median margin is ±`r p1(SMALL)`%, and it narrows at every step down to ±`r p1(BIG)`% in the largest — about `r p1(SMALL / BIG)` times tighter.
+
+In the largest counties a margin that tight is good enough to compare places with. In the smallest, ±`r p1(SMALL)`% is wide enough that a county at the national median is statistically indistinguishable from one well above or below it.
 
 And now put that beside the earlier finding. The places with the widest margins are the small ones — which are exactly the places that have no one-year estimate, and for which the five-year file is the only source. **The uncertainty is largest precisely where there is no alternative.**
 
-## What arrives
+## What this data cannot tell you
 
-```{r raw, comment="", class.output="rawblock"}
-```
-
-## What this chapter cannot tell you
+**It cannot give you a count.** There is no sample size at which a sample becomes a count. The ACS can estimate what share of a county's households speak Spanish at home; it cannot say how many people live on a block, and the law bars it from apportioning the House. When the question is *exactly how many*, the answer lives in the [decennial census](../census-decennial/census-decennial-brief.html), not here.
 
 **One table, one year, one geography.** Everything above is total population and median household income, 2023 vintage, at the county level. The ACS publishes thousands of tables down to the block group, and margins at block-group level are far wider than anything shown here. The shape of the finding does not depend on the table: margins widen as places shrink, and windows disagree where places change. The specific numbers do depend on it.
 
@@ -126,6 +143,24 @@ And now put that beside the earlier finding. The places with the widest margins 
 **Why an estimate was controlled is not visible here.** The file records *that* a number was controlled, not the reasoning or the source figure it was controlled to. That the target is the Population Estimates Program is documentation, not something recovered from this file.
 
 **Nothing here measures whether the ACS is right.** Margins of error describe sampling uncertainty — how much the estimate would move if you drew a different sample. They say nothing about who did not answer, who was not asked, or whether the question meant the same thing to everyone. A narrow margin on a badly measured quantity is still narrow.
+
+## What you should have learned
+
+- The ACS is a survey — a sample producing estimates — that lives in the counting section because answering it is required by law, under the same statute that compels the count.
+- Pooling years is what reaches small places: the one-year file covers `r nn(C1)` counties, the five-year file all `r nn(C5)`, and for `r nn(MISS)` counties the five-year window is the only window there is.
+- Recency and reach trade off: `r nn(CM("Counties where the two differ by more than 1%"))` of `r nn(CM("Counties in both files"))` counties differ by more than one per cent between their own one-year and five-year populations, and fast-growing places differ most.
+- The margin of error is a function of place size: a median of ±`r p1(BIG)`% on household income in the largest counties, ±`r p1(SMALL)`% in the smallest — widest exactly where the five-year file is the only source.
+- Whether a number has a margin at all depends on the table: `r nn(SENT)` of `r nn(C5)` county rows for total population carry none, because they were controlled to the Population Estimates Program.
+
+## Where this data appears in this book
+
+Three briefs in this cluster read the ACS directly:
+
+- [Measuring Migration with ACS Flow Estimates](../migration/migration-brief.html) — the state-to-state flows one mobility question produces, and how much of that map the margins erase.
+- [Everybody Moved, Almost Nobody Left](../chord/chord-brief.html) — a year of interstate migration drawn as a chord diagram, built on those flow estimates.
+- [Section 203 Language Coverage Determinations](../section-203/section-203-brief.html) — the ACS-based determinations that decide who is entitled to a ballot they can read.
+
+Beyond the cluster, the ACS turns up wherever a rate needs a denominator with characteristics: the [ZIP-code brief](../zip-codes/zip-codes-brief.html) leans on its small-area tables, and the [traffic-stops brief](../../05-ordinary-people/policing/policing-brief.html) divides one city's stops by its five-year population estimates.
 
 ## Sources
 
@@ -136,6 +171,10 @@ And now put that beside the earlier finding. The places with the widest margins 
 - U.S. Census Bureau. *American Community Survey Summary File* archive, vintages
   2011–2015, used to establish when the three-year series stopped being
   published. <https://www2.census.gov/programs-surveys/acs/summary_file/>
+- U.S. Census Bureau. *American Community Survey Design and Methodology*, the
+  Bureau's own statement of the sample, the rolling collection and the
+  weighting described in the data biography above.
+  <https://www.census.gov/programs-surveys/acs/methodology/design-and-methodology.html>
 - 13 U.S.C. § 221, which makes refusal to answer either instrument an offence,
   and § 141, which authorises the surveys the Bureau conducts between counts.
   The obligation those two sections create is what separates this instrument
@@ -162,7 +201,7 @@ tables you just opened.
 - `margins.csv` groups counties by size and reports the median margin on median income. Read `median_margin_pct` down the column. At what size of county does the margin stop being a detail and start being the story?
 - `diverge.csv` sets the one-year estimate against the five-year estimate for the same county. Sort by `difference_pct`. What kind of county disagrees with itself the most, and which of the two windows would you trust there?
 - `controlled.csv` shows that most county rows for total population arrive with no margin at all. Read the `why` column. Is a number with no margin more certain, or just less honest about it?
-- `vintages.csv` records which series were published in which year and what the server said. One window is closed. Work out what a researcher lost when it shut.
+- `vintages.csv` records which series were published in which year. Read the `series` and `http` columns together. One window is closed. Work out what a researcher lost when it shut.
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```
