@@ -87,6 +87,45 @@ data.frame(Population_of_county = marg$population_of_county,
            Median_margin = paste0("±$", nn(marg$median_margin)),
            Margin_as_pct = paste0("±", p1(marg$median_margin_pct), "%"))
 
+## ---- marg-static
+# The chapter's one figure: the median relative margin on median household
+# income, by county size. Six ordered bands, one magnitude each -- a bar
+# chart, because length against a shared baseline is the comparison the eye
+# does best. Twin of marg-d3 below; keep the two in step.
+op <- par(mar = c(4.0, 9.8, 0.6, 3.0), mgp = c(2.4, 0.7, 0))
+v  <- rev(marg$median_margin_pct)
+lb <- rev(marg$population_of_county)
+bp <- barplot(v, horiz = TRUE, col = ACC, border = NA, axes = FALSE,
+              names.arg = lb, las = 1, cex.names = 0.78,
+              xlim = c(0, max(v) * 1.18))
+axis(1, cex.axis = 0.82, lwd = 0, lwd.ticks = 1)
+mtext("Median margin of error on median household income, % of the estimate",
+      1, line = 2.4, cex = 0.85)
+text(v, bp, paste0("±", p1(v), "%"), pos = 4, cex = 0.72,
+     col = "#4E5A63", xpd = NA)
+par(op)
+
+## ---- marg-d3
+# Same six bars, drawn with the shared library (_lib/dd-charts.js). Hovering
+# a bar gives the band's county count and the dollar margin under the
+# percentage. Twin of marg-static above; keep the two in step.
+mfig <- marg[, c("population_of_county", "counties", "median_income",
+                 "median_margin", "median_margin_pct")]
+dd_fig("margfig", "bar", mfig,
+  size = list(w = 770, m = list(l = 150, r = 64)),
+  rowHeight = 30,
+  x = list(field = "median_margin_pct", fmt = "pct1",
+           label = "median margin, % of the estimate"),
+  y = list(field = "population_of_county", band = TRUE),
+  valueLabels = TRUE,
+  tip = dd_tip(c(counties = "counties in this band",
+                 median_income = "median income, $",
+                 median_margin = "median margin, $",
+                 median_margin_pct = "margin as % of estimate"),
+               fmt = c(counties = "comma", median_income = "comma",
+                       median_margin = "comma", median_margin_pct = "pct1"),
+               title = "population_of_county"))
+
 ## ---- raw
 cat(paste(readLines("data/raw/arrives.txt"), collapse = "\n"))
 

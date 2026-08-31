@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -57,8 +58,47 @@ data.frame(Consistency_check = idn$check,
 ## ---- raw
 cat(paste(readLines("data/raw/arrives.txt"), collapse = "\n"))
 
-## ---- cmptab
-data.frame(Component = cmp$component, People = nn(cmp$people))
+## ---- comp-static
+# The chapter's one figure: the eight terms of the 2024 arithmetic, in
+# millions of people, as diverging bars off a shared zero line. The total is
+# set apart in the warning colour because it is the sum, not an addend.
+# Twin of comp-d3 below; keep the two in step.
+cm  <- cmp$people / 1e6
+lb  <- cmp$component
+cl  <- ifelse(cmp$component == "Total change in 2024", WARN, ACC)
+op  <- par(mar = c(4.0, 10.6, 0.6, 3.2), mgp = c(2.4, 0.7, 0))
+lim <- c(min(cm) * 1.25, max(cm) * 1.25)
+bp  <- barplot(rev(cm), horiz = TRUE, col = rev(cl), border = NA,
+               axes = FALSE, names.arg = rev(lb), las = 1,
+               cex.names = 0.78, xlim = lim)
+axis(1, cex.axis = 0.82, lwd = 0, lwd.ticks = 1)
+abline(v = 0, col = "#76838C")
+mtext("Millions of people, 2024", 1, line = 2.4, cex = 0.9)
+vl <- sprintf("%+.1f", rev(cm))
+vl[rev(cm) == 0] <- "0.0"                 # match the d3 twin: no sign on zero
+text(rev(cm), bp, vl,
+     pos = ifelse(rev(cm) < 0, 2, 4), cex = 0.72,
+     col = "#4E5A63", xpd = NA)
+par(op)
+
+## ---- comp-d3
+# Same eight bars, drawn with the shared library (_lib/dd-charts.js).
+# Hovering a bar gives the exact count of people behind the rounded
+# millions. Twin of comp-static above; keep the two in step.
+cfig <- data.frame(component = cmp$component,
+                   people = cmp$people,
+                   m = round(cmp$people / 1e6, 2),
+                   cls = ifelse(cmp$component == "Total change in 2024",
+                                "series-2", "series-1"))
+dd_fig("compfig", "bar", cfig,
+  size = list(w = 770, m = list(l = 170, r = 64)),
+  rowHeight = 26,
+  x = list(field = "m", fmt = "signed1",
+           label = "millions of people, 2024"),
+  y = list(field = "component", band = TRUE),
+  valueLabels = TRUE,
+  tip = dd_tip(c(people = "people, 2024"), fmt = c(people = "comma"),
+               title = "component"))
 
 ## ---- nattab
 data.frame(Quantity = nat$quantity,
