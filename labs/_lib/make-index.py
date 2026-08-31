@@ -404,6 +404,9 @@ def build_rows():
 
         brief = briefs[0]
         stem  = brief[:-4]                      # <name>-brief
+        with open(os.path.join(folder, brief), encoding="utf-8",
+                  errors="replace") as fh:
+            fulltext = fh.read()
         # Link from the folder's REAL location, not from the slug: docs sit at
         # labs/<NN-dir>/<slug>/, and the index lives at the labs root.
         rel_dir   = os.path.relpath(folder, LABS).replace(os.sep, "/")
@@ -414,6 +417,29 @@ def build_rows():
 
         src, script = source_of(folder)
         body = script_text(folder)
+
+        # When the doc's own sources last changed — the same convention as the
+        # "Last updated" stamp each page computes for itself: the max mtime of
+        # the .Rmd/.R files in the doc folder (not data/, not renders).
+        stamps = [os.path.getmtime(os.path.join(folder, f))
+                  for f in os.listdir(folder) if f.endswith((".Rmd", ".R"))]
+        updated = (date.fromtimestamp(max(stamps)).isoformat() if stamps else "")
+
+        # Has this doc been rewritten to the 3rd-edition template? The mtime
+        # cannot answer that (mechanical passes touch every file), so the shape
+        # of the doc does: a brief ends learned > Extensions > Sources, a
+        # chapter carries the learned section and ends on Sources, an intro has
+        # shed its "Part N" title. Same tests as check-layout.py --template.
+        h2 = re.findall(r"^## (.+?)\s*$", fulltext, re.M)
+        role0 = ROLE_OF.get(name, "brief")
+        if role0 == "intro":
+            e3 = not yaml_field(head, "title").startswith("Part ")
+        elif role0 == "chapter":
+            e3 = ("What you should have learned" in h2
+                  and bool(h2) and h2[-1] == "Sources")
+        else:
+            e3 = h2[-3:] == ["What you should have learned", "Extensions",
+                             "Sources"]
 
         role = ROLE_OF.get(name)
         ytype = yaml_field(head, "type")
@@ -436,6 +462,8 @@ def build_rows():
             script=script,
             has_data=os.path.isdir(os.path.join(folder, "data")),
             has_raw=os.path.isdir(os.path.join(folder, "data", "raw")),
+            updated=updated,
+            e3=e3,
         ))
 
     # The structure and the filesystem must agree exactly, both directions.
@@ -472,8 +500,8 @@ def write_markdown(rows, n_src, n_raw, today):
           f"chapter and the briefs that use that data. Generated from the doc "
           f"files on {today} by `_lib/make-index.py` — do not edit by hand; "
           f"re-run it instead.*\n",
-          "| Section / Cluster | Type | Doc | Title | Tags | Topic | Data source |",
-          "|---|---|---|---|---|---|---|"]
+          "| Section / Cluster | Type | Doc | Title | Updated | Tags | Topic | Data source |",
+          "|---|---|---|---|---|---|---|---|"]
     prev_sec = None
     for r in rows:
         if r["section"] != prev_sec:
@@ -481,12 +509,13 @@ def write_markdown(rows, n_src, n_raw, today):
         src = r["source"] or "—"
         if len(src) > 180:
             src = src[:177] + "…"
-        md.append("| {} | {} | `{}` | {} | {} | {} | {} |".format(
+        md.append("| {} | {} | `{}` | {} | {} | {} | {} | {} |".format(
             cluster_cell(r).replace("|", "\\|"),
             r["role"],
             r["slug"],
             ("[{}]({})".format(r["title"].replace("|", "\\|"), r["href_html"])
              if r["href_html"] else r["title"].replace("|", "\\|")),
+            (r["updated"] or "—") + (" ✓" if r["e3"] else ""),
             ", ".join(r["tags"]) or "—",
             r["topic"].replace("|", "\\|"),
             src.replace("|", "\\|")))
@@ -536,6 +565,9 @@ def doc_tr(r):
         f'<div class="topic">{esc(r["topic"])}</div>'
         f'</td>'
         f'<td class="tags">{tags}</td>'
+        f'<td class="upd">{esc(r["updated"]) or "&mdash;"}'
+        + ('<span class="e3" title="rewritten to the 3rd-edition template">3e</span>'
+           if r["e3"] else '') + '</td>'
         f'<td class="src">{srccell}</td>'
         f'</tr>')
 
@@ -548,14 +580,14 @@ def html_body_rows(rows):
     out = []
     for sec in SECTIONS:
         out.append(f'<tr class="ghdr sec" data-section="{esc(sec["name"])}">'
-                   f'<td colspan="4">{esc(sec["name"])}</td></tr>')
+                   f'<td colspan="5">{esc(sec["name"])}</td></tr>')
         for s in sec["intros"] + sec["legacy"]:
             out.append(doc_tr(by_slug[s]))
         for i, (cname, chapters, briefs) in enumerate(sec["clusters"], 1):
             rom = _roman(sec["name"])
             label = f"{rom}.{i} {cname}" if rom else cname
             out.append(f'<tr class="ghdr cluster" data-section="{esc(sec["name"])}">'
-                       f'<td colspan="4">{esc(label)}</td></tr>')
+                       f'<td colspan="5">{esc(label)}</td></tr>')
             for s in chapters + briefs:
                 out.append(doc_tr(by_slug[s]))
     return out
@@ -603,6 +635,8 @@ color:var(--ink3);border:1px solid var(--rule);border-radius:3px;padding:0 4px;m
 text-decoration:none;vertical-align:2px}}
 a.pdf:hover{{color:var(--acc);border-color:var(--acc)}}
 td.src{{color:var(--ink2);font-size:11.5px;line-height:1.45;padding-top:12px;max-width:44ch}}
+td.upd{{color:var(--ink2);font-size:11.5px;white-space:nowrap;padding-top:12px;font-variant-numeric:tabular-nums}}
+.e3{{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:600;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}}
 /* four columns, and only one of them is prose */
 table{{table-layout:fixed}}
 th:nth-child(1),td:nth-child(1){{width:6rem}}
@@ -672,7 +706,7 @@ source exactly as it arrives.</p>
   <span class="count" id="count"></span>
 </div>
 <div class="tablewrap"><table id="t">
-<thead><tr><th>Type</th><th>Doc</th><th>Tags</th><th>Data source</th></tr></thead>
+<thead><tr><th>Type</th><th>Doc</th><th>Tags</th><th>Updated</th><th>Data source</th></tr></thead>
 <tbody>
 {chr(10).join(trs)}
 </tbody></table></div>
