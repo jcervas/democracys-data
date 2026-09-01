@@ -25,9 +25,6 @@ sen <- fec[fec$office == "Senate" & fec$ici %in% c("I", "C", "O") &
 sen$pac_share <- 100 * sen$pac_contrib / sen$ttl_receipts
 
 MEDH <- median(h$ttl_receipts); MNH <- mean(h$ttl_receipts)
-r    <- sort(h$ttl_receipts, decreasing = TRUE)
-TOP10 <- 100 * sum(r[1:round(0.10 * length(r))]) / sum(r)
-BOT50 <- 100 * sum(r[(round(0.5 * length(r)) + 1):length(r)]) / sum(r)
 
 med <- function(d, k) median(d$ttl_receipts[d$ici == k])
 pacm <- function(d, k) median(d$pac_share[d$ici == k])
@@ -54,27 +51,7 @@ n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
 d  <- function(x) paste0("$", n(x))
 dm <- function(x) paste0("$", n(x / 1e6), "m")
 
-# ---- Figure 1: Lorenz curve of House receipts ------------------------------
-# Every House candidate, sorted from worst-funded to best-funded. LX is the
-# cumulative share of candidates, LY the cumulative share of all House money.
-lz   <- sort(h$ttl_receipts)
-NH   <- length(lz)
-NB   <- NH - round(0.5 * NH)          # candidates in the worst-funded half
-NT   <- round(0.10 * NH)              # candidates in the best-funded tenth
-LX   <- 100 * seq_len(NH) / NH
-LY   <- 100 * cumsum(lz) / sum(lz)
-BX   <- LX[NB];      BY <- LY[NB]           # BY is BOT50
-AX   <- LX[NH - NT]; AY <- LY[NH - NT]      # 100 - AY is TOP10
-ZERO <- sum(h$ttl_receipts == 0)
-# thin the 3,000-point polyline for the browser, keeping the two marked points
-KI <- sort(unique(c(1, round(seq(1, NH, length.out = 220)), NB, NH - NT, NH)))
-
-LAB_A <- paste0("best-funded 10% (", n(NT), " candidates)")
-LAB_A2 <- paste0("raised ", pc(TOP10), "% of all House money")
-LAB_B <- paste0("worst-funded 50% (", n(NB), " candidates)")
-LAB_B2 <- paste0("raised ", pc(BOT50), "%")
-
-# ---- Figure 3: mosaic of sources by status ---------------------------------
+# ---- Figure 1: mosaic of sources by status ---------------------------------
 # Bar width is the group's aggregate dollars; segment height is that source's
 # share of them. The four named sources do not exhaust receipts, so the
 # remainder is carried explicitly.
@@ -107,11 +84,6 @@ o$ttl_receipts <- d(o$ttl_receipts); o$indiv_contrib <- d(o$indiv_contrib)
 o$pac_contrib <- d(o$pac_contrib)
 names(o) <- c("candidate", "state", "I/C/O", "total receipts",
               "from individuals", "from PACs")
-o
-
-## ---- counts
-o <- as.data.frame(table(office = fec$office), stringsAsFactors = FALSE)
-names(o) <- c("office sought", "candidates")
 o
 
 ## ---- fec-raw
@@ -167,126 +139,12 @@ data.frame(
                "Mean ÷ median"),
   value = c(n(nrow(h)), d(MEDH), d(MNH), paste0(pc(MNH / MEDH), "×")))
 
-## ---- concentration
-data.frame(
-  group = c("Best-funded 10% of House candidates",
-            "Worst-funded 50% of House candidates"),
-  candidates = c(n(round(0.10 * nrow(h))), n(nrow(h) - round(0.5 * nrow(h)))),
-  `share of all House money` = c(paste0(pc(TOP10), "%"), paste0(pc(BOT50), "%")),
-  check.names = FALSE)
-
-## ---- d3-lorenz
-# ---------------------------------------------------------------------------
-# This chunk carries the ONE d3 <script src> for the document. A second copy
-# would silently double the payload; the later figures use the library loaded
-# here. Every coordinate and every label string is computed in R above and
-# handed across finished, so this figure and the base-R one below are drawn
-# from identical numbers.
-# ---------------------------------------------------------------------------
-pts <- paste0("[", pc(LX[KI], 3), ",", pc(LY[KI], 3), "]", collapse = ",")
-cat(paste0('
-<div id="lorenz" style="margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const P=[', pts, '];
-const AX=', pc(AX, 3), ', AY=', pc(AY, 3), ', BX=', pc(BX, 3), ', BY=', pc(BY, 3), ';
-const W=720,H=440,M={t:24,r:26,b:54,l:64};
-const svg=d3.select("#lorenz").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,100]).range([H-M.b,M.t]);
-const curve=P.map(p=>x(p[0])+","+y(p[1])).join("L");
-svg.append("path").attr("d","M"+curve+"L"+x(100)+","+y(100)+"L"+x(0)+","+y(0)+"Z")
-  .attr("fill","#ededed");
-svg.append("line").attr("x1",x(0)).attr("y1",y(0)).attr("x2",x(100)).attr("y2",y(100))
-  .attr("stroke","#999999").attr("stroke-width",1).attr("stroke-dasharray","5 4");
-svg.append("path").attr("d","M"+curve).attr("fill","none")
-  .attr("stroke","#333333").attr("stroke-width",2);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).ticks(5).tickFormat(v=>v+"%"));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).ticks(5).tickFormat(v=>v+"%"));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-14).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#666666")
-  .text("cumulative share of House candidates, worst-funded first");
-svg.append("text").attr("transform","translate(16,"+(M.t+(H-M.b-M.t)/2)+") rotate(-90)")
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#666666")
-  .text("cumulative share of all House money");
-// --paper, not #ffffff: on the dark page the fills lift and a white outline
-// makes the label disappear into its own halo.
-const halo="paint-order:stroke;stroke:var(--paper);stroke-width:3.5px;stroke-linejoin:round";
-svg.append("text").attr("x",x(30)).attr("y",y(37)).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#666666").attr("style",halo)
-  .text("line of equality");
-svg.append("path").attr("d","M"+x(86.5)+","+y(61)+"L"+x(89)+","+y(31))
-  .attr("stroke","#666666").attr("fill","none");
-svg.append("path").attr("d","M"+x(46.5)+","+y(8)+"L"+x(49.4)+","+y(2))
-  .attr("stroke","#666666").attr("fill","none");
-[[86,72,', paste0('"', LAB_A, '"'), ',"end",400],
- [86,65,', paste0('"', LAB_A2, '"'), ',"end",700],
- [47,18,', paste0('"', LAB_B, '"'), ',"end",400],
- [47,11,', paste0('"', LAB_B2, '"'), ',"end",700]].forEach(function(q){
-  // These are the Lorenz annotations. They carry the halo because they can
-  // cross the curve, but they sit on the PAGE, so they must follow the theme.
-  // They were briefly classed on-mark on the assumption that they were the
-  // mosaic block labels; that put near-black text on the dark page at 1.03:1.
-  svg.append("text").attr("x",x(q[0])).attr("y",y(q[1])+4)
-    .attr("text-anchor",q[3]).attr("font-size","12px").attr("font-weight",q[4])
-    .attr("fill","#333333").attr("style",halo).text(q[2]);
-});
-[[AX,AY],[BX,BY]].forEach(function(q){
-  svg.append("circle").attr("cx",x(q[0])).attr("cy",y(q[1])).attr("r",5)
-    .attr("fill","#333333").attr("stroke","#ffffff").attr("stroke-width",2);
-});
-})();
-</script>
-'))
-
-## ---- lorenz-static
-# The same curve, the same two marked points, the same four label strings:
-# base R for the PDF device, D3 above for the browser.
-par(mar = c(4.2, 4.4, 1.0, 1.2), mgp = c(2.6, 0.7, 0), cex = 0.9)
-plot(NA, xlim = c(0, 100), ylim = c(0, 100), xaxs = "i", yaxs = "i",
-     xlab = "cumulative share of House candidates, worst-funded first",
-     ylab = "cumulative share of all House money", axes = FALSE)
-polygon(c(LX[KI], 100, 0), c(LY[KI], 100, 0), col = "#ededed", border = NA)
-abline(0, 1, col = "#999999", lty = 2)
-lines(LX[KI], LY[KI], col = "#333333", lwd = 2)
-axis(1, at = seq(0, 100, 25), labels = paste0(seq(0, 100, 25), "%"))
-axis(2, at = seq(0, 100, 25), labels = paste0(seq(0, 100, 25), "%"), las = 1)
-box(col = "#cccccc")
-segments(86.5, 61, 89, 31, col = "#666666")
-segments(46.5, 8, 49.4, 2, col = "#666666")
-halo <- function(px, py, txt, cex = 0.72, font = 1, col = "#333333") {
-  w <- strwidth(txt, cex = cex, font = font)
-  hh <- strheight(txt, cex = cex, font = font)
-  rect(px - w - 0.8, py - hh * 0.9, px + 0.8, py + hh * 0.9,
-       col = "white", border = NA)
-  text(px, py, txt, adj = c(1, 0.5), cex = cex, font = font, col = col)
-}
-halo(30, 37, "line of equality", cex = 0.68, col = "#666666")
-halo(86, 72, LAB_A);  halo(86, 65, LAB_A2, font = 2)
-halo(47, 18, LAB_B);  halo(47, 11, LAB_B2, font = 2)
-points(c(AX, BX), c(AY, BY), pch = 21, bg = "#333333", col = "#ffffff",
-       cex = 1.2, lwd = 1.6)
-
 ## ---- by-ici
 o <- data.frame(
   status = unname(LAB[c("C", "O", "I")]),
   candidates = n(sapply(c("C","O","I"), function(k) sum(hs$ici == k))),
   `median raised` = d(sapply(c("C","O","I"), function(k) med(hs, k))),
   check.names = FALSE)
-o
-
-## ---- two-stories
-o <- data.frame(
-  story = c("Money makes incumbents", "Incumbents attract money"),
-  claim = c("Contributions buy the advantages that keep members in office",
-            "Strong candidates raise money and also win; the money is a symptom"),
-  fits = c("Yes", "Yes"),
-  check.names = FALSE)
-names(o)[3] <- paste0("predicts the ", n(RATIO), ":1 gap?")
 o
 
 ## ---- pac-share
@@ -317,7 +175,7 @@ pacjson <- function(p) paste(sprintf('{"k":"%s","v":%s,"n":%d,"l":"%s"}',
 ## ---- d3-pac
 # One axis, two chambers, a button to swap between them. The bar heights and the
 # printed labels both arrive from pac-prep; nothing numeric is computed here.
-# d3 v7 is already loaded by Figure 1.
+# d3 v7 is already loaded by the mosaic above.
 cat(sprintf('
 <div id="pacs" style="position:relative;margin:1em 0">
  <div style="margin-bottom:6px">
@@ -371,22 +229,6 @@ for (P in list(list(PH, "House", "#2166AC"), list(PS, "Senate", "#54278F"))) {
 }
 par(mfrow = c(1, 1))
 
-## ---- senate
-o <- data.frame(
-  status = unname(LAB[c("C", "O", "I")]),
-  `House PAC share` = paste0(pc(sapply(c("C","O","I"), function(k) pacm(ser, k))), "%"),
-  `Senate PAC share` = paste0(pc(sapply(c("C","O","I"), function(k) pacm(sen, k))), "%"),
-  `Senate median raised` = d(sapply(c("C","O","I"), function(k) med(sen, k))),
-  check.names = FALSE)
-o
-
-## ---- sources
-o <- as.data.frame(round(src, 1))
-names(o) <- unname(LAB[c("C", "O", "I")])
-o <- cbind(source = rownames(o), o)
-rownames(o) <- NULL
-o
-
 ## ---- mosaic-prep
 # geometry shared by both versions of the mosaic
 GAP  <- 1.8                                   # blank axis between bars, %
@@ -404,8 +246,11 @@ MLAB <- sapply(1:3, function(j) {
 
 ## ---- d3-mosaic
 # Widths, heights, colors and every printed label come from mosaic-prep, so
-# this figure and the base-R one below cannot drift apart. d3 v7 is already
-# loaded by Figure 1.
+# this figure and the base-R one below cannot drift apart.
+#
+# This chunk carries the ONE d3 <script src> for the document, because it is
+# the document's first D3 figure. A second copy would silently double the
+# payload once pandoc inlines it; the later figure uses the library loaded here.
 bor <- ifelse(is.na(MBOR), "none", MBOR)
 seg <- function(j) paste0(sapply(seq_len(nrow(MOS)), function(i) paste0(
   '{"y0":', pc(Y0[i, j], 3), ',"h":', pc(MOS[i, j], 3),
@@ -419,6 +264,7 @@ lj <- paste0(sapply(seq_along(MCOL), function(i) paste0(
   collapse = ",")
 cat(paste0('
 <div id="mosaic" style="margin:1em 0"></div>
+<script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const G=[', gj, '], L=[', lj, '];
@@ -490,21 +336,6 @@ data.frame(
                "Share"),
   value = c(n(nrow(bigc)), n(SELF), paste0(pc(100 * SELF / nrow(bigc)), "%")))
 
-## ---- biden-harris
-o <- BH[, c("cand_id", "cand_name", "office", "ttl_receipts")]
-o$ttl_receipts <- d(o$ttl_receipts)
-names(o) <- c("FEC candidate ID", "candidate", "office", "total receipts")
-o
-
-## ---- dup-cost
-data.frame(
-  quantity = c("Total receipts, summing the column naively",
-               "After removing repeated totals",
-               "Difference"),
-  value = c(paste0("$", pc(NAIVE / 1e9, 2), " billion"),
-            paste0("$", pc(DEDUP / 1e9, 2), " billion"),
-            paste0("$", pc((NAIVE - DEDUP) / 1e9, 2), " billion")))
-
 ## ---- no-outcome
 data.frame(
   question = c("Who did each candidate raise money from?",
@@ -523,12 +354,11 @@ cat(ai_prompt(readLines("data/ai-prompt.txt")))
 # label the same colour as the thing it labels, so these get a halo instead:
 # paint-order draws a --paper outline behind the glyph. It is invisible where
 # the text sits on the page, so scoping by figure and fill is safe.
-# #lorenz was first given the token pin that #mosaic-style figures get, and
-# that was wrong: only some of its #333333 is on a mark, and pinning the rest
-# put near-black labels on the dark page at 1.03:1. A halo has no such
-# failure mode -- it does nothing where the text is already on the page.
+# A token pin was tried first and was wrong: only some of the #333333 in a
+# figure like this sits on a mark, and pinning the rest put near-black labels
+# on the dark page at 1.03:1. A halo has no such failure mode -- it does
+# nothing where the text is already on the page.
 cat('<style>
-#lorenz text[fill="#333333" i],
 #mosaic text[fill="#333333" i]
   { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
     stroke-linejoin:round; }
