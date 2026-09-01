@@ -1,7 +1,7 @@
 ---
-title: "One Election, Not Fifty"
+title: "The Nationalization of Congressional Elections"
 type: brief
-subtitle: "Nationalization measured in three records, and the count that hides two causes"
+subtitle: "One election, not fifty"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,90 +16,32 @@ dd_read_chunks("nationalization-code.R")
 ```{r setup, include=FALSE}
 ```
 
-American elections used to be decided in different places for different reasons. The textbook says they are not any more: today's partisan elections are less about local politics and more about national issues and debates. Elections have been **nationalized**.
+Political scientists have long observed that congressional elections have nationalized. Voters once weighed the person in front of them: the incumbent who fixed a bridge, the challenger with a familiar name. Now, the observation goes, they vote the national fight from the top of the ballot to the bottom, and a Senate or House race is mostly a referendum on the president.
 
-That is a claim about a trend, so it needs a series, and a series needs a record that reaches back. This chapter measures the same claim three times, in three records that are not the same kind of thing, and then takes the measure apart.
+That matters to anyone who votes. If congressional elections are national, your representative's own record barely enters your verdict on them, and accountability moves from the person to the party. The textbook states the change as a settled fact. This brief does what this book always does with a settled fact: turns it into a question. Is it true — and if it is, when did it happen, and what exactly moved?
 
-## What would settle it
+## The test
 
-A voter who decides on national grounds votes the same way all the way down the ballot. A voter who decides on local grounds does not. Nobody watches voters fill in a ballot, so the measure has to be built from outcomes, and the standard one is simple.
+A split outcome measures the claim. A split outcome is a place that voted one way for president and the other way for another office on the same ballot. A state that backed the Republican for president and elected a Democratic senator is a split outcome; so is a House district that did the reverse. A voter deciding on national grounds votes the same way all the way down, so if elections have nationalized, split outcomes should be getting rarer.
 
-**A split outcome is a place that voted one way for president and the other way for another office on the same ballot.** A state that backed the Republican candidate for president and elected a Democrat to the Senate is a split outcome. So is a congressional district that voted for the Democratic candidate for president and sent a Republican to the House.
+Three records carry that measure back in time. Voteview's roster of the Senate says who sat for each state in every Congress since 1879, so a state whose two senators belong to different parties has answered the same question two ways. The Clerk of the House's *Statistics of the Presidential and Congressional Election* prints each state's presidential and Senate vote on the same page, for 2004 through 2024. And the [house-competition chapter's](../house-competition/house-competition-brief.html) file carries the presidential vote inside each congressional district back to 1952, a number no government computes.
 
-If elections have been nationalized, split outcomes should be getting rarer. They are. The rest of this chapter is about what that sentence is worth.
+All three rest on certified returns, the complete and official record of who won each contest, and [the returns chapter](../returns-source/returns-source-brief.html) explains what such a record can bear. One care is taken with the Senate measure. It is a subtraction, how a state voted for the Senate minus how it voted for president, and a subtraction is exactly where two differently built files leak their differences into the answer. So both numbers come off the Clerk's one page, compiled by one office from one set of state canvasses on one date.
 
-## Where the numbers here come from
+## The data
 
-**Three records answer the same question, and only one of them is an election return.**
+Three tables hold the series, and each row is a place at a moment.
 
-**A roster.** Who sat in the Senate for each state, Congress by Congress, from 1879. A state whose two senators belong to different parties has been answering the same question two different ways. The [rosters-source chapter](../rosters-source/rosters-source-brief.html) is about what a roster is and what it cannot say: it records a membership, never a vote.
+`delegations.csv` has one row per Congress from `r f("del_first_year")` to `r f("del_last_year")`, built by reading the Senate rows out of Voteview's `r n(fn("vv_rows"))` member-Congress records. Its columns are `year`, `states`, `split_states` and the share `pct_split`. Party is read as the line the senator ran on and nothing else: an independent is not quietly filed as a Democrat, however they vote in Washington. One complication is cleaned into a companion column. A state that lost a senator mid-term can contribute three people to one Congress, and `r n(fn("del_three_plus"))` state-Congresses do. `pct_split_two` recomputes the share over states that sent exactly two senators, the only case where reading the roster as a photograph is safe.
 
-**Returns for two offices on one page.** After every general election the Clerk of the House publishes *Statistics of the Presidential and Congressional Election*, and it prints the presidential vote and the Senate vote for a state on the same pages. The [clerk-source chapter](../clerk-source/clerk-source-brief.html) is about that document and what makes it hard to read.
+`senate_years.csv` and `senate_contests.csv` come from the Clerk's six volumes: `r n(fn("sen_contests"))` Senate contests, 2004 through 2024, each with the state's Senate share, its presidential share and the `gap` between them. The cleaning made two decisions. The `r n(fn("sen_runoffs"))` contests decided in runoffs are repaired and marked, because a runoff is a different day and a different electorate, and its share cannot sit beside a November presidential share. And in `r n(fn("sen_no_two_party"))` contests one major party ran nobody, so there is no distance to measure; they keep their winner and drop out of the `gap` column.
 
-**Returns for two offices, one of which nobody official publishes.** The same measure for the House needs the presidential vote recomputed inside each congressional district. No government produces that number. The [house-competition chapter](../house-competition/house-competition-brief.html) fetched it from The Downballot and built the file this chapter reads.
+`house_years.csv` is the House series: `r n(fn("h_districts"))` district-elections across the `r n(fn("h_years"))` presidential years from `r f("h_first_year")` to `r f("h_last_year")`. Each year carries `pct_split` and the two quantities it is made of. `wobble` is how far the typical House candidate finished from their own party's presidential candidate in the same district. `spread` is how far the typical district sits from the middle of that year's distribution, measured around the year's own median so a landslide does not read as districts moving apart. `swap.csv` holds one small experiment described below.
 
-**Why both congressional numbers come off the Clerk's page.** The measure is a subtraction: how a state voted for the Senate, minus how it voted for president. A subtraction is exactly where two differently-built files leak their differences into the answer. The [county-returns chapter](../county-returns/county-returns-brief.html) sets two compilations of the same election side by side and finds them disagreeing about how many votes were cast in half the country. Both numbers here come off one page, compiled by one office from one set of state canvasses on one date, so that cannot happen.
-
-## One row is a state in a Congress
+Here is the roster series at three points, a century and a half apart:
 
 ```{r one-row}
 ```
-
-The Voteview file holds `r n(fn("vv_rows"))` rows, one for each person serving in each Congress since 1789. Reading the Senate rows from 1879 gives `r n(fn("del_state_congresses"))` state-Congresses, and the question asked of each is whether its senators ran on the same party line.
-
-**Party is read as the line the senator ran on, and nothing else.** An independent is not a Democrat. Two of the states below are represented by independents who sit with the Democrats in Washington, and this chapter does not quietly file them as Democrats. The [crossover chapter](../crossover/crossover-brief.html) shows what that decision is worth in a single election.
-
-## A century and a half of the same question
-
-```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.6}
-```
-
-```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 1. States whose two senators belonged to different parties, `r f("del_first_year")` to `r f("del_last_year")`.** Each point is one Congress. The heavy line uses every state. The light line uses only the states that sent exactly two senators to that Congress, and it is there for a reason given in the next section.
-
-The shape is a hill. Split delegations were ordinary for most of the twentieth century. They ran to a peak in `r f("del_peak_year")`, when **`r n(fn("del_peak_n"))` of `r n(50)` states, `r p1(DPEAK)`% of them, sent two senators from different parties**. Then they fell for forty-five years. In `r f("del_last_year")` there are **`r n(fn("del_last_n"))`**: `r f("del_last_states")`.
-
-That is one measure, one record, and a clean answer. Now the reasons to be careful with it.
-
-## A roster is not a photograph
-
-A state has two Senate seats, so it should contribute two rows to each Congress. **`r n(fn("del_three_plus"))` state-Congresses contribute three or more.** Somebody died, resigned or was appointed, and the file records people who were never in the chamber at the same time. Read as a photograph of a moment, the roster shows a state with three senators, and a state with three senators is much more likely to look split.
-
-The fix is not to argue about it. The light line in Figure 1 is the same measure computed only over states that sent exactly two senators, which is the only case where the photograph reading is safe.
-
-**The two lines agree.** They correlate at `r f("del_r_readings")` and differ by a median of `r p1(fn("del_medgap"))` points. Their worst disagreement is `r p1(fn("del_maxgap"))` points, in `r f("del_maxgap_year")` — wartime, and the Congress with the most mid-term arrivals in the series. Since 1959 they never differ by more than `r p1(fn("del_gap59"))`.
-
-So the mid-term arrivals are not driving the answer. That sentence cost one extra line on a figure, and without it the chapter would be resting on a measure that had never been asked whether it works.
-
-## The same question, one election at a time
-
-The roster describes a moment. Six years of elections produced that moment, so a fall in the roster is six years of separate news arriving together. The Clerk's volumes let you ask the question one election day at a time.
-
-```{r senate-table}
-```
-
-Two things in that table are worth stopping on, and they point in opposite directions.
-
-**The last column falls and keeps falling.** It is the typical distance between a state's Senate result and its presidential result, in points of vote share. That is how far the Senate candidate finished from their own party's presidential candidate: same state, same ballot, same day. It was `r p1(fn("sen_wobble_2004"))` points in 2004 and `r p1(fn("sen_wobble_2024"))` in 2024.
-
-**The count of split outcomes does not.** It runs `r paste(sy$split, collapse = ", ")` across the six elections. There were **none at all in 2016** — the first presidential election since 1913 in which every state that elected a senator elected one from the party that carried it. Eight years later there were `r n(fn("sen_split_2024"))`.
-
-Nationalization did not reverse between 2016 and 2024. Thirty-odd contests is simply too few for a count of crossings to be steady, and a count of crossings is a different thing from the distance underneath it. Hold on to that; it is the whole of the last half of this chapter.
-
-## The three contests the document cannot hand you
-
-```{r runoff-table}
-```
-
-A state that sends its Senate election to a second round prints **two columns of votes**, one for each round. The two columns overlap when the page is turned into text. What survives is the first digit of the first-round total, plus the whole second-round total stranded on a line of its own with no name attached.
-
-Read literally, Raphael Warnock received **one vote** in Georgia in 2020, and a Libertarian carried the state.
-
-**Nothing about that reads as an error.** The number parses. The line is well formed. The file that comes out is a file of statewide Senate results with two states quietly wrong, and no check on the shape of the file would find it. What found it was a result that could not be true.
-
-The repair is a rule rather than a list of states. Look for a named candidate whose total is immediately followed by a nameless line holding a number more than a hundred times larger. That candidate's vote has been split across two columns, and the larger number is the one that decided the seat. All `r n(fn("sen_runoffs"))` of them keep their winner and are marked. A runoff is a different day and a different electorate, so its share cannot be set beside a presidential share from November.
 
 > **Before you read on, write down a prediction.** In `r f("h_peak_year")`,
 > `r p1(HPEAK)`% of congressional districts voted one way for president and
@@ -110,7 +52,28 @@ The repair is a rule rather than a list of states. Look for a named candidate wh
 > divides evenly. Write down which, and roughly how much of the fall you
 > would give it.
 
-## The House, the long way
+## What it says about democracy
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 1. States whose two senators belonged to different parties, `r f("del_first_year")` to `r f("del_last_year")`.** Two lines on a time axis, because the claim is a claim about change and the answer is a shape. The heavy line uses every state; the light line uses only states that sent exactly two senators. The two agree, correlating at `r f("del_r_readings")` and differing by a median of `r p1(fn("del_medgap"))` points, so the mid-term replacements are not driving the answer.
+
+The shape is a hill. Split delegations were ordinary for most of the twentieth century, and they ran to a peak in `r f("del_peak_year")`, when `r n(fn("del_peak_n"))` of 50 states, `r p1(DPEAK)`% of them, sent two senators from different parties. Then they fell for forty-five years. In `r f("del_last_year")` there are `r n(fn("del_last_n"))`: `r f("del_last_states")`.
+
+A roster describes a moment that six years of elections produced. The Clerk's volumes ask the same question one election day at a time:
+
+```{r senate-table}
+```
+
+Two columns of that table point in opposite directions. The last column, the typical distance between a state's Senate result and its presidential result on the same ballot, falls from `r p1(fn("sen_wobble_2004"))` points in 2004 to `r p1(fn("sen_wobble_2024"))` in 2024. The count of split outcomes does not fall with it: it runs `r paste(sy$split, collapse = ", ")` across the six elections.
+
+The exceptions are worth their story. In 2016 there were none at all, the first presidential election since 1913 in which every state that elected a senator elected one from the party that carried it. Eight years later there were `r n(fn("sen_split_2024"))`. Nationalization did not reverse between 2016 and 2024. Thirty-odd contests is too few for a count of crossings to be steady, and a count of crossings is a different thing from the distance underneath it.
+
+The House series has enough contests to hold that distinction up to the light.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=6.4}
 ```
@@ -118,113 +81,82 @@ The repair is a rule rather than a list of states. Look for a named candidate wh
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. `r n(fn("h_years"))` presidential elections, `r n(fn("h_districts"))` district-elections.** Only presidential years are drawn, so every point compares a House election with the presidential election held on the same day. The top panel is the share of districts that split. The bottom panel holds the two quantities the top panel is made of.
+**Figure 2. `r n(fn("h_years"))` presidential elections, `r n(fn("h_districts"))` district-elections.** Only presidential years are drawn, so every point compares a House election with the presidential election held the same day. The top panel is the share of districts that split. The bottom panel holds the two quantities that count is made of.
 
-The top panel is the finding everybody quotes. Split districts run to **`r p1(HPEAK)`% in `r f("h_peak_year")`** and fall to **`r p1(HLAST)`% in `r f("h_last_year")`**.
+The top panel is the finding everybody quotes: split districts run to **`r p1(HPEAK)`% in `r f("h_peak_year")`** and fall to **`r p1(HLAST)`% in `r f("h_last_year")`**. The bottom panel is why. The distance from the ticket was `r p1(fn("h_wobble_peak"))` points in `r f("h_peak_year")` and is `r p1(fn("h_wobble_last"))` now, smaller by a factor of `r p1(fn("h_wobble_ratio"))`. The spread of the districts went the other way, from `r p1(fn("h_spread_peak"))` points to `r p1(fn("h_spread_last"))`. A district splits when the first number beats the second in the direction that crosses the fifty-per-cent line. Both moved, and both moved the way that makes splitting harder, so the count alone cannot say which did the work.
 
-The bottom panel is why. A district splits when two things are true at once, and each has its own line.
-
-**The distance from the ticket.** How far the House candidate finished from their own party's presidential candidate in the same district. It was `r p1(fn("h_wobble_peak"))` points in `r f("h_peak_year")` and is `r p1(fn("h_wobble_last"))` now — smaller by a factor of `r p1(fn("h_wobble_ratio"))`.
-
-**The spread of the districts.** How far a typical district sits from the middle of that year's distribution — measured around the year's own median, so that a landslide does not read as districts moving apart. It was `r p1(fn("h_spread_peak"))` points in `r f("h_peak_year")` and is `r p1(fn("h_spread_last"))` now. Districts are further apart than they were, by nearly half again.
-
-A district splits when the first number beats the second, in the direction that crosses the fifty-per-cent line. Both lines moved, and both moved the way that makes splitting harder. The count cannot say which did the work.
-
-## Two ingredients, and the count that hides them
-
-You can find out by swapping one ingredient and leaving the other alone.
-
-Take `r f("h_peak_year")`'s districts. Keep their presidential vote exactly as it was — the same country, the same lines, the same landslide. Now give those districts `r f("h_last_year")`'s candidates: each district keeps its rank, so the district whose House candidate ran furthest ahead of the ticket still does, but the distances are today's. Count the splits again.
-
-Nothing here is simulated and nothing is random. The districts are ranked by their own distance from the ticket and handed the distance at the same rank in the other year. Handing a year its own distances back reproduces its own count exactly, and that is checked before anything is written.
+The swap experiment in `swap.csv` can. Take `r f("h_peak_year")`'s districts and keep their presidential vote exactly as it was: the same country, the same lines, the same landslide. Now give those districts `r f("h_last_year")`'s candidates: each district keeps its rank, but takes the distance from the ticket at the same rank in the other year. Count the splits again. Nothing is simulated and nothing is random, and handing a year its own distances back reproduces its own count exactly, which is checked before anything is written.
 
 ```{r fig3-static, fig.height=4.4}
 ```
 
-```{r swap-table}
-```
-
 **Figure 3. The same districts, other years' candidates.** The two dark bars are the elections as they happened. The two light bars are each year's districts run with the other year's candidates.
 
-**Changing the candidates alone takes `r f("h_peak_year")` from `r p1(HPEAK)`% down to `r p1(fn("swap_old_new"))`%.** That is almost the entire fall, produced without moving a single district.
+Changing the candidates alone takes `r f("h_peak_year")` from `r p1(HPEAK)`% down to `r p1(fn("swap_old_new"))`%, almost the entire fall, without moving a single district. Changing the districts alone takes `r f("h_last_year")` from `r p1(HLAST)`% up to `r p1(fn("swap_new_old"))`%, a large move the other way. So the honest answer is not one cause. But the two are not equal: the candidates alone land within `r p1(fn("swap_old_new") - HLAST)` points of where the country actually is, and the districts alone land `r p1(fn("swap_new_old") - HLAST)` points away.
 
-**Changing the districts alone takes `r f("h_last_year")` from `r p1(HLAST)`% up to `r p1(fn("swap_new_old"))`%.** Which is also a large move, in the other direction, and it is why the honest answer is not "one cause".
+The count told you none of this. "Split districts fell from `r p1(HPEAK)`% to `r p1(HLAST)`%" is true and quoted constantly, and it is a threshold: a line drawn at fifty per cent with a yes or a no on either side. Two different quantities moved underneath it, and the threshold reports their combination as one number. When a share of cases crosses a line, ask what would have to change for a case to land on the other side. There is usually more than one answer, and the count gives you none of them.
 
-Read them together. Either change on its own would have produced most of the collapse, so the two are not additive and no clean percentage can be handed to each. But they are not equal either. The candidates alone land within `r p1(fn("swap_old_new") - HLAST)` points of where the country actually is. The districts alone land `r p1(fn("swap_new_old") - HLAST)` points away from it.
+## What this brief cannot tell you
 
-**The count did not tell you any of this.** "Split districts fell from `r p1(HPEAK)`% to `r p1(HLAST)`%" is true, it is quoted constantly, and it is a threshold — a line drawn at fifty per cent, with a yes or a no on either side. Two very different quantities moved underneath it, and a threshold reports their combination as one number.
+**No voter appears anywhere in it.** Every number is a total for a place. In a district that split, many people may have split their ballots, or two different sets of people turned out for the two contests. Guessing what individuals did from group totals is called ecological inference, and it has [its own chapter](../../06-putting-data-together/rpv/rpv-brief.html).
 
-**The rule of thumb.** When a share of cases crosses a line, ask what would have to change for a case to land on the other side. There is usually more than one answer, and the count gives you none of them.
+**The roster measure and the returns measures are not the same measurement.** Figure 1 counts states by who was sitting; the Clerk's table counts contests by who was elected. A state can look split in the roster for six years on the strength of one election, so the series are not expected to agree year for year. And the Senate returns series is six elections long, an order rather than a trend, which is why the House series carries the weight.
 
-## Where the ballot goes and the data does not
+**The swap is a re-ranking, not a world.** It says what the count would be if the distances between House candidates and their tickets were distributed as in another year. It does not claim any particular district would have gone the other way.
 
-Everything above is three offices: president, Senate, House. That is the whole of what the Clerk's volume contains: `r n(51)` presidential slates, `r n(fn("sen_n_2024"))` Senate contests and 435 House races in 2024. It is the complete national record of partisan federal elections for that year.
+**Party is the ballot line throughout.** Read the Senate by who sits with whom in Washington instead, and the last Congress holds `r n(fn("del_last_caucus"))` split states rather than `r n(fn("del_last_ballot"))`.
 
-The textbook's claim does not stop at those three. It is a claim about state and local races too, and there the argument bites hardest. A voter who knows nothing about a county commissioner but knows the party label is voting nationally, whether they mean to or not.
+**The claim reaches further than the record does.** Nationalization is also a claim about governors, legislatures and school boards, where a voter leaning on the party label is voting nationally whether they mean to or not. No national office collects those results, so the claim is best measured exactly where it is least surprising.
 
-**No federal office publishes those results, and no state is required to send them anywhere.** There is no *Statistics of the Gubernatorial, Legislative and Municipal Election*. Governors, state legislators, mayors, county commissioners, school boards, judges — every one of them is elected by somebody, counted by somebody and published by somebody, and none of it arrives at a national desk. What exists are compilations built by researchers one office at a time, and they are not what this chapter is made of.
+## What you should have learned
 
-So the claim is best measured exactly where it is least surprising, and least measurable exactly where it matters most. That is not a flaw in the claim. It is a fact about the record, and the reason the nationalization argument took decades to establish while looking obvious the whole time.
+- Split Senate delegations peaked in `r f("del_peak_year")` at `r n(fn("del_peak_n"))` of 50 states and have fallen to `r n(fn("del_last_n"))` in `r f("del_last_year")` — the textbook's claim is true in the roster, and the fall took decades.
+- Split House districts fell from `r p1(HPEAK)`% in `r f("h_peak_year")` to `r p1(HLAST)`% in `r f("h_last_year")`, across `r n(fn("h_districts"))` district-elections.
+- Two quantities moved under that count: the typical House candidate's distance from the ticket shrank by a factor of `r p1(fn("h_wobble_ratio"))`, while the spread of the districts grew from `r p1(fn("h_spread_peak"))` to `r p1(fn("h_spread_last"))` points.
+- Swapping in today's candidates alone takes `r f("h_peak_year")` from `r p1(HPEAK)`% to `r p1(fn("swap_old_new"))`%; a count of threshold crossings hides which ingredient did the work.
+- A count of split outcomes can be noisy while the distance underneath it moves steadily: the Senate produced `r n(0)` splits in 2016 and `r n(fn("sen_split_2024"))` in 2024 without nationalization reversing.
 
-## What this chapter cannot tell you
+## Extensions
 
-**No voter appears anywhere in this chapter.** Every number here is a total for a place. Take a district that voted for one party's presidential candidate and elected the other party's representative. Many people there may have split their ballots. Or two different sets of people turned out for the two contests. Guessing what individuals did from group totals is called ecological inference, and it has [its own chapter](../../06-putting-data-together/rpv/rpv-brief.html).
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-**The roster measure and the returns measures are not the same measurement.** Figure 1 counts states by who was sitting; the Clerk table counts contests by who was elected. A state can appear split in the roster for six years on the strength of one election, and the two series are not expected to agree year for year.
+- `delegations.csv` gives `pct_split` for every Congress across a century and a half. Follow it backward. Was there ever a time when states routinely sent two senators of different parties?
+- `house_years.csv` carries `wobble` and `spread` alongside `pct_split`. Which of the three is the best single measure of nationalization, and why?
+- `senate_contests.csv` has a `gap` between the Senate and presidential result in each state. Sort by it. Which senators still outrun their party, and where?
+- `delegations.csv` distinguishes `pct_split` from `pct_split_two`. Compare them decade by decade. How much does the handling of a few mid-term replacements change the story?
 
-**The Senate series is six elections long.** The Clerk's volumes exist much further back, but only the recent ones were fetched and converted here, and the older typesetting is not the same. Six points is a series in the sense that it has an order. It is not enough to establish a trend on its own, which is why the House series carries that weight.
-
-**The swap is a re-ranking, not a world.** It asks what the count would be if the distances between House candidates and their tickets were distributed as they were in another year. It does not claim that any particular district would have gone the other way. It holds turnout, candidates, districts and the national result fixed, while changing one thing that in life was never separate from them.
-
-**Party is the ballot line throughout.** Read it as the two sides in Washington instead and the last Congress in Figure 1 holds `r n(fn("del_last_caucus"))` split states rather than `r n(fn("del_last_ballot"))`.
-
-```{r last-congress}
-```
-
-**In `r n(fn("sen_no_two_party"))` Senate contests there is no distance from the ticket at all**, because one of the two major parties did not put up a candidate. They keep their winner and drop out of the last column of the Senate table. They are not a random ten. A party that leaves a Senate seat uncontested has usually decided the state is out of reach.
+Two stretch ideas point past the spreadsheet. Pick one state, fetch its certified returns for a down-ballot office such as attorney general, and compute that office's distance from the presidential ticket — the measure this brief could not extend below Congress. And the Clerk's volumes run much further back than 2004: fetch an older one and see whether the Senate distance was ever as large as the House distance of the 1970s.
 
 ## Sources
 
+**Data**
+
 - Lewis, Jeffrey B., Keith Poole, Howard Rosenthal, Adam Boche, Aaron Rudkin
   and Luke Sonnet. *Voteview: Congressional Roll-Call Votes Database*,
-  `HSall_members.csv`. One row per member per Congress since 1789. Fetched
-  fresh here; the [rosters-source
-  chapter](../rosters-source/rosters-source-brief.html) is about what a roster
-  is and is not.
+  `HSall_members.csv`, one row per member per Congress since 1789. Fetched
+  fresh here; the [rosters-source chapter](../rosters-source/rosters-source-brief.html)
+  is about what a roster is and is not.
   <https://voteview.com/static/data/out/members/HSall_members.csv>
 - U.S. House of Representatives, Office of the Clerk. *Statistics of the
-  Presidential and Congressional Election*, the volumes for 2004, 2008, 2012,
-  2016, 2020 and 2024. Read from the copies the [house-competition
+  Presidential and Congressional Election*, the volumes for 2004 through 2024,
+  read from the copies the [house-competition
   chapter](../house-competition/house-competition-brief.html) fetched and
-  converted to text. Every presidential and Senate number here comes from
-  those documents.
+  converted to text. The 2024 Senate contests were parsed a second time,
+  independently, by the [crossover chapter](../crossover/crossover-brief.html),
+  and the two parses agree on every contest.
   <https://clerk.house.gov/Votes/ElectionStatistics>
 - The House series, 1952 to 2024, is the house-competition chapter's file,
-  built from Gary Jacobson's House elections data, the Clerk's own volumes and
-  The Downballot's presidential results by congressional district. No
-  government agency computes that last one.
+  built from Gary Jacobson's House elections data, the Clerk's volumes and The
+  Downballot's presidential results by congressional district. No government
+  agency computes that last number.
   <https://www.the-downballot.com/p/the-downballots-calculations-of-presidential>
-- The 2024 Senate contests were parsed a second time, independently, by the
-  [crossover chapter](../crossover/crossover-brief.html). The two parses agree
-  on every contest, which is one of the checks recorded before this chapter
-  wrote a single table.
 
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`delegation_states.csv`](data/derived/delegation_states.csv), [`delegations.csv`](data/derived/delegations.csv), [`house_years.csv`](data/derived/house_years.csv), [`senate_contests.csv`](data/derived/senate_contests.csv), [`senate_years.csv`](data/derived/senate_years.csv), [`swap.csv`](data/derived/swap.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `delegations.csv` gives `pct_split` for every Congress across a century and a half. Follow it. Was there ever a time when states routinely sent two senators of different parties?
-- `house_years.csv` carries `wobble` and `spread` alongside `pct_split`. Which of those three is the best measure of nationalization, and why?
-- `senate_contests.csv` has `gap` between the Senate and presidential result in each state. Sort by it. Who still outruns their party, and where?
-- `delegations.csv` distinguishes `pct_split` from `pct_split_two`, which excludes independents. Compare them. How much does the treatment of a few senators change the story?
+[`delegations.csv`](data/derived/delegations.csv), [`house_years.csv`](data/derived/house_years.csv), [`senate_contests.csv`](data/derived/senate_contests.csv), [`senate_years.csv`](data/derived/senate_years.csv), [`swap.csv`](data/derived/swap.csv)
 
 ```{r ai-prompt, results='asis'}
 ```

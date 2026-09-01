@@ -1,7 +1,7 @@
 ---
 title: "Bellwether Counties, 1960-2024"
 type: brief
-subtitle: "Bellwethers, 1960–2024, and why a perfect record predicts nothing"
+subtitle: "Why a county that always picks the winner predicts nothing"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 3
@@ -16,30 +16,51 @@ dd_read_chunks("bellwether-code.R")
 ```{r setup, include=FALSE}
 ```
 
-On 13 November 2020, nine days after the election was called, the *Wall Street Journal* published a list of nineteen counties. Each had voted for the winner of every presidential election since 1980 — ten in a row, without a miss. The article's subject was that almost all of them had just failed at once.
+On 13 November 2020, nine days after the election was called, the *Wall Street Journal* published a list of nineteen counties. Each had voted for the winner of every presidential election since 1980, ten in a row without a miss. The article's subject was that almost all of them had just failed at once.
 
-The list was not unusual. Every four years the same genre appears. *The ten counties that show Trump is in serious trouble* in the *New York Times*, a month before the 2020 election. A *Washington Post* feature on Vigo County, Indiana. And a small library of local news stories in which a county explains what it means to be a barometer of the nation. The counties are real, the records are real, and the arithmetic is checkable.
+The genre returns every four years. Pundits hunt for bellwether counties, places whose vote matches the national outcome election after election, and read them as barometers of the country. The *New York Times* ran ten of them a month before the 2020 election; the *Washington Post* profiled Vigo County, Indiana. The counties are real, the records are real, and the arithmetic is checkable.
 
-This chapter checks it. The question is not whether these nineteen counties had perfect records — they did, and this file reproduces the *Journal*'s list exactly, from a source the *Journal* did not use. The question is what a perfect record is worth.
+So check it: does a perfect record predict anything? Anyone deciding how much weight to give the next bellwether story can compute the answer, and this brief does. A perfect record turns out to be mostly luck, and when the nineteen failed, they failed together, for one reason.
 
-## What a bellwether would have to be
+## The test
 
-A bellwether is a county whose vote matches the national outcome, election after election. The interesting claim is not historical but predictive: that knowing a county has matched the last ten winners tells you something about the eleventh.
+The claim worth testing is predictive, not historical: that a county which matched the last ten winners tells you something about the eleventh. Two tests answer it. First, count the counties with perfect records and compare the count against what pure chance would produce, since among `r format(N, big.mark = ",")` counties flipping like coins, some perfect records are guaranteed. Second, grade the *Journal*'s nineteen out of sample: they were selected in November 2020 on a record running through 2016, and two elections have happened since.
 
-For that to be true, the record has to be evidence of a property — something about the county that produces the match. The alternative is that the record is evidence of nothing except that a great many counties exist.
+The data is county-level presidential returns, 1960 through 2024. No federal agency counts votes, so every long county series is a private act of assembly; [the returns chapter](../returns-source/returns-source-brief.html) explains what a certified return is and what a compilation of returns can bear. The long series here is the replication archive Carlos Algara and Sharif Amlani published with their 2021 *Electoral Studies* paper, carrying county presidential returns from 1868 to 2020, openly licensed on Harvard Dataverse. It is itself built from CQ Press and ICPSR files — a compilation of compilations, none of which any government produced. The 2024 column comes from a GitHub compilation checked against twenty-six states' own certified publications.
 
-There are `r format(N, big.mark = ",")` counties in this file. Suppose each one were a fair coin, landing on the national winner half the time and independently of the others. Then the number with a perfect record over $k$ elections would be `r format(N, big.mark = ",")` $\times\ 0.5^k$, which is not a small number until $k$ is large.
+## The data
+
+`county_winners.csv` holds one row per county: `fips`, `county`, `state`, and one column per election, `y1960` through `y2024`, each holding a D or an R for the party that carried the county. Nothing else is in it — no demographics, no turnout, no margins. `national.csv` names the party of the national winner each year, twice: `ec` for the Electoral College winner and `pv` for the popular-vote winner, because in 2000 and 2016 those were different men.
+
+Three cleaning decisions shape every count below. Alaska is absent, because it has no counties and reports its presidential vote by State House district. `r format(3180 - N, big.mark = ",")` of the `r format(3180, big.mark = ",")` county codes appearing anywhere in the series are dropped for not existing throughout — created, merged, renamed, or in Virginia's case repeatedly reorganised. And six counties are dropped for a literal tie in one election, since a tied county matches no winner.
+
+One thing about the file cannot be automated. Harvard Dataverse answers a script's request with a challenge page and a success code, so the archive must be downloaded once through a browser. A file that arrives by hand is a file nobody audited, which is why the build checks it against two sources it *can* fetch:
+
+```{r checks}
+```
+
+The `r nrow(xc)` winner disagreements with MEDSL's independent compilation are unit decisions and one typo. New York's fusion voting lets one nominee appear on several party lines, Kansas City reports separately from its county, and one file transposes a pair of totals. None of them touches a county with a good record, and `crosscheck.csv` spells out each one's `reason`.
+
+Here is one row, spread out — Vigo County, Indiana, the most written-about bellwether in the country:
+
+```{r one-row}
+```
+
+> **Before you read on, write a number down.** Nineteen counties, each with a
+> perfect ten-election record when the *Journal* published its list. Two
+> elections have been held since. **How many of the nineteen still have a
+> perfect record?** Commit to a count before you look — and, for the harder
+> version of the question, commit also to whether the ones that failed did so
+> in the *same* election as each other.
+
+## What it says about democracy
+
+Start with the counting argument. Suppose every county were a fair coin, landing on the national winner half the time and independently of the others. Then the number with a perfect record over the last $k$ elections would be `r format(N, big.mark = ",")` divided by $2^k$.
 
 ```{r counting}
 ```
 
-Two things in that table matter, and they point in opposite directions.
-
-**Over a short run, chance alone manufactures bellwethers by the hundred.** Thirty-two counties called the last three elections right. Nobody should be impressed: coin-flipping would have produced around `r pc(kexp$expected[kexp$k == 3], 0)`. A county with a three-election record is not a barometer, it is a rounding error.
-
-**Over a long run, there are fewer than chance predicts, not more.** At every length in the table the observed count sits *below* the coin-flip expectation. Seven elections: `r pc(kexp$expected[kexp$k == 7], 0)` expected, `r kexp$observed[kexp$k == 7]` observed. Over all `r K`, **`r sum(h_ec == K)` counties in the country have a perfect record.** Not a handful. None.
-
-That second fact is the one that does the work, and it is not what the folk theory predicts. If some counties really were demographically representative barometers, they would beat the coin, and the top of the distribution would be *fatter* than chance, not thinner. It is thinner.
+Two things in that table point in opposite directions. Over a short run, chance alone manufactures bellwethers by the hundred: `r kexp$observed[kexp$k == 3]` counties called the last three elections right, and coin-flipping would have produced around `r pc(kexp$expected[kexp$k == 3], 0)`. Over a long run there are *fewer* perfect records than chance predicts, not more. Across all `r K` elections the coin model expects `r pc(N / 2^K, 2)` and the country contains **`r sum(h_ec == K)`**.
 
 ```{r dist-static, eval=!knitr::is_html_output(), fig.height=5.0}
 ```
@@ -47,84 +68,16 @@ That second fact is the one that does the work, and it is not what the folk theo
 ```{r dist-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Every county, by how many elections it called correctly.** The bars are the `r format(N, big.mark = ",")` counties in the file; the dashed line is what `r format(N, big.mark = ",")` independent fair coins would produce. The observed distribution is *narrower* than the coin model at both ends: fewer counties with very good records, fewer with very bad ones. At 17 of 17 the coin model predicts `r pc(N / 2^K, 2)` counties and the country contains `r sum(h_ec == K)`.
+**Figure 1. Every county, by how many of the `r K` elections it called correctly.** A histogram against a benchmark, because the question is whether the top of the distribution is fatter than luck alone would make it. The bars are the `r format(N, big.mark = ",")` counties; the dashed line is what as many independent fair coins would produce. The observed distribution is narrower at both ends: fewer counties with very good records, and fewer with very bad ones.
 
-## Where these numbers come from, and the wall in front of them
+That thinness is the fact that does the work, and it is not what the folk theory predicts. If some counties really were miniature Americas, they would beat the coin, and the top of the distribution would be fatter than chance. It is thinner.
 
-Before going further it is worth saying what had to happen to ask this question at all, because the answer is the least reassuring thing in the chapter.
-
-**No federal agency counts votes.** County-level presidential returns exist as fifty-one separate state publications, and for elections in the 1960s and 1970s most of them exist only on paper. There is no official national file.
-
-Every long county series in circulation is therefore a *compilation*. The two that political scientists use, CQ Press's *Voting and Elections Collection* and Dave Leip's *Atlas*, are commercial products behind a subscription. Grofman and Chen used CQ Press. The *Journal* and the *Times* were working from Leip.
-
-This file uses the one long series that is free: the replication archive Carlos Algara and Sharif Amlani published with their 2021 *Electoral Studies* paper, which carries county presidential returns from 1868 to 2020. It is openly licensed and posted for reuse on Harvard Dataverse. It is also, itself, built out of CQ Press and the ICPSR historical returns — **a compilation of compilations, none of which any government produced.**
-
-And it cannot be fetched by a script.
-
-```
-$ curl -sS -D- \
-    "https://dataverse.harvard.edu/api/access/datafile/5028532"
-
-HTTP/2 202
-server: awselb/2.0
-content-length: 0
-x-amzn-waf-action: challenge
-```
-
-Harvard Dataverse sits behind a web application firewall that answers automated requests with a JavaScript challenge. Note what comes back: **status 202, Accepted.** Not 403, not 401, not an error of any kind. A script that checked whether the request succeeded would conclude that it had, and would write an empty file. The other builds in this book all fetch their own data; this one is the single exception: the work here refuses to run rather than pretend otherwise. Somebody has to open a browser once.
-
-Nothing here is a permission problem. The file is free, the licence is open, the authors want it used. The obstruction is plumbing, it is invisible, and it is the reason to be suspicious of the sentence "the data show" whenever nobody says which data.
-
-### Two checks, because a file that arrives by hand is a file nobody audited
-
-A hand-carried download is exactly the circumstance in which the wrong file would go unnoticed, so the build script checks it against two sources it *can* fetch.
-
-```{r checks}
-```
-
-The middle check is the book auditing itself: `county-returns/` is the standing project to replace the GitHub compilation this chapter uses for 2024 with the states' own certified publications, and twenty-six jurisdictions are finished. On all `r format(1909, big.mark = ",")` of their counties the compilation and the states agree to the vote.
-
-The `r nrow(xc)` disagreements in the first check are worth a moment, because none of them is arithmetic.
-
-```{r crosscheck}
-```
-
-`r sum(substr(xc$fips,1,2) == "36")` are in New York, where **fusion voting** lets one nominee appear on several party lines, so the two compilers add up different subsets of the ballot. Four are Jackson County, Missouri, where **Kansas City reports separately** and one compiler keeps the city out of the county. One, in Tennessee, is a straight transposition — the Democratic and Republican totals are swapped in one of the files. These are unit decisions and a typo, not measurement error, and the same fusion problem bit the [`house-competition`](../house-competition/house-competition-brief.html) build in a different costume.
-
-None of them touches a bellwether: the best record among these counties is `r max(h_ec[w$fips %in% xc$fips])` of `r K`.
-
-## One row is one county
-
-```{r one-row}
-```
-
-That is Vigo County, Indiana — the most written-about bellwether in the country, home of Terre Haute, and for decades the standard illustration of the genre. The file holds one such row for each of `r format(N, big.mark = ",")` counties, and it holds nothing else: no demographics, no turnout, no margins. Just who carried the county.
-
-Three things about the panel are decisions rather than facts.
-
-**Alaska is not in it.** Alaska has no counties. It reports presidential votes by State House district, so there is no county-level return to carry, and every count in this chapter is of the other fifty jurisdictions. The [`county-returns`](../county-returns/county-returns-brief.html) project makes the same call for the same reason.
-
-**Counties that did not exist throughout are dropped.** `r format(3180 - N, big.mark = ",")` of the `r format(3180, big.mark = ",")` FIPS codes appearing anywhere in the series are missing from at least one election — created, merged, renamed, or in Virginia's case repeatedly reorganised between cities and counties. A county cannot have a seventeen-election record if it did not exist for seventeen elections.
-
-**Six counties are dropped for a tie.** In a tied county there is no winner to match. They are Ware County, Georgia; Boone and Gallatin Counties, Kentucky; Clarke County, Mississippi; Horry County, South Carolina; and Ferry County, Washington.
-
-## The nineteen
-
-Now the test. The *Journal*'s nineteen counties were selected in November 2020 on a record running through 2016. Whether that record was worth anything is a question with a real answer, because two elections have happened since.
-
-> **Before you read on, write a number down.** Nineteen counties, each with a
-> perfect ten-election record when the list was published. Two elections have
-> been held since. **How many of the nineteen still have a perfect record?**
-> Commit to a count before you look at the table — and, if you want the harder
-> version of the question, commit also to whether the ones that failed did so in
-> the *same* election as each other.
+Now the out-of-sample test.
 
 ```{r the-19}
 ```
 
-The national winner in 2020 was a Democrat. **`r n_fail20` of the `r nrow(p19)` voted Republican**, and their records ended that night. One survived: `r namef(surv$fips)`, which voted for Biden as the country did.
-
-The national winner in 2024 was a Republican. `r namef(surv$fips)` voted Democratic. **`r sum(p19$y2020 == natwin("ec", 2020) & p19$y2024 == natwin("ec", 2024))` of the nineteen survive.**
+The national winner in 2020 was a Democrat. **`r n_fail20` of the `r nrow(p19)` voted Republican**, and their records ended that night. One survived: `r namef(surv$fips)`, which voted for Biden as the country did. Then the national winner in 2024 was a Republican, and `r namef(surv$fips)` voted Democratic. **`r sum(p19$y2020 == natwin("ec", 2020) & p19$y2024 == natwin("ec", 2024))` of the nineteen survive.**
 
 ```{r grid-static, eval=!knitr::is_html_output(), fig.height=6.8}
 ```
@@ -132,24 +85,18 @@ The national winner in 2024 was a Republican. `r namef(surv$fips)` voted Democra
 ```{r grid-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The nineteen counties, `r min(YRS)`–`r max(YRS)`.** Each row is a county and each square an election, green where the county matched the national winner. The block from 1980 to 2016 is solid green by construction — that is the stretch the counties were selected on, and a record cannot fail a test it was chosen to pass. The two columns to the right of it are the only ones carrying information, and they are almost entirely purple.
+**Figure 2. The nineteen counties, `r min(YRS)`–`r max(YRS)`.** Each row is a county and each square an election, green where the county matched the national winner. The block from 1980 to 2016 is solid by construction: that is the stretch the counties were selected on, and a record cannot fail a test it was chosen to pass. Only the two columns to its right carry information, and they are almost entirely misses.
 
-## They were never nineteen predictors
-
-The temptation is to read `r n_fail20` simultaneous failures as `r n_fail20` separate surprises — nineteen barometers that all happened to break. That reading is arithmetically impossible.
-
-**If the nineteen were independent, this could not happen.** Nineteen coins, each landing on the national winner half the time, produce eighteen or more failures in a single election with probability `r sprintf("%.5f", sum(dbinom(18:19, 19, 0.5)))` — about four in a hundred thousand. The event is not rare. It is nearly certain, once you notice what the counties had in common.
+Eighteen simultaneous failures is not eighteen separate surprises. Nineteen independent coins fail eighteen or more at once with probability `r sprintf("%.5f", sum(dbinom(18:19, 19, 0.5)))`, about four in a hundred thousand, so the failures were not independent.
 
 ```{r together}
 ```
 
-**`r pc(100 * mean(p19$y2020 == "R"), 0)`% of the nineteen voted Republican in 2020. So did `r pc(r20, 0)`% of every county in America.** The bellwethers did not do anything unusual. They did what the typical American county did, which is what they had been doing all along. And in 2020 the typical American county voted for the loser of the national popular vote, because most counties are small and rural, and the national majority no longer lives in them.
+**`r pc(100 * mean(p19$y2020 == "R"), 0)`% of the nineteen voted Republican in 2020. So did `r pc(r20, 0)`% of every county in America.** The bellwethers did nothing unusual: they did what the typical American county did, which is what they had been doing all along. And in 2020 the typical county voted for the loser of the national popular vote, because most counties are small and rural and the national majority no longer lives in them.
 
-That is the whole mechanism. A bellwether is not a county that tracks the nation. It is a county whose *partisan lean happens to sit near the tipping point* of the elections you looked at. When the tipping point moves, they all fail together, because they were all the same bet.
+A bellwether, in other words, is not a county that tracks the nation. It is a county whose partisan lean happens to sit near the tipping point of the elections you looked at. When the tipping point moves, they all fail together, because they were all the same bet.
 
-## Why the bet stopped paying
-
-The reason bellwethers have become scarce is not that counties got worse at predicting. It is that counties stopped changing their minds.
+The bet has also stopped paying for a mechanical reason: counties stopped changing their minds.
 
 ```{r flip-static, eval=!knitr::is_html_output(), fig.height=4.6}
 ```
@@ -157,77 +104,45 @@ The reason bellwethers have become scarce is not that counties got worse at pred
 ```{r flip-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. How much the map moves.** The share of counties voting differently than they had four years earlier. In `r flip$year[which.max(flip$pct)]`, `r pc(max(flip$pct), 0)`% of counties changed party. In 2020 it was `r pc(flip$pct[flip$year == 2020], 1)`% and in 2024, `r pc(flip$pct[flip$year == 2024], 1)`%.
+**Figure 3. The share of counties voting differently than they had four years earlier.** In `r flip$year[which.max(flip$pct)]`, `r pc(max(flip$pct), 0)`% of counties changed party; in 2024, `r pc(flip$pct[flip$year == 2024], 1)`% did. A county that never changes its mind cannot stay a bellwether, because sooner or later the nation changes its mind without it.
 
-A county that never changes its mind cannot be a bellwether, because sooner or later the nation changes its mind without it. When `r pc(max(flip$pct), 0)`% of the map is in motion, an enormous number of counties will happen to move with the country; when `r pc(flip$pct[flip$year == 2024], 1)`% is in motion, almost none will.
-
-Grofman and Chen put a sharper edge on this. A county has to be right when Democrats win *and* when Republicans win, and those two abilities have come apart.
-
-```{r conditional}
-```
-
-Read the two middle columns. In `r win$label[1]` a randomly chosen county called Democratic victories right `r pc(100 * win$pdD[1], 0)`% of the time and Republican victories `r pc(100 * win$prR[1], 0)`% of the time. By `r win$label[nrow(win)]` the first number has fallen to `r pc(100 * win$pdD[nrow(win)], 0)`% while the second has *risen* to `r pc(100 * win$prR[nrow(win)], 0)`%.
-
-**The average county has not got worse at predicting. It has got worse at predicting one party and better at predicting the other**, which is a different thing and is fatal to bellwethers. A perfect record requires being right in both kinds of year, and the correlation between those two abilities has gone from `r pc(win$corr[1], 2)` to `r pc(win$corr[nrow(win)], 2)`. Counties that are good at one are now almost mechanically bad at the other.
-
-```{r cond-static, eval=!knitr::is_html_output(), fig.height=4.8}
-```
-
-```{r cond-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. The scissors.** For each six-election window, how often a randomly chosen county called the winner when a Republican won and when a Democrat won. The two lines start `r pc(100 * (win$prR[1] - win$pdD[1]), 0)` points apart and end `r pc(100 * (win$prR[nrow(win)] - win$pdD[nrow(win)]), 0)` points apart. A bellwether has to be high on both lines at once, and after about 1992 there is no such place to stand.
-
-The two effects are not the same size, and the gap between them is the point. Average accuracy fell from `r pc((win$pdD[1] + win$prR[1]) / 2, 3)` in `r win$label[1]` to `r pc((win$pdD[nrow(win)] + win$prR[nrow(win)]) / 2, 3)` in `r win$label[nrow(win)]`, down about `r pc(100 * (1 - ((win$pdD[nrow(win)] + win$prR[nrow(win)]) / 2) / ((win$pdD[1] + win$prR[1]) / 2)), 0)`%. Over the same stretch perfect records fell from `r win$perfect[1]` counties to `r win$perfect[nrow(win)]`, down `r pc(100 * (1 - win$perfect[nrow(win)] / win$perfect[1]), 0)`%.
-
-**A fifth off the average wiped out almost all of the perfect records**, and that disproportion is what the correlation buys. Being right on average is a statement about one election at a time; a perfect record is a statement about every election at once, and it requires the two abilities in Figure 4 together. When they were mildly opposed a county could hold both. At `r pc(win$corr[nrow(win)], 2)` there is almost nowhere left that is good at both, so the top of the distribution empties out far faster than the middle of it moves.
-
-## The definition nobody states
-
-One more thing decides the answer, and it is never specified in the newspaper version: what "the national winner" means.
-
-In 2000 and 2016 the popular vote and the Electoral College named different men. Grofman and Chen argue that the popular vote is the sensible standard for this question — a county is a sample of the country's voters, not of its electors. The newspaper lists all use the Electoral College. Both are defensible and they do not agree.
+One last definition decides more than it seems to. The newspaper lists score counties against the Electoral College winner; Grofman and Chen argue the popular vote is the sensible standard, since a county is a sample of the country's voters, not of its electors. In 2000 and 2016 the two standards name different winners.
 
 ```{r definition}
 ```
 
-Under either definition the answer to "how many perfect bellwethers are there" is **`r sum(h_ec == K)`**. But the near-misses are different counties entirely. Three counties come within one election under the Electoral College: `r paste(namef(w$fips[h_ec == max(h_ec)]), collapse = ", ")`. They share **no members** with the one that comes within one under the popular vote, `r namef(w$fips[h_pv == max(h_pv)])`.
+Under either definition the number of perfect records is **`r sum(h_ec == K)`**. But the near-misses are entirely different counties: the three that come within one election of perfection under the Electoral College share no members with the one that comes within one under the popular vote.
 
-Three of those Electoral College near-misses are counties Grofman and Chen named in 2023 as the last survivors, when the series ended at 2020. They are still the last survivors. What changed is that the fourth, `r namef("10001")`, missed 2024.
+None of this is new. Tufte and Sun showed it in 1975 on the elections through 1968, and Grofman and Chen called it "flogging a dead horse" in 2023 and wrote the paper anyway, because the horse keeps getting up. It will be back in 2028.
 
-```{r def-static, eval=!knitr::is_html_output(), fig.height=4.9}
-```
+## What this brief cannot tell you
 
-```{r def-d3, results='asis', eval=knitr::is_html_output()}
-```
+**It cannot explain why any county votes as it does.** The file holds a D or an R per county per election and nothing else. Zimny-Schmitt and Harris (2020) found the bellwethers whiter, older, less educated and lower-income than the country, which alone sinks the miniature-America story, and nothing in this file could have told you it.
 
-**Figure 5. Two definitions, two different sets of counties.** The same `r format(N, big.mark = ",")` counties and the same seventeen elections, scored against the Electoral College winner and against the popular-vote winner. The distributions are not small variations on each other, because switching the definition flips the scoring of two whole elections at once. Neither definition produces a single perfect record, which is the one thing they agree on.
+**A margin is not a winner.** A county carried by nine votes counts exactly as much as one carried by ninety thousand. That is the right unit for the bellwether question, which is asked in those terms, and the wrong unit for almost anything else.
 
-## What this chapter cannot tell you
+**The long series is a compilation of compilations.** Its own sources are CQ Press and ICPSR. The 0.077% disagreement rate against MEDSL is a floor on the uncertainty rather than a measurement of it, because two compilations sharing a source agree more than either agrees with the truth.
 
-The panel holds who carried each county and nothing else, and the limits follow from that directly.
+**Counties are not stable objects.** Treating a county as the same thing in 1960 and 2024 is a convention, and the seventeen-election panel quietly assumes that boundary changes did not matter.
 
-**It cannot explain why any county votes as it does.** There are no demographics here, no incomes, no turnout, no margins. Zimny-Schmitt and Harris (2020) found the bellwethers to be whiter, older, less educated and lower-income than the country. That is already enough to sink the "demographically representative" story, and nothing in this file could have told you it.
+## What you should have learned
 
-**A margin is not a winner.** Every county here is reduced to D or R, so a county carried by nine votes counts exactly as much as one carried by ninety thousand. That is the right unit for the bellwether question, which is asked in those terms, and it is the wrong unit for almost any other question. Six counties were dropped for a literal tie, and a county decided by eleven votes sits in the file as a clean call.
+- Across `r format(N, big.mark = ",")` counties and `r K` elections, exactly `r sum(h_ec == K)` have a perfect record — against the `r pc(N / 2^K, 2)` that independent coin-flipping would produce.
+- The distribution of records is thinner than chance at both ends; if bellwethers carried a real property, the top would be fatter than chance, not thinner.
+- `r n_fail20` of the *Journal*'s nineteen failed in the first election after the list was printed, and `r sum(p19$y2020 == natwin("ec", 2020) & p19$y2024 == natwin("ec", 2024))` survive today: `r pc(100 * mean(p19$y2020 == "R"), 0)`% of them voted Republican in 2020, almost exactly the `r pc(r20, 0)`% of all American counties that did.
+- The map has largely stopped moving: `r pc(max(flip$pct), 0)`% of counties changed party in `r flip$year[which.max(flip$pct)]`, and `r pc(flip$pct[flip$year == 2024], 1)`% did in 2024.
+- The question to ask of any record presented as evidence is *out of how many tries?* — a search over `r format(N, big.mark = ",")` counties for past winners is guaranteed to find some.
 
-**The long series is a compilation of compilations.** Its own sources are CQ Press and ICPSR. The 0.077% disagreement rate against MEDSL is a floor on the uncertainty rather than a measurement of it, because two compilations sharing a source will agree more than either agrees with the truth. Nobody audited the 1964 returns of every county in America, and this chapter cannot.
+## Extensions
 
-**Counties are not stable objects.** `r format(3180 - N, big.mark = ",")` FIPS codes were dropped for not existing throughout, and treating a county as the same thing in 1960 and 2024 is a convention. Boundaries moved, cities were carved out and folded back, and the seventeen-election panel quietly assumes none of that mattered.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-**Alaska is absent** because it has no counties, so every proportion here is of the other fifty jurisdictions.
+- `county_winners.csv` has one column per election, `y1960` through `y2024`. Count the counties that match the national winner in the last five columns alone, then work out how many such streaks chance would hand you.
+- Take the counties with the best long records in `county_winners.csv` and read their `y2024` column. What did a nearly perfect record through 2020 actually predict?
+- `crosscheck.csv` documents the places where two compilations disagree about a county's winner, with the `reason` spelled out. Read one. How would you have caught it without somebody writing it down?
+- `national.csv` records both the `ec` and `pv` winner each year. Find the years they differ, and work out what switching the standard does to a county that "picks the winner."
 
-## What a perfect record is worth
-
-`r format(N, big.mark = ",")` counties, `r K` elections, and **`r sum(h_ec == K)` perfect records** — under either definition of the national winner. Coin-flipping alone would have produced `r pc(N / 2^K, 2)`, so the finding is not that bellwethers are rarer than chance in some technical sense. It is that there are none, and there is no reason to have expected any.
-
-The nineteen counties the *Wall Street Journal* published in November 2020 had genuinely perfect records over the stretch they were chosen on. This file reproduces that list exactly, without using the *Journal*'s data. Two elections came after, the only two the list did not already contain. `r n_fail20` of the counties failed at once, and the last one failed four years later. `r sum(p19$y2020 == natwin("ec", 2020) & p19$y2024 == natwin("ec", 2024))` survive.
-
-They failed together because they were never nineteen independent readings on the country. They were nineteen copies of one bet: that a county sitting near the national tipping point in the 1980s would still be sitting there. When the tipping point moved, it moved out from under all of them at once. In 2020 `r pc(100 * mean(p19$y2020 == "R"), 0)`% of them voted Republican, which is almost exactly the `r pc(r20, 0)`% of *all* American counties that did. Their famous predictive power amounted to being ordinary.
-
-The habit worth taking from this is not scepticism about counties. It is a question to ask of any record presented as evidence: **out of how many tries?** A perfect ten-election record is remarkable in one county chosen in advance and unremarkable in a country that contains `r format(N, big.mark = ",")` of them. The *Journal* did not choose in advance. Nobody does. The list was assembled by searching `r format(N, big.mark = ",")` counties for the ones that had already won, and a search like that is guaranteed to find some. That is why the answer it returns carries no information about the future at all.
-
-Tufte demonstrated this in 1974, and again with Sun in 1975, on the elections through 1968. Hopkins reviewed the evidence again in 2017. Grofman and Chen called it "flogging a dead horse" in 2023 and wrote the paper anyway, because the horse keeps getting up. It will be back in 2028.
+Two stretch ideas point past the spreadsheet. Before 2028, write down the counties with the best current records, seal the list, and grade it in November 2028 — the prospective test no published bellwether list has ever run. And pull one bellwether county's demographics from this book's census chapters to see how much it actually resembles the country it supposedly predicts.
 
 ## Sources
 
@@ -251,23 +166,6 @@ Tufte demonstrated this in 1974, and again with Sun in 1975, on the elections th
   files. It is typed in by hand as two columns, one for the Electoral College
   and one for the popular vote.
 
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`county_winners.csv`](data/derived/county_winners.csv), [`crosscheck.csv`](data/derived/crosscheck.csv), [`national.csv`](data/derived/national.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `county_winners.csv` has one column per election and a D or an R in each. Count the counties that match the national winner every single time. Then work out how many you would expect by chance alone.
-- Take the counties with a perfect record and look at what they did in the most recent year. A perfect record up to now — what did it actually predict?
-- `crosscheck.csv` documents places where two compilations disagree about who won a county, with the `reason` spelled out. Read one. How would you have caught that without somebody writing it down?
-- `national.csv` records both the electoral college and popular vote winner each year. Find the years they differ. What does that do to the whole idea of a county that 'picks the winner'?
-
 **Academic literature**
 
 - Grofman, Bernard and Haotian Chen. 2023. "Understanding the Factors that
@@ -276,23 +174,24 @@ tables you just opened.
 - Amlani, Sharif and Carlos Algara. 2021. "Partisanship & Nationalization in
   American Elections: Evidence from Presidential, Senatorial & Gubernatorial
   Elections in the U.S. Counties, 1872–2020." *Electoral Studies* 73: 102387.
-- Deutsch, Karl W. and William G. Madow. 1961. "A Note on the Appearance of
-  Wisdom in Large Bureaucratic Organizations." *Behavioral Science* 6: 72–78.
-- Hopkins, David A. 2017. *Red Fighting Blue: How Geography and Electoral Rules
-  Polarize American Politics.* Cambridge University Press.
-- Tufte, Edward R. 1974. *Data Analysis for Politics and Policy.* Prentice-Hall,
-  chapter 3.
 - Tufte, Edward R. and Richard A. Sun. 1975. "Are There Bellwether Electoral
   Districts?" *Public Opinion Quarterly* 39(1): 1–18.
 - Zimny-Schmitt, Daniel and Michael Harris. 2020. "An Inquiry of Bellwether
   Counties in US Presidential Elections." <https://doi.org/10.2139/ssrn.3677602>.
 
-**Journalism this chapter tests**
+**Journalism this brief tests**
 
 - McCormick, John. "Bellwether Counties Nearly Wiped Out by 2020 Election."
   *Wall Street Journal*, 13 November 2020. The source of the nineteen.
 - Wasserman, David. "The 10 Bellwether Counties That Show Trump Is in Serious
   Trouble." *New York Times*, 6 October 2020.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`county_winners.csv`](data/derived/county_winners.csv), [`crosscheck.csv`](data/derived/crosscheck.csv), [`national.csv`](data/derived/national.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

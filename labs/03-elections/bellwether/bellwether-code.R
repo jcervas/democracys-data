@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -34,7 +35,6 @@ h80   <- hits("ec", WIN80)
 p19   <- w[h80 == length(WIN80), ]
 p19   <- p19[order(p19$state, p19$county), ]
 n_fail20 <- sum(p19$y2020 != natwin("ec", 2020))
-n_live20 <- sum(p19$y2020 == natwin("ec", 2020))
 surv     <- p19[p19$y2020 == natwin("ec", 2020), ]
 
 # --- the counting argument --------------------------------------------------
@@ -43,28 +43,11 @@ kexp$from <- YRS[K - kexp$k + 1]
 kexp$expected <- N / 2^kexp$k
 kexp$observed <- sapply(kexp$k, function(k) sum(hits("ec", tail(YRS, k)) == k))
 
-# --- six-election windows, each measured the same way -----------------------
-wl <- list(c(1960, 1980), c(1968, 1988), c(1980, 2000),
-           c(1992, 2012), c(2000, 2020), c(2004, 2024))
-win <- do.call(rbind, lapply(wl, function(v) {
-  yy <- seq(v[1], v[2], 4)
-  hh <- hits("ec", yy)
-  dy <- yy[natwin("ec", yy) == "D"]; ry <- yy[natwin("ec", yy) == "R"]
-  D  <- rowSums(sapply(dy, function(y) V(y) == "D"))
-  R  <- rowSums(sapply(ry, function(y) V(y) == "R"))
-  data.frame(from = v[1], to = v[2], nd = length(dy), nr = length(ry),
-             perfect = sum(hh == 6), pct = 100 * mean(hh == 6),
-             pdD = mean(D) / length(dy), prR = mean(R) / length(ry),
-             corr = cor(D, R))
-}))
-win$label <- paste0(win$from, "-", win$to)
-
 # --- how much the map moves at all ------------------------------------------
 flip <- data.frame(
   year = YRS[-1],
   pct  = 100 * sapply(2:K, function(i) mean(V(YRS[i]) != V(YRS[i - 1]))))
-dshare <- data.frame(year = YRS,
-                     pct = 100 * sapply(YRS, function(y) mean(V(y) == "D")))
+r20 <- 100 * mean(V(2020) == "R")
 
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 # Title-case each word, not just the first: the source county names are all
@@ -75,44 +58,16 @@ namef <- function(f) {
   paste0(cap(w$county[i]), ", ", w$state[i])
 }
 
-# --- palette ----------------------------------------------------------------
+# --- palette, for the STATIC twins and the hand-written D3 ------------------
 # The quantity nearly every figure carries is "did this county match the
 # national winner", which is NOT a party: the national winner is a Democrat in
 # eight of these elections and a Republican in nine. Red and blue would be read
 # as party whatever the legend said, so matched/missed gets a diverging pair
-# that carries no partisan reading. Party colours appear exactly once, in the
-# figure that really is about party, and they are muted so that the two
-# schemes cannot be confused at a glance.
+# that carries no partisan reading.
 MATCH <- "#1B7837"   # the county went with the national winner
 MISS  <- "#762A83"   # it did not
 NEUTC <- "#999999"
-REFC  <- "#C41230"   # a reference mark: an expectation, a median, a named case
-DEMC  <- "#6699CC"
-REPC  <- "#CC7766"
-
-subcap <- function(txt, width = 100, line = 3.4, cex = 0.66) {
-  cw <- strwrap(txt, width = width)
-  mtext(cw, side = 1, line = line + (seq_along(cw) - 1) * 0.95, adj = 0,
-        cex = cex, col = "#555555")
-}
-
-cap_dist <- paste0(
-  "All ", format(N, big.mark = ","), " counties by how many of the ", K,
-  " elections they called correctly, against what independent coin-flipping ",
-  "would produce.")
-cap_19 <- paste0(
-  "The nineteen counties the Wall Street Journal published in November 2020, ",
-  "one square per election.")
-cap_flip <- paste0(
-  "The share of counties that changed party from the previous election.")
-cap_cond <- paste0(
-  "Two conditional probabilities that used to be close together and no longer ",
-  "are, measured over six-election windows.")
-# Plain quotes, not curly: this string is drawn by base R into the PDF device,
-# which substitutes for U+201C/U+201D and warns on every knit.
-cap_def <- paste0(
-  "The same counties scored against two different definitions of ",
-  "\"the national winner\".")
+REFC  <- "#C41230"   # a reference mark: an expectation, a named case
 
 .hdr <- function(x) sub("^(.)", "\\U\\1", gsub("_", " ", names(x)), perl = TRUE)
 
@@ -129,16 +84,13 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 # repeat via \endhead. That is right for a table long enough to span pages and
 # wrong for a short one: when the table starts near the foot of a page, LaTeX
 # prints the header, finds no room for even one row, breaks, and strands a bare
-# "Field | Value" strip at the top of the next page. \filbreak does not help,
-# because the break happens *inside* the table, after \endhead.
+# "Field | Value" strip at the top of the next page.
 #
 # For a table known to be short, `tabular` is the correct environment -- it
 # cannot break at all, so LaTeX moves the whole thing to the next page. HTML is
 # unaffected and takes the ordinary path.
 nobreak <- function(x) {
   if (knitr::is_latex_output())
-    # linesep = "": kable's latex path inserts \addlinespace every fifth row,
-    # which reads as a grouping the table does not have.
     knitr::kable(x, format = "latex", booktabs = TRUE, longtable = FALSE,
                  linesep = "", col.names = .hdr(x), row.names = FALSE,
                  align = table_align(x))
@@ -161,7 +113,7 @@ o
 ## ---- dist-static
 obs <- as.integer(table(factor(h_ec, levels = 0:K)))
 exp <- N * dbinom(0:K, K, 0.5)
-par(mar = c(5.6, 4.4, 1.0, 1.2))
+par(mar = c(4.4, 4.4, 1.0, 1.2))
 bp <- barplot(obs, names.arg = 0:K, col = NEUTC, border = "white",
               ylim = c(0, max(obs, exp) * 1.14), las = 1,
               xlab = "elections called correctly, out of 17",
@@ -172,9 +124,11 @@ legend("topright", bty = "n", cex = 0.74,
        legend = c("counties (observed)", "if every county were a fair coin"),
        col = c(NEUTC, REFC), lwd = c(6, 2), lty = c(1, 2))
 text(bp[K + 1], obs[K + 1], "0", pos = 3, cex = 0.72, col = REFC)
-subcap(cap_dist, line = 3.8)
 
 ## ---- dist-d3
+# A histogram with a benchmark line laid over it -- two kinds of mark on one
+# band scale, which the shared library's single-type figures do not draw, so
+# this one stays hand-written.
 obs <- as.integer(table(factor(h_ec, levels = 0:K)))
 expv <- N * dbinom(0:K, K, 0.5)
 rows <- paste(sprintf('{"k":%d,"o":%d,"e":%.2f}', 0:K, obs, expv), collapse = ",")
@@ -225,8 +179,8 @@ lg.append("text").attr("x",19).attr("y",30).attr("font-size","11.5px").attr("fil
   .text("if every county were a fair coin");
 })();
 </script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover a bar.</p>
-', rows, NEUTC, REFC, REFC, REFC, NEUTC, REFC, cap_dist))
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">Hover a bar.</p>
+', rows, NEUTC, REFC, REFC, REFC, NEUTC, REFC))
 
 ## ---- checks
 data.frame(
@@ -239,12 +193,6 @@ data.frame(
     "1,909 counties compared, every vote total identical",
     paste0("searched for counties perfect over 1980-2016: found ", nrow(p19),
            ", and they are the same 19")))
-
-## ---- crosscheck
-o <- xc[, c("county", "state", "year", "win_algara", "win_medsl")]
-o$county <- cap(o$county)
-names(o) <- c("county", "state", "year", "Algara & Amlani say", "MEDSL says")
-o
 
 ## ---- one-row
 i <- match("18167", w$fips)
@@ -274,9 +222,8 @@ M <- as.matrix(p19[, paste0("y", YRS)])
 ok <- t(sapply(seq_len(nrow(M)), function(i) M[i, ] == natwin("ec", YRS)))
 nr <- nrow(M)
 # Room at the top for two stacked rows of annotation (the bracket labels above
-# the years) and at the bottom for the legend and the caption, which otherwise
-# land on top of each other.
-par(mar = c(4.2, 8.6, 4.6, 0.6))
+# the years) and at the bottom for the legend.
+par(mar = c(2.4, 8.6, 4.6, 0.6))
 plot(NA, xlim = c(0.5, K + 0.5), ylim = c(nr + 0.5, 0.5), axes = FALSE,
      xlab = "", ylab = "", xaxs = "i")
 for (i in seq_len(nr)) for (j in seq_len(K))
@@ -301,9 +248,10 @@ brk(which(YRS == 2020), which(YRS == 2024), "tested here", REFC)
 legend(x = 0.5, y = nr + 1.55, xpd = NA, horiz = TRUE, bty = "n", cex = 0.68,
        legend = c("matched the national winner", "did not"),
        fill = c(MATCH, MISS), border = NA)
-subcap(cap_19, line = 2.6, width = 112)
 
 ## ---- grid-d3
+# The chapter's showpiece: a per-square annotated grid with bracket labels,
+# which no shared-library type draws. It stays hand-written.
 M <- as.matrix(p19[, paste0("y", YRS)])
 cells <- unlist(lapply(seq_len(nrow(M)), function(i)
   sprintf('{"r":%d,"c":%d,"y":%d,"v":"%s","ok":%s}', i - 1, seq_len(K) - 1, YRS,
@@ -354,12 +302,11 @@ const lg=svg.append("g").attr("transform",`translate(${M.l},${M.t+R*ch+16})`);
   lg.append("text").attr("x",i*200+18).attr("font-size","11px").attr("fill","#333").text(p[1]); });
 })();
 </script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover any square.</p>
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">Hover any square.</p>
 ', paste(cells, collapse = ","), labs, paste(YRS, collapse = ","),
-   MATCH, MISS, REFC, MATCH, MISS, cap_19))
+   MATCH, MISS, REFC, MATCH, MISS))
 
 ## ---- together
-r20 <- 100 * mean(V(2020) == "R")
 data.frame(
   quantity = c("Of the nineteen, the share that voted Republican in 2020",
                "Of all 3,081 counties, the share that voted Republican in 2020",
@@ -369,7 +316,7 @@ data.frame(
             sprintf("%.5f", sum(dbinom(18:19, 19, 0.5)))))
 
 ## ---- flip-static
-par(mar = c(4.6, 4.6, 1.0, 1.2))
+par(mar = c(3.6, 4.6, 1.0, 1.2))
 plot(flip$year, flip$pct, type = "n", las = 1, ylim = c(0, max(flip$pct) * 1.1),
      xlab = "", ylab = "% of counties changing party")
 grid(nx = NA, ny = NULL, col = "#EEEEEE", lty = 1)
@@ -379,115 +326,25 @@ ix <- c(which.max(flip$pct), nrow(flip) - 1, nrow(flip))
 points(flip$year[ix], flip$pct[ix], pch = 19, cex = 1.15, col = REFC)
 text(flip$year[ix], flip$pct[ix], paste0(pc(flip$pct[ix], 0), "%"),
      pos = c(3, 3, 4), cex = 0.72, col = REFC)
-subcap(cap_flip, line = 3.0)
 
 ## ---- flip-d3
-rows <- paste(sprintf('{"y":%d,"p":%.2f}', flip$year, flip$pct), collapse = ",")
-cat(sprintf('
-<div id="fl" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=380,M={t:20,r:24,b:44,l:58};
-const box=d3.select("#fl");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1962,2026]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.p)*1.12]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(9));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",15)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("%% of counties changing party");
-svg.append("path").datum(D).attr("fill","none").attr("stroke","%s").attr("stroke-width",2)
-  .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d.p)));
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.y)).attr("cy",d=>y(d.p)).attr("r",4)
-  .attr("fill",d=>(d.y===1964||d.y===1968||d.y===2020||d.y===2024)?"%s":"%s")
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(`<b>${d.y}</b><br>${d.p.toFixed(1)}%% of counties changed party`)
-      .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-10)+"px"); })
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover a point.</p>
-', rows, NEUTC, REFC, NEUTC, cap_flip))
-
-## ---- conditional
-o <- data.frame(
-  window = win$label,
-  mix = paste0(win$nd, "D / ", win$nr, "R"),
-  pdD = pc(win$pdD, 3), prR = pc(win$prR, 3),
-  corr = pc(win$corr, 3),
-  perfect = paste0(win$perfect, " (", pc(win$pct, 2), "%)"))
-names(o) <- c("six elections", "won by", "p(correct | D wins)",
-              "p(correct | R wins)", "correlation", "perfect records")
-o
-
-## ---- cond-static
-par(mar = c(5.2, 4.6, 1.0, 8.4), xpd = NA)
-plot(NA, xlim = c(1, nrow(win)), ylim = c(0, 1), axes = FALSE,
-     xlab = "", ylab = "probability a county calls the winner")
-axis(1, at = seq_len(nrow(win)), labels = win$label, cex.axis = 0.66, las = 2)
-axis(2, las = 1, cex.axis = 0.8)
-grid(nx = NA, ny = NULL, col = "#EEEEEE", lty = 1)
-lines(win$prR, col = REPC, lwd = 2.4); points(win$prR, pch = 19, col = REPC)
-lines(win$pdD, col = DEMC, lwd = 2.4); points(win$pdD, pch = 19, col = DEMC)
-text(nrow(win) + 0.14, win$prR[nrow(win)], "when a\nRepublican wins",
-     adj = 0, cex = 0.68, col = REPC)
-text(nrow(win) + 0.14, win$pdD[nrow(win)], "when a\nDemocrat wins",
-     adj = 0, cex = 0.68, col = DEMC)
-subcap(cap_cond, line = 4.2, width = 92)
-
-## ---- cond-d3
-rows <- paste(sprintf('{"l":"%s","d":%.4f,"r":%.4f,"c":%.3f,"p":%d}',
-                      win$label, win$pdD, win$prR, win$corr, win$perfect),
-              collapse = ",")
-cat(sprintf('
-<div id="cd" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=400,M={t:20,r:150,b:64,l:58};
-const box=d3.select("#cd");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scalePoint().domain(D.map(d=>d.l)).range([M.l,W-M.r]).padding(0.4);
-const y=d3.scaleLinear().domain([0,1]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x))
-  .selectAll("text").attr("transform","rotate(-32)").attr("text-anchor","end")
-  .attr("font-size","10.5px");
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",15)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("probability a county calls the winner");
-[["r","%s","when a Republican wins"],["d","%s","when a Democrat wins"]].forEach(s=>{
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",s[1]).attr("stroke-width",2.4)
-    .attr("d",d3.line().x(d=>x(d.l)).y(d=>y(d[s[0]])));
-  svg.append("g").selectAll("circle."+s[0]).data(D).join("circle").attr("class",s[0])
-    .attr("cx",d=>x(d.l)).attr("cy",d=>y(d[s[0]])).attr("r",4.2).attr("fill",s[1]);
-  const last=D[D.length-1];
-  svg.append("text").attr("x",x(last.l)+10).attr("y",y(last[s[0]])+4)
-    .attr("font-size","11.5px").attr("fill",s[1]).text(s[2]); });
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(d.l)-18).attr("y",M.t).attr("width",36).attr("height",H-M.b-M.t)
-  .attr("fill","transparent")
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(
-      `<b>${d.l}</b><br>when a Democrat wins: ${(100*d.d).toFixed(1)}%%<br>`+
-      `when a Republican wins: ${(100*d.r).toFixed(1)}%%<br>`+
-      `correlation ${d.c.toFixed(3)}<br>${d.p} perfect records`)
-      .style("left",Math.min(ev.offsetX+14,W-260)+"px").style("top",(ev.offsetY-10)+"px"); })
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover a window.</p>
-', rows, REPC, DEMC, cap_cond))
+# A single line on a time axis: exactly what the shared library draws, so it
+# is drawn with dd_fig(). d3 itself was loaded by the first figure's own tag,
+# so only dd-charts.js is emitted here (d3 = FALSE).
+dd_fig("fl", "line", flip[order(flip$year), ], d3 = FALSE,
+  size = list(w = 760, h = 380, m = list(t = 20, r = 24, b = 40, l = 56)),
+  x = list(field = "year", fmt = "d", ticks = 9),
+  y = list(field = "pct", label = "% of counties changing party",
+           domain = c(0, ceiling(max(flip$pct)) + 2), fmt = "pct0", ticks = 6),
+  series = list(fields = list(
+    list(field = "pct", label = "counties changing party", class = "series-1"))),
+  points = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+d.pct.toFixed(1)+
+      "% of counties changed party";
+  }'))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">Hover a point.</p>')
 
 ## ---- definition
 o <- data.frame(
@@ -501,63 +358,6 @@ o <- data.frame(
 names(o) <- c("“the national winner” means", "elections won",
               "perfect records", "best record", "held by")
 o
-
-## ---- def-static
-par(mar = c(6.0, 4.4, 1.0, 1.2))
-te <- as.integer(table(factor(h_ec, levels = 0:K)))
-tp <- as.integer(table(factor(h_pv, levels = 0:K)))
-plot(0:K, te, type = "n", ylim = c(0, max(te, tp) * 1.1), las = 1,
-     xlab = "elections called correctly, out of 17", ylab = "counties")
-grid(nx = NA, ny = NULL, col = "#EEEEEE", lty = 1)
-lines(0:K, te, col = MATCH, lwd = 2.4); points(0:K, te, pch = 19, cex = 0.7, col = MATCH)
-lines(0:K, tp, col = MISS,  lwd = 2.4); points(0:K, tp, pch = 19, cex = 0.7, col = MISS)
-legend("topleft", bty = "n", cex = 0.74, lwd = 2.4,
-       col = c(MATCH, MISS),
-       legend = c("scored against the Electoral College",
-                  "scored against the popular vote"))
-subcap(cap_def, line = 4.4)
-
-## ---- def-d3
-te <- as.integer(table(factor(h_ec, levels = 0:K)))
-tp <- as.integer(table(factor(h_pv, levels = 0:K)))
-rows <- paste(sprintf('{"k":%d,"e":%d,"p":%d}', 0:K, te, tp), collapse = ",")
-cat(sprintf('
-<div id="df" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=380,M={t:20,r:24,b:48,l:58};
-const box=d3.select("#df");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,17]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>Math.max(d.e,d.p))*1.1]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(9));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("elections called correctly, out of 17");
-[["e","%s","scored against the Electoral College"],
- ["p","%s","scored against the popular vote"]].forEach((s,i)=>{
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",s[1]).attr("stroke-width",2.4)
-    .attr("d",d3.line().x(d=>x(d.k)).y(d=>y(d[s[0]])));
-  const lg=svg.append("g").attr("transform",`translate(${M.l+14},${M.t+8+i*18})`);
-  lg.append("line").attr("x1",0).attr("x2",16).attr("stroke",s[1]).attr("stroke-width",2.4);
-  lg.append("text").attr("x",22).attr("y",4).attr("font-size","11.5px").attr("fill","#333").text(s[2]); });
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(d.k)-14).attr("y",M.t).attr("width",28).attr("height",H-M.b-M.t)
-  .attr("fill","transparent")
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(
-      `<b>${d.k} of 17 correct</b><br>Electoral College: ${d.e} counties<br>`+
-      `popular vote: ${d.p} counties`)
-      .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-10)+"px"); })
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover a value.</p>
-', rows, MATCH, MISS, cap_def))
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt"), tone = "frozen"))
