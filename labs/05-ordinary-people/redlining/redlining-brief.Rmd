@@ -16,26 +16,35 @@ dd_read_chunks("redlining-code.R")
 ```{r setup, include=FALSE}
 ```
 
-An appraiser working for the federal government walked a few streets on the southern edge of Cleveland in the late summer of 1939 and then filled in a form. The form had spaces for the terrain, the class of the inhabitants, the age and condition of the buildings, the availability of mortgage money. Under the heading *Clarifying Remarks* he wrote:
+An appraiser working for the federal government walked a few streets on the southern edge of Cleveland in the late summer of 1939 and then filled in a form. It had spaces for the terrain, the class of the inhabitants, the age of the buildings, the availability of mortgage money. Under *Clarifying Remarks* he wrote:
 
 > `r QT$remarks`
 
-The area is `r QT$label`, *`r QT$neighborhood`*, and the sheet is dated `r QT$dated`. Two other lines on the same form matter as much as the paragraph. One is headed *Infiltration of*, and on it he wrote *`r QT$infiltration`*. The other asks for the proportion of Black residents already living in the area, and on that line he wrote `r QT$negro` -- none.
+The area is `r QT$label`, *`r QT$neighborhood`*, and the sheet is dated `r QT$dated`. Two other lines on that form matter as much as the paragraph. One is headed *Infiltration of*, and on it he wrote *`r QT$infiltration`*. The other asks what share of the residents were Black, and on that line he wrote `r QT$negro`, meaning none. He gave the area a grade of `r QT$grade`.
 
-Read those two lines together and the reasoning is not hidden, inferred, or reconstructed by a later generation. **Race was not a proxy for something else in these documents. It was the stated criterion**, applied here to a neighborhood where, by the appraiser's own count, no Black family yet lived. The last sentence he wrote is the one to carry forward: *no further development is anticipated for white ownership.*
+Race was not standing in for something else on that sheet. **It was the stated criterion**, applied to a street where by the appraiser's own count no Black family yet lived. Grades like this one told a federal corporation where mortgage lending was safe, and lending is how most American families come to own anything. School money is raised on property, and services, transit and policing are all handed out on a map. So the question is worth asking plainly: ninety years later, on the actual ground, does that line still show?
 
-He gave the area a grade of `r QT$grade`.
+## The test
 
-## Best, Still Desirable, Definitely Declining, Hazardous
+Answering it means putting two files beside each other. The first is *Mapping Inequality*, the digitized residential security maps of the Home Owners' Loan Corporation. It holds `r n(SR$features)` neighborhood areas traced from `r SR$city_surveys` city surveys of 1935 to 1940, `r n(SR$graded)` of them carrying a grade, and it is published by the Digital Scholarship Lab at the University of Richmond (<https://dsl.richmond.edu/panorama/redlining/>). The second is the 2020 Census, which counts every resident of every tract (<https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>).
 
-That grade was not an opinion filed in a drawer. Congress had created the **Home Owners' Loan Corporation** in 1933 to refinance mortgages during the Depression. To decide where lending was safe, the HOLC produced "residential security maps" for more than two hundred American cities. Every neighborhood in a mapped city was colored one of four grades:
+The 1930s file is the right instrument because it is not a study of the period. It is the working paperwork of the agency that did the sorting, written to be acted on rather than read later. The men who wrote it had no reason to overstate the part race played, because they did not think it needed justifying. A modern index of disfavored neighborhoods would carry its author's theory of what disfavor looks like. Nobody graded on these sheets was asked anything, and most never learned a federal agency had given their street a letter. That is the kind of record [Section III](../admin-records-source/admin-records-source-brief.html) is about.
+
+The census is doing a second job here that is easy to miss. The grade file holds shapes and letters and no people at all. Every share below is a count of Black residents over a count of all residents, and both numbers are borrowed from the census. The record supplies only the letter, and somebody else counted everyone standing under it.
+
+## The data
+
+The table the figures rest on is `tracts.csv`: one row per 2020 census tract, `r n(nrow(tr))` rows, covering `r length(unique(tr$city))` cities in `r length(unique(tr$state))` states. Each row carries `GEOID`, the tract's eleven-digit identifier, with `state` and `city`; `grade`, the letter the ground under it was given in the 1930s; and `total`, `white`, `black` and `pct_black` from the census.
+
+```{r one-record}
+```
+
+The letter is the strangest thing in that row. The corporation used four of them:
 
 ```{r grades}
 ```
 
-The D areas were printed in red. That is where the word *redlining* comes from, and the paragraph above is what a D looked like from the inside.
-
-Cleveland was surveyed in 1939. Its sheet covers `r sum(hm$n)` graded areas over `r pc(sum(hm$area_km2), 0)` square kilometers, and the whole of it is drawn in Figure 1 from the digitized polygons, filled with the four colors the corporation itself used. The color of each area is the one recorded in the source file; nothing here is a palette chosen for effect.
+The D areas were printed in red, which is where the word *redlining* comes from, and the paragraph above is what a D looked like from the inside. Figure 1 is Cleveland's whole sheet.
 
 ```{r holc-map-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -43,78 +52,12 @@ Cleveland was surveyed in 1939. Its sheet covers `r sum(hm$n)` graded areas over
 ```{r holc-map-static, eval=!knitr::is_html_output(), fig.height=4.5}
 ```
 
-**Figure 1. Cleveland as the Home Owners' Loan Corporation graded it in 1939.** `r sum(hm$n)` graded areas over `r pc(sum(hm$area_km2), 0)` square kilometers, filled with the corporation's own four colors. Grade D, "Hazardous", is red and sits an average of `r pc(hm$km_out[hm$grade=="D"])` km from the center of the surveyed area; grade A, "Best", is green and sits `r pc(hm$km_out[hm$grade=="A"])` km out. Grade C alone covers `r pc(hm$pct_area[hm$grade=="C"], 0)`% of the graded land. The dashed rectangle marks the ground enlarged in Figure 2.
+**Figure 1. Cleveland as the Home Owners' Loan Corporation graded it in 1939.** `r sum(hm$n)` graded areas over `r pc(sum(hm$area_km2), 0)` square kilometers, filled with the corporation's own four colors read out of the source file rather than chosen here. A map is the right form because the grade was applied to ground. Red sits in the industrial core, an average of `r pc(hm$km_out[hm$grade=="D"])` km from the center of the surveyed area; green sits `r pc(hm$km_out[hm$grade=="A"])` km out at the edge. The concentric rings of creditworthiness are visible before any census number arrives. The dashed rectangle marks the ground enlarged in Figure 2.
 
-**The shape of the thing is a finding in itself, before any census data arrives.** Red is in the industrial core and along the river; green is out at the edge; a broad band of yellow lies between them. Nobody drawing this map was recording an accident of geography. They were drawing concentric rings of creditworthiness around a downtown, and the ring you lived in decided whether a bank would lend on your house.
-
-## How a 1939 opinion becomes a file you can open
-
-Nothing in Figure 1 is a reconstruction. The corporation drew those lines, its appraisers filled in those forms, and the sheets survived as federal records because a federal agency was obliged to keep them. What turned them into something a chapter can compute with is a second act of labour, seventy years later.
-
-The Digital Scholarship Lab at the University of Richmond photographed the surviving sheets, traced every polygon off them, transcribed the area description forms, and published the result as **Mapping Inequality** under a Creative Commons license. The national file was fetched here on `r SR$fetched`: `r pc(SR$bytes / 1e6, 1)` MB of GeoJSON covering `r SR$city_surveys` city surveys. The paragraph at the top of this chapter is not a paraphrase either. It is what the appraiser wrote on sheet `r SR$sheet_label` of the `r SR$sheet_key` survey, printed from the same archive without a word changed.
-
-That lineage is the reason the evidence is worth anything. This is not a survey of what people believed about neighborhoods in 1939, with all the sampling trouble that would carry. It is the working record of the agency doing the sorting. It was written to be acted on rather than read later, by people with no motive to overstate the role of race, because they did not think it needed justifying. A researcher's after-the-fact index of "which neighborhoods were disfavored" would be a weaker instrument, and would smuggle in the researcher's own theory of what disfavor looks like.
-
-The defects run in two directions. Some belong to the file. Of the `r n(SR$features)` digitized areas, `r n(SR$features - SR$graded)` carry no grade at all. And a hand-drawn 1930s boundary, traced from a photograph of an aging sheet, is precise to a block rather than to a parcel.
-
-Others belong to the quantity itself, and no better file would fix them. The HOLC surveyed cities above a population threshold, so there is no national frame here and never was one. A grade is one appraiser's judgment recorded as a letter; it has no standard error and no second rater. And the thing this chapter wants to measure, what a 1939 line did to the ground, is not a quantity anyone recorded. The people who would have to be counted moved, died, and were replaced by others over eight decades.
-
-The file also needed handling before it could be trusted. The grade lives in a property called `grade`; the more natural guess, `holc_grade`, exists in other distributions of these maps and returns nothing here, which would have produced a complete, silent, entirely ungraded map. The per-city archives are addressed by a key built from state, city and survey year, and a wrong year does not return an error. The server answers with a page shell and a success code, so each response is checked by parsing it rather than by reading its status. On the census side, `r n(nrow(tr))` tract records across `r length(unique(tr$state))` states carry an eleven-digit GEOID that has to be read as text; read as a number, every California identifier loses its leading zero and matches nothing. None of that is visible in a finished table, which is the point of saying it out loud.
-
-## A form with no field names, and a polygon measured in degrees
-
-The paragraph this chapter opens with came out of a file. Here is the file. The national download is GeoJSON, one feature per HOLC area, with geometry and properties together. These are the properties of the Cleveland area the appraiser was writing about, area `r SR$sheet_label`:
-
-```{r rawholc}
-```
-
-Three things in those fourteen fields are worth stopping on.
-
-**The grade is called `grade`.** Other distributions of these same maps call it `holc_grade`, and asking this file for `holc_grade` does not fail. It returns `NULL` for every one of the `r n(SR$features)` features, which would produce a complete, plausible, entirely ungraded map. A misspelled column name is the quietest bug in this book.
-
-**`area` is `2.81e-05`.** That is not an error, and it is not acres. It is the shape's area in square *degrees*, which is not a unit of anything, because a degree of longitude is a different distance in Cleveland than in Birmingham. Every area, share and overlap in this chapter is computed after reprojecting to metres. A reader who summed that column would get a number, and the number would mean nothing.
-
-**`category_id` is 4 and `grade` is `D`.** The same fact twice, in two vocabularies, in one record — and a third, `fill`, holds the color the HOLC itself printed the polygon in. This chapter draws its maps in that color rather than picking one, so the palette is evidence rather than decoration.
-
-Now the other file, and it is the strangest object in this chapter. The appraiser's area description survives as JSON, and the JSON has no field names:
-
-```{r rawform}
-```
-
-Those keys are positions on a paper form. `"1"` is the section headed *Inhabitants*; `"e"` within it is the line the form calls *Infiltration of*, and what the appraiser wrote on that line is `Potential influx of Negro`. The transcription is faithful precisely because it kept the form's own structure instead of interpreting it, which means **the file cannot be read at all without the blank form beside it.** The digitizers made the right call and it is why the quotation at the top of this chapter can be printed without a word changed.
-
-Against those two, the clean file is almost aggressively plain:
-
-```{r cleantract}
-```
-
-One row per census tract: a text identifier, a state, a city, a letter, three counts and a percentage. Every trace of the objects above is gone. **The polygon, the sheet, the appraiser's sentences and the eighty-one years in between have all collapsed into one letter in one column.** That collapse is what makes the rest of this chapter possible, and what its final section is careful about.
-
-Two of those columns deserve their names read closely. `GEOID` is text, not a number, and this chapter's setup says so explicitly: `r n(nrow(tr))` tract records across `r length(unique(tr$state))` states, of which the Californian ones begin with a zero that a numeric read silently deletes. And `grade` is not a measurement. It has no standard error, no second rater and no units; it is one man's letter, and it is being used here as though it were a treatment assignment. The chapter's closing section is about exactly how far that can be pushed.
-
-## A map drawn to allocate credit ends up allocating civic life
-
-Homeownership is how most American families hold wealth, and mortgage access is how they get it. A policy that made credit unavailable in specific neighborhoods for decades did not only affect who lived where. **It affected who could accumulate anything to pass on.**
-
-From there the consequences run through nearly every part of governing that happens on a map. School funding is property-tax based. Political participation tracks residential stability, and residential stability tracks whether people own. Municipal services, environmental burdens, transit investment and policing are all allocated geographically, using the same neighborhood boundaries that the credit market had already sorted. A document written to answer a narrow question about lending risk becomes, over decades, an input to almost everything a local government does -- and this document was written by the federal government.
-
-So the question the rest of this chapter asks is simple to state and unpleasantly hard to answer. Eighty years later, on the actual ground, does the map still show?
-
-## Two geographies that were never meant to meet
-
-Answering it requires putting two things beside each other that have no reason to be compatible.
-
-```{r sources}
-```
-
-**These units do not correspond, and no amount of care will make them.** A 1937 appraiser's neighborhood boundary was drawn with no knowledge of a 2020 census tract, and census tracts have themselves been redrawn every decade since. There is no shared identifier, no lookup table, and no reason the shapes should line up. A published tract-level redlining score does exist, but it sits behind a login, and inheriting a number from a file you cannot inspect is the worst of the available options.
-
-So the link between the two geographies has to be built. The rule used here is the simplest one that can be defended: **take each census tract's center point and ask which HOLC polygon contains it.**
+Getting the census onto that map takes a decision, because the two sets of shapes have nothing to do with each other. A 1937 boundary was drawn with no knowledge of a 2020 census tract, and tracts have been redrawn every decade since. There is no shared identifier and no lookup table. The rule used here is the simplest defensible one: take each tract's center point, and ask which graded area contains it.
 
 ```{r join}
 ```
-
-The rule fits in one sentence, and the sentence hides everything that can go wrong with it. Figure 2 shows it running on real ground: a `r pc(ZW$x1 - ZW$x0, 1)` km window of Cleveland, with 1939 underneath in its own colors and 2020 drawn on top.
 
 ```{r zoom-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -122,79 +65,35 @@ The rule fits in one sentence, and the sentence hides everything that can go wro
 ```{r zoom-static, eval=!knitr::is_html_output(), fig.height=4.9}
 ```
 
-**Figure 2. A `r pc(ZW$x1 - ZW$x0, 1)` km window of Cleveland with 1939 underneath and 2020 on top.** Colored surfaces are HOLC areas in the corporation's own grade colors, and thin outlines are 2020 census tracts. Each dot is a tract center point, the only part of a tract the matching rule ever consults, colored by the grade that point returns. White gaps are land nobody graded.
+**Figure 2. A `r pc(ZW$x1 - ZW$x0, 1)` km window of Cleveland, with 1939 underneath and 2020 on top.** Colored surfaces are HOLC areas, thin outlines are 2020 tracts, and each dot is the center point the rule consults. The heavily outlined tract is the rule getting it wrong: its center falls in a `r fo$centre_grade` area, so the whole tract is coded `r fo$centre_grade`, but its land is `r mixstr(fo)`.
 
-**The heavily outlined tract is the rule getting it wrong.** Its center point falls in a `r fo$centre_grade` area, so the whole tract is coded `r fo$centre_grade` in every table in this chapter. But its land is `r mixstr(fo)`, and most of it was graded `r fo$modal_grade`.
+That cost is worth stating in numbers. The rule grades `r n(nrow(asg))` tracts in Cleveland and Philadelphia, and `r nrow(mis)` of them get a letter that is not the letter covering most of their own land. Another `r n(nrow(drp))` are dropped, because their center falls outside every graded area. It is at least reproducible: re-running it from the polygons returns the grade the file already carries for all but `r nrow(agree) - sum(agree$centre_grade == agree$grade)` of `r n(nrow(agree))` tracts. A crosswalk is a table that translates one set of areas into another, and one weighted by population would grade some of these tracts differently. Choosing between such rules is Section IV's subject, in [Join Keys and Crosswalks](../../06-putting-data-together/data-sources/data-sources-brief.html).
 
-**Nothing lines up, because nothing was ever meant to.** The colored surfaces were drawn by a federal appraiser in 1939. The outlines were drawn by the Census Bureau in 2020, for entirely unrelated reasons, from a different set of instructions, about a different question. Between them lies exactly one point per tract, and everything the rest of this chapter reports about eighty years of American housing rests on where that point happens to fall.
+Three cleaning decisions sit under all of it. The grade lives in a field called `grade`; the natural guess, `holc_grade`, exists in other distributions of these maps and returns nothing here, which would produce a complete, plausible, entirely ungraded map. `GEOID` has to be read as text, because the Californian identifiers begin with a zero a numeric read deletes. And the source's own `area` field is in square degrees, so every area here is computed after reprojecting to metres.
 
-The outlined tract in Figure 2 was not chosen by eye. Among Cleveland tracts almost entirely covered by graded areas, involving a D area, and receiving a grade that is not the grade covering most of them, it is the one where the disagreement is widest. And the rule has a second failure mode with no visible warning at all: **a tract whose center lands outside every graded area is dropped, however much of it overlaps one.** In Cleveland `r n(nrow(cl(drp)))` tracts overlap a graded area and are dropped anyway, the largest of them `r pc(max(cl(drp)$graded), 0)`% covered by 1939 grades.
+> **Before you read on, commit to two numbers.** The file holds `r nrow(ct)`
+> cities with both A-graded and D-graded ground. **In the average city, how many
+> percentage points more Black is the D-graded ground than the A-graded
+> ground today?** And **how many of the `r nrow(ct)` cities run the other
+> way?** Write both down.
 
-## The cost of the rule, measured
+## What it says about democracy
 
-One window is an anecdote. Figure 3 puts the same question to every tract in the two cities this chapter goes on to name -- two of the `r length(unique(tr$city))` in the file, not all of them. Of the graded land inside this tract, how much of it actually carries the grade the tract was given?
-
-> **Before you read on, commit to a number.** Figure 3 covers the
-> `r n(nrow(asg))` tracts in Cleveland and Philadelphia that the center-point
-> rule managed to grade at all. **How many of those `r n(nrow(asg))` were handed
-> a grade that is not the grade covering most of their own land** -- the failure
-> the outlined tract in Figure 2 is one instance of? Write down a count, or a
-> share of `r n(nrow(asg))`, before you look at the figure.
-
-```{r purity-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r purity-static, eval=!knitr::is_html_output(), fig.height=3.3}
-```
-
-**Figure 3. Most tracts are mostly one grade, and a tail of them is not.** One bar per tract in Cleveland and Philadelphia, colored by the grade the center point assigned and sorted within each grade. The height is the share of that tract's graded land actually carrying the assigned grade. Marked bars are the `r nrow(mis)` tracts of `r nrow(asg)` where the assigned grade is not the grade covering most of the tract. The median Cleveland tract stands at `r pc(median(cl(asg)$own_share), 0)`%.
-
-Most readers, going by Figure 2, write down a fifth or more. It is `r nrow(mis)` of `r n(nrow(asg))` -- about one tract in `r round(nrow(asg)/nrow(mis))`. The rule is far better than its worst case makes it look, and that is the more uncomfortable finding. A rule that fails loudly can be caught. A rule that fails quietly in `r nrow(mis)` places cannot.
-
-The tail is not enormous, but it is not nothing either: `r pc(100*nrow(cl(mis))/nrow(cl(asg)))`% of Cleveland's tracts are assigned a minority grade, and `r pc(100*(nrow(mis)-nrow(cl(mis)))/(nrow(asg)-nrow(cl(asg))))`% of Philadelphia's. Half of Cleveland's assigned tracts are at least a tenth wrong about their own land.
-
-Three things are worth saying plainly about that, because each of them is a way this chapter could be misread.
-
-**Point-in-polygon is the simplest defensible rule, not the only one.** A crosswalk is a table that translates one set of areas into another. One weighted by area or by population would assign some of these tracts differently and would not throw the dropped ones away. Whether it would move the within-city results below is not shown here and should not be assumed in either direction.
-
-**Figure 3 measures land, not people.** A tract split half and half between two grades may have almost everybody living on one side of the old line. The assumption that residents are spread evenly across a tract is doing work in that figure exactly as it does in the numbers it is meant to audit.
-
-**The crosswalk is at least reproducible.** Re-running the rule from the polygons themselves, rather than reading the grade out of the shipped file, returns the same grade for all but `r nrow(agree) - sum(agree$centre_grade == agree$grade)` of the `r n(nrow(agree))` tracts in these two cities. That is the least a crosswalk can be asked to be, and it is more than a licensed score behind a login can offer.
-
-## The answer that arrives first is the wrong one
-
-With the join built, a single row of the resulting file is a strange object: a 2020 census tract carrying a grade assigned to the ground beneath it in the 1930s.
-
-```{r one-record}
-```
-
-Pool all `r n(nrow(tr))` of those rows by grade and the comparison the question seems to call for appears immediately.
+Pool all `r n(nrow(tr))` tracts by grade and the obvious comparison appears at once.
 
 ```{r national}
 ```
 
-Areas graded A are `r pc(gv("A","pct"))`% Black today; areas graded D are `r pc(gv("D","pct"))`%. The gap is `r pc(gv("D","pct") - gv("A","pct"))` points.
+Areas graded A are `r pc(gv("A","pct"))`% Black today and areas graded D are `r pc(gv("D","pct"))`%, a gap of `r pc(gv("D","pct") - gv("A","pct"))` points. After the appraisal sheet above, that is deflating, and the ordering does not even behave: C areas are `r pc(gv("C","pct"))`% Black, less than the `r pc(gv("B","pct"))`% in B areas.
 
-It is a real difference, and after the appraisal sheet at the top of this chapter it is a deflating one. Worse, the ordering does not even behave: areas graded C are `r pc(gv("C","pct"))`% Black, which is *less* than the `r pc(gv("B","pct"))`% in areas graded B, so the national gradient is not monotone. If the maps had the reach the historical record suggests, this table should look more decisive than it does.
+**The pooled table is not measuring grades. It is measuring cities.** Cleveland's D areas and Oakland's A areas sit in it together, and American cities differ enormously in overall Black population for reasons unconnected to the corporation. San Francisco's D neighborhoods sit in a city about 5% Black; Cleveland's A neighborhoods sit in a city roughly half Black. Differences between cities swamp the difference within them, and only the difference within them is the question.
 
-The table is not measuring what it appears to measure. **It compares A areas in one city against D areas in another.** Cleveland's D areas and Oakland's A areas sit in it together, and American cities differ enormously in overall Black population for reasons that have nothing to do with the HOLC. San Francisco's D neighborhoods sit in a city that is about 5% Black; Cleveland's A neighborhoods sit in a city that is roughly half Black. Pooling them lets differences *between* cities swamp the difference *within* them, which is the only difference the question is about.
-
-```{r whatchanged}
-```
-
-## Holding the city fixed
-
-The repair is to make the comparison inside each city, where the same housing market, the same municipal government, the same school district boundaries and the same regional history apply to both grades.
+So make the comparison inside each city, where the same housing market, the same city government and the same regional history apply to both grades.
 
 ```{r within}
 ```
 
-In Cleveland -- the city whose 1939 sheet opens this chapter -- neighborhoods the HOLC graded A are `r pc(cv("Cleveland","a_pct_black"))`% Black today and neighborhoods it graded D are `r pc(cv("Cleveland","d_pct_black"))`%. That is `r pc(cv("Cleveland","gap"))` points, in one city, between two sets of neighborhoods separated by nothing except a letter a federal appraiser assigned before the Second World War.
-
-```{r cityavg}
-```
-
-Cleveland is the extreme case, and the extreme case is never the argument. Across all `r nrow(ct)` cities that have both A and D areas in this file, the average within-city gap is `r pc(mean(ct$gap))` points, and `r sum(ct$gap > 0)` of the `r nrow(ct)` run in the direction the history predicts. Figure 4 puts every one of them on the same axes.
+In Cleveland, whose 1939 sheet opens this brief, neighborhoods graded A are `r pc(cv("Cleveland","a_pct_black"))`% Black today and neighborhoods graded D are `r pc(cv("Cleveland","d_pct_black"))`%. That is `r pc(cv("Cleveland","gap"))` points between two sets of neighborhoods separated by nothing except a letter assigned before the Second World War. Cleveland is the extreme case, and the extreme case is never the argument. Across all `r nrow(ct)` cities holding both grades the average gap is `r pc(mean(ct$gap))` points, and `r sum(ct$gap > 0)` run in the direction the history predicts.
 
 ```{r slope-static, eval=!knitr::is_html_output(), fig.height=5.2}
 ```
@@ -202,53 +101,48 @@ Cleveland is the extreme case, and the extreme case is never the argument. Acros
 ```{r d3-slope, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. Within each city, from its A-graded ground to its D-graded ground.** One line per city, joining the share of residents who are Black in the tracts graded A to the share in the tracts graded D, 2020 Census. Of the `r nrow(ct)` cities with both grades, `r sum(ct$gap > 0)` rise and `r sum(ct$gap < 0)` fall; the steepest rise is `r ct$city[which.max(ct$gap)]`, at `r pc(max(ct$gap))` points. The average line rises `r pc(mean(ct$gap))` points.
+**Figure 3. Within each city, from its A-graded ground to its D-graded ground.** One line per city, joining the share of residents who are Black in the tracts graded A to the share in the tracts graded D, 2020 Census. Of the `r nrow(ct)` cities with both grades, `r sum(ct$gap > 0)` rise and `r sum(ct$gap < 0)` fall; the steepest rise is `r ct$city[which.max(ct$gap)]`, at `r pc(max(ct$gap))` points. The average line rises `r pc(mean(ct$gap))` points.
 
-## The cities that run the other way
-
-The `r sum(ct$gap < 0)` downward lines in Figure 4 are the most useful thing in this chapter, and the temptation to call them noise should be resisted.
+The `r sum(ct$gap < 0)` downward lines are the most useful thing in the figure, and they are two different things wearing the same sign.
 
 ```{r reversals}
 ```
 
-They are two different phenomena wearing the same sign, and separating them is the difference between a finding and an artifact.
+**Philadelphia is a real reversal.** Its D areas are `r pc(cv("Philadelphia","d_pct_black"))`% Black and its A areas `r pc(cv("Philadelphia","a_pct_black"))`%, backwards by `r pc(abs(cv("Philadelphia","gap")))` points across `r n(cv("Philadelphia","d_tracts"))` D tracts holding `r n(cv("Philadelphia","d_pop"))` people. North Philadelphia was graded D and has been substantially gentrified, and several historically Black neighborhoods there were never graded D at all. Urban renewal, deindustrialization, highway building and very uneven reinvestment all happened in between.
 
-**Philadelphia is a real reversal.** Its D areas are `r pc(cv("Philadelphia","d_pct_black"))`% Black and its A areas `r pc(cv("Philadelphia","a_pct_black"))`% -- backwards by `r pc(abs(cv("Philadelphia","gap")))` points, across `r n(cv("Philadelphia","d_tracts"))` D tracts holding `r n(cv("Philadelphia","d_pop"))` people, so it cannot be waved away as thin data. What it reflects is North Philadelphia, graded D and now substantially gentrified, alongside historically Black neighborhoods that were never graded D at all. The 1937 grade did not determine 2020. A great deal happened in between: urban renewal, deindustrialization, highway construction, and, recently and very unevenly, reinvestment.
+**Joliet is not a real reversal.** Its `r pc(abs(cv("Joliet","gap")))`-point gap rests on `r cv("Joliet","a_tracts")` A tracts against `r cv("Joliet","d_tracts")` D tract, and a percentage computed on a handful of tracts is not a stable quantity. Printing it beside Cleveland's `r cv("Cleveland","a_tracts")`-against-`r cv("Cleveland","d_tracts")` as equal weight would mislead a reader with accurate numbers. Several other reversals are small in the same way.
 
-**Joliet is not a real reversal.** Its `r pc(abs(cv("Joliet","gap")))`-point gap rests on `r cv("Joliet","a_tracts")` A tracts against `r cv("Joliet","d_tracts")` D tract. A percentage computed on a handful of tracts is not a stable quantity. Printing it beside Cleveland's `r cv("Cleveland","a_tracts")`-against-`r cv("Cleveland","d_tracts")`, as though the two carry the same weight, would be a way of misleading the reader with entirely accurate numbers. Several of the other reversals are small in the same way.
+So the sentence this evidence will bear is the middle of three. The grade is associated with a neighborhood's racial composition today, on average, within a city. It did not determine it, because Philadelphia went the other way, and nothing here shows that it caused it.
 
-Taken together, the reversals settle which of three sentences this evidence will bear.
+## What this brief cannot tell you
 
-```{r caution}
-```
+**It cannot tell you whether the maps did anything.** The appraisers were describing segregation that already existed, much of it produced by restrictive covenants, by violence and by private lending that predated the corporation. On that reading these maps are an excellent record of 1930s segregation and no evidence about its causes. Separating the two needs a different design, not a bigger version of this one. Aaronson, Hartley and Mazumder (2021) compared cities that just barely were mapped and just barely were not, and found effects that lasted decades.
 
-The middle sentence is what `r nrow(ct)` cities and `r n(nrow(tr))` tracts support. The first is refuted by Philadelphia. The third needs an argument that no cross-section of this kind can supply, and it happens to be the argument the field has spent the most effort on.
+**It cannot speak for the country.** The corporation surveyed only cities above a population threshold, so there was never a national frame, and this file holds `r length(unique(tr$city))` cities in `r length(unique(tr$state))` states.
 
-## Did the maps do anything, or only record what was already there?
+**It cannot show a path.** This is one snapshot. These neighborhoods may have been converging for fifty years, or diverging, or crossing over, and 2020 looks the same in all three cases.
 
-The skeptical position is serious and should be stated at its strongest. The appraisers were describing segregation that already existed, much of it produced by restrictive covenants, by violence, and by private lending practices that predated the HOLC by decades. On that reading the maps are an excellent *record* of 1930s segregation and no evidence at all about its causes. The within-city gap in Figure 4 would show only that what was already there stayed there.
+**And a grade is not a measurement.** It is one appraiser's letter, with no second rater, no units and no standard error, used here as though it were an assignment made at random. Grade was never the only thing that differed between an A and a D neighborhood in 1937.
 
-**Aaronson, Hartley and Mazumder (2021)** addressed exactly this. The skeptic objects to comparing graded neighborhoods with ungraded ones, so they did something else. Only cities above a population threshold were mapped at all, so they compared similar neighborhoods in cities that just barely were mapped and just barely were not. They found effects on segregation, on homeownership, on house values and on credit access that persisted for decades, and concluded that the maps had causal consequences rather than merely descriptive ones.
+## What you should have learned
 
-**Rothstein's *The Color of Law* (2017)** makes the wider historical case that American residential segregation was largely the product of explicit government policy rather than private preference. The HOLC was one tool among several, alongside FHA underwriting standards and the siting of public housing.
+- Within a city, neighborhoods graded "Hazardous" in the 1930s are on average `r pc(mean(ct$gap))` points more Black today than neighborhoods the same agency graded "Best", across `r nrow(ct)` cities and `r n(nrow(tr))` tracts.
+- The pooled national comparison is the wrong test and it understates: it puts A areas in one city against D areas in another, returning a gap of `r pc(gv("D","pct") - gv("A","pct"))` points with the middle grades out of order.
+- `r sum(ct$gap < 0)` cities run the other way, and not for the same reason: Philadelphia reverses across `r n(cv("Philadelphia","d_tracts"))` D tracts, Joliet on `r cv("Joliet","d_tracts")`.
+- The link between 1939 and 2020 is one sentence of rule with a measurable cost: `r nrow(mis)` of `r n(nrow(asg))` graded tracts in two cities carry a letter that is not the letter covering most of their land.
+- The record supplies the grade and nothing else. Everyone in every share above was counted by the census, not by the corporation.
 
-What remains genuinely disputed is not whether the maps mattered, but how much and by what route. How much of today's pattern comes from the HOLC itself, and how much from the long series of later policies that followed the same lines because the lines were already drawn.
+## Extensions
 
-## What the ground can testify to
+None of these is answered above, and every one can be answered from the tables below.
 
-The evidence assembled here is unusually direct in one respect and unusually limited in another, and both deserve stating without hedging.
+- `cities.csv` gives each city a `gap`, the share Black in A areas against the share in D areas. Sort by it and read both ends. Do the `a_tracts` and `d_tracts` counts make the smallest gap worth anything?
+- `tracts.csv` has `grade` beside `total` and `pct_black`. Group by `city` and `grade` and compare the population under each letter. Which cities put most of their people under a C?
 
-It is direct because nothing in it is inferred from a model. The historical source is the federal document itself, digitized with its appraisal text intact. So the racial reasoning in the opening pages is quoted rather than reconstructed. The demographic source is a full enumeration rather than a sample. And the link between them is visible. It is a rule stated in one sentence, with its failures counted in Figure 3, and its output rebuildable from the polygons to within `r nrow(agree) - sum(agree$centre_grade == agree$grade)` tract of the file it was checked against.
-
-It is limited because a great deal rests on that one sentence. The center-point rule gives `r nrow(mis)` of `r nrow(asg)` tracts in Cleveland and Philadelphia a grade that is not the grade covering most of their land. It also drops `r n(nrow(drp))` tracts that overlap a graded area but whose center point does not. The file covers `r length(unique(tr$city))` cities in `r length(unique(tr$state))` states, which is not the country. It is a single snapshot, so it can show a difference in 2020 but not a path. These neighborhoods may have been converging for fifty years, or diverging, or crossing.
-
-Cities with one or two A tracts sit in the same tables as cities with dozens. And grade was never the only thing that differed between an A neighborhood and a D neighborhood in 1937. That is precisely why the causal question above needed a different research design, rather than a bigger version of this one.
-
-So, within a city: neighborhoods the federal government graded "Hazardous" in the 1930s are on average `r pc(mean(ct$gap))` points more Black today than neighborhoods the same government graded "Best". That pattern is still legible after eighty years and several complete rebuildings of American cities. The pooled national comparison that suggests otherwise is measuring cities, not grades. Neither of those statements establishes that the grades caused the pattern, and the `r sum(ct$gap < 0)` cities that run the other way are a standing reminder that the map did not fix anything in place permanently.
-
-Three questions are left genuinely open, and none of them is going to be settled by more of this table. How much of today's segregation is HOLC-attributable rather than produced by the later policies that traced the same lines. Whether reinvestment reverses the pattern, as Philadelphia suggests it can, and for whom, and at what cost to the people already living there. And what any of it implies for remedy: documenting a durable effect of an explicit federal policy does not, by itself, identify what would undo it.
-
-The appraiser in Garfield Heights ended his paragraph with a prediction about who would and would not be living on those streets. What can be said now is not that he was right, and not that he made himself right. It is that the boundary he drew is still visible in the census -- which is a strange fate for a piece of municipal paperwork, and the reason it is worth reading the paperwork.
+- `fig_mix.csv` carries `own_share`, how much of a tract's graded land carries the letter it was given. Sort it and read the lowest rows. Those tracts are the ones any map of this data draws wrong.
+- `fig_quote.csv` holds one appraiser's own words, with the sheet's `label` and `dated`. Read it, then look up that neighborhood now.
+- **Stretch.** *Mapping Inequality* publishes the description sheets for every graded city. Read three D sheets and three A sheets, and count how many name a group of people rather than a state of the buildings.
+- **Stretch.** The 2020 census also publishes Hispanic origin by tract. Attach it to `tracts.csv` by `GEOID` and ask whether the within-city gap survives.
 
 ## Sources
 
@@ -257,60 +151,31 @@ The appraiser in Garfield Heights ended his paragraph with a prediction about wh
 - Nelson, R. K., Winling, L., Marciano, R., Connolly, N. D. B., et al.
   *Mapping Inequality: Redlining in New Deal America.* Digital Scholarship Lab,
   University of Richmond, CC BY-NC-SA.
-  <https://dsl.richmond.edu/panorama/redlining/> — **the HOLC polygons, the
-  grade colors and the appraisal text drawn and quoted above are theirs.**
-  Retrieved `r SR$fetched`: the national area file
-  (`static/mappinginequality.json`, `r n(SR$bytes)` bytes,
-  `r n(SR$features)` areas across `r SR$city_surveys` city surveys, of which
-  `r n(SR$graded)` carry a grade A to D) and the area description sheet for
-  `r SR$sheet_key` area `r SR$sheet_label`. The maps and forms underneath are 1930s US
-  federal government records.
-- U.S. Census Bureau, 2020 Decennial Census, the P.L. 94-171 redistricting
-  file, one state at a time.
+  <https://dsl.richmond.edu/panorama/redlining/> — **the polygons, the grade
+  colors and the appraisal text quoted above are theirs.** Retrieved
+  `r SR$fetched`: the national area file, `r n(SR$features)` areas across
+  `r SR$city_surveys` city surveys, and the area description sheet for
+  `r SR$sheet_key` area `r SR$sheet_label`. The maps and forms underneath are
+  1930s US federal records.
+- U.S. Census Bureau, 2020 Decennial Census, the P.L. 94-171 redistricting file.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
-- U.S. Census Bureau, TIGER/Line 2020 census tract boundaries — the outlines
-  drawn over the 1939 areas in Figure 2.
+- U.S. Census Bureau, TIGER/Line 2020 tract boundaries, the outlines in Figure 2.
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
+Every figure above is drawn from these tables. They are plain CSV, they open
+in a spreadsheet, and they are yours to take further.
 
 [`cities.csv`](data/derived/cities.csv), [`fig_holc_attr.csv`](data/derived/fig_holc_attr.csv), [`fig_holc_meta.csv`](data/derived/fig_holc_meta.csv), [`fig_holc_rings.csv`](data/derived/fig_holc_rings.csv), [`fig_mix.csv`](data/derived/fig_mix.csv), [`fig_quote.csv`](data/derived/fig_quote.csv), [`fig_source.csv`](data/derived/fig_source.csv), [`fig_zoom_attr.csv`](data/derived/fig_zoom_attr.csv), [`fig_zoom_holc.csv`](data/derived/fig_zoom_holc.csv), [`fig_zoom_tracts.csv`](data/derived/fig_zoom_tracts.csv), [`fig_zoom_win.csv`](data/derived/fig_zoom_win.csv), [`tracts.csv`](data/derived/tracts.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `cities.csv` gives a `gap` for each city: the share Black in A-graded areas
-  against the share in D-graded areas. Sort every city by it. Which city has
-  the smallest gap, and is that good news?
-- `tracts.csv` attaches a 1930s grade to present-day tracts. Group by grade
-  and compare `pct_black`. Then ask what a tract drawn in 2020 has to do with
-  a line drawn in 1939.
-- `fig_mix.csv` has `dom_share`, how much of a tract sits inside a single
-  grade. Find the tracts where it is low. Those are the ones any map of this
-  data draws wrong.
-- `fig_quote.csv` holds one appraiser's own words about one neighborhood. Read
-  them. Then look up what that neighborhood is like now.
 
 **Academic literature**
 
 - Aaronson, D., Hartley, D. and Mazumder, B. (2021). "The Effects of the 1930s
   HOLC 'Redlining' Maps." *American Economic Journal: Economic Policy* 13(4):
   355–392.
-- Rothstein, R. (2017). *The Color of Law: A Forgotten History of How Our
-  Government Segregated America.* Liveright.
-
-**How the figures were made**
-
-The HOLC polygons were fetched from the address above and measured against the 2020 tract boundaries. Every URL is recorded, with the date it was retrieved and the feature counts that came back, and it is the only place here that touches a shapefile. Every number printed above is computed from the files it wrote, at the moment this document was rendered.
+- Rothstein, R. (2017). *The Color of Law.* Liveright.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
-
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
 
 ```{r ai-prompt, echo=FALSE, results="asis"}

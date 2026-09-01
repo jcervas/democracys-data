@@ -7,6 +7,7 @@
 # in the brief to appear, and vice versa.
 
 ## ---- setup
+
 source("../../../../../_syllabus-template/syllabus-helpers.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
@@ -73,7 +74,6 @@ hm  <- cl(HM)
 asg <- MX[MX$centre_grade != "", ]                   # tracts the rule graded
 mis <- asg[asg$centre_grade != asg$modal_grade, ]    # ...and graded as a minority
 drp <- MX[MX$centre_grade == "" & MX$graded > 0, ]   # ...and threw away
-A2  <- asg[order(asg$city, asg$centre_grade, -asg$own_share), ]
 fo  <- ZA[ZA$focus == 1, ]                           # the tract the close-up outlines
 # Re-running the rule on the polygons is also a check on the file this chapter
 # draws from: it should return the grade tracts.csv already carries.
@@ -88,6 +88,7 @@ mixstr <- function(r) {                              # "63% C, 35% D, 1% A"
 }
 
 ## ---- grades
+
 data.frame(
   grade = c("A", "B", "C", "D"),
   label = c("Best", "Still Desirable", "Definitely Declining", "Hazardous"),
@@ -95,6 +96,7 @@ data.frame(
   check.names = FALSE)
 
 ## ---- holc-map-d3
+
 # ---------------------------------------------------------------------------
 # THE OBJECT THE CHAPTER IS ABOUT. Real HOLC areas, real 1939 boundaries, the
 # source's own fills. Pixel coordinates are computed HERE, in R, and handed to
@@ -174,6 +176,7 @@ K.forEach((r,i)=>{
 </script>'))
 
 ## ---- holc-map-static
+
 # The same polygons, the same colors, the same window marked: base R for the
 # PDF device, D3 above for the browser. Neither is a redrawing of the other --
 # both read fig_holc_rings.csv.
@@ -194,100 +197,8 @@ legend(rx[1], ry[2], sprintf("%s  %s (%d areas, %s%% of graded land)",
        fill = GC[names(GL)], border = "#999", bty = "n", cex = 0.62,
        title = "HOLC grade, 1939", title.adj = 0)
 
-## ---- rawholc
-# Verbatim captures from data/holc/, the copies build-brief-figures.R fetched
-# and kept. Long coordinate lists are elided where marked; nothing else is
-# altered.
-GJ <- c(
-"{",
-" \"area_id\": 378,",
-" \"city_id\": 115,",
-" \"grade\": \"D\",",
-" \"fill\": \"#d9838d\",",
-" \"label\": \"D9\",",
-" \"name\": \" \",",
-" \"category_id\": 4,",
-" \"sheets\": 1,",
-" \"area\": 2.81294353184514e-05,",
-" \"bounds\": [[41.42575, -81.58124], [41.43494, -81.57687]],",
-" \"residential\": true,",
-" \"commercial\": false,",
-" \"industrial\": false",
-"}",
-"",
-"geometry: MultiPolygon, coordinate lists nested four deep",
-"[[[[-81.57687, 41.43102], [-81.57991, 41.4312], ... ]]]")
-FM <- c(
-"{",
-" \"0\": \"Greater Cleveland\",",
-" \"1\": {",
-"  \"a\": { \"1\": \"\", \"2\": \"Very slowly\", \"3\": \"\" },",
-"  \"b\": \"Laborers - factory workers\",",
-"  \"c\": { \"1\": \"65\", \"2\": \"Slovaks - few Germans\" },",
-"  \"d\": \"0\",",
-"  \"e\": \"Potential influx of Negro\"",
-" },",
-" \"2\": {",
-"  \"a\": { \"1\": \"4-6 rm. singles\", \"2\": \"\" },",
-"  \"b\": { \"1\": \"Frame\", \"2\": \"\" },",
-"  \"c\": { \"1\": \"20 yrs.\", \"2\": \"\" },",
-"  \"d\": { \"1\": \"Fair\", \"2\": \"\" },",
-"  ...",
-" },",
-" ...",
-"}")
-# The feature's properties, one per row. The geometry is named but not opened:
-# it is four levels of nested coordinate lists and would fill the page.
-data.frame(
-  Property = c("area_id", "city_id", "grade", "fill", "label", "name",
-               "category_id", "sheets", "area", "bounds", "residential",
-               "commercial", "industrial", "geometry"),
-  What_it_holds = c(
-    "identifier for this HOLC area",
-    "identifier for the city it sits in",
-    "the HOLC grade, A to D — and note it is not called holc_grade",
-    "the colour the HOLC itself printed the polygon in",
-    "the area's label on the original sheet",
-    "a name field, blank on this record",
-    "the grade again, as a number: the same fact in a second vocabulary",
-    "how many appraisal sheets survive for this area",
-    "the polygon's area in square degrees, which is not a unit of anything",
-    "the bounding box, as two latitude-longitude corners",
-    "whether the appraiser marked the area residential",
-    "whether commercial", "whether industrial",
-    "the boundary itself, as nested coordinate lists"),
-  Value = c("378", "115", "\"D\"", "\"#d9838d\"", "\"D9\"", "\" \"", "4", "1",
-            "2.81294353184514e-05",
-            "[[41.42575, -81.58124], [41.43494, -81.57687]]",
-            "true", "false", "false",
-            "MultiPolygon, coordinate lists nested four deep"))
-
-## ---- rawform
-# The keys are positions on a paper form, so they are shown as paths: "1.e" is
-# section 1, line e. Writing them out this way is the only way the structure
-# is legible without the blank form in the other hand -- and it still does not
-# say what any of the positions mean, which is the point.
-data.frame(
-  Key = c("0", "1.a.1", "1.a.2", "1.a.3", "1.b", "1.c.1", "1.c.2", "1.d",
-          "1.e", "2.a.1", "2.a.2", "2.b.1", "2.b.2", "2.c.1", "2.c.2",
-          "2.d.1", "2.d.2", "…"),
-  Value = c("Greater Cleveland", "(empty)", "Very slowly", "(empty)",
-            "Laborers - factory workers", "65", "Slovaks - few Germans", "0",
-            "Potential influx of Negro", "4-6 rm. singles", "(empty)",
-            "Frame", "(empty)", "20 yrs.", "(empty)", "Fair", "(empty)", "…"))
-
-## ---- cleantract
-tr[tr$city == "Cleveland", ][1:3, ]
-
-## ---- sources
-data.frame(
-  `what` = c("HOLC grades", "Demographics"),
-  `from` = c("Mapping Inequality, Univ. of Richmond", "2020 Decennial Census"),
-  `unit` = c("Hand-drawn 1930s neighborhood polygons", "Census tracts"),
-  `vintage` = c("1935–1940", "2020"),
-  check.names = FALSE)
-
 ## ---- join
+
 data.frame(
   step = c("HOLC areas digitized", "of them graded A to D", "Rule applied",
            "Tracts matched to a grade", "Cities represented", "States"),
@@ -295,6 +206,7 @@ data.frame(
             n(nrow(tr)), length(unique(tr$city)), length(unique(tr$state))))
 
 ## ---- zoom-d3
+
 # ---------------------------------------------------------------------------
 # TWO LAYERS, EIGHTY-ONE YEARS APART, AT FULL RESOLUTION. Neither layer is
 # simplified. This figure exists to show where a 1939 boundary and a 2020
@@ -381,6 +293,7 @@ lg.append("text").attr("x",36).attr("y",53).attr("class","on-mark").attr("font-s
 </script>'))
 
 ## ---- zoom-static
+
 # The same two layers, the same window, the same numbers. ASCII only in the
 # annotation: the PDF device drops non-Latin-1 glyphs from plot text.
 par(mar = c(0.1, 0.1, 0.1, 0.1))
@@ -426,128 +339,30 @@ legend(ZW$x0 + 0.08, ZW$y1 - 0.08,
        col = c("#333333", "#111111", "#111111"), bty = "o", bg = "#ffffff",
        box.col = "#cccccc", cex = 0.58)
 
-## ---- purity-d3
-# One bar per tract, so the reader can see the size of the tail rather than be
-# told about it. Grouped by the grade the rule assigned, then sorted, so the
-# tail is at the right of each group. Same data, same order as the static
-# version below; the hover is the only thing added.
-bars <- paste(vapply(seq_len(nrow(A2)), function(i) paste0(
-  '{"c":"', A2$city[i], '","g":"', A2$centre_grade[i],
-  '","v":', A2$own_share[i], ',"w":', as.integer(A2$centre_grade[i] != A2$modal_grade[i]),
-  ',"t":"', substr(A2$GEOID[i], 6, 11), '","mix":"', mixstr(A2[i, ]), '"}'),
-  character(1)), collapse = ",")
-cat(paste0('
-<div id="pur" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const B=[', bars, '];
-const GC={A:"', GC[["A"]], '",B:"', GC[["B"]], '",C:"', GC[["C"]], '",D:"', GC[["D"]], '"};
-const W=760,H=318,M={t:44,r:10,b:34,l:46},GAP=54;
-const svg=d3.select("#pur").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const CS=["Cleveland","Philadelphia"];
-const n=CS.map(c=>B.filter(d=>d.c===c).length), tot=n[0]+n[1];
-const avail=W-M.l-M.r-GAP;
-const y=d3.scaleLinear().domain([0,100]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).tickValues([0,25,50,75,100]).tickFormat(d=>d+"%"));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",12).attr("text-anchor","middle").attr("font-size","11px").attr("fill","#444")
-  .text("share of the tract’s graded land carrying its assigned grade");
-const tip=d3.select("#pur").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-let x0=M.l;
-CS.forEach((c,ci)=>{
-  const d=B.filter(z=>z.c===c), w=avail*d.length/tot, bw=w/d.length;
-  const g=svg.append("g");
-  g.selectAll("rect").data(d).join("rect")
-    .attr("x",(z,i)=>x0+i*bw).attr("width",Math.max(bw-0.25,0.6))
-    .attr("y",z=>y(z.v)).attr("height",z=>y(0)-y(z.v))
-    .attr("fill",z=>GC[z.g])
-    .on("mousemove",function(e,z){
-      tip.style("opacity",1).html("<b>tract "+z.t+"</b>, "+c+"<br>coded <b>"+z.g+
-        "</b><br>its land: "+z.mix)
-        .style("left",Math.min(e.offsetX+14,W-250)+"px").style("top",(e.offsetY-8)+"px");
-    })
-    .on("mouseleave",()=>tip.style("opacity",0));
-  g.selectAll("path.w").data(d.filter(z=>z.w)).join("path").attr("class","w")
-    .attr("d",z=>{const i=d.indexOf(z),cx=x0+i*bw+bw/2;
-      return "M"+(cx-3.4)+","+(M.t-16)+"L"+(cx+3.4)+","+(M.t-16)+"L"+cx+","+(M.t-8)+"Z";})
-    .attr("fill","#111");
-  svg.append("text").attr("x",x0).attr("y",H-14).attr("font-size","12px")
-    .attr("font-weight","600").text(c+", "+d.length+" tracts");
-  x0+=w+GAP;
-});
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(50)).attr("y2",y(50))
-  .attr("stroke","#555").attr("stroke-dasharray","4,3");
-svg.append("text").attr("x",M.l+4).attr("y",y(50)-4).attr("font-size","10.5px")
-  .attr("fill","#555").text("half");
-svg.append("text").attr("x",M.l).attr("y",M.t-26).attr("font-size","10.5px")
-  .attr("fill","#111").text("▼ the grade assigned is not the grade covering most of the tract");
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-One bar per tract, grouped by the grade the rule assigned and sorted within the
-group. Hover for the tract’s actual composition.</p>'))
-
-## ---- purity-static
-par(mfrow = c(1, 2), mar = c(2.2, 3.6, 2.0, 0.4), mgp = c(2.4, 0.6, 0))
-for (CT in c("Cleveland", "Philadelphia")) {
-  d <- A2[A2$city == CT, ]
-  plot(NA, xlim = c(0.5, nrow(d) + 0.5), ylim = c(0, 112), xaxs = "i",
-       axes = FALSE, xlab = "", ylab = "")
-  axis(2, at = c(0, 25, 50, 75, 100), labels = paste0(c(0, 25, 50, 75, 100), "%"),
-       las = 1, cex.axis = 0.72, tcl = -0.25)
-  rect(seq_len(nrow(d)) - 0.5, 0, seq_len(nrow(d)) + 0.5, d$own_share,
-       col = GC[d$centre_grade], border = NA)
-  abline(h = 50, lty = 2, col = "#555555")
-  w <- which(d$centre_grade != d$modal_grade)
-  points(w, rep(107, length(w)), pch = 25, cex = 0.42, col = "#111111", bg = "#111111")
-  mtext(sprintf("%s, %d tracts", CT, nrow(d)), 3, line = 0.4, cex = 0.72, font = 2)
-  if (CT == "Cleveland")
-    mtext("share of the tract's graded land carrying its assigned grade",
-          2, line = 2.5, cex = 0.6)
-}
-par(mfrow = c(1, 1))
-mtext("triangles: the assigned grade is not the grade covering most of the tract",
-      1, line = -0.6, cex = 0.62, col = "#111111")
-
 ## ---- one-record
+
 o <- tr[1:3, c("GEOID", "state", "city", "grade", "total", "black", "pct_black")]
 names(o) <- c("tract GEOID", "state", "city", "1930s HOLC grade",
               "2020 population", "Black residents", "% Black")
 o
 
 ## ---- national
+
 o <- gr[, c("grade", "n", "total", "black", "pct")]
 o$total <- n(o$total); o$black <- n(o$black); o$pct <- pc(o$pct)
 names(o) <- c("HOLC grade", "tracts", "2020 population", "Black residents", "% Black")
 o
 
-## ---- whatchanged
-data.frame(
-  comparison = c("Pooled nationally", "Within each city"),
-  `what varies` = c("grade AND city AND region", "grade only"),
-  `is it the right test?` = c("No", "Yes"),
-  check.names = FALSE)
-
 ## ---- within
+
 o <- head(ct[order(-ct$gap), c("city", "a_tracts", "d_tracts",
                                "a_pct_black", "d_pct_black", "gap")], 8)
 names(o) <- c("city", "A tracts", "D tracts", "A areas % Black",
               "D areas % Black", "gap")
 o
 
-## ---- cityavg
-data.frame(
-  quantity = c("Cities with both A and D areas", "Average within-city gap (points)",
-               "Largest gap", "Cities where D areas are more Black than A areas"),
-  value = c(nrow(ct), pc(mean(ct$gap)),
-            paste0(pc(max(ct$gap)), " (", ct$city[which.max(ct$gap)], ")"),
-            sum(ct$gap > 0)))
-
 ## ---- slope-static
+
 o <- ct[order(ct$gap), ]
 plot(NA, xlim = c(0.8, 2.2), ylim = c(0, 75), xaxt = "n", las = 1,
      xlab = "", ylab = "% Black, 2020")
@@ -561,6 +376,7 @@ legend("topleft", c("D more Black than A", "reversed"),
        col = c("#C41230", "#2c7fb8"), lwd = 2, bty = "n", cex = 0.8)
 
 ## ---- d3-slope
+
 rows <- paste(sprintf('{"c":"%s","a":%.1f,"d":%.1f,"g":%.1f,"an":%d,"dn":%d}',
                       gsub('"', "", ct$city), ct$a_pct_black, ct$d_pct_black,
                       ct$gap, ct$a_tracts, ct$d_tracts), collapse = ",")
@@ -623,6 +439,7 @@ largest gaps.</p>
 ', rows))
 
 ## ---- reversals
+
 o <- ct[ct$gap < 0, c("city", "a_tracts", "d_tracts", "a_pop", "d_pop",
                       "a_pct_black", "d_pct_black", "gap")]
 o <- o[order(o$gap), ]
@@ -631,17 +448,8 @@ names(o) <- c("city", "A tracts", "D tracts", "A population", "D population",
               "A % Black", "D % Black", "gap")
 o
 
-## ---- caution
-data.frame(
-  reading = c("The HOLC grade determines a neighborhood's race today",
-              "The HOLC grade is associated with it, on average, within cities",
-              "The HOLC grade caused it"),
-  `does this data support it?` = c("No — cities reverse",
-                                   "Yes — within-city comparison",
-                                   "Not by itself"),
-  check.names = FALSE)
-
 ## ---- on-mark
+
 # Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for
 # the dark page; over a light bar or cell that would give near-white on
 # near-white, so these pin the ink tokens back to the values the figure was
@@ -649,29 +457,11 @@ data.frame(
 # the chapter IS on the page and does want lifting.
 # Sites found by _lib/check-contrast.js; re-run it after touching these figures.
 cat('<style>
-#holcmap text[fill="#111" i],
-#pur text[fill="#555" i]
+#holcmap text[fill="#111" i]
   { --ink:#12181D; --ink-2:#4E5A63; --ink-3:#76838C;
     --map-gop:#C41230; --map-dem:#2C7FB8; }
 </style>')
 
-## ---- on-mark-halo
-# A label lying across a saturated or mid-toned mark, where neither the
-# authored colour nor the lifted one reaches 3:1. Recolouring cannot fix a
-# label the same colour as the thing it labels, so it gets a halo instead:
-# paint-order draws a --paper outline behind the glyph. It is invisible where
-# the text sits on the page, so scoping by figure and fill is safe.
-# LIGHT PAGE ONLY: the on-mark chunk above pins this fill dark for the dark
-# page, so a --paper stroke there would sit dark behind a dark ink, and the
-# checker scores the fill against the stroke it touches.
-# Sites found by _lib/check-contrast.js --light.
-cat('<style>
-@media (prefers-color-scheme: light) {
-#pur text[fill="#555" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
-</style>')
-
 ## ---- ai-prompt
+
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
