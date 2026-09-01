@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6, dpi = 96, fig.retina = 1)
 options(scipen = 999)
@@ -58,6 +59,9 @@ h24all <- sort(unique(ba$precinct_2024[!is.na(ba$precinct_2024) &
                                        cty(ba$precinct_2024) == HC]))
 unseen <- setdiff(nm(h24all), nm(h24))
 
+# what a match-on-names repair would discard in Houston
+dropped <- setdiff(h20, h24)
+
 # a 2020 precinct is a RENAME if population weighting sends every one of its
 # people to a single 2024 precinct that carries a different name; it is REDRAWN
 # if its people end up in more than one. Computed, not asserted.
@@ -92,15 +96,6 @@ wcol <- function(t) { z <- unname(WCOL[t]); ifelse(is.na(z), "#a8a8a8", z) }
 PECA <- wm$w_area[wm$target == "PEC"]             # PEC's share of ROZR, by land
 PECP <- wm$w_pop[wm$target == "PEC"]              # ...and by people
 PECB <- wm$ballots_area[wm$target == "PEC"] - wm$ballots_pop[wm$target == "PEC"]
-
-# The disaggregate/reaggregate schematic is a sketch, not a map, but its two
-# renderings must not disagree. The sixteen block populations live here once,
-# both versions read them, and the two percentages it prints are formatted once,
-# in R, and passed through as strings.
-POPG <- matrix(c(2, 1, 4, 1,  6, 3, 9, 5,  22, 34, 18, 26,  30, 41, 27, 33),
-               4, 4, byrow = TRUE)
-SKA  <- 100 * sum(POPG[1:2, ]) / sum(POPG)
-SKB  <- 100 - SKA
 
 # every ring of a long-format polygon table, as one SVG path each
 paths <- function(d, by, sx, sy) {
@@ -157,21 +152,11 @@ R24 <- c(
 " [1] \"ID\"         \"AREA\"       \"DATA\"       \"DATA1\"      \"DISTRICT\"  ",
 " [6] \"CTYSOSID\"   \"FIPS\"       \"FIPS2\"      \"CTYNAME\"    \"CONTY\"     ",
 "[11] \"COUNTY\"     \"PRECINCT_I\" \"PRECINCT_N\"")
-RBL <- c(
-"> dim(b)",
-"[1] 232717     17",
-"",
-"> kb <- c(\"GEOID20\", \"POP20\", \"ALAND20\", \"INTPTLAT20\", \"INTPTLON20\")",
-"> head(b[, kb], 3)",
-"          GEOID20 POP20 ALAND20  INTPTLAT20   INTPTLON20",
-"1 132532001001042     7   12678 +30.8017174 -084.8413455",
-"2 132532002003085    11   32388 +31.0257042 -084.8925507",
-"3 130990905001082     2 2977358 +31.1995307 -085.0500314")
 dimof <- function(x) {
   s <- sub("^\\[[0-9]+\\] *", "", x[2])          # drop R's own "[1] " index
   as.integer(regmatches(s, gregexpr("[0-9]+", s))[[1]])
 }
-D20 <- dimof(R20); D24 <- dimof(R24); DBL <- dimof(RBL)
+D20 <- dimof(R20); D24 <- dimof(R24)
 
 # The transcripts hold two different things -- a list of column names and a few
 # sample rows -- so they become two kinds of table rather than one block of
@@ -217,29 +202,8 @@ namestab <- function(x) {
 }
 namestab(R20)
 
-## ---- raw20-rows
-# Transcribed from the same capture. A printed data.frame cannot be split on
-# whitespace -- "JOURNEY COMM. CHURCH" is one value -- so the three rows are
-# written out as the values they are.
-data.frame(
-  CTYNAME    = c("COLUMBIA", "COLUMBIA", "COLUMBIA"),
-  PRECINCT_I = c("131", "064", "061"),
-  PRECINCT_N = c("JOURNEY COMM. CHURCH", "GRACE BAPTIST CHURCH",
-                 "GREENBRIER HIGH"),
-  TRUMP20    = c(808, 1526, 1871),
-  BIDEN20    = c(238, 1171, 793))
-
 ## ---- raw24
 namestab(R24)
-
-## ---- rawbl
-# Three of the block file's rows, on the five columns the chapter uses.
-data.frame(
-  GEOID20    = c("132532001001042", "132532002003085", "130990905001082"),
-  POP20      = c(7, 11, 2),
-  ALAND20    = c(12678, 32388, 2977358),
-  INTPTLAT20 = c("+30.8017174", "+31.0257042", "+31.1995307"),
-  INTPTLON20 = c("-084.8413455", "-084.8925507", "-085.0500314"))
 
 ## ---- cleanblocks
 z <- baH[nm(baH$precinct_2020) == "ROZR", ]
@@ -251,16 +215,6 @@ o
 
 ## ---- cleanxwalk
 poH[nm(poH$from_2020) == "ROZR", c("from_2020", "to_2024", "weight", "pop")]
-
-## ---- ownership
-data.frame(
-  fact = c("Who holds the official boundary", "Who may change it, and when",
-           "What the statewide file is", "What it is fitted to"),
-  answer = c("Each of 159 counties, separately",
-             "County election officials, at any time",
-             "A compilation of 159 county maps",
-             "Census geography — 'best fit', not exact"),
-  check.names = FALSE)
 
 ## ---- moved
 data.frame(
@@ -400,169 +354,6 @@ legend(0, 10, horiz = TRUE, bty = "n", cex = 0.62, pt.cex = 1.3, pch = 22,
        legend = c("same name, same ground", "renamed, same ground",
                   "the ground itself changed"))
 
-## ---- drop
-dropped <- setdiff(h20, h24)
-data.frame(
-  approach = c("Match on name, drop the rest", "Put both years on one map"),
-  `keeps, in Houston` = c(paste0(n(length(intersect(h20, h24))), " of ",
-                                 n(length(h20)), " precincts"), "everything"),
-  `keeps, statewide` = c(paste0(pc(100 * length(intersect(p20, p24)) /
-                                   length(union(p20, p24))), "% of names"),
-                         "everything"),
-  `what it biases` = c("Removes changing areas preferentially",
-                       "Nothing, if the carry is checked"),
-  check.names = FALSE)
-
-## ---- blocks
-data.frame(
-  quantity = c("Census blocks", "Population they carry",
-               "Placed in a 2020 precinct", "Placed in a 2024 precinct"),
-  Houston = c(n(nrow(baH)), n(sum(baH$pop, na.rm = TRUE)),
-              paste0(n(sum(!is.na(baH$precinct_2020))), " (",
-                     pc(100*mean(!is.na(baH$precinct_2020)), 2), "%)"),
-              paste0(n(sum(!is.na(baH$precinct_2024))), " (",
-                     pc(100*mean(!is.na(baH$precinct_2024)), 2), "%)")),
-  Georgia = c(n(nrow(ba)), n(sum(ba$pop, na.rm = TRUE)),
-              paste0(n(sum(!is.na(ba$precinct_2020))), " (",
-                     pc(100*mean(!is.na(ba$precinct_2020)), 2), "%)"),
-              paste0(n(sum(!is.na(ba$precinct_2024))), " (",
-                     pc(100*mean(!is.na(ba$precinct_2024)), 2), "%)")),
-  check.names = FALSE)
-
-## ---- method
-data.frame(
-  method = c("Intersect polygons", "Interior point in polygon"),
-  produces = c("Fragments, including slivers", "One answer per block"),
-  fails_when = c("Two agencies draw the same line differently",
-                 "A block genuinely straddles a boundary"),
-  check.names = FALSE)
-
-## ---- recipe-d3
-# The block populations and the two percentages come from POPG in the setup
-# chunk, so this figure and the base-R one below cannot drift apart.
-POPJS <- paste0("[", paste(apply(POPG, 1, function(r)
-  paste0("[", paste(r, collapse = ","), "]")), collapse = ","), "]")
-cat(paste0('
-<div id="rcp" style="margin:1.2em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const W=760,H=340;
-const BLU="#2c7fb8",ORA="#b3651a",GRN="#4d9221",RED="#C41230",GRY="#8c8c8c";
-const svg=d3.select("#rcp").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const T=(x,y,s,o)=>{const t=svg.append("text").attr("x",x).attr("y",y)
-  .attr("text-anchor",(o&&o.a)||"middle").attr("font-size",(o&&o.s)||"12px")
-  .attr("fill",(o&&o.c)||"#333");
-  if(o&&o.b)t.attr("font-weight","600");t.text(s);return t;};
-// stage headers
-[[88,"1","THE OLD UNIT","2020 precinct",BLU],
- [380,"2","THE COMMON UNIT","census blocks",GRN],
- [660,"3","THE NEW UNIT","2024 precincts","#666"]].forEach(([x,n,a,b,c])=>{
-  T(x,20,n,{b:1,c:RED,s:"15px"});T(x,40,a,{b:1,c:RED,s:"11px"});
-  T(x,58,b,{b:1,c:c,s:"13px"});});
-// stage 1
-svg.append("rect").attr("x",10).attr("y",70).attr("width",156).attr("height",170)
-  .attr("fill","#eaf2f8").attr("stroke",BLU).attr("stroke-width",2).attr("rx",4);
-T(88,140,"votes",{b:1,c:BLU,s:"20px"});
-T(88,163,"counted here",{c:"#4a6b83",s:"12px"});
-T(88,205,"one total,",{c:GRY,s:"10.5px"});T(88,219,"no interior detail",{c:GRY,s:"10.5px"});
-// stage 2: blocks
-svg.append("rect").attr("x",300).attr("y",70).attr("width",160).attr("height",170)
-  .attr("fill","#fcfcfc").attr("stroke",GRY).attr("stroke-width",2).attr("rx",4);
-const POP=', POPJS, ';
-for(let i=0;i<4;i++)for(let j=0;j<4;j++){
-  const x=306+j*38,y=76+i*40;
-  svg.append("rect").attr("x",x).attr("y",y).attr("width",34).attr("height",36)
-    .attr("fill",i<2?"#fbeedd":"#e7f0f7").attr("stroke","#d2d2d2").attr("rx",2);
-  svg.append("circle").attr("cx",x+17).attr("cy",y+18)
-    .attr("r",1.35*Math.sqrt(POP[i][j])).attr("fill",GRN).attr("fill-opacity",0.8);}
-T(380,258,"each dot is that block\\u2019s population",{c:"#555",s:"10.5px"});
-// stage 3
-svg.append("rect").attr("x",580).attr("y",70).attr("width",160).attr("height",74)
-  .attr("fill","#fbeedd").attr("stroke",ORA).attr("stroke-width",2).attr("rx",4);
-T(660,113,"2024 precinct A",{b:1,c:ORA,s:"13px"});
-svg.append("rect").attr("x",580).attr("y",166).attr("width",160).attr("height",74)
-  .attr("fill","#e7f0f7").attr("stroke",BLU).attr("stroke-width",2).attr("rx",4);
-T(660,209,"2024 precinct B",{b:1,c:BLU,s:"13px"});
-// arrows
-svg.append("defs").append("marker").attr("id","ah").attr("viewBox","0 0 10 10")
-  .attr("refX",9).attr("refY",5).attr("markerWidth",6).attr("markerHeight",6)
-  .attr("orient","auto").append("path").attr("d","M0,0L10,5L0,10Z").attr("fill",RED);
-const AR=(x1,y1,x2,y2)=>svg.append("line").attr("x1",x1).attr("y1",y1)
-  .attr("x2",x2).attr("y2",y2).attr("stroke",RED).attr("stroke-width",2.2)
-  .attr("marker-end","url(#ah)");
-AR(172,155,294,155);AR(466,130,574,107);AR(466,180,574,203);
-T(233,143,"DISAGGREGATE",{b:1,c:RED,s:"11px"});
-T(233,176,"split the votes",{c:"#666",s:"10px"});
-T(233,189,"across the blocks",{c:"#666",s:"10px"});
-T(520,166,"REAGGREGATE",{b:1,c:RED,s:"11px"});
-T(478,92,"half the land,",{c:ORA,s:"10px",a:"start"});
-T(478,105,"', pc(SKA, 0), '% of the people",{c:ORA,s:"10px",a:"start"});
-T(478,222,"half the land,",{c:BLU,s:"10px",a:"start"});
-T(478,235,"', pc(SKB, 0), '% of the people",{c:BLU,s:"10px",a:"start"});
-// the arithmetic
-svg.append("line").attr("x1",10).attr("y1",282).attr("x2",750).attr("y2",282)
-  .attr("stroke","#ddd");
-T(408,313,"votes carried into A  =  2020 votes  \\u00d7",{b:1,s:"13px",a:"end"});
-T(535,305,"people in the blocks that land in A",{s:"12px"});
-svg.append("line").attr("x1",418).attr("y1",310).attr("x2",652).attr("y2",310)
-  .attr("stroke","#333");
-T(535,326,"people in all the blocks",{s:"12px"});
-})();
-</script>'))
-
-## ---- recipe-static
-par(mar = rep(0.1, 4))
-plot(NA, xlim = c(0, 100), ylim = c(0, 56), asp = NA, axes = FALSE, ann = FALSE)
-BLU <- "#2c7fb8"; ORA <- "#b3651a"; GRN <- "#4d9221"; RED <- "#C41230"; GRY <- "#8c8c8c"
-
-rect(0.5, 16, 22, 42, col = "#eaf2f8", border = BLU, lwd = 1.8)
-text(11.2, 51.5, "1", cex = 0.85, font = 2, col = RED)
-text(11.2, 46.6, "THE OLD UNIT", cex = 0.62, font = 2, col = RED)
-text(11.2, 43.6, "2020 precinct", cex = 0.72, font = 2, col = BLU)
-text(11.2, 32, "votes", cex = 0.95, font = 2, col = BLU)
-text(11.2, 27.5, "counted here", cex = 0.66, col = "#4a6b83")
-text(11.2, 20.5, "one total,\nno interior detail", cex = 0.56, col = GRY)
-
-BX <- 35.5; BY <- 16; BW <- 29; BH <- 26
-rect(BX, BY, BX + BW, BY + BH, col = "#fcfcfc", border = GRY, lwd = 1.8)
-text(BX + BW/2, 51.5, "2", cex = 0.85, font = 2, col = RED)
-text(BX + BW/2, 46.6, "THE COMMON UNIT", cex = 0.62, font = 2, col = RED)
-text(BX + BW/2, 43.6, "census blocks", cex = 0.72, font = 2, col = GRN)
-cw <- (BW - 2.4) / 4; chh <- (BH - 2.4) / 4
-for (i in 1:4) for (j in 1:4) {
-  x0 <- BX + 1.2 + (j - 1) * cw; y0 <- BY + 1.2 + (4 - i) * chh
-  rect(x0, y0, x0 + cw - 0.5, y0 + chh - 0.5,
-       col = if (i <= 2) "#fbeedd" else "#e7f0f7", border = "#d2d2d2", lwd = 0.6)
-  points(x0 + cw/2 - 0.25, y0 + chh/2 - 0.25, pch = 19,
-         cex = 0.33 * sqrt(POPG[i, j]), col = adjustcolor(GRN, 0.8))
-}
-text(BX + BW/2, BY - 2.6, "each dot is that block's population", cex = 0.6, col = "#555")
-
-rect(78, 31, 99.5, 42, col = "#fbeedd", border = ORA, lwd = 1.8)
-text(88.7, 36.8, "2024 precinct A", cex = 0.72, font = 2, col = ORA)
-rect(78, 16, 99.5, 27, col = "#e7f0f7", border = BLU, lwd = 1.8)
-text(88.7, 21.8, "2024 precinct B", cex = 0.72, font = 2, col = BLU)
-text(88.7, 51.5, "3", cex = 0.85, font = 2, col = RED)
-text(88.7, 46.6, "THE NEW UNIT", cex = 0.62, font = 2, col = RED)
-text(88.7, 43.6, "2024 precincts", cex = 0.72, font = 2, col = "#666")
-
-arrows(23.0, 29, 34.5, 29, length = 0.09, lwd = 2, col = RED)
-text(28.7, 32.4, "DISAGGREGATE", cex = 0.56, font = 2, col = RED)
-text(28.7, 25.6, "split the votes\nacross the blocks", cex = 0.52, col = "#666")
-arrows(65.5, 32, 77.2, 35.5, length = 0.09, lwd = 2, col = RED)
-arrows(65.5, 26, 77.2, 22.5, length = 0.09, lwd = 2, col = RED)
-text(71.3, 29, "REAGGREGATE", cex = 0.56, font = 2, col = RED)
-text(71.3, 38.8, paste0("half the land,\n", pc(SKA, 0), "% of the people"),
-     cex = 0.44, col = ORA)
-text(71.3, 17.2, paste0("half the land,\n", pc(SKB, 0), "% of the people"),
-     cex = 0.44, col = BLU)
-
-segments(0.5, 10.5, 99.5, 10.5, col = "#dddddd")
-text(50, 6.2, expression(bold("votes carried into A") == bold("2020 votes") %*%
-     frac("people in the blocks that land in A", "people in all the blocks")), cex = 0.72)
-
 ## ---- weights
 data.frame(
   method = c("By area", "By population"),
@@ -574,23 +365,6 @@ data.frame(
       paste0(n(sum(table(poH$from_2020) > 1)), " of ", n(length(h20)),
              "  (", pc(sp_poH), "%)")),
   `Georgia (%)` = c(pc(sp_ar), pc(sp_po)),
-  check.names = FALSE)
-
-## ---- sliver
-sec <- do.call(rbind, lapply(split(arH, arH$from_2020), function(z) {
-  z <- z[order(-z$weight), ]; if (nrow(z) > 1) z[2, ] else NULL }))
-data.frame(
-  quantity = c("Precincts area calls split",
-               "...whose second-largest piece is under 1% of the precinct",
-               "Largest such piece, other than ROZR (%)",
-               "Precincts area calls split at a 1% floor (%)",
-               "Precincts population calls split at a 1% floor (%)"),
-  Houston = c(n(sum(table(arH$from_2020) > 1)),
-              n(sum(sec$weight < 0.01)),
-              pc(100 * max(sec$weight[nm(sec$from_2020) != "ROZR"]), 2),
-              pc(sp1(arH)), pc(sp1(poH))),
-  Georgia = c(n(sum(table(ar$from_2020) > 1)), "—", "—",
-              pc(sp1(ar)), pc(sp1(po))),
   check.names = FALSE)
 
 ## ---- rozr-d3
@@ -728,90 +502,48 @@ for (j in 1:2) {
 }
 title(sprintf("how its %s ballots get split", n(WBAL)), cex.main = 0.9, line = 0.3)
 
-## ---- compare
-data.frame(
-  quantity = c("Precinct pairs both methods produce",
-               "Median absolute difference in weight",
-               "Pairs differing by more than 10 points of weight",
-               "Largest single disagreement"),
-  Houston = c(n(nrow(cpH)), pc(median(abs(cpH$diff)), 3),
-              paste0(n(sum(abs(cpH$diff) > 0.10)), "  (",
-                     pc(100*mean(abs(cpH$diff) > 0.10)), "%)"),
-              pc(max(abs(cpH$diff)), 3)),
-  Georgia = c(n(nrow(cp)), pc(median(abs(cp$diff)), 3),
-              paste0(n(sum(abs(cp$diff) > 0.10)), "  (",
-                     pc(100*mean(abs(cp$diff) > 0.10)), "%)"),
-              pc(max(abs(cp$diff)), 3)),
-  check.names = FALSE)
-
 ## ---- d3
+# Land against people, one dot per precinct pair, drawn with the shared
+# library (_lib/dd-charts.js). A sample keeps the payload light; every one of
+# Houston's pairs rides along, and the statewide extreme carries its label.
+mkpts <- function(d, grp) data.frame(
+  area = round(d$weight_area, 4), pop = round(d$weight_pop, 4),
+  gap = round(100 * abs(d$diff), 1),
+  precinct = nm(d$from_2020), county = cty(d$from_2020),
+  grp = grp, stringsAsFactors = FALSE)
 set.seed(84355)
-s <- cp[sample(nrow(cp), min(1800, nrow(cp))), ]
-s <- s[cty(s$from_2020) != HC, ]
-rows <- paste(sprintf('{"a":%.4f,"p":%.4f,"d":%.4f}', s$weight_area, s$weight_pop, s$diff),
-              collapse = ",")
-hrow <- paste(sprintf('{"a":%.4f,"p":%.4f,"d":%.4f,"n":"%s"}',
-                      cpH$weight_area, cpH$weight_pop, cpH$diff, nm(cpH$from_2020)),
-              collapse = ",")
+sm <- cp[sample(nrow(cp), min(1400, nrow(cp))), ]
+sm <- sm[cty(sm$from_2020) != HC, ]
 xw <- cp[which.max(abs(cp$diff)), ]
-cat(sprintf('
-<div id="wt" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[%s],H=[%s];
-const W=740,HT=440,M={t:20,r:24,b:52,l:60};
-const svg=d3.select("#wt").append("svg").attr("viewBox",`0 0 ${W} ${HT}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,1]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,1]).range([HT-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${HT-M.b})`).call(d3.axisBottom(x).ticks(6));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",HT-14).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("weight by AREA");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(HT-M.b+M.t)/2).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("weight by POPULATION");
-svg.append("line").attr("x1",x(0)).attr("y1",y(0)).attr("x2",x(1)).attr("y2",y(1))
-  .attr("stroke","#999").attr("stroke-dasharray","5,4");
-svg.append("text").attr("x",x(0.62)).attr("y",y(0.66)).attr("font-size","11px")
-  .attr("fill","#777").attr("transform",`rotate(-38,${x(0.62)},${y(0.66)})`)
-  .text("the two methods agree");
-const tip=d3.select("#wt").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-const show=(e,d,who)=>{tip.style("opacity",1).html(
-  (who?`<b>${who}</b><br>`:"")+
-  `area ${(100*d.a).toFixed(1)}%%<br>population ${(100*d.p).toFixed(1)}%%<br>`+
-  `<b>gap ${(100*Math.abs(d.d)).toFixed(1)} points</b>`)
-  .style("left",Math.min(e.offsetX+14,W-170)+"px").style("top",(e.offsetY-10)+"px");};
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.a)).attr("cy",d=>y(d.p)).attr("r",3)
-  .attr("fill",d=>Math.abs(d.d)>0.10?"#C41230":"#2c7fb8")
-  .attr("fill-opacity",d=>Math.abs(d.d)>0.10?0.6:0.22)
-  .on("mousemove",(e,d)=>show(e,d,null)).on("mouseleave",()=>tip.style("opacity",0));
-svg.append("g").selectAll("circle").data(H).join("circle")
-  .attr("cx",d=>x(d.a)).attr("cy",d=>y(d.p)).attr("r",5)
-  .attr("fill","#1a9641").attr("stroke","#0b5d24").attr("stroke-width",1.2)
-  .on("mousemove",(e,d)=>show(e,d,"HOUSTON "+d.n))
-  .on("mouseleave",()=>tip.style("opacity",0));
-// the statewide extreme, called out
-const XA=%.4f,XP=%.4f;
-svg.append("text").attr("x",x(XA)+12).attr("y",y(XP)+4).attr("font-size","11px")
-  .attr("fill","#C41230").attr("font-weight","600")
-  .text("%s \\u2014 the worst in Georgia");
-const lg=svg.append("g").attr("transform",`translate(${M.l+12},${M.t+4})`);
-[["#1a9641","HOUSTON pairs"],["#C41230","differ by more than 10 points"],
- ["#2c7fb8","agree within 10 points"]]
- .forEach((r,i)=>{lg.append("circle").attr("cy",i*17).attr("r",4).attr("fill",r[0]);
-  lg.append("text").attr("x",10).attr("y",i*17+4).attr("font-size","11.5px").text(r[1]);});
-})();
-</script>
+sm <- sm[!(sm$from_2020 == xw$from_2020 & sm$to_2024 == xw$to_2024), ]
+dsc <- rbind(mkpts(sm, ifelse(abs(sm$diff) > 0.10,
+                              "differ by more than 10 points",
+                              "agree within 10 points")),
+             mkpts(cpH, "Houston pairs"),
+             mkpts(xw, "differ by more than 10 points"))
+dsc$lbl <- ""
+dsc$lbl[nrow(dsc)] <- paste(nm(xw$from_2020), "\u2014 the worst in Georgia")
+dsc$side <- ifelse(dsc$area > 0.55, "left", "")
+dd_fig("wt", "scatter", dsc, d3 = FALSE,
+  size = list(w = 740, h = 460, m = list(t = 20, r = 26, b = 54, l = 60)),
+  x = list(field = "area", domain = c(0, 1), ticks = 6, fmt = "f1",
+           label = "weight by area"),
+  y = list(field = "pop", domain = c(0, 1), ticks = 6, fmt = "f1",
+           label = "weight by population"),
+  series = list(field = "grp",
+                classes = list("Houston pairs" = "series-3",
+                               "differ by more than 10 points" = "series-2",
+                               "agree within 10 points" = "series-1")),
+  r = 3.2, opacity = 0.45, legend = TRUE,
+  annotations = list(dd_annot_rule(0, 0, 1, 1, class = "zero")),
+  tip = dd_tip(c(county = "county", area = "weight by area",
+                 pop = "weight by population", gap = "gap, points"),
+               fmt = c(area = "f2", pop = "f2", gap = "f1"),
+               title = "precinct"))
+cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-A sample of %s precinct pairs from the rest of Georgia, with all %s of Houston\'s
-in green. Points on the dashed line are pairs where land and people give the same
-answer; points far off it are where they do not.</p>
-', rows, hrow, xw$weight_area, xw$weight_pop, nm(xw$from_2020),
-   n(nrow(s)), n(nrow(cpH))))
+Dots on the dashed diagonal are pairs where land and people give the same
+answer. Hover a dot for the pair and the gap.</p>')
 
 ## ---- scatter-static
 par(mar = c(4.1, 4.1, 0.6, 0.6))
@@ -876,9 +608,6 @@ cat('<style>
 # the light page, var(--paper) on the dark one. A --paper stroke on the
 # light page would make white text worse, not better.
 cat('<style>
-#rcp text[fill="#2c7fb8" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
 #wnd text[fill="#fff" i],
 #wnd text[fill="#ffffff" i]
   { paint-order:stroke; stroke:var(--ink); stroke-width:3px;

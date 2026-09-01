@@ -1,7 +1,7 @@
 ---
 title: "Comparing Precincts Across Two Elections"
 type: brief
-subtitle: "Precinct lines, and what it takes to compare one election with the next"
+subtitle: "Precinct names and precinct lines drift independently, so a precinct that swung may be a precinct that moved"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,134 +16,70 @@ dd_read_chunks("precinct-geography-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Every account of an election contains sentences like *turnout in this precinct fell nine points*, or *this precinct swung twelve to the challenger*. They read like measurements. Each one carries a second claim that is never stated and almost never checked: **that "this precinct" is the same piece of ground in both elections being compared.**
+Every account of an election contains sentences like *turnout in this precinct fell nine points*, or *this precinct swung twelve to the challenger*. They read like measurements, and each carries a second claim that is never stated and almost never checked: that "this precinct" is the same piece of ground in both elections. **Can you compare a precinct with itself four years later?**
 
-Often it is not. Consider Houston County, Georgia -- Warner Robins, Perry and Robins Air Force Base, `r n(HPOP)` people in `r n(length(h20))` precincts. Between the 2020 and 2024 presidential elections `r n(length(setdiff(h20, h24)))` of those `r n(length(h20))` precinct names disappeared and a precinct that had never existed appeared. Four changes in four years, in a small county, and they are not four of the same thing.
+Often you cannot, and Houston County, Georgia (Warner Robins, Perry, and `r n(HPOP)` people in `r n(length(h20))` precincts) shows why. Between the 2020 and 2024 presidential elections, `r n(length(setdiff(h20, h24)))` of its precinct names disappeared and a precinct that had never existed appeared. Nothing in either year's file records what any change was: the 2024 map does not say what it replaced, and no county has to announce that it moved a line.
 
-**Three of them are precincts where the polling place moved and the ground did not move at all.** One of them is real. And in that one case, two entirely defensible ways of splitting the old precinct's votes between its two successors disagree about `r n(PECB)` ballots.
+The stakes are larger than one county's bookkeeping. The precinct is the smallest unit at which American voting can be observed, and everything fine-grained is built on it: voting-rights analysis, campaign targeting, journalism about which neighborhoods shifted. And counties split precincts where population grows, so the places most likely to be miscompared are exactly the fast-changing suburbs coverage cares about most. An error of this kind does not look like an error. It looks like a finding.
 
-None of this is announced anywhere. The 2024 map does not record what it replaced, and nothing in either file distinguishes the renames from the split. The distinction has to be computed, and this chapter is about how, and about what is at stake in getting it wrong.
+## The test
 
-## Why the unit matters more than it looks
+Three files answer it, from three different publishers. The precinct boundaries belong to Georgia's Legislative and Congressional Reapportionment Office, which posts a statewide precinct map for each general election (<https://www.legis.ga.gov/joint-office/reapportionment>). The two read here are the `r n(ts$shapefile_precincts[ts$scope == "Georgia"])`-precinct map of 2020 and the map that replaced it in 2024. The population belongs to the Census Bureau: `r n(nrow(ba))` Georgia census blocks from TIGER/Line 2020, carrying the 2020 census count. The votes belong to the Secretary of State's certified precinct returns for November 2020.
 
-**The precinct is the smallest unit at which American voting is observable.** Everything fine-grained is built on it: racially polarized voting analysis in Voting Rights Act cases, campaign targeting, turnout studies, and journalism about which neighborhoods shifted and why.
+Why this data can answer: the precinct sits at the bottom of the ladder of election reporting, the finest rung published statewide, and [the levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html) walks that ladder. This brief asks the question that chapter leaves open — whether the bottom rung holds still between elections. Georgia is the test state because one office publishes both vintages in one format, across the interval coverage actually compares.
 
-If the unit is unstable and nobody says so, all of that inherits an error that looks exactly like a finding. A precinct that "swung 12 points" may have swung not at all. It may simply have acquired three hundred houses from the precinct next door.
+## The data
 
-And the instability is not random, which is what turns a nuisance into a bias. **Precincts split where population grows**, because a precinct that gets too big is a precinct that is hard to run on election day. The places most likely to be miscompared are therefore the fast-changing suburbs that election coverage cares about most.
-
-## Two dated maps, and a certified list to check them against
-
-Three things are needed to ask whether a precinct is the same ground twice, and they come from three different kinds of publisher. The boundaries belong to Georgia's Legislative and Congressional Reapportionment Office. It posts a statewide precinct map for each general election back to 2012. The two used here are the `r n(ts$shapefile_precincts[ts$scope == "Georgia"])`-precinct map of 2020 and the map that replaced it in 2024. Both come down by script, with no form and no account.
-
-The population that decides how a split precinct's votes ought to be split belongs to the Census Bureau. That is `r n(nrow(ba))` Georgia blocks from TIGER/Line 2020, carrying `r n(sum(ba$pop))` people. Blocks are small enough that a precinct boundary almost never cuts through one. The votes belong to the Secretary of State, whose certified precinct returns for November 2020 are the state's own record rather than anyone's reconstruction of it.
-
-Georgia is here because it publishes both vintages, from one office, in one format, and because 2020 to 2024 is the interval that election coverage actually compares. What would be better does not exist. There is no file anywhere in which a county records that it moved a line, when it moved it, or what the precinct used to be called. Neither map contains a single field pointing back at the map it replaced. The comparison in this chapter is a reconstruction because the state's own bookkeeping does not do it.
-
-Getting the pieces is not uniformly easy, and the difficulty is itself a finding. The boundaries download unattended. **The votes do not.** The machine-readable precinct file most researchers use is hosted on Harvard's Dataverse behind a guestbook, which answers every scripted request with a refusal naming the guestbook it wants filled in.
-
-Going upstream to the state's own archive replaces that gate with a different one. The address is stable and public, and a browser fetches the file without complaint. A script gets refused by bot protection no matter what it says about itself. Both were tested rather than assumed, and the fix is one download by hand, once.
-
-That single click is the seam in an otherwise scripted build. Every other input here can be recreated from nothing by running a file. The votes cannot. This chapter rebuilds itself right up to the point where it needs a person with a browser. The file that person downloads then sits in the folder looking exactly like the ones that came down by themselves.
-
-The finest-grained public record of American voting is compiled by 159 county governments, served from behind a bot filter, and mirrored by volunteers who would like to know who you are.
-
-Then it needs work. Both years are made valid and reprojected to an equal-area grid, so that an area weight is genuinely an area. A few dozen rows in each map carry no county and no precinct name at all. The build's key collapses every one of them into a single fake precinct, `NA|NA`. Left in, it is the largest single source of disagreement between this chapter's two weighting rules — its two ways of counting some pieces for more than others. So it is dropped everywhere before anything is counted.
-
-The votes are read straight off the 2020 map's own attribute table, rather than joined onto it by precinct name. The reason comes later, once the crosswalk has been built and there is something to check. A crosswalk is a table that translates one set of areas into another.
-
-## What the two maps actually contain
-
-A shapefile is not a picture. Beside the geometry sits an attribute table, one row per shape, and that table is where the analysis has to start. Here is the 2020 one, read straight out of `VTD2020-Shape.dbf`:
+A shapefile is not a picture: beside the geometry sits an attribute table, one row per shape. The 2020 table:
 
 ```{r raw20}
 ```
 
-and three of its `r n(D20[1])` rows, on five of those columns:
-
-```{r raw20-rows}
-```
-
-`r n(D20[2])` columns. The first ten are bookkeeping. Then come the votes, one column per candidate. After them, for most of the rest of the table, sit the county's registration and turnout broken out by race and by sex. A precinct map is also, quietly, a demographic file.
-
-Note too what the format has done to the names: `JORGENSON2`, and further down `BLKUKNVOTE` and `UKNOWNREG2`. The file format cuts every column name off at ten characters, so **the column names in that table are not the names anybody chose**. They are what survived a forty-year-old format. `VOTED20` and `VOTED201` are two different quantities, told apart only by a digit the format tacked on.
-
-Now the 2024 map, a different release from the same office four years later:
+`r n(D20[2])` columns, and the names are not the names anybody chose. The format cuts every column name off at ten characters, so `JORGENSON2` is a truncated candidate. `VOTED20` and `VOTED201` are two different quantities, told apart by a digit the format appended. The votes sit bolted straight to the geometry; hold onto that. The 2024 release from the same office is a different kind of object:
 
 ```{r raw24}
 ```
 
-`r n(D24[2])` columns, and not one of them is a vote. The two files are not two editions of the same thing; they are two different kinds of object that happen to describe the same ground. **Neither carries a field pointing at the other** — no prior name, no successor code, nothing. The only handle they share is `CTYNAME` plus `PRECINCT_N`, so the build manufactures a key by uppercasing both, trimming their whitespace and pasting them with a pipe: `HOUSTON|ROZR`. A pipe, because a Georgia precinct name may contain a comma, a period, a slash or an apostrophe, and `JOURNEY COMM. CHURCH` is a real one.
+`r n(D24[2])` columns and not one of them is a vote. Neither file carries a field pointing at the other — no prior name, no successor code. The only shared handle is county name plus precinct name, so the build manufactures a key that exists in no source file: `HOUSTON|ROZR`. About thirty rows a year carry neither name and collapse to a single non-precinct, `NA|NA`, which is dropped everywhere before anything is counted.
 
-That key is an invention of this chapter and exists in no source file. About thirty rows a year have neither field filled in and collapse to the single non-precinct `NA|NA`, dropped everywhere here rather than counted as ground.
+One more caution sits upstream. The counties hold the official lines and may redraw them at any time; the office itself calls its statewide file a "best fit" of the 159 county maps, snapped to census geography.
 
-The third file is the one that makes any comparison possible:
-
-```{r rawbl}
-```
-
-`r n(DBL[1])` census blocks, and they arrive with something neither precinct file has: `GEOID20`, a fifteen-digit identifier the Census Bureau maintains and does not reuse. A real key, published by the agency that owns the geography, against two precinct files with no key at all. Note also `INTPTLAT20` and `INTPTLON20` — the Bureau ships its own interior point for every block. **The build does not use them.** It puts the blocks on an equal-area grid and works out a fresh interior point there. Every area in this chapter is measured on that grid, and a point computed on a different projection is a point from a different map.
-
-Then the assignment, which is the whole method in one table. Each block's interior point is asked which 2020 precinct contains it, and then which 2024 precinct does. Three of the blocks that were in ROZR in 2020, out of `r n(nrow(baH))` in the county:
+The census blocks are what make comparison possible. Each block carries `GEOID20`, a fifteen-digit identifier the Bureau maintains and does not reuse — a real key. Each block is reduced to a point guaranteed to lie inside it, and that point is asked two questions: which 2020 precinct contains you, and which 2024 precinct? Three of ROZR's blocks:
 
 ```{r cleanblocks}
 ```
 
-Two blocks stayed and one moved, and that third row is the entire finding of this chapter written out once. Nothing said it. It fell out of asking a point which polygon it was in, twice. That is the clean unit: one row per block, carrying its own population and the two precinct keys it belongs to.
-
-Of `r n(nrow(ba))` blocks statewide, `r n(sum(is.na(ba$precinct_2020)))` failed to land inside any 2020 precinct and `r n(sum(is.na(ba$precinct_2024)))` failed for 2024, and those rows are dropped rather than nudged to the nearest polygon. The rule that placed the rest has a silent branch worth naming. A point can fall inside more than one polygon, which happens wherever a map overlaps itself. **When it does, the build takes the first match and records nothing about the second.** Nothing downstream can tell that a choice was made.
-
-The last step turns blocks into weights. Group the blocks by the pair of precincts they connect, sum the population in each group, divide by the source precinct's total. Here is the running example, the 2020 precinct ROZR, exactly as `crosswalk_pop.csv` holds it:
+Two blocks stayed and one moved; that third row is this brief's whole finding, written out once. Grouping the `r n(nrow(ba))` blocks by their pair of precincts and summing population turns the assignments into a **crosswalk**, a table that translates one set of areas into another, with a weight on every pair. `crosswalk_pop.csv` holds `from_2020`, `to_2024`, the `weight`, and the `pop` behind it; `block_assign.csv` holds every block's `GEOID20`, `pop`, and two precinct keys. The running example:
 
 ```{r cleanxwalk}
 ```
 
-Two rows, where the raw files gave none, because no file anywhere states that ROZR became two precincts. The `r pc(100 * max(poH$weight[nm(poH$from_2020) == "ROZR"]), 1)`% and the rest are a count of people, not of acres, and they are what the chapter's argument turns on. They are also rounded to six decimal places, and any pair below one in a million is discarded. So the weights out of a precinct add to one only to within that rounding. That fact appears nowhere in the file, and only in a line of the build script.
+The votes are read straight off the 2020 map's own attribute table rather than joined on by name. That shortcut is legitimate only if the map's copy is right, so it was checked against the Secretary of State's certified returns:
 
-## Nobody in Atlanta drew these lines
-
-Before any number, it is worth reading what the state says about its own map. This is Georgia's Legislative and Congressional Reapportionment Office, which publishes the statewide precinct file that almost every outside analyst uses:
-
-> *"Each individual county across the State of Georgia maintains the official
-> record for the boundaries of their voting precinct lines... The Office of
-> Legislative and Congressional Reapportionment compiles all 159 voting precinct
-> maps provided by the counties into one master shape file...*
->
-> *This file is a **best fit** version of the maps provided by county election
-> offices, created using current census geography of that decade."*
-
-```{r ownership}
+```{r twosource}
 ```
 
-**"Best fit" is an admission.** Precinct lines do not naturally follow census geography, so the state snaps them to it, and everything downstream inherits that approximation before an analyst has touched anything.
+On every precinct where the two publications could be compared, they agreed to the vote. An earlier build had joined the votes on by precinct name instead, and silently lost 489,876 votes (9.8% of Georgia) to spelling differences. The data was never wrong. The labels were.
 
-Houston County is one of the 159. Nobody in Atlanta drew its precincts; the Houston County Board of Elections did, and can redraw them next month without telling anyone until the state file is next compiled. There is no notice period, no changelog, and no obligation to say what changed.
+> **Before you read on, commit to a number.** Between 2020 and 2024, Houston
+> County's `r n(length(h20))` precincts produced
+> `r n(length(REN20) + length(RDR20))` changes:
+> `r n(length(setdiff(h20, h24)))` names disappeared and
+> `r n(length(setdiff(nm(h24all), nm(h20))))` name appeared that had not
+> existed before. **How many of those changes moved actual ground from one
+> precinct into another**, and how many are a polling place renamed while
+> every resident stayed put? Write down a number.
 
-## Sixteen precincts you can name
+## What it says about democracy
 
-Statewide percentages are easy to nod at and impossible to check, which is why this chapter works one county all the way through before turning to the state. Houston is small enough that the entire precinct list fits in a table you can read line by line. Reading it line by line is exactly what makes the difference between a renamed precinct and a redrawn one visible.
+Start with the names, which are all most analyses ever see:
 
 ```{r moved}
 ```
 
-Houston has `r n(length(h20))` precinct names in 2020 and `r n(length(h24))` in 2024, and they are not the same `r n(length(h20))`: only `r pc(surv(h20, h24))`% of the names survive. Statewide the figure is `r pc(surv(p20, p24))`%, so Houston is a slightly harder case than average rather than a freak one. Measured on the counties' precinct *codes* instead of their names, statewide survival drops to about three quarters.
+Only `r pc(surv(p20, p24))`% of Georgia's precinct names survive the four years, and Houston, at `r pc(surv(h20, h24))`%, is slightly harder than average. Measured on the counties' precinct *codes* instead of names, statewide survival drops to about three quarters. Two keys, two answers, and neither is wrong. An identifier that changes when the thing it names does not, and holds still when the thing it names changes, is not an identifier.
 
-Two keys, two answers, and neither is wrong. That is the first thing worth knowing about this data: names and codes drift independently, so neither is a stable handle on a piece of ground. **An identifier that changes when the thing it names does not -- and stays the same when the thing it names changes -- is not an identifier.**
-
-### The whole county, both years
-
-`r n(length(h20))` precincts is few enough to print in full. The first table below is every 2020 precinct and what became of it; the second is every 2024 name that did not exist in 2020, with the precinct that supplied most of its people.
-
-> **Before you read the tables, commit to a number.** Between 2020 and 2024
-> Houston's `r n(length(h20))` precincts produced
-> `r n(length(REN20) + length(RDR20))` changes:
-> `r n(length(setdiff(h20, h24)))` names disappeared and
-> `r n(length(setdiff(nm(h24all), nm(h20))))` names appeared that had not
-> existed before. **How many of those `r n(length(REN20) + length(RDR20))`
-> changes moved actual ground from one precinct into another**, as against a
-> polling place moving while every resident stayed in the precinct they were
-> already in? Write down a number between zero and
-> `r n(length(REN20) + length(RDR20))` before you read on.
+Houston is small enough to show every change in full: every 2020 precinct and what became of it, then the new 2024 name, with the precinct that supplied its people:
 
 ```{r inventory}
 ```
@@ -151,13 +87,7 @@ Two keys, two answers, and neither is wrong. That is the first thing worth knowi
 ```{r inventory-new}
 ```
 
-Read the two tables together and the county's four years come apart into two completely different kinds of event. Most readers write down `r n(length(REN20) + length(RDR20))`, or something close to it; when that many names change in four years the natural inference is that the map changed underneath them. **The ground moved in `r n(length(RDR20))` of the `r n(length(REN20) + length(RDR20))`.**
-
-**`r n(length(REN20))` of the `r n(length(REN20) + length(RDR20))` changes are renames.** HCTC became VFW, NSES became NORTH HOUSTON SPORT COMPLEX, RECR became WELLSTON CENTER. In each case, weighting by population sends **100% of the old precinct's people to the new name**, and the area overlap between old and new is at least `r pc(100 * min(ar$weight[paste(ar$from_2020, ar$to_2024) %in% paste(ren$from_2020, ren$to_2024)]), 1)`%. The polling place moved. The ground did not.
-
-**`r n(length(RDR20))` change is real.** ROZR was split, and its western half became a new precinct, PEC. That is the only piece of Houston ground that changed precinct between 2020 and 2024.
-
-So one small county shows both of the standard complaints about precinct names at once. Names changed while the ground stayed put. And a name stayed put while `r pc(100 * PECP)`% of its people left it for a precinct that did not exist before.
+Most readers guess that most of the changes are real. **The ground moved in `r n(length(RDR20))` of the `r n(length(REN20) + length(RDR20))`.** The other `r n(length(REN20))` are renames: HCTC became VFW, NSES became NORTH HOUSTON SPORT COMPLEX, RECR became WELLSTON CENTER. In each case, weighting by population (counting some blocks for more than others, by the people living in them) sends 100% of the old precinct's people to the new name. The polling place moved; the ground did not. The one real change is ROZR, split in two, its western half becoming the new precinct PEC — and there, two defensible ways of dividing the old precinct's votes disagree about `r n(PECB)` ballots.
 
 ```{r houston-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -168,78 +98,18 @@ So one small county shows both of the standard complaints about precinct names a
 ```{r houston-static-legend, eval=!knitr::is_html_output(), fig.height=0.55}
 ```
 
-**Figure 1. Houston County's precincts in 2020 and 2024, with the two kinds of change separated.** Amber areas are the `r n(length(REN20))` precincts that were renamed while their boundaries stayed put. Blue is ROZR, the only precinct in the county whose ground actually changed: its western half became the new precinct PEC. Gray is everything that kept both its name and its shape. Labels are precinct codes. The 2024 panel counts `r n(length(h24all))` precincts, where the inventory table above lists `r n(length(h24))`; the missing one is **`r unseen`**, for a reason taken up below.
+**Figure 1. Houston County's precincts in 2020 and 2024, with the two kinds of change separated.** A pair of maps, because the claim is about ground and only a map can show ground holding still while names change. Amber areas are the `r n(length(REN20))` renamed precincts whose boundaries stayed put; blue is ROZR, the one precinct whose ground actually changed; gray kept both name and shape. The 2024 panel counts `r n(length(h24all))` precincts where the table lists `r n(length(h24))`; the missing one is `r unseen`, explained below.
 
-## The repair that deletes the wrong precincts
+The tempting repair, keeping only the precincts whose names match in both years, is exactly wrong. In Houston, name-matching throws away `r n(length(dropped))` precincts (`r paste(nm(dropped), collapse = ", ")`, carrying `r n(sum(poH$pop[poH$from_2020 %in% dropped]))` people), and all three are renames where nothing happened. It keeps ROZR, the one place where something did. Name-matching is a filter on clerical churn, not on boundary change, and a rule whose sign can flip between a county and its state is not a rule to build on.
 
-Faced with a table like that, the tempting repair is to keep the precincts whose names match in both years and discard the rest. It is wrong, and the reason is worth stating precisely, because the same instinct shows up everywhere that two vintages of an administrative file have to be compared.
+The fix is the crosswalk built above: newest boundaries as the target, old data broken down onto blocks, blocks added back up inside the new lines. A whole precinct reduced to one interior point can never record a split, which is why `r unseen` is invisible to the precinct-level table; `r n(nrow(baH))` blocks, each reduced to a point, can.
 
-**The precincts that changed are not a random sample of precincts.** A county splits a precinct when it becomes too big to run, which is to say where people moved in. Dropping the non-matching precincts systematically removes the fastest-growing places from the analysis.
-
-```{r drop}
-```
-
-In Houston the damage is easy to inspect, and it is stranger than the percentage suggests. Name-matching throws away `r n(length(dropped))` precincts -- `r paste(nm(dropped), collapse = ", ")` -- carrying `r n(sum(poH$pop[poH$from_2020 %in% dropped]))` people between them. **All three are renames.** Not one of them is a precinct whose boundary moved. The rule deletes the three places where nothing happened and keeps ROZR, the one place where something did.
-
-That inversion is not a fluke of one county; it is the general shape of the failure. **Name-matching is not a filter on boundary change at all.** It is a filter on clerical churn, which happens to be correlated with boundary change statewide and, in this county, anti-correlated with it. A method whose sign can flip between a county and its state is not a method.
-
-## A unit that both maps contain
-
-The fix is always the same three moves, and they are worth memorizing because almost every problem of this shape yields to them:
-
-1. **Choose the newest boundaries as the target.** Future data will use them.
-2. **Break the old data down onto a smaller unit both years contain.** 3. **Add
-that unit back up to the target.**
-
-The smaller unit here is the **census block**, the finest geography the Census Bureau publishes population for.
-
-```{r blocks}
-```
-
-Houston's `r n(length(h20))` precincts are built from `r n(nrow(baH))` census blocks holding `r n(HPOP)` people, roughly `r n(nrow(baH) / length(h20))` blocks per precinct. That ratio is the resolution the whole method depends on: a crosswalk can only be as sharp as the unit it breaks down to. Statewide the file holds `r n(nrow(ba))` blocks and `r n(sum(ba$pop, na.rm = TRUE))` people, which is Georgia's 2020 census count to the person. **Six blocks in the state failed to land in a 2020 precinct**, almost certainly along a coastline the two agencies drew slightly differently. None of them is in Houston.
-
-Blocks have to be assigned to precincts, and the way that is done is not by overlaying polygons. **Each block is reduced to a point guaranteed to lie inside it, and the question asked is which precinct contains that point.**
-
-```{r method}
-```
-
-Polygon intersection creates **slivers**: hairline fragments where two agencies digitized the same road a meter apart, each of which then has to be either counted or thrown away. The interior-point method has no such artifacts. Every block gets exactly one answer, and that answer is stable against a meter of disagreement about where a road is.
-
-It also has a blind spot, and Houston displays it in one line. The table above came from applying the same trick to whole *precincts*: reduce a 2020 precinct to one interior point, then ask which 2024 precinct contains it. That table lists `r n(length(h24))` precincts for 2024, while the county's 2024 map has `r n(length(h24all))`. The missing one is **`r unseen`**, the precinct carved out of ROZR. No 2020 precinct has its interior point inside PEC, so a precinct-to-precinct table cannot name it at all. PEC is not missing from the data; it is invisible to that particular question.
-
-**This is exactly why the block is the right unit and the precinct is not.** A precinct reduced to a single point can only ever land in one place, so it can never record a split. `r n(nrow(baH))` blocks, each reduced to one point, can. With blocks as the common currency, every block knows which 2020 precinct it was in and which 2024 precinct it is in, and can therefore carry a vote from one to the other.
-
-```{r recipe-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r recipe-static, eval=!knitr::is_html_output(), fig.height=3.6}
-```
-
-**Figure 2. Break the votes apart, then put them back together: the whole method in one sketch.** Votes exist only as a single total for the old precinct, with no interior detail. Census blocks are the unit both years' maps contain, and each block carries a known population. Splitting the old total across the blocks and then adding the blocks up inside the new boundaries carries the votes onto the new map.
-
-This is a sketch, not a real county. In it the two 2024 precincts get the same amount of land but `r pc(SKA, 0)`% and `r pc(SKB, 0)`% of the people. That gap is the disagreement the next section measures for real.
-
-## Land or people
-
-Now the choice that actually matters. When a 2020 precinct's votes travel to more than one 2024 precinct, in what proportion?
+Then the choice that moves votes: when a precinct's ballots travel to more than one successor, in what proportion — by land, or by people?
 
 ```{r weights}
 ```
 
-The two rules do not merely produce different weights. **They disagree about something as basic as whether a precinct was split at all.** In Houston, area weighting says `r n(sum(table(arH$from_2020) > 1))` of `r n(length(h20))` precincts straddle a 2024 boundary; population weighting says `r n(sum(table(poH$from_2020) > 1))`. Statewide the same two rules give `r pc(sp_ar)`% and `r pc(sp_po)`%. The county's contrast is the sharper of the two, about `r pc(sp_arH/sp_poH, 0)` to one against `r pc(sp_ar/sp_po, 0)` to one, so whatever is happening here is not a statewide average concealing a mild local effect.
-
-Both numbers are computed correctly. The way to see why they disagree is to look at what area's extra "splits" are made of.
-
-```{r sliver}
-```
-
-**`r n(sum(sec$weight < 0.01))` of Houston's `r n(sum(table(arH$from_2020) > 1))` area "splits" are slivers.** The largest of them, outside ROZR, is `r pc(100 * max(sec$weight[nm(sec$from_2020) != "ROZR"]), 2)`% of a precinct: a hairline where the 2020 and 2024 files digitized the same road a meter apart. These are precisely the artifacts the interior-point method was chosen to avoid, and area counts every one of them as a boundary change. Raise the floor to 1% and area's Houston figure falls from `r pc(sp_arH)`% to `r pc(sp1(arH))`%, exactly matching population.
-
-Statewide the same correction takes area from `r pc(sp_ar)`% to `r pc(sp1(ar))`% and population from `r pc(sp_po)`% to `r pc(sp1(po))`%. So most of the enormous headline gap is digitizing noise. But a real residue of `r pc(sp1(ar) - sp1(po))` points survives the correction, and that residue is **empty land**: a boundary clipping a corner of farmland with nobody living on it. Area counts it as a split because it is one, geometrically. Population does not count it because no vote can come from it.
-
-## One precinct, taken apart
-
-Everything so far has been about which precincts changed. ROZR is where a change can be watched happening. It is the blue precinct in Figure 1. Figure 3 shows it at the scale the method actually works at: the `r n(nrow(wp))` census blocks that tile it, each colored by the 2024 precinct its interior point landed in.
+The two rules disagree even about how many precincts split at all. Most of area's extra "splits" are slivers: hairline overlaps where the two files digitized the same road a meter apart. Raise the floor to 1% of a precinct and area's Houston figure falls from `r pc(sp_arH)`% to `r pc(sp1(arH))`%, exactly matching population. Statewide, a residue of `r pc(sp1(ar) - sp1(po))` points survives the correction: boundaries clipping empty farmland, a split in land that no vote can come from. Where the choice bites is a real split:
 
 ```{r rozr-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -247,22 +117,7 @@ Everything so far has been about which precincts changed. ROZR is where a change
 ```{r rozr-static, eval=!knitr::is_html_output(), fig.height=4.0}
 ```
 
-**Figure 3. The one piece of Houston ground that changed precinct, and the `r n(WBAL)` ballots that have to be divided.** ROZR's `r n(nrow(wp))` census blocks tile the 2020 precinct exactly; each is colored by the 2024 precinct its interior point falls in, and each dot is sized by that block's population. The western half is large and thinly settled, the eastern half compact and built up, so the two weightings part company. Land gives the new precinct PEC `r pc(100 * PECA)`% of ROZR, and people give it `r pc(100 * PECP)`%. The gap between them is `r n(PECB)` ballots.
-
-That is `r n(PECB)` votes moved from one precinct to another by a methodological choice, in one precinct, in one county, in the single place in that county where the ground actually moved. Nobody miscounted anything. Two analysts working carefully from the same public files, one weighting by land and one by people, would publish different numbers for the same election in the same place.
-
-## How bad it gets elsewhere
-
-A county is where the mechanism becomes legible. It is not where you learn how large the problem is.
-
-```{r compare}
-```
-
-The *rate* generalizes and the *extreme* does not, and both facts matter.
-
-The rate first. `r pc(100*mean(abs(cpH$diff) > 0.10))`% of Houston's pairs differ by more than ten points of weight; statewide the figure is `r pc(100*mean(abs(cp$diff) > 0.10))`%. That is the same order of magnitude from a county with `r n(nrow(cpH))` pairs and a state with `r n(nrow(cp))`, which is about as much reassurance as one county can offer that it is not exotic.
-
-The extreme is another matter. Houston's worst disagreement is `r pc(max(abs(cpH$diff)), 3)`, the ROZR split, where the two methods put the dividing line at `r pc(100*w2$w_area[w2$target=="ROZR"], 0)`/`r pc(100*w2$w_area[w2$target=="PEC"], 0)` and `r pc(100*w2$w_pop[w2$target=="ROZR"], 0)`/`r pc(100*w2$w_pop[w2$target=="PEC"], 0)`. Georgia's worst is `r pc(max(abs(cp$diff)), 3)`, in `r nm(cp$from_2020[which.max(abs(cp$diff))])`, `r cty(cp$from_2020[which.max(abs(cp$diff))])` County, where **one method sends `r pc(100*cp$weight_area[which.max(abs(cp$diff))])`% of a precinct's votes to the target and the other sends `r pc(100*cp$weight_pop[which.max(abs(cp$diff))])`%.** Nothing that violent happens in Houston.
+**Figure 2. The one piece of Houston ground that changed precinct, and the `r n(WBAL)` ballots that have to be divided.** ROZR's `r n(nrow(wp))` census blocks, each dot sized by population and colored by where its interior point landed in 2024. The western half is big and thinly settled, so land gives PEC `r pc(100 * PECA)`% of ROZR while people give it `r pc(100 * PECP)`%. The gap is `r n(PECB)` ballots, moved from one precinct to another by a methodological choice, with nothing miscounted.
 
 ```{r d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -270,66 +125,48 @@ The extreme is another matter. Houston's worst disagreement is `r pc(max(abs(cpH
 ```{r scatter-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-**Figure 4. Where land and people give different answers, across Georgia.** Each point is one 2020-to-2024 precinct pair: its weight by area on the horizontal axis, by population on the vertical. Pairs on the dashed diagonal are ones where the two rules agree. Of the state's `r n(nrow(cp))` pairs, `r n(sum(abs(cp$diff) > 0.10))` -- `r pc(100*mean(abs(cp$diff) > 0.10))`% -- differ by more than ten points of weight. The labeled outlier, `r nm(cp$from_2020[which.max(abs(cp$diff))])` in `r cty(cp$from_2020[which.max(abs(cp$diff))])` County, is sent `r pc(100*cp$weight_area[which.max(abs(cp$diff))])`% of its precinct's votes by one rule and `r pc(100*cp$weight_pop[which.max(abs(cp$diff))])`% by the other. Houston's `r n(nrow(cpH))` pairs are green.
+**Figure 3. Where land and people give different answers, across Georgia.** Each point is one 2020-to-2024 precinct pair, placed by its weight under each rule, because the question is agreement and a scatter shows agreement as distance from the diagonal. Of the state's `r n(nrow(cp))` pairs, `r n(sum(abs(cp$diff) > 0.10))` (`r pc(100*mean(abs(cp$diff) > 0.10))`%) differ by more than ten points of weight. The labeled extreme, `r nm(cp$from_2020[which.max(abs(cp$diff))])` in `r cty(cp$from_2020[which.max(abs(cp$diff))])` County, is sent `r pc(100*cp$weight_area[which.max(abs(cp$diff))])`% of its precinct's votes by one rule and `r pc(100*cp$weight_pop[which.max(abs(cp$diff))])`% by the other. Houston's `r n(nrow(cpH))` pairs are green; its worst case is the ROZR split.
 
-Underneath all of this is a single assumption, and it is worth naming it bluntly. **Area weighting assumes people are spread evenly inside a precinct.** They are not, and Figure 4 is a measurement of how badly they are not. It is the same assumption that any point-in-polygon or land-share crosswalk makes about where people live; what is unusual here is that the census block gives us a way to check it.
-
-## Carrying the votes, and checking that they arrived
-
-With a weighting chosen, the arithmetic is mechanical. Here is Houston's 2020 presidential vote expressed on Houston's 2024 precinct map.
+With a rule chosen, the carry itself is mechanical. It ends with the comparison the opening asked for: Houston's 2020 presidential vote expressed on Houston's 2024 map, including PEC, a precinct that did not exist when those votes were cast:
 
 ```{r carry}
 ```
 
-That is `r n(sum(eH$TRUMP20))` votes for Trump and `r n(sum(eH$BIDEN20))` for Biden across `r n(nrow(eH))` precincts, including PEC, which did not exist when those votes were cast. A 2020-to-2024 comparison in this county is now a comparison of the same ground.
-
-A crosswalk that loses votes, though, is worse than no crosswalk at all, because it looks fine. So the carry has to be checked, statewide, against the totals it started from.
+A crosswalk that loses votes is worse than none, because it looks fine. So the carry is checked statewide against the totals it started from:
 
 ```{r check}
 ```
 
-`r ck$value[ck$check == "votes lost"]` votes out of `r ck$value[ck$check == "votes before"]`, or `r ck$value[ck$check == "share lost (%)"]`%.
+`r ck$value[ck$check == "votes lost"]` votes lost out of `r ck$value[ck$check == "votes before"]`. The trip can be audited, and this one arrives whole.
 
-That check is not a formality, and the reason is a mistake made building this very file. An earlier version attached the votes to the map by **matching precinct names**. It reached 90.4% and lost **489,876 votes, 9.8% of Georgia**, concentrated in Chatham and DeKalb, where the two sources spell precincts differently. Two rounds of increasingly clever name-matching moved the loss to 9.8% and then not at all.
+## What this brief cannot tell you
 
-What fixed it was not a better matcher. **The join was never necessary.** The precinct shapefile carries the vote totals in its own attribute table, bolted to the geometry. Nothing to match, nothing to lose.
+**Population is not voters.** The weights count children and non-citizens, and turnout varies inside a precinct in ways a headcount cannot see. Registered voters by block would be the right weight, and nobody publishes it: that is the binding limit here.
 
-> **When a join is losing rows, ask whether you needed the join.**
+**The blocks are older than the boundaries.** Block populations are from the 2020 census; the 2024 lines came later, so growth in between is invisible to the weights — in Houston, precisely the growth that caused the split.
 
-Using the map's copy of the votes is only legitimate if that copy is right. It comes from a different agency than the returns do: the reapportionment office on one side, the Secretary of State on the other.
+**No number above carries an error bar.** A carried-over total prints with the same authority as a counted one, and in the Houston table `r n(length(RDR24))` of the `r n(nrow(eH))` rows are estimates while nothing in the output says which.
 
-```{r twosource}
-```
+**And one county is one county.** Houston shows the mechanism cleanly because it is simple. The statewide figures above say the rate travels; the anatomy of any other county has to be read the same way, by hand.
 
-**On every precinct where the two publications could be compared, they agreed exactly**: `r n(ts$identical[ts$scope == "Georgia"])` statewide, and all `r n(ts$identical[ts$scope == HC])` in Houston, which is every precinct the county had. That agreement is what licensed abandoning the name join, and it is the kind of check worth doing before relying on a convenient shortcut rather than after.
+## What you should have learned
 
-Notice, too, what the same table says about names one more time. The join reached `r n(ts$matched[ts$scope == "Georgia"])` of `r n(ts$shapefile_precincts[ts$scope == "Georgia"])` precincts statewide and `r n(ts$matched[ts$scope == HC])` of `r n(ts$shapefile_precincts[ts$scope == HC])` in Houston. **The data was never wrong. The labels were.**
+- Only `r pc(surv(p20, p24))`% of Georgia's precinct names survived from 2020 to 2024, and a changed name is usually not a changed boundary: Houston's `r n(length(REN20) + length(RDR20))` changes were `r n(length(REN20))` renames and `r n(length(RDR20))` real split.
+- Keeping only name-matched precincts filters on the wrong thing: in Houston it deletes `r n(length(dropped))` precincts where nothing happened and keeps the one where something did.
+- The weighting choice is not a technicality: land and people disagree by more than ten points of weight on `r pc(100*mean(abs(cp$diff) > 0.10))`% of Georgia's precinct pairs, and in ROZR the choice moves `r n(PECB)` ballots.
+- A carry can be checked: pushed through the population crosswalk, Georgia's 2020 vote arrives on the 2024 map with `r ck$value[ck$check == "votes lost"]` votes lost.
 
-## Precision that is manufactured
+## Extensions
 
-There is no consensus method here, and the disagreement among people who do this work is substantive rather than technical.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The approach used above -- break down to blocks, reweight, add back up -- is standard in redistricting practice and in expert reports filed in voting cases. Its critics point out that it manufactures precision. The output is a table of precise-looking numbers resting on one assumption: that votes are spread across a precinct the way people are. That assumption is untested, and in an important sense untestable, because the whole problem is that only the precinct total is ever observed.
+- `fig_twosource.csv` compares the shapefile's precincts against the certified list. Find the precincts in one and not the other. What is a precinct that exists on a map but not in the returns?
+- `fig_houston_lab.csv` flags each Houston precinct as kept, renamed or split. Count each kind. What share of the county's precincts would a name-matcher have compared correctly?
+- `fig_rozr_meta.csv` divides ROZR's ballots two ways and reports both. Compare `ballots_area` against `ballots_pop`. Which assumption would you defend to an editor, and why?
+- `fig_rozr_blocks.csv` assigns each of ROZR's blocks a target precinct and a `pop`. Find the blocks with no people in them. What do empty blocks do to a weighting by area?
+- `crosswalk_pop.csv` covers every county, with a `weight` per precinct pair. Pick a county you know and count its precincts that split. Quieter or louder than Houston?
 
-The alternatives deserve to be stated fairly. **Some analysts refuse to carry data across boundary changes at all**, reporting only county-level comparisons, which are stable. That is honest, and it throws away most of the resolution that made precinct data worth having. **Others prefer the area method** on the grounds that it makes no claim about people at all, only about land, and is therefore harder to be wrong about in an interesting way.
-
-And there is a genuine objection that applies to every method in this chapter, including the one it recommends: **none of them has an error bar.** A carried-over precinct total is presented with exactly the same authority as a counted one. Nothing in the output tells apart a precinct that never changed from one whose votes were assembled out of four fragments. In the Houston table above, `r n(nrow(eH) - length(RDR24))` of the `r n(nrow(eH))` rows are counted numbers and `r n(length(RDR24))` are estimates, and the table does not say which.
-
-## What the crosswalk licenses
-
-What this evidence supports is narrower than what it looks like it supports, and the boundary between the two is worth drawing carefully.
-
-It supports the claim that precinct boundaries are unstable, and that the instability is large. Between roughly a sixth and a quarter of Georgia's precinct labels changed in four years, depending on whether you match on names or on codes. It supports the sharper claim that a changed name and a changed boundary are different events, because in Houston they can be counted separately -- `r n(length(REN20))` renames and `r n(length(RDR20))` genuine split. Statewide nobody separates them, and the name-survival statistic that gets quoted quietly conflates the two. It supports a procedure: newest boundaries as the target, break down to census blocks by interior point, add back up weighted by population, and check that the votes survive the trip.
-
-And it supports the claim that the weighting choice matters, with a measurement of how much. `r pc(100*mean(abs(cp$diff) > 0.10))`% of statewide weights move by more than ten points, and in Houston the choice moves `r n(PECB)` ballots from one precinct to another.
-
-It does not support the claim that population weighting is correct. **Population is not voters.** It counts children and non-citizens, and turnout varies across the same precinct in ways a headcount cannot see. Registered voters by block would be a better weight, and nobody publishes it. That is the binding limitation on everything above, and no amount of care elsewhere repairs it.
-
-Several smaller limits point the same way. The block populations are from 2020 while the 2024 boundaries came later, so any growth in between is invisible to the weights. In a county like Houston that is precisely the growth that caused the split in the first place. Six blocks in the state were never placed in a 2020 precinct at all. "Best fit" sits upstream of the whole exercise: the state had already snapped county precinct lines to census geography before anyone outside the county saw them.
-
-No uncertainty is carried through anywhere, so a carried total and a counted total look identical in the output. And one county is one county: Houston shows the mechanism cleanly *because* it is simple, and a county with twenty splits would be harder to read and no less real.
-
-What is genuinely unsettled is not the arithmetic but the practice. Whether to carry data across boundary changes at all, or to restrict comparisons to units that do not move. How to put an error bar on a crosswalked estimate, so that a reader can tell an assembled number from a counted one. And whether counties should be required to publish boundary changes in a documented, machine-readable form. At present a researcher learns that a precinct moved by noticing that it did. That is not a system, and in a county with three hundred precincts instead of sixteen it is not even a possibility.
+Two stretch ideas point past the spreadsheet. The reapportionment office posts precinct maps back to 2012; fetch an older pair and measure whether this churn rate is new or normal. And find one county's own notice of a precinct change, in a board of elections agenda, and check it against what the two maps imply.
 
 ## Sources
 
@@ -340,41 +177,25 @@ What is genuinely unsettled is not the arithmetic but the practice. Whether to c
   <https://www.legis.ga.gov/joint-office/reapportionment>
 - U.S. Census Bureau, TIGER/Line 2020, Georgia tabulation blocks
   (`tl_2020_13_tabblock20`), with 2020 Census population.
-- Georgia Secretary of State, precinct returns, November 2020.
-- Houston County Board of Elections publishes its own results, precinct by
-  precinct, at
-  <https://www.houstoncountyga.gov/residents/election-results.cms>. Nothing here
-  is built on it, and it is not needed — but it is the county's own copy of the
-  same numbers, so it is available as an independent check on any Houston figure
-  above. That the county, the Secretary of State and the reapportionment office
-  all publish the same precinct totals separately is what makes the two-source
-  agreement above possible to test at all.
+  <https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/>
+- Georgia Secretary of State, certified precinct returns, November 2020 —
+  the independent check on the shapefile's vote columns.
+  <https://sos.ga.gov/page/historical-elections-results>
+- Houston County Board of Elections publishes its own precinct results at
+  <https://www.houstoncountyga.gov/residents/election-results.cms> — a third
+  copy of the same numbers, an independent check on any Houston figure above.
 
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`fig_houston.csv`](data/derived/fig_houston.csv), [`fig_houston_lab.csv`](data/derived/fig_houston_lab.csv), [`fig_rozr_blocks.csv`](data/derived/fig_rozr_blocks.csv), [`fig_rozr_meta.csv`](data/derived/fig_rozr_meta.csv), [`fig_rozr_outline.csv`](data/derived/fig_rozr_outline.csv), [`fig_rozr_pts.csv`](data/derived/fig_rozr_pts.csv), [`fig_twosource.csv`](data/derived/fig_twosource.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `fig_twosource.csv` compares a shapefile's precincts against the certified list. Find the ones in one and not the other. What is a precinct that exists on a map but not in the returns?
-- `fig_houston_lab.csv` flags each precinct as kept or `split` between the two elections. Count them. What share of a county's precincts survive one election cycle to the next?
-- `fig_rozr_meta.csv` reapportions ballots two ways, by area and by population, and reports both. Compare `ballots_area` against `ballots_pop`. Which assumption would you defend?
-- `fig_rozr_blocks.csv` assigns each block a target precinct and a `pop`. Find the blocks with no people in them. What do they do to a weighting by area?
+[`fig_houston.csv`](data/derived/fig_houston.csv), [`fig_houston_lab.csv`](data/derived/fig_houston_lab.csv), [`fig_rozr_blocks.csv`](data/derived/fig_rozr_blocks.csv), [`fig_rozr_meta.csv`](data/derived/fig_rozr_meta.csv), [`fig_rozr_outline.csv`](data/derived/fig_rozr_outline.csv), [`fig_rozr_pts.csv`](data/derived/fig_rozr_pts.csv), [`fig_twosource.csv`](data/derived/fig_twosource.csv), [`crosswalk_pop.csv`](../ga-precinct-returns/data/derived/crosswalk_pop.csv), [`block_assign.csv`](../ga-precinct-returns/data/derived/block_assign.csv)
 
 **Method**
 
 - Cervas, J. `assignPolys`, *R-Functions*.
   <https://github.com/jcervas/R-Functions/tree/main/assignPolys>
-
-**How the figures were made**
-
-The shapefiles and block assignments published by the Georgia Secretary of State are read once, giving the small coordinate tables the maps above draw from. Every number printed in this chapter is computed from those files at the moment the document is rendered.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

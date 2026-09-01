@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -128,11 +129,11 @@ rib2 <- rbind(stay(setdiff(names(R2), e2), R2),
 rib1 <- aggregate(v ~ from + to, rib1, sum)
 rib2 <- aggregate(v ~ from + to, rib2, sum)
 
-GAP  <- 0.035
+NGAP <- 0.035                 # sankey node gap; NOT the ballot-count GAP above
 npos <- function(vals) {
   vals <- vals[ORD[ORD %in% names(vals)]]
   h <- as.numeric(vals) / TOT
-  y0 <- cumsum(c(0, head(h + GAP, -1)))
+  y0 <- cumsum(c(0, head(h + NGAP, -1)))
   data.frame(node = names(vals), y0 = y0, y1 = y0 + h, v = as.numeric(vals),
              stringsAsFactors = FALSE)
 }
@@ -164,6 +165,25 @@ sname <- function(x) ifelse(x == OUTN, x, sub(",.*", "", x))
 
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
+
+# --- the raw export's own inventory, and the one kept session ----------------
+# Loaded here (not in the cvr-envelope chunk) because the prose quotes the
+# export's size before the chunk that prints the session.
+L   <- readLines("data/raw/cvr-session-example.json", warn = FALSE)
+shp <- read.csv("data/raw/export-shape.csv", stringsAsFactors = FALSE)
+SH  <- function(k) shp$value[shp$name == k]
+ncon <- length(grep('^            "Id": ', L))     # contests on this card
+
+# the dictionary that turns a CandidateId into a person
+cm <- local({
+  x   <- paste(readLines("data/raw/CandidateManifest.json", warn = FALSE),
+               collapse = "")
+  rec <- regmatches(x, gregexpr("\\{[^{}]*\\}", x))[[1]]
+  data.frame(id   = as.integer(sub('.*"Id":([0-9]+).*', "\\1", rec)),
+             cid  = as.integer(sub('.*"ContestId":([0-9]+).*', "\\1", rec)),
+             name = sub('.*"Description":"([^"]*)".*', "\\1", rec),
+             stringsAsFactors = FALSE)
+})
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 knit_print.data.frame <- function(x, ...) {
@@ -284,22 +304,6 @@ empty, and that is what the rest of this chapter is about.</p>
 '))
 
 ## ---- cvr-envelope
-L   <- readLines("data/raw/cvr-session-example.json", warn = FALSE)
-shp <- read.csv("data/raw/export-shape.csv", stringsAsFactors = FALSE)
-SH  <- function(k) shp$value[shp$name == k]
-ncon <- length(grep('^            "Id": ', L))     # contests on this card
-
-# the dictionary that turns a CandidateId into a person
-cm <- local({
-  x   <- paste(readLines("data/raw/CandidateManifest.json", warn = FALSE),
-               collapse = "")
-  rec <- regmatches(x, gregexpr("\\{[^{}]*\\}", x))[[1]]
-  data.frame(id   = as.integer(sub('.*"Id":([0-9]+).*', "\\1", rec)),
-             cid  = as.integer(sub('.*"ContestId":([0-9]+).*', "\\1", rec)),
-             name = sub('.*"Description":"([^"]*)".*', "\\1", rec),
-             stringsAsFactors = FALSE)
-})
-
 # The record is nested JSON, and the nesting is part of what it says: a
 # session contains a card, a card contains contests. Flattening to dotted
 # paths keeps that while making each field readable on its own line.
@@ -534,57 +538,29 @@ names(o) <- c("first choice", "voters", "% who ranked only that candidate")
 o
 
 ## ---- d3-bullet
-rowsA <- paste(sprintf('{"k":"%s","v":%.1f,"lab":"%s%% of %s voters"}',
-                       sub(",.*", "", bul$candidate), bul$bullet,
-                       pc(bul$bullet), n(bul$voters)), collapse = ",")
-uv <- tapply(s$ballots, ru, sum)
-rowsB <- paste(sprintf('{"k":"%s ranked","v":%.1f,"lab":"%s ballots"}',
-                       names(uv), 100 * as.vector(uv) / BAL,
-                       n(as.vector(uv))), collapse = ",")
-cat(sprintf('
-<div id="cvr" style="position:relative;margin:1em 0">
- <div style="margin-bottom:6px">
-  <button id="cA" style="font:12px inherit;padding:4px 10px;margin-right:4px;cursor:pointer">Bullet voting, by first choice</button>
-  <button id="cB" style="font:12px inherit;padding:4px 10px;cursor:pointer">How many rankings were used</button>
- </div>
-</div>
-<script>
-(function(){
-const A=[%s], B=[%s];
-const W=760,H=360,M={t:14,r:190,b:36,l:150};
-const svg=d3.select("#cvr").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().range([M.l,W-M.r]);
-const y=d3.scaleBand().range([M.t,H-M.b]).padding(0.22);
-const gx=svg.append("g").attr("transform",`translate(0,${H-M.b})`);
-const gy=svg.append("g").attr("transform",`translate(${M.l},0)`);
-const bars=svg.append("g"), labs=svg.append("g");
-function draw(d,color){
-  x.domain([0,d3.max(d,q=>q.v)*1.15]); y.domain(d.map(q=>q.k));
-  gx.transition().duration(500).call(d3.axisBottom(x).ticks(6).tickFormat(v=>v+"%%"));
-  gy.transition().duration(500).call(d3.axisLeft(y).tickSize(0))
-    .selectAll("text").attr("font-size","11px");
-  bars.selectAll("rect").data(d,q=>q.k).join(
-    e=>e.append("rect").attr("x",M.l).attr("y",q=>y(q.k)).attr("height",y.bandwidth()).attr("rx",2).attr("width",0),
-    u=>u, ex=>ex.transition().duration(250).attr("width",0).remove())
-    .transition().duration(600)
-    .attr("y",q=>y(q.k)).attr("height",y.bandwidth())
-    .attr("width",q=>x(q.v)-M.l).attr("fill",color);
-  labs.selectAll("text").data(d,q=>q.k).join(
-    e=>e.append("text").attr("font-size","11px").attr("fill","#555").attr("opacity",0),
-    u=>u, ex=>ex.remove())
-    .transition().duration(600)
-    .attr("x",q=>x(q.v)+6).attr("y",q=>y(q.k)+y.bandwidth()/2+4)
-    .attr("opacity",1).text(q=>q.lab);
-}
-draw(A,"#C41230");
-d3.select("#cA").on("click",()=>draw(A,"#C41230"));
-d3.select("#cB").on("click",()=>draw(B,"#2c7fb8"));
-})();
-</script>
+# Bullet voting by first choice, drawn with the shared library
+# (_lib/dd-charts.js): one bar per candidate, ordered by first-preference
+# votes, so the gradient the argument turns on reads top to bottom.
+# d3 = FALSE: the hand-written ballot figure above already loaded d3.
+bfig <- data.frame(candidate = sub(",.*", "", bul$candidate),
+                   bullet = round(bul$bullet, 1),
+                   voters = bul$voters,
+                   stringsAsFactors = FALSE)
+dd_fig("cvrbul", "bar", bfig, d3 = FALSE,
+  size = list(w = 760, m = list(l = 110, r = 150)),
+  rowHeight = 44,
+  x = list(field = "bullet", domain = c(0, 90), fmt = "pct0", ticks = 6,
+           label = "% of that candidate's voters who ranked nobody else"),
+  y = list(field = "candidate", band = TRUE),
+  series = list(class = "series-2"),
+  valueLabels = TRUE,
+  tip = dd_tip(c(voters = "first-preference voters",
+                 bullet = "ranked nobody else"),
+               fmt = c(voters = "comma", bullet = "pct1"),
+               title = "candidate"))
+cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Candidates are ordered by how many first-preference votes they received.</p>
-', rowsA, rowsB))
+Hover a bar for the candidate\u2019s first-preference count.</p>')
 
 ## ---- bullet-static
 par(mar = c(4, 8.5, 1, 2))

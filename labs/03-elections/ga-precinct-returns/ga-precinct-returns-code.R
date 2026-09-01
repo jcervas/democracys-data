@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -24,17 +25,6 @@ NPREC <- nrow(p); NCO <- nrow(co)
 TOTD <- sum(p[[DEM]]); TOTR <- sum(p[[REP]]); TOTL <- sum(p[[LIB]])
 TOTV <- sum(p$total)
 MARGIN <- TOTD - TOTR
-
-np <- p[p$total > 0, ]
-
-# where the extremes actually are: the tail is rural, the cap is metropolitan
-ONEPREC  <- co$county[co$precincts == 1]
-METRO    <- c("Fulton", "DeKalb", "Gwinnett", "Cobb", "Clayton")
-BIGROW   <- np[which.max(np$total), ]
-METROMAX <- max(np$total[np$county %in% METRO])
-METROMED <- median(np$total[np$county %in% METRO])
-RESTMED  <- median(np$total[!np$county %in% METRO])
-MOSTPREC <- co$county[which.max(co$precincts)]
 
 # vote methods
 mm <- tapply(vm$votes, list(vm$candidate, vm$method), sum)
@@ -72,23 +62,6 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 s24 <- read.csv("data/derived/ga2024_structure.csv", stringsAsFactors = FALSE)
 g <- function(d, k) d$value[d$item == k]
 
-## ---- clean-precincts
-o <- p[p$county == "Baker", c("county", "precinct", "registered",
-                              "ballots_cast", REP, DEM, "total",
-                              "dem_two_party_pct")]
-o$registered <- n(o$registered); o$ballots_cast <- n(o$ballots_cast)
-o[[REP]] <- n(o[[REP]]); o[[DEM]] <- n(o[[DEM]]); o$total <- n(o$total)
-names(o) <- c("county", "precinct", "registered", "ballots cast", "Trump",
-              "Biden", "presidential votes", "Dem two-party %")
-o
-
-## ---- clean-methods
-o <- vm[vm$county == "Baker" & vm$precinct == "Anna", ]
-o <- o[order(o$candidate, o$method), c("county", "precinct", "candidate",
-                                       "party", "method", "votes")]
-o <- o[o$candidate %in% c(DEM, REP), ]
-o
-
 ## ---- vintages
 data.frame(
   the_same_thing = c("the county", "the office", "how a ballot was cast",
@@ -111,31 +84,6 @@ o
 ## ---- structure
 o <- sx
 names(o) <- c("what the source contains", "value")
-o
-
-## ---- sizes
-data.frame(
-  quantity = c("Precincts with at least one presidential vote",
-               "Smallest", "25th percentile", "Median", "75th percentile",
-               "Largest", "Precincts recording zero presidential votes"),
-  value = c(n(nrow(np)), n(min(np$total)),
-            n(quantile(np$total, .25)), n(median(np$total)),
-            n(quantile(np$total, .75)), n(max(np$total)),
-            n(sum(p$total == 0))))
-
-## ---- biggest
-o <- head(np[order(-np$total), c("county", "precinct", "total")], 6)
-o$one <- ifelse(o$county %in% ONEPREC, "yes", "no")
-o$total <- n(o$total)
-names(o) <- c("county", "precinct", "presidential votes",
-              "whole county is one precinct")
-o
-
-## ---- county-spread
-o <- rbind(head(co[order(-co$precincts), c("county", "precincts", "total")], 4),
-           head(co[order(co$precincts),  c("county", "precincts", "total")], 3))
-o$total <- n(o$total)
-names(o) <- c("county", "precincts", "presidential votes")
 o
 
 ## ---- totals
@@ -162,46 +110,32 @@ names(o) <- c("how the ballot was cast", sub(" .*", "", DEM),
 o[order(-mtot), ]
 
 ## ---- d3-methods
+# The method split, drawn with the shared library: one dumbbell per vote
+# method, ordered by channel size — Biden's dot against Trump's on a single
+# vote scale, so channel size and channel disagreement read off one mark.
 ord <- order(-mtot)
-rows <- paste(sprintf('{"m":"%s","d":%d,"r":%d,"s":%.1f}',
-                      short[ord], mdem[ord], mrep[ord], mshare[ord]),
-              collapse = ",")
-cat(sprintf('
-<div id="gam" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const d=[%s];
-const W=760,H=360,M={t:26,r:24,b:40,l:150};
-const svg=d3.select("#gam").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const y0=d3.scaleBand().domain(d.map(q=>q.m)).range([M.t,H-M.b]).padding(0.28);
-const y1=d3.scaleBand().domain(["d","r"]).range([0,y0.bandwidth()]).padding(0.12);
-const x=d3.scaleLinear().domain([0,d3.max(d,q=>Math.max(q.d,q.r))*1.14]).range([M.l,W-M.r]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d3.format(".2s")));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y0).tickSize(0))
-  .selectAll("text").attr("font-size","11px");
-const col={d:"#2166AC",r:"#B2182B"};
-const g=svg.append("g").selectAll("g").data(d).join("g")
-  .attr("transform",q=>`translate(0,${y0(q.m)})`);
-g.selectAll("rect").data(q=>[{k:"d",v:q.d},{k:"r",v:q.r}]).join("rect")
-  .attr("x",M.l).attr("y",q=>y1(q.k)).attr("height",y1.bandwidth()).attr("rx",1)
-  .attr("fill",q=>col[q.k]).attr("width",0)
-  .transition().duration(700).attr("width",q=>x(q.v)-M.l);
-g.append("text").attr("x",q=>x(Math.max(q.d,q.r))+7)
-  .attr("y",y0.bandwidth()/2+4).attr("font-size","11px").attr("fill","#555")
-  .text(q=>q.s.toFixed(1)+"%% Dem two-party");
-svg.append("rect").attr("x",M.l).attr("y",6).attr("width",10).attr("height",10).attr("fill",col.d);
-svg.append("text").attr("x",M.l+15).attr("y",15).attr("font-size","11px").text("Biden");
-svg.append("rect").attr("x",M.l+70).attr("y",6).attr("width",10).attr("height",10).attr("fill",col.r);
-svg.append("text").attr("x",M.l+85).attr("y",15).attr("font-size","11px").text("Trump");
-})();
-</script>
+d <- data.frame(method = short[ord],
+                dem = as.vector(mdem[ord]), rep = as.vector(mrep[ord]),
+                total = as.vector(mtot[ord]),
+                share = round(as.vector(mshare[ord]), 1),
+                stringsAsFactors = FALSE)
+dd_fig("gam", "dumbbell", d,
+  size = list(w = 760, m = list(t = 28, r = 30, b = 44, l = 130)),
+  rowHeight = 52,
+  y = list(field = "method"),
+  a = list(field = "dem", label = "Biden"),
+  b = list(field = "rep", label = "Trump"),
+  aClass = "dem", bClass = "gop",
+  x = list(fmt = "comma", label = "votes", zero = TRUE),
+  tip = dd_tip(c(dem = "Biden", rep = "Trump",
+                 total = "ballots in this channel",
+                 share = "Dem two-party share"),
+               fmt = c(dem = "comma", rep = "comma", total = "comma",
+                       share = "pct1"),
+               title = "method"))
+cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-The same electorate, split by how the ballot was cast. No other precinct dataset
-carries this column.</p>
-', rows))
+Hover a pair of dots for the exact counts and the two-party split.</p>')
 
 ## ---- methods-static
 ord <- order(-mtot)
@@ -211,19 +145,6 @@ barplot(rbind(rev(mdem[ord]), rev(mrep[ord])) / 1000, beside = TRUE,
         col = c("#2166AC", "#B2182B"), xlab = "votes (thousands)")
 legend("bottomright", c("Biden", "Trump"), fill = c("#2166AC", "#B2182B"),
        bty = "n", cex = 0.85)
-
-## ---- counterfactual
-data.frame(
-  `if only these ballots counted` = c(paste0(short[match(ED, meth)], " only"),
-                                      paste0(short[match(AV, meth)], " only"),
-                                      paste0(short[match(MB, meth)], " only"),
-                                      "All ballots"),
-  `two-party margin` = c(
-    paste0(sub(" .*", "", REP), " +", n(mrep[ED] - mdem[ED])),
-    paste0(sub(" .*", "", REP), " +", n(mrep[AV] - mdem[AV])),
-    paste0(sub(" .*", "", DEM), " +", n(mdem[MB] - mrep[MB])),
-    paste0(sub(" .*", "", DEM), " +", n(MARGIN))),
-  check.names = FALSE)
 
 ## ---- recount-tot
 o <- tot
@@ -249,14 +170,6 @@ o$change <- ifelse(o$change > 0, paste0("+", n(o$change)), n(o$change))
 o <- o[, c("county", "candidate", "original", "recount", "change", "pct_change")]
 names(o) <- c("county", "candidate", "original", "recount", "change", "% change")
 o
-
-## ---- nesting
-data.frame(
-  unit = c("Census block", "Precinct"),
-  `drawn by` = c("The Census Bureau", "County election officials"),
-  `drawn when` = c("Once a decade", "Whenever the county needs to"),
-  `must respect the other?` = c("No", "No"),
-  check.names = FALSE)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt"), tone = "frozen"))

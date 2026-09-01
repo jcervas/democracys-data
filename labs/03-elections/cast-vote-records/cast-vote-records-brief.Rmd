@@ -1,7 +1,7 @@
 ---
 title: "Cast Vote Records and Ranked-Choice Counting"
 type: brief
-subtitle: "A congressional election recounted from the ballots, and what the ballots say about the campaigns"
+subtitle: "A congressional election recounted from the ballots themselves, and what the winner's majority is a majority of"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,37 +16,51 @@ dd_read_chunks("cast-vote-records-code.R")
 ```{r setup, include=FALSE}
 ```
 
-The instruction at the top of Alaska's ballot is an offer: **rank as many or as few candidates as you like.** Four candidates were listed for the state's single seat in the U.S. House in November 2024, and a voter could put a number beside one of them, or two, or all four.
+An election result is a set of totals, because the ballot is secret and a total is what remains once the ballots are put away. Alaska does not put them away. Since adopting ranked-choice voting, the state has published its **cast vote record**: one row per scanned ballot, showing every ranking the voter marked. No name and no address, but the actual choices, one ballot at a time. Nothing else in American election data comes this close to the individual act.
 
-`r n(max(s$ballots))` Alaskans filled in exactly one oval and left the rest of the grid blank. That was the single commonest piece of paper in the election. The second commonest was the same thing with a different name marked.
+The claim you have heard about ranked-choice voting is its promise: rank as many candidates as you like, support your real first choice, and the eventual winner will hold a majority. Every part of that is checkable against the ballots of one congressional election. **What does a ballot-level record let you see that no total can — and when the winner's majority arrives, what is it a majority of?**
 
-We know this because Alaska publishes its ballots.
+## The test
 
-## The closest thing to a public record of individual votes
+The contest is the November 2024 race for Alaska's single seat in the U.S. House: Mary Peltola, the Democratic incumbent, against Nick Begich, with two minor candidates. The data is the State of Alaska, Division of Elections cast vote record for that election, the JSON export the state's voting equipment writes, published at a stable address (<https://www.elections.alaska.gov/results/24GENR/>). Beside it sits the state's official round-by-round report, a PDF, typed into tables by hand and used below to grade a recount.
 
-Elections publish **totals**, because the ballot is secret and a total is what is left once the ballots are put away. Alaska does not put them away.
+Why this source, of all sources: it is the bottom rung of the ladder of election data, the only public American election file in which a row is one ballot. [The levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html) walks that ladder rung by rung. Everything this brief measures (how many rankings voters used, which candidates shared a ballot, where eliminated candidates' votes went) is a property of single pieces of paper. A total has already destroyed it.
 
-Since adopting ranked-choice voting, the state publishes its **cast vote record**: one row per scanned ballot, showing every ranking on it. No name, no address — but the actual choices, one voter at a time. Nothing else in American election data comes this close to the individual act.
-
-The contest here is the 2024 race for Alaska's at-large House seat: **Mary Peltola**, the Democratic incumbent, against **Nick Begich**, with two minor candidates. The question is what people did with the offer at the top of the ballot.
-
-It is worth asking because **ranked-choice voting is a claim about what a ballot can express**, and the system is spreading. Maine, Alaska, and dozens of cities use it, with repeal fights running in several of them. The claim is that you can support your real first choice and still have a say between the finalists, so a candidate must build a coalition rather than mobilize a faction. Whether that works is an empirical question about what voters write down, and until states published cast vote records it could not be answered at all. A total cannot tell you whether anybody's second preference mattered.
-
-The count itself also becomes contestable in a new way. Under plurality, counting is addition. Under instant-runoff it is a procedure with rules about exhausted ballots, skipped ranks and overvotes. Those rules live in a document rather than in the data.
+## The data
 
 ```{r ballot-photo, out.width="100%", fig.align="center"}
 ```
 
-**Figure 1. The instrument: Alaska's own demonstration ranked-choice ballot.** Candidates down the side, ranking columns across; the 2024 contest listed `r length(CAND)` candidates and allowed `r length(RK)` rankings. The instructions at the top are the ones every Alaskan read before marking anything, and the first of them is the offer this chapter is about. Every row of the file below is one of these grids, flattened. State of Alaska, Division of Elections, retrieved 10 August 2026.
+**Figure 1. The instrument: Alaska's own demonstration ranked-choice ballot**, cropped to the instructions and the House contest. Candidates run down the side, ranking columns across, and the offer sits at the top: rank as many or as few as you like. Every row of the file below is one of these grids, flattened. State of Alaska, Division of Elections, retrieved 10 August 2026.
 
-## One row is one grid
+The export is large and raw: `r format(SH("cvr_files"), big.mark = ",")` ballot files, `r pc(SH("bytes_uncompressed") / 1e9, 2)` GB uncompressed, one session per scanned ballot, with marks nested inside contests nested inside cards. One session is kept verbatim in this brief's data, with four identifying fields masked. Its envelope:
+
+```{r cvr-envelope}
+```
+
+The ballot carries `r ncon` contests and this brief wants one. Here it is, complete:
+
+```{r cvr-contest}
+```
+
+Nothing in that record is readable on its own. `CandidateId` is a number whose meaning lives in a separate file, `CandidateManifest.json`, listing `r nrow(cm)` candidates across every contest:
+
+```{r cvr-lookup}
+```
+
+Turning `r format(SH("cvr_files"), big.mark = ",")` such files into a table took five judgments, each a rule somebody chose. **Keep one contest** of the `r ncon` on each ballot. **Believe `IsVote`, not the ink**: each mark carries its darkness (`MarkDensity`) and the scanner's verdict, and the build takes the verdict rather than second-guessing it with its own threshold. **Decide what two marks in one column mean**: the build writes `OVERVOTE` at that rank, then sorts the ranks and closes single gaps. Alaska's tabulator applies further rules about skipped ranks that this reconstruction does not, and that honest difference is measured below. **Translate numbers into names** through the manifest.
+
+**Then destroy what is left.** Ballots with identical rankings are collapsed to one row with a count, and precinct and tabulator identifiers are dropped before anything reaches disk. That last step is for privacy, not tidiness. A record with no name on it is not the same as a record nobody can identify; a distinctive ranking in a small precinct can narrow down who cast it. The collapse cannot be run backwards, which is the point of it.
+
+What ships is three tables. `sequences.csv` has one row per distinct ranking: a `ballots` count, then `rank1` through `rank4`, one candidate name per column the voter used. `official_rounds.csv` holds the state's `votes` per `candidate` per `round`, and `official_transfers.csv` records where each `eliminated` candidate's ballots were `transferred_to` — both typed from the PDF report. The single ballot above becomes one line among `r n(SEQ)`:
+
+```{r cvr-clean}
+```
+
+And the commonest lines in the file are the shortest ones:
 
 ```{r one-row}
 ```
-
-One row is one **ranking sequence** and how many ballots carried it. The most common in Alaska was **"Begich, and nobody else."** The second most common was **"Peltola, and nobody else."**
-
-A row of that table is a grid with some ovals filled. Here are two of them, beside the record each becomes: the commonest ballot in the election, and the commonest one that used every column.
 
 ```{r ballot-static, eval=!knitr::is_html_output(), fig.height=4.3}
 ```
@@ -54,127 +68,44 @@ A row of that table is a grid with some ovals filled. Here are two of them, besi
 ```{r ballot-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. Two ballots, and the two records they become.** On the left, the commonest marked grid in the election: one ranking used, `r n(b_one$ballots)` ballots identical to it. On the right, the commonest grid that used all `r length(RK)` columns, cast `r n(b_all$ballots)` times. Underneath each is the row it becomes in the file — a count, then one candidate name per ranking, with an empty field for every column the voter left blank. Everything a cast vote record knows about a voter is in those few characters.
+**Figure 2. Two ballots, and the two records they become.** On the left, the commonest marked grid in the election: one ranking used, `r n(b_one$ballots)` ballots identical to it. On the right, the commonest grid that used all `r length(RK)` columns, cast `r n(b_all$ballots)` times. Everything a cast vote record knows about a voter is the few characters underneath each grid.
 
-The file behind this chapter has been collapsed one step further than the state's. Precinct and tabulator identifiers were dropped and identical ballots grouped, because a distinctive ranking in a small precinct can narrow down who cast it. **A record with no name on it is not the same as a record nobody can identify.**
+> **Before you read on, commit to two answers.** Alaska's ballot offered
+> `r length(RK)` rankings. First: **what share of the voters in this race used
+> exactly one?** Second: **whose supporters stop after one ranking more
+> often** — the front-runner's, or the smallest candidate's? Write both down.
 
-## A file that exists because one state decided it should
-
-**Nothing obliged Alaska to publish this.** No federal law requires a state to release its ballots, and almost no state does. What the Division of Elections put out after the 2024 general election is the export its voting equipment writes anyway. It is a Dominion JSON dump, one session per scanned ballot, with marks nested inside contests nested inside cards. That had always been an internal by-product of the tabulator. It is a public record now because somebody decided the transparency was worth the trouble.
-
-The scale is worth stating even though it cannot be checked from anything shipped here: the build script records an export of roughly 1.6 GB across a couple of thousand files. Beside it sits a second source of a wholly different character. The official round-by-round result, against which this chapter's own count is checked, is a **PDF**, and somebody had to read it and type its numbers into a table.
-
-**It is the appropriate source because the question is about individuals and nothing else in American elections is.** What Alaskans did with the offer at the top of the ballot is not a property of a precinct or a county. It is a fact about single pieces of paper, and a total has already destroyed it.
-
-The improvement that would matter is not a better file but more of them: other states, other years, other contests. Everything below is one race in one state that adopted this system by initiative, and the voters in it are not a sample of anything. The improvement that would matter most is impossible on purpose. To know *why* two-thirds of these ballots used one ranking you would need the voter attached to the ballot, and the secret ballot is the deliberate guarantee that no such file will ever exist.
-
-**Two challenges, and the second is the one the chapter has to live with.** The first is that this file is not the certified count, and Alaska says so. Ballots counted by hand are not in the export, and write-in names are not shown. So the `r n(BAL)` records here are not this contest's turnout.
-
-Nor do the ballots count themselves. The rules that turn these rows into a winner live in a tabulation manual rather than in any column. They cover skipped ranks, two marks in one column, and a ballot that runs out of continuing candidates. That is why a reconstruction from the ballots and the state's own total do not land on precisely the same number.
-
-The second challenge is the deeper one. A ballot is a record of a choice and contains nothing about the reason for it. So the central question of this chapter is not one this record can answer: whether a single ranking is confusion or calculation. It can only be narrowed, by looking at which voters left the other columns blank, and the narrowing is the argument.
-
-**The cleaning was done for privacy rather than for tidiness.** The build is in Python instead of base R for a plain reason: base R has no JSON reader, and the source is JSON. What it writes is `r n(SEQ)` rows standing in for `r n(BAL)` ballots, with the precinct and tabulator identifiers removed before anything reached disk. That collapse loses nothing for any question asked here, and cannot be undone for the question of who cast what, which is the point of doing it.
-
-It is worth noticing how unusual that is. Most of the cleaning in this book is repair. This is a deliberate destruction of information, done by the people teaching from the file rather than by the state that released it. A reader rebuilding this would refetch the export, re-run the Python, and retype the official results out of the PDF, which is the only part of the pipeline no script can do for them.
-
-The two ways in cost different things. The export is a public download at a stable address, so it can be fetched again and the count re-run against it. The official rounds were typed by a person out of a document. They cannot be fetched again, cannot be compared automatically, and carry no trail back to the page they came from.
-
-That matters more here than it usually would. A mistyped digit in those tables would not announce itself as a typo. It would show up as a gap between Alaska's count and this chapter's reconstruction, which is precisely the quantity the tables were transcribed in order to measure.
-
-## What one ballot looks like when a scanner writes it down
-
-The export itself is too large to ship here, but one ballot out of it is not. A single session is kept verbatim from the download, with four fields replaced by the word `MASKED`: the tabulator, the batch, the record number and the image path. They are masked for the same reason the built file drops them, and nothing else on the record has been touched.
-
-```{r cvr-envelope}
-```
-
-That is one session of `r format(SH("cvr_files"), big.mark = ",")` ballot files, `r length(L)` lines long.
-
-There are `r ncon` contests on that ballot and this chapter wants one of them. Here it is, complete, exactly as it appears inside the record above.
-
-```{r cvr-contest}
-```
-
-That is a voter ranking three candidates, and the file does not contain the name of any of them. `CandidateId` is a number whose meaning lives in a different file in the same zip, `CandidateManifest.json`, which lists `r nrow(cm)` candidates across every contest on the ballot. Contest `7` is likewise a number, resolved in a third file. Nothing about the record is readable without its dictionaries.
-
-```{r cvr-lookup}
-```
-
-And that is the row. The same ballot, in the file this chapter reads, is one line among `r n(SEQ)`:
-
-```{r cvr-clean}
-```
-
-Six judgments stand between the two, and every one of them is a rule somebody chose.
-
-**Take the contest, and leave the rest of the ballot alone.** A session carries `r ncon` contests; `r ncon - 1` of them are discarded on sight. The whole apparatus is per-ballot, so the decision to study one race is made by a single equality test buried in a loop.
-
-**Believe `IsVote`, not the ink.** Each mark also carries `MarkDensity`, how dark the oval was, and `IsAmbiguous`. Those are facts about a piece of paper going through a scanner. `IsVote` is the machine's verdict on them, and the build takes the verdict rather than second-guessing it with a density threshold of its own. A different threshold would be a different election.
-
-**Group by rank, and decide what two marks in one column mean.** Ranks are not positions in a list; they are numbered columns on a grid, and a voter can fill two ovals in the same column. The build treats that as an overvote at that rank and writes `OVERVOTE` in the cell. Nothing in the file says to do this. The state's own tabulator has its own rule, and the difference between the two rules is part of the gap between this chapter's count and Alaska's.
-
-**Sort the ranks and close the gaps.** A voter who marks a first and a third choice, leaving the second blank, becomes a two-long sequence here. Alaska's tabulator applies a further rule about two or more skipped ranks that this reconstruction does not. That is the honest reason the two counts differ by about a tenth of a percent rather than not at all.
-
-**Translate the numbers into names.** `r ids[1]` becomes `r cm$name[cm$id == ids[1]]` by a lookup into a file that is not the data. If the manifest and the ballots ever came from different exports, every ranking in this chapter would be attributed to the wrong candidate and the totals would still be correct.
-
-**Then destroy what is left.** Ballots with identical sequences are collapsed into one row with a count, and the identifiers never reach disk. That takes `r n(SH("cvr_files"))` files and `r pc(SH("bytes_uncompressed") / 1e9, 2)` GB down to `r n(SEQ)` rows, and the compression is not the point of it. The point is that the operation cannot be run backwards. Every question in this chapter survives the collapse; the question of who cast which ballot does not, and that is why it was done.
-
-## The whole election in `r n(SEQ)` rows
+## What it says about democracy
 
 ```{r shape}
 ```
 
-**`r n(BAL)` ballots collapse to `r n(SEQ)` distinct patterns.** `r length(CAND)` candidates and `r length(RK)` ranks allow far more combinations than that; Alaskans used `r n(SEQ)` of them, and most used one of the first few.
-
-## Two-thirds declined the offer
+**`r n(BAL)` ballots collapse to `r n(SEQ)` distinct patterns**, and most voters used one of the first few:
 
 ```{r ranks}
 ```
 
-Ignore the `r n(BLANK)` ballots that left this contest blank entirely. Of the `r n(VOTED)` that voted in it, **`r n(ONE)` ranked exactly one candidate, or `r pc(BULLET)`%.**
+Set aside `r n(BLANK)` ballots that left this contest blank. Of the `r n(VOTED)` that voted in it, `r n(ONE)` ranked exactly one candidate: `r pc(BULLET)`%. **Given `r length(RK)` rankings, two-thirds of Alaskans used one.** Neither the system's advocates nor its opponents advertise that number. Hold the obvious explanation, a confusing ballot, because the file can test it, and the test comes out the other way.
 
-**Given `r length(RK)` rankings, two-thirds of Alaskans used one.** Neither the advocates nor the opponents of ranked-choice voting advertise that number. The system's entire promise is that you can express a second preference without wasting your vote, and most voters did not.
-
-The obvious explanation is that the system is confusing. It is worth holding that thought, because the file can test it, and the test comes out the other way.
-
-First, though, the count itself.
-
-## Counting a congressional election from the ballots
-
-Instant-runoff is short enough to state in a sentence. Count everyone's top **continuing** choice. If nobody has a majority, eliminate the lowest and look at those ballots' next choice. Repeat.
+First, the count. Instant-runoff fits in three sentences. Count everyone's top continuing choice. If nobody has a majority, eliminate the lowest candidate and read those ballots' next choice. Repeat.
 
 ```{r our-count}
 ```
 
-**`r names(fin)[1]` wins with `r pc(WINPCT, 2)`%.** That is a congressional election recounted from the ballots themselves, by a rule that fits in three sentences.
-
-Now check it against the state.
+**`r names(fin)[1]` wins with `r pc(WINPCT, 2)`%** — a congressional election recounted from the ballots as this page renders. Now check it against the state:
 
 ```{r official}
 ```
 
-**Alaska's official final round: `r offf$candidate[1]` `r pc(offf$pct[1], 2)`%, `r offf$candidate[2]` `r pc(offf$pct[2], 2)`%.** Ours matched to two decimal places.
-
 ```{r gap}
 ```
 
-The **percentages** match exactly. The **counts** do not: ours carry `r n(GAP)` more ballots into the final round.
-
-That gap is not a bug to fix. It is the point. The state's tabulator applies rules this recount does not, printed on the first page of its own report. It excludes unresolved write-ins, treats a ballot as exhausted when two or more ranks are skipped, and handles overvotes a specific way.
-
-**The rules are not in the data. They are in a separate document, and they change the count.** Here by `r pc(100 * GAP / ACTIVEF, 3)`%. In a closer race, by the winner.
-
-## Where the eliminated candidates' votes went
+The percentages match Alaska's official result to two decimal places. The counts do not: this recount carries `r n(GAP)` more ballots into the final round, because the state's tabulator applies printed rules about write-ins, skipped ranks and overvotes that the three-sentence version does not. **The rules are not in the data. They live in a separate document, and they change the count** — here by `r pc(100 * GAP / ACTIVEF, 3)`%, in a closer race by the winner.
 
 ```{r transfers}
 ```
 
-When John Wayne Howe was eliminated, his `r n(HOWE)` ballots split — and the largest single destination was **nowhere**. `r n(EXH)` of them, **`r pc(100 * EXH / HOWE)`%, were exhausted**: those voters had ranked nobody else, so their ballots left the count before the decisive round.
-
-That is the trade at the heart of ranked-choice voting. It lets you express more than one preference. It does not make you.
-
-The whole count is three columns and a set of pipes. Watch the gray one.
+When John Wayne Howe was eliminated, his `r n(HOWE)` ballots split, and the largest single destination was **nowhere**: `r n(EXH)` of them, `r pc(100 * EXH / HOWE)`%, were exhausted, because those voters had ranked nobody else. Their ballots left the count before the decisive round. That is the trade at the heart of ranked-choice voting: it lets you express more than one preference, and it does not make you.
 
 ```{r flow-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -182,42 +113,26 @@ The whole count is three columns and a set of pipes. Watch the gray one.
 ```{r flow-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Alaska's official count, all three rounds drawn to one scale.** Each column is a round; each band is ballots moving from one round to the next. The gray band is the ballots that leave: `r n(OUT3)` of the `r n(TOT)` that started, `r pc(100 * OUT3 / TOT)`% of the count, made up of `r n(OUT3 - OVR)` exhausted ballots and `r n(OVR)` overvotes. Because every band is drawn to the same scale, the width of the gray one is the honest size of the thing the argument about ranked-choice voting is mostly about.
+**Figure 3. Alaska's official count, all three rounds drawn to one scale.** A flow of bands, because the count is a process: each column is a round, each band is ballots moving to the next. Every band is drawn to the same scale, so the gray one is exactly as wide as it truly is. The gray band is the `r n(OUT3)` ballots that leave: `r pc(100 * OUT3 / TOT)`% of the `r n(TOT)` that started, made of `r n(OUT3 - OVR)` exhausted ballots plus `r n(OVR)` overvotes.
 
-## Two things only individual records can show
+Two smaller things only ballot-level data can show. `r n(sum(cross$ballots))` ballots ranked one major candidate first and the other second — `r pc(100*sum(cross$ballots)/VOTED)`% of everyone who voted in the race, one voter in twenty taking the cross-divide offer the system is supposed to reward:
 
 ```{r crossover}
 ```
 
-**The crossover.** `r n(sum(cross$ballots))` ballots ranked one major candidate first and the other second. That is `r pc(100*sum(cross$ballots)/VOTED)`% of everyone who voted in this race. Ranked-choice voting is supposed to reward candidates who can be somebody's second choice across the divide. One voter in twenty took the offer.
+And `r n(sum(dup$ballots))` ballots named the same candidate twice; the tabulator skips the duplicate, the ballots count normally, and no total would ever show the behavior:
 
 ```{r dupes}
 ```
 
-**And `r n(sum(dup$ballots))` ballots name the same candidate twice.** Nothing stopped them: the scanner records the marks it sees, and a voter who wants to be very sure can fill the same column twice. The tabulator skips the duplicate and moves on, so these ballots count normally — but the behavior is in the record, and **no total would ever show it**.
-
-Which brings the argument back to the two-thirds. `r pc(BULLET)`% of voters ranked one candidate and stopped. If that is confusion, meaning people did not understand the offer at the top of the ballot, then the rate should be roughly the same whichever candidate they marked. Confusion has no reason to prefer a front-runner.
-
-> **Before you read on, commit to an answer.** The next table splits that
-> `r pc(BULLET)`% by who the voter put first. Do
-> `r sub(",.*", "", bul$candidate[1])`'s voters and
-> `r sub(",.*", "", bul$candidate[nrow(bul)])`'s voters look alike?
-> Write down two things: whether the gap between them is small — within a few
-> points, as confusion would give you — or large; and if large, whose supporters
-> stopped after one ranking more often. Then turn the page.
-
-## Who stops after one
+Now the prediction. If two-thirds of voters stopping after one ranking is confusion, the rate should be roughly flat across candidates, because confusion has no reason to prefer a front-runner. Split the bullet voters by who they ranked first:
 
 ```{r bullet-table}
 ```
 
-They do not look alike at all. Most readers guess the two shares land within a few points of each other, because that is what a confusing ballot would produce. The gap is `r pc(bul$bullet[1] - bul$bullet[nrow(bul)], 0)` points wide, and it runs the opposite way from the guess people make when they assume the smallest candidate's supporters were the most lost.
+**`r pc(bul$bullet[1])`% of `r sub(",.*", "", bul$candidate[1])`'s voters ranked nobody else, against `r pc(bul$bullet[nrow(bul)])`% of `r sub(",.*", "", bul$candidate[nrow(bul)])`'s**, and the rate falls cleanly with candidate size. That is not confusion's flat signature. It is arithmetic voters appear to have done. If your candidate is the front-runner, a second ranking will almost never be read. If your candidate polls at one percent, the second ranking is the only part of your ballot that will do anything.
 
-**`r pc(bul$bullet[1])`% of `r sub(",.*", "", bul$candidate[1])`'s voters ranked nobody else. `r pc(bul$bullet[nrow(bul)])`% of `r sub(",.*", "", bul$candidate[nrow(bul)])`'s did.** And the pattern runs cleanly down the ballot: the bigger your candidate, the likelier you are to stop after one.
-
-**That is not confusion. It is arithmetic that voters appear to have done.** If your candidate is the front-runner, a second ranking has almost no chance of ever being read. It only matters if your first choice is eliminated, and your first choice is not going to be eliminated. Ranking nobody else costs you nothing. If your candidate is polling at one percent, a second ranking is the only part of your ballot that will actually do anything.
-
-There is a second reading, and this file cannot separate it from the first: **campaign instruction.** "Rank one and stop" messaging is a documented tactic in RCV races, and a twenty-point gap between the two major candidates' supporters is exactly what it would produce. Either way, the conclusion is the same and it is the one the totals hide: **these ballots are showing you the campaigns' strategies, not just the voters' preferences.**
+A second reading, which this file cannot rule out, is campaign instruction — "rank one and stop" is a documented tactic. Either way the conclusion is the same: **these ballots show the campaigns' strategies, not just the voters' preferences.**
 
 ```{r d3-bullet, results='asis', eval=knitr::is_html_output()}
 ```
@@ -225,42 +140,43 @@ There is a second reading, and this file cannot separate it from the first: **ca
 ```{r bullet-static, eval=!knitr::is_html_output(), fig.height=3.4}
 ```
 
-**Figure 4. Bullet voting is not spread evenly across candidates.** The share of each candidate's first-preference voters who ranked nobody else, with candidates ordered by how many first preferences they received — `r n(bul$voters[1])` down to `r n(bul$voters[nrow(bul)])`. The rate falls from `r pc(bul$bullet[1])`% among `r sub(",.*", "", bul$candidate[1])`'s voters to `r pc(bul$bullet[nrow(bul)])`% among `r sub(",.*", "", bul$candidate[nrow(bul)])`'s. The browser version toggles to the second view: how many rankings were used across all `r n(BAL)` ballots.
+**Figure 4. Bullet voting is not spread evenly across candidates.** One bar per candidate, ordered by first-preference votes (`r n(bul$voters[1])` down to `r n(bul$voters[nrow(bul)])`), because the claim is a gradient and ordered bars make it visible at a glance. The share who ranked nobody else falls from `r pc(bul$bullet[1])`% to `r pc(bul$bullet[nrow(bul)])`%.
 
-## What the majority is a majority of
+Which leaves the finding in the subtitle:
 
 ```{r denominator}
 ```
 
-The winner's `r pc(WINPCT, 2)`% is a majority of the **`r n(ACTIVEF)` ballots still in the count**, not of the `r n(BAL)` people who cast one. Measured against every ballot, the figure is `r pc(100 * fin[1] / BAL, 1)`% — a plurality.
+The winner's `r pc(WINPCT, 2)`% is a majority of the `r n(ACTIVEF)` ballots still in the count, not of the `r n(BAL)` people who cast one. Measured against every ballot, the figure is `r pc(100 * fin[1] / BAL, 1)`% — a plurality. The majority is partly manufactured by shrinking the denominator, the bottom number the winner's votes are divided by, and Burnett and Kogan (2015) found the same shrinkage across four earlier ranked-choice elections. The fair answer is a question: what would the alternative denominator mean? Under plurality the winner's share here would also have sat under half, with no second round for anyone's ballot to survive into, and a voter who declines to rank anyone else has made a choice. Figure 4 says those voters were disproportionately the ones with the least to gain from a second ranking.
 
-This is the live objection to ranked-choice voting, and it has a literature. Burnett and Kogan (2015) examined four ranked-choice elections and found that a large share of ballots were exhausted before the final round. So the eventual winner's "majority" was a majority of a shrunken pool rather than of the people who voted.
+## What this brief cannot tell you
 
-Critics of the system treat that as disenfranchisement by arithmetic. **The majority is partly manufactured by shrinking the denominator**, the bottom number the winner's votes are divided by. The figures above are what that looks like in one race.
+**It is not the certified count.** Alaska says so plainly: ballots counted by hand are not in the export and write-in names are not resolved, so `r n(BAL)` is not this contest's official turnout.
 
-The fair answer is a question: what would the alternative denominator mean? Under plurality the winner's share here would also have been under half, and there would have been no second round for anyone's ballot to survive into. A voter who declines to rank anyone else has made a choice. Donovan, Tolbert and Gracey (2016, 2019) find that voters in ranked-choice cities report more civil campaigns and generally say they understand the system. That cuts against the reading that these were people who did not follow the instructions. Figure 4 is the sharper version of the same point: the people who stopped after one ranking were disproportionately the ones with least to gain from a second.
+**It holds choices, not reasons.** Whether bullet voting is a calculation voters made or an instruction they followed cannot be separated from these rows; that would take survey data, and the ballot's anonymity is deliberate. Where surveys exist, Donovan, Tolbert and Gracey (2016, 2019) find ranked-choice voters mostly say they understand the system, which also cuts against the confusion reading. No demographics attach to any ranking.
 
-## What the ballots can testify to
+**It is one race, in one state, in one year** — a state that adopted ranked-choice voting by initiative, whose voters are not a sample of anything. Whether the system changes who runs and how they campaign is a question about candidates, not ballots.
 
-Three arguments run through this material, and it is worth separating what the ballots settle from what they only frame.
+**And the file cannot say who cast what.** The published collapse to `r n(SEQ)` sequences was chosen so that it cannot be undone, which protects voters and closes some questions permanently.
 
-The first is whether publishing ballots is safe at all. A cast vote record carries no name and is a public record. It is also individual-level, and a sufficiently unusual ranking in a small precinct narrows down who cast it. That is the real objection. It is why the file behind this chapter has no precinct column and no individual ballots in it: `r n(BAL)` records were collapsed to `r n(SEQ)` sequences with counts before anything was saved.
+## What you should have learned
 
-Alaska decided the transparency was worth it. Most states have decided nothing, because most states publish nothing.
+- A cast vote record is the only American election data where a row is a ballot: `r n(BAL)` ballots collapse to `r n(SEQ)` distinct ranking patterns, and `r pc(BULLET)`% of voters used exactly one of `r length(RK)` offered rankings.
+- The ballots do not count themselves. A three-sentence recount reproduces Alaska's official percentages to two decimals while differing by `r n(GAP)` ballots, because the binding rules live in a document, not in the data.
+- `r n(OUT3)` ballots (`r pc(100 * OUT3 / TOT)`% of the count) left before the decisive round: `r n(OUT3 - OVR)` exhausted plus `r n(OVR)` overvotes.
+- Bullet voting runs from `r pc(bul$bullet[1])`% among the front-runner's voters to `r pc(bul$bullet[nrow(bul)])`% among the smallest candidate's: a gradient that fits strategy or instruction, not confusion.
+- The winner's `r pc(WINPCT, 2)`% majority is a majority of continuing ballots; of all ballots cast, it is `r pc(100 * fin[1] / BAL, 1)`%.
 
-The second is exhaustion, and this race puts a number on it rather than resolving it. It matters arithmetically — `r n(OUT3)` ballots, `r pc(100 * OUT3 / TOT)`% of the count, left before the decisive round. Whether it matters democratically depends on what you think a ballot is for, and that is not a question a file of ballots can answer.
+## Extensions
 
-The third is what one race can settle, which is very little. `r sub(",.*", "", names(fin)[1])` won under instant-runoff and also led on first preferences, so the mechanism did not change the winner here. It changed the *claim*, from a plurality to a majority of continuing ballots. Anyone using this contest to argue for or against ranked-choice voting in general is generalizing from one case.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The evidence itself is unusually strong in one respect and narrow in several. It is individual-level, complete for the ballots it covers, and published by the state that ran the election. It also reproduced the official result to two decimal places, which is a stronger check than almost anything else in this field.
+- `sequences.csv` has one row per distinct ranking with a `ballots` count. Count the ballots whose `rank1` and `rank2` name different parties' candidates. How porous was the partisan divide, really?
+- `sequences.csv` again: find the sequences containing `OVERVOTE`. How many ballots carried one, and at which rank do overvotes cluster?
+- `official_transfers.csv` records where each eliminated candidate's ballots went. Compare the destinations against what the parties involved would predict. Were any transfers surprising?
+- `official_rounds.csv` shows the count at each stage. Work out who led in round one and who won. Then decide whether the first-round leader has a complaint.
 
-But it is not the certified count. Alaska states plainly that the cast vote record excludes ballots counted by hand, so `r n(BAL)` is not the official turnout for this contest. The tabulation rules that turn these rows into a winner live in a separate document and move the count by `r n(GAP)` ballots. A ballot records a choice and nothing about why, so there are no demographics and no reasons in any of this. And it is one race, one state, one year.
-
-What survives is worth having. Given `r length(RK)` rankings, `r pc(BULLET)`% of Alaskan voters used one; `r pc(100*sum(cross$ballots)/VOTED)`% crossed between the two major candidates; `r n(sum(dup$ballots))` ballots named the same person twice. None of that is visible in any published total. Bullet voting is not uniform and is not plausibly confusion, running from `r pc(bul$bullet[1])`% among the front-runner's voters to `r pc(bul$bullet[nrow(bul)])`% among the smallest candidate's — which is what strategic voters, or well-instructed ones, would produce. And the ballots do not count themselves.
-
-Two questions are left genuinely open, and more ballots would not close either. Whether bullet voting reflects a calculation voters made or an instruction they were given: the pattern is rational either way, and separating the two needs survey data these rows cannot supply. And whether ranked-choice voting changes who runs and how they campaign, which is a claim about candidates rather than about ballots.
-
-What the ballots do show, finally, is not only preferences. A twenty-point gap between two major candidates' supporters in how many ovals they filled is a fact about campaigns as much as about voters. The grid at the top of this chapter offered every Alaskan as many or as few rankings as they liked, and the answers came back sorted by whose interest it was to use them.
+Two stretch ideas point past the spreadsheet. Maine and several cities publish cast vote records for their own ranked-choice races; fetch one and compute its exhaustion rate against Alaska's `r pc(100 * OUT3 / TOT)`%. And compare both against the four elections in Burnett and Kogan (2015): is exhaustion shrinking as voters gain experience with the system?
 
 ## Sources
 
@@ -272,11 +188,8 @@ What the ballots do show, finally, is not only preferences. A twenty-point gap b
 - Official round-by-round results and transfer detail from the state's **RCV
   Detailed Report**, <https://www.elections.alaska.gov/results/24GENR/RCV-USRep.pdf>
 - The ballot in Figure 1 is the State of Alaska's own **sample ranked-choice
-  ballot**, cropped to the ranked-choice instructions and the U.S.
-  Representative contest. <https://www.elections.alaska.gov/doc/GenRCVsampleBallot11.9.21.pdf>
-  Retrieved 10 August 2026 and reproduced here, so *reading* this document needs
-  no network. *Building* it does: the ranked-ballot figure pulls d3 from
-  `d3js.org` at knit time, and pandoc embeds that copy in the HTML it writes.
+  ballot**, retrieved 10 August 2026.
+  <https://www.elections.alaska.gov/doc/GenRCVsampleBallot11.9.21.pdf>
 - The committed file contains no individual ballots: `r n(BAL)` records were
   collapsed to `r n(SEQ)` ranking sequences with counts, and precinct and
   tabulator identifiers were dropped, before anything was saved.
@@ -288,16 +201,6 @@ open in a spreadsheet, and they are yours to take further.
 
 [`official_rounds.csv`](data/derived/official_rounds.csv), [`official_transfers.csv`](data/derived/official_transfers.csv), [`sequences.csv`](data/derived/sequences.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `sequences.csv` has one row per distinct ranking, with a `ballots` count. Count the ballots that ranked only one candidate. What does that say about how well the ballot instructions worked?
-- Find the sequences in `sequences.csv` that rank candidates in an order nobody campaigned for. Which pairs of candidates share voters?
-- `official_transfers.csv` records where each eliminated candidate's ballots went. Compare that against what you would guess from the parties involved. Were any transfers surprising?
-- `official_rounds.csv` shows the count at each stage. Work out who led in the first round and who won. Then decide whether the first-round leader has a complaint.
-
 **Academic literature**
 
 - Burnett, C. M. and Kogan, V. (2015). "Ballot (and Voter) 'Exhaustion' Under
@@ -307,10 +210,6 @@ tables you just opened.
   Preferential and Plurality Voting." *Electoral Studies* 42: 157–163.
 - Donovan, T., Tolbert, C. and Gracey, K. (2019). "Self-Reported Understanding
   of Ranked-Choice Voting." *Social Science Quarterly* 100(5): 1768–1776.
-
-**How the figures were made**
-
-The state's Dominion JSON export is read once. The individual ballots are collapsed to `r n(SEQ)` ranking sequences with counts, and the precinct and tabulator identifiers are dropped. What is written out is `sequences.csv`, alongside the official round and transfer tables typed up from the state's own report. The instant-runoff count above is run in this document, from those sequences, at the moment it is rendered; so is every number in every figure and caption.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
