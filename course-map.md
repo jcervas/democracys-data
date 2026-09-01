@@ -221,7 +221,7 @@ order.
 | 6 | `distributions` | `house-competition` | Session 8 |
 | 7 | `crossover`, `nationalization` | `house-competition` | Session 8 |
 | 7 | `residual-votes` | `data-sources` | Session 13 |
-| 10 | `election-night` | `redistricting` | Session 14 |
+| 10 | `election-night` | `redistricting` | Session 14 — *builds it if absent* |
 
 Three patterns, and only one is a problem worth watching:
 
@@ -234,9 +234,16 @@ Three patterns, and only one is a problem worth watching:
   supplies crosswalks the returns docs use. Building the book from scratch means
   running it early.
 - **`election-night` reads `redistricting`** and is pulled forward to a fixed
-  date, so this one is a genuine ordering conflict rather than a filing quirk:
-  the file has to be built before 5 November even though the session that teaches
-  it is 1 December.
+  date, so this one was a genuine ordering conflict rather than a filing quirk:
+  the file has to exist before 5 November even though the session that teaches
+  it is 1 December. **Resolved in the build.** `election-night`'s build script
+  now routes both of its sibling reads through a `sibling()` helper: if the file
+  is not there, it runs the owning chapter's own build script and carries on.
+  The recipe stays with its owner, so there is still one place to fix when a
+  source moves. Rebuilding the corpus in session order no longer fails on
+  5 November, and if the rebuild cannot be done — the owner's script missing
+  too, or its source unreachable — the error names the chapter to build instead
+  of reporting `file.exists(cd_path) is not TRUE`.
 
 ## Before a session can run
 
@@ -330,13 +337,17 @@ direction); re-run `make-index.py`; **add the slug to a session here.** Nothing
 in the build catches a doc that is built, indexed and absent from this file.
 
 **`INDEX.md` is generated — do not edit it by hand.** Re-run
-`python3 labs/_lib/make-index.py` instead. As of this writing the committed
-`INDEX.md` is one run behind on the third-edition mark for seven docs (`rpv`,
-`models-markets`, `seat-forecast`, `senate-2026`, `election-night`,
-`whole-foods-cracker-barrel`, `rank-size`) — all seven pass the template test on
-disk, so a re-run clears it.
+`python3 labs/_lib/make-index.py` instead. The seven docs that were once a run
+behind on the third-edition mark (`rpv`, `models-markets`, `seat-forecast`,
+`senate-2026`, `election-night`, `whole-foods-cracker-barrel`, `rank-size`) all
+carry it now; the index marks the full corpus at the third edition.
 
-**One open inconsistency, flagged rather than fixed.** `senate-2026` counts
-**35** Senate seats on the 2026 ballot; `election-night` says **33**. Both are in
-Session 10 and a student will see them side by side. Somebody should settle which
-is right before 5 November.
+**That inconsistency is settled.** `senate-2026` counted **35** Senate seats on
+the 2026 ballot and `election-night` said **33**; both are in Session 10, so a
+student would have seen them side by side. `senate-2026` was right.
+`election-night` built its map from `senate_class == 2` alone, which misses the
+Florida and Ohio seats vacated by Rubio and Vance — both class 3, both filled at
+this general election, and neither one a race its results template had a row
+for. Its build now adds the two specials by *seat* rather than by state (each of
+those states still has a class 1 senator who is not on this ballot) and asserts
+the count, so the landscape and the template carry **35** rows.

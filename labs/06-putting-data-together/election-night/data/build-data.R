@@ -24,6 +24,58 @@ dir.create("derived", showWarnings = FALSE)
 
 options(scipen = 999, stringsAsFactors = FALSE)
 
+# ---------------------------------------------------------------------------
+# SIBLING DATA, AND THE ONE ORDERING CONFLICT IN THE BOOK.
+#
+# Two files this script reads are built by other chapters. Reading a
+# neighbour's derived/ is ordinary here -- roughly forty builds in the corpus
+# do it, and `course-map.md` lists them all. Fifteen of those read a file whose
+# chapter is taught later, and fourteen are filing quirks: nothing forces the
+# reader to have met the other chapter, and a rebuild in session order is a
+# convenience, not a requirement.
+#
+# This one is different, and it is the reason the helper below exists.
+# `redistricting` owns pres_by_cd_2024.csv and is taught in Session 14, on
+# 1 December. This lab is taught in Session 10, on 5 November, because that is
+# when the election is -- the date cannot move. Wipe derived/ and rebuild the
+# corpus in session order and this script reaches for a file that will not be
+# built for another month. It would fail two days after an election, which is
+# the worst morning of the year to be reading a path expression.
+#
+# The fix is not to copy redistricting's recipe here, which would leave two
+# places to fix when the source moves. It is to run the OWNER's build script.
+# The owner keeps the recipe; this build just declines to be blocked by the
+# calendar. If that cannot be done, the error says which chapter to build and
+# how, instead of "file.exists(cd_path) is not TRUE".
+# ---------------------------------------------------------------------------
+sibling <- function(path, owner, note) {
+  if (file.exists(path)) return(path)
+
+  build <- file.path(dirname(dirname(path)), "build-data.R")
+  cat("\n", basename(path), " is not here yet.\n",
+      "  It belongs to `", owner, "`. ", note, "\n",
+      "  Running that chapter's own build script rather than duplicating it:\n",
+      "    ", build, "\n\n", sep = "")
+
+  if (!file.exists(build))
+    stop(basename(path), " is missing and so is the script that makes it (",
+         build, "). Build `", owner, "` by hand, then re-run this.",
+         call. = FALSE)
+
+  # chdir = TRUE because the owner's script addresses its own raw/ and derived/
+  # relatively; local = a fresh environment so its variables cannot land in
+  # ours. It fetches from the network only if its own raw/ is empty.
+  source(build, chdir = TRUE, local = new.env())
+
+  if (!file.exists(path))
+    stop("`", owner, "`'s build ran but did not produce ", basename(path),
+         ". Check that build for an error -- it may have been unable to reach ",
+         "its source.", call. = FALSE)
+
+  cat("  built ", basename(path), ".\n\n", sep = "")
+  path
+}
+
 # ===========================================================================
 # PART 1 -- THE 2026 MAP  (runs today)
 # ===========================================================================
@@ -62,8 +114,12 @@ cat("plus", nrow(sp), "special elections:", paste(sp$state, collapse = " "),
     "-- total on the 2026 ballot:", nrow(sen), "\n")
 print(table(sen$party))
 
-st_path <- file.path("..", "..", "..", "03-elections", "electoral-map", "data", "derived", "pres2024_states.csv")
-stopifnot(file.exists(st_path))
+st_path <- file.path("..", "..", "..", "03-elections", "electoral-map", "data",
+                     "derived", "pres2024_states.csv")
+# Session 6, so in session order this one is already built. Routed through the
+# helper anyway: a rebuild does not have to happen in session order.
+st_path <- sibling(st_path, "electoral-map",
+                   "It is taught in Session 6, ahead of this lab.")
 st <- read.csv(st_path, stringsAsFactors = FALSE)
 
 land <- merge(
@@ -108,7 +164,10 @@ write.csv(land, "derived/senate_2026_landscape.csv", row.names = FALSE)
 
 cd_path <- file.path("..", "..", "redistricting", "data", "derived",
                      "pres_by_cd_2024.csv")
-stopifnot(file.exists(cd_path))
+# The ordering conflict described at the top of this file: Session 14 owns this
+# file, and this lab runs in Session 10 on a date that cannot move.
+cd_path <- sibling(cd_path, "redistricting",
+                   "It is taught in Session 14, five weeks after this lab.")
 cd <- read.csv(cd_path, stringsAsFactors = FALSE)
 
 reh <- cd[!is.na(cd$house_rep_party),
