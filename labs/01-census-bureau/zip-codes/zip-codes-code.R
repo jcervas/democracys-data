@@ -66,7 +66,7 @@ GRY <- "#8a8a8a"
 # The same approach the mapped chapters use: one SVG path per ring, integer
 # pixel coordinates, relative line commands. `featpath` concatenates all the
 # rings of one unit into a single path so that a polygon with holes in it can
-# be filled with the even-odd rule -- which is the entire subject of Figure 3.
+# be filled with the even-odd rule -- which is the entire subject of Figure 2.
 onepath <- function(X, Y) {
   dx <- X[-1] - X[-length(X)]; dy <- Y[-1] - Y[-length(Y)]
   seg <- paste0(dx, ifelse(dy < 0, "", ","), dy)
@@ -128,19 +128,6 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 
 ## ---- lists
 fmt(lists, "count")
-
-## ---- moe-note
-data.frame(
-  question = c("Who assigns it?", "What is it attached to?",
-               "When does it change?", "Is there a boundary?",
-               "Is there a population?"),
-  `ZIP code` = c("U.S. Postal Service", "delivery stops",
-                 "whenever routing changes", "no",
-                 "no — nobody counts delivery stops"),
-  ZCTA = c("U.S. Census Bureau", "census blocks", "each decennial census",
-           "yes, and it is drawn",
-           "yes — the census counts the blocks it is made of"),
-  check.names = FALSE)
 
 ## ---- digits-d3
 W <- 720L; H <- 430L; PADT <- 16L; PADB <- 46L
@@ -214,12 +201,6 @@ text(x0 + (0:9 + 0.5) * bw, y0 - bh * 0.55, 0:9, cex = 0.6, col = "#777")
 text(x0, y0 + bh * 1.7, "first digit", adj = 0, cex = 0.6, col = "#777")
 par(op)
 
-## ---- digit-rows
-o <- fmt(dr[, c("d1", "zctas", "scfs", "states")], "zctas")
-names(o) <- c("first digit", "ZIP areas", "sorting prefixes",
-              "states with at least 1% of them")
-o
-
 ## ---- no-ground
 o <- ng[, c("code", "listed_as", "note")]
 names(o) <- c("ZIP code", "listed as", "what it actually is")
@@ -229,85 +210,6 @@ o
 o <- zvz[, c("question", "zip", "zcta")]
 names(o) <- c("", "ZIP code", "ZCTA")
 o
-
-## ---- blocks-d3
-A <- Z("15213"); B <- Z("15260")
-w <- win(G("z", c(A, B)), pad = 0.16)
-PW <- 620L; PH <- 400L
-s  <- min((PW - 20) / diff(w$x), (PH - 30) / diff(w$y))
-fx <- function(x) 10 + (x - w$x[1]) * s
-fy <- function(y) 10 + (w$y[2] - y) * s
-bp <- function(k) {
-  d <- pbl[pbl$code == k, ]
-  if (!nrow(d)) return(character(0))
-  vapply(split(d, d$uid), function(u)
-    paste(vapply(split(u, u$part), .ring, character(1), sx = fx, sy = fy),
-          collapse = ""), character(1))
-}
-cat(paste0('
-<div id="bk" style="margin:1.1em 0"></div>
-<script>
-(function(){
-const B13=', jstr(bp("15213")), ',B60=', jstr(bp("15260")), ';
-const Z13=', jstr(featpaths(G("z", A), fx, fy)), ';
-const Z60=', jstr(featpaths(G("z", B), fx, fy)), ';
-const W=', PW, ',H=', PH, ';
-const svg=d3.select("#bk").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-svg.selectAll("path.b13").data(B13).join("path").attr("d",d=>d)
-  .attr("fill","#dce8f2").attr("stroke","#8fb4d0").attr("stroke-width",0.5);
-svg.selectAll("path.b60").data(B60).join("path").attr("d",d=>d)
-  .attr("fill","#f6d7dd").attr("stroke","#d59aa6").attr("stroke-width",0.5);
-svg.selectAll("path.z13").data(Z13).join("path").attr("d",d=>d)
-  .attr("fill","none").attr("fill-rule","evenodd")
-  .attr("stroke","#2c7fb8").attr("stroke-width",2.4);
-svg.selectAll("path.z60").data(Z60).join("path").attr("d",d=>d)
-  .attr("fill","none").attr("fill-rule","evenodd")
-  .attr("stroke","', ACC, '").attr("stroke-width",2.4);
-const K=[["#dce8f2","#8fb4d0","', n(FV("blocks_15213")), ' census blocks of 15213"],
-         ["#f6d7dd","#d59aa6","', n(FV("blocks_15260")), ' of 15260"]];
-K.forEach((k,i)=>{
-  const x=14+i*230,y=H-16;
-  svg.append("rect").attr("x",x).attr("y",y).attr("width",12).attr("height",12)
-    .attr("fill",k[0]).attr("stroke",k[1]).attr("stroke-width",0.7);
-  svg.append("text").attr("x",x+17).attr("y",y+10).attr("font-size","10.5px")
-    .attr("fill","#777").text(k[2]);
-});
-})();
-</script>
-'))
-
-## ---- blocks-static
-A <- Z("15213"); B <- Z("15260")
-w <- win(G("z", c(A, B)), pad = 0.16)
-op <- par(mar = c(1.8, 0.3, 0.3, 0.3))
-plot(NA, xlim = w$x, ylim = w$y, asp = 1, axes = FALSE, ann = FALSE)
-for (k in c("15213", "15260")) {
-  d <- pbl[pbl$code == k, ]
-  for (u in split(d, d$uid)) for (p in split(u, u$part))
-    polygon(p$x, p$y, col = if (k == "15213") "#dce8f2" else "#f6d7dd",
-            border = if (k == "15213") "#8fb4d0" else "#d59aa6", lwd = 0.4)
-}
-for (u in c(A, B)) for (p in split(G("z", u), G("z", u)$part))
-  polygon(p$x, p$y, col = NA, border = if (u == A) "#2c7fb8" else ACC, lwd = 2)
-kx <- w$x[1] + diff(w$x) * c(0.02, 0.45); ky <- w$y[1] - diff(w$y) * 0.03
-kw <- diff(w$x) * 0.025; kh <- diff(w$y) * 0.018
-rect(kx, ky, kx + kw, ky + kh, col = c("#dce8f2", "#f6d7dd"),
-     border = c("#8fb4d0", "#d59aa6"), lwd = 0.6, xpd = NA)
-text(kx + kw * 1.4, ky + kh / 2, adj = 0, cex = 0.62, col = "#777", xpd = NA,
-     labels = c(paste(n(FV("blocks_15213")), "census blocks of 15213"),
-                paste(n(FV("blocks_15260")), "of 15260")))
-par(op)
-
-## ---- pgh-facts
-data.frame(
-  ZIP = c("15213", "15260"),
-  `what is in it` = c("Oakland: Carnegie Mellon, most of Pitt's campus",
-                      "University of Pittsburgh mail"),
-  `sq km` = c(FV("pgh_15213_sq_km"), FV("pgh_15260_sq_km")),
-  `counted in 2020` = c(n(FV("pgh_15213_pop")), n(FV("pgh_15260_pop"))),
-  pieces = c("1 outline with 2 holes", "2 disconnected pieces"),
-  check.names = FALSE)
 
 ## ---- pgh-d3
 A <- Z("15213"); B <- Z("15260")
@@ -397,25 +299,6 @@ names(o) <- c("counted above", "in 2+ counties", "% of ZIP areas",
               "in 2+ states", "% of people")
 o
 
-## ---- uncovered
-data.frame(
-  what = c("counties holding land under no ZIP area",
-           "square kilometres under no ZIP area",
-           "as a share of the country's land",
-           "of that land, the share in pieces over two square miles"),
-  value = c(n(FV("counties_with_uncovered_land")),
-            n(FV("uncovered_sq_km")), paste0(FV("uncovered_pct"), "%"),
-            paste0(FV("uncovered_over_2sqmi_pct"), "%")))
-
-## ---- churn
-fmt(churn, "count")
-
-## ---- cities
-o <- cities[, c("name", "threshold", "touching", "wholly_inside")]
-names(o) <- c("city", "counted above", "ZIP areas with land inside",
-              "of those, wholly inside")
-o
-
 ## ---- pgh-city-d3
 CU <- pid$uid[pid$lev == "c"]
 w <- win(rbind(G("c"), G("z", pid$uid[pid$lev == "z" &
@@ -497,9 +380,6 @@ o <- fmt(pas[, c("threshold", "zip_areas", "split", "pct_split",
 names(o) <- c("counted above", "PA ZIP areas", "split", "% of areas",
               "% of people", "most districts")
 o
-
-## ---- checks
-chk
 
 ## ---- on-mark
 # Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for

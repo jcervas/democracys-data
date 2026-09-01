@@ -16,57 +16,50 @@ dd_read_chunks("zip-codes-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A letter addressed to 1600 Pennsylvania Avenue NW, Washington, DC 20500 will reach the White House. That is what the five digits are for, and they do it well.
+The ZIP code is the only piece of geography most Americans know about themselves. Ask for a census tract and you get a blank look; ask for a ZIP code and you get five digits, instantly and correctly. So surveys collect it, insurers price by it, health studies report by it, and when a news story says life expectancy differs by twenty years between two neighborhoods, the "neighborhoods" are usually two ZIP codes. A large share of the numbers American journalism and research attach to places arrives sorted into these five-digit boxes.
 
-Now ask a different question of the same five digits: **how many people live in 20500?** The question sounds ordinary. It is the kind of question a survey asks, an insurer prices, a public health study controls for, and a redistricting proposal would build a congressional district out of. It has no answer. Not an unknown answer — no answer, because 20500 is not a piece of ground. It is a routing instruction that happens to be written as a number, and there is nothing underneath it to count.
+The Postal Service invented the ZIP code in 1963 to route mail, and a letter addressed to 20500 reaches the White House because the routing works. Everything else the five digits are asked to do rests on an assumption: that a ZIP code is a place, with ground, edges and residents. So what is a ZIP code, actually? And what happens to a statistic when you treat one as a place? Both can be answered from the record.
 
-This chapter is about the distance between those two questions, and about how much of American data analysis is quietly standing on the wrong side of it.
+## The test
 
-## Where the file comes from, and what it is for
+Two national lists both answer to the words "ZIP code", and the test of this brief is the gap between them. The first is the Postal Service's list of **routing keys**. A code is a label on a bundle of delivery stops, a carrier's route, a bank of post office boxes, or one office tower, and it is revised whenever revising it moves mail more efficiently. The second is the Census Bureau's list of **areas**: the 2020 [ZIP Code Tabulation Areas](https://www.census.gov/programs-surveys/geography/guidance/geo-areas/zctas.html), or ZCTAs, the Bureau's drawn approximation of where each code's mail goes. Every map of ZIP codes you have seen is the second list. Almost every claim made about ZIP codes is about the first.
 
-The list of ZIP codes counted in these pages does not come from the Postal Service, because the Postal Service does not give its list away. The authoritative register is a product called the *City State Product*, and USPS sells it on subscription. What stands in for it here, as in most open work, is GeoNames — a gazetteer, which is to say a dictionary of places. It is built on the open-content model: compiled from public sources, corrected by volunteers, and given away whole. Everything else in this chapter is the Census Bureau's work, and where the Bureau's own files come from is [a chapter of its own](../census-source/census-source-brief.html).
+The gap can be measured, because the Bureau publishes its own account of the second list. The [2020 ZCTA relationship files](https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/) record, in square metres, how every tabulation area divides among counties, states and cities, and the 2020 census reports every one's population. The routing-key side comes from [GeoNames' open postal compilation](https://download.geonames.org/export/zip/US.zip), downloaded 2025, because the Postal Service sells its own register rather than publishing it. Census units nest exactly, with a block inside a tract inside a county inside a state; that ladder, and why counts climb it without error, is the subject of the [census geography chapter](../census-geography/census-geography-brief.html). ZIP codes were built outside the ladder, so how well they fit it is not a matter of definition. It has to be measured.
 
-**Who is in it, and how they got there.** Codes, not people. A ZIP code is in this list because it was seen in use: GeoNames compiles its American postal file from address data, not from the Postal Service's register. A code enters by appearing on addresses and leaves by no longer appearing on them, which is not the same thing as being issued or retired.
+## The data
 
-**Who it was made for.** Nobody commissioned it. It exists because a great deal of ordinary work needs a national postal list and cannot pay a subscription for one: geocoding, mapping, matching a survey answer to a place. It has become the list that open research quietly runs on.
-
-**What it costs to get.** Nothing. One download, no key, no account, under a Creative Commons licence whose single condition is attribution. The register it stands in for is priced; the stand-in is free; and that difference, more than any measure of quality, decides which list most analyses actually use.
-
-**What has already been done to it.** It is a compilation, not the register. Nobody at GeoNames assigns a ZIP code or retires one, and nobody there can say that a code does not exist — only that it has not been seen. Two compilations built from different address data will disagree about the tail of the list, so the count of codes below is a good likeness of the register, not a copy of it. What that substitution costs, and what it says that anyone had to make it, is a question the end of this chapter comes back to.
-
-## Two lists, and only one of them is a map
-
-Two national lists exist. They are not the same list.
+The tables below were built from those files, and the two lists are the first of them, [`lists.csv`](data/derived/lists.csv):
 
 ```{r lists}
 ```
 
-The first is a list of **routing keys**. The Postal Service assigns a ZIP code to a set of delivery stops. That might be a carrier's walking route, a rural route, a bank of post office boxes, or a single building that generates enough mail to justify its own. A code is a label on a bundle of addresses, and it is revised whenever revising it moves mail more efficiently.
+Every code in every table is held as text, never as a number, because 00601 read as a number becomes 601 and stops existing. The gap between the two counts above is not rounding, and measuring what falls into it is most of what follows. The rest of the difference between the two objects fits in one table, [`zip_vs_zcta.csv`](data/derived/zip_vs_zcta.csv):
 
-The second is a list of **areas**. ZIP Code Tabulation Areas are the Census Bureau's approximation of the first list. For each census block, take the ZIP code appearing on the most addresses inside it, then glue together the blocks that share an answer. A ZCTA is therefore a real shape with real boundaries. But they are the Bureau's boundaries, worked out from where the mail goes. The Postal Service's boundaries do not exist as boundaries at all.
-
-Almost every map of ZIP codes you have ever seen is the second list. Almost every claim made about ZIP codes is about the first.
-
-```{r moe-note}
+```{r zip-vs-zcta}
 ```
 
-That last row is the one that keeps the confusion alive, because the answer is yes. **The 2020 census is tabulated by ZCTA**, and `r n(FV("pop_in_zctas"))` people were counted inside one. Every population figure below is that count. So a ZIP area does have a population, published by the Census Bureau, and it is a real count rather than a model.
+The Bureau makes an area out of a routing key by a stated procedure. Each census block takes the ZIP code carried by the most addresses inside it; blocks with the same answer are glued together; the glued shape takes the five digits. A block split between two codes goes wholly to one, so the minority side of every such block is gone. A code that never wins a block gets no area at all. Uninhabited stretches larger than two square miles may be left out, and only codes valid on 1 January 2020 were used.
 
-What it is a count *of* is the catch. It is the population of **the blocks the Bureau assigned to that code** — the tabulation area, not the ZIP code, which has no area to count anybody in. And a second federal source answers the same question differently.
+The population of a tabulation area is a real census count: `r n(FV("pop_in_zctas"))` people were counted inside one in 2020. It is still a count of the Bureau's blocks, not of the Postal Service's code, and a second federal source reads the same areas differently. The American Community Survey's estimate for the same `r n(FV("acs_vs_count_n"))` areas, three years later, differs from the census count by a median of `r pc(FV("acs_vs_count_median_pct"))`%. Neither is wrong; "the population of ZIP code 15217" simply has more than one published answer.
 
-The American Community Survey publishes an estimate for the same `r n(FV("acs_vs_count_n"))` areas three years later. The two readings differ by a median of `r pc(FV("acs_vs_count_median_pct"))`%, and `r n(FV("acs_vs_count_over_10pct"))` of them differ by more than a tenth. Neither is wrong. They are three years apart and one of them is a sample. But "the population of ZIP code 15217" is a phrase with at least two published answers, and nothing in either file says which one a study used.
+> **Before you read on, commit to a number.** There are
+> `r n(FV("n_usps"))` ZIP codes in circulation. Some of them cannot be drawn as
+> areas at all, because the addresses they serve cover no territory: a single
+> office tower, a wall of post office boxes, a mail channel that follows the
+> Navy. **What share of the `r n(FV("n_usps"))` do you think those are?**
+> One in a thousand? One in a hundred? Write a percentage down before you
+> read on.
 
-## The first digit is a map of the mail
+## What it says about democracy
 
-Read a ZIP code left to right and it is a set of instructions for narrowing down, exactly like a postal address read from the bottom up.
+**`r n(FV("n_no_ground"))` of the `r n(FV("n_usps"))` codes name no ground at all, or `r pc(FV("pct_no_ground"))`%.** Close to one in five. The Bureau does not fail to draw them; there is nothing to draw. `r n(FV("no_ground_military"))` are military and diplomatic mail: 09096 is listed at longitude `r FV("apo_lon")`, latitude `r FV("apo_lat")`, which is in Germany, an American ZIP code with no American ground under it. `r FV("no_ground_states")` states have at least one, led by `r FV("no_ground_top_state")` with `r n(FV("no_ground_top_state_n"))`.
 
-- **The first digit** picks one of ten national areas.
-- **The first three digits** pick a sectional center facility — the plant that
-  sorts for a region. There are `r n(FV("n_scf"))` of them among the tabulation
-  areas.
-- **The last two** pick the delivery unit inside that region.
+```{r no-ground}
+```
 
-Which states sit under which leading digit is not a convention anybody has to remember. It is in the data, and the figure below is the first digit of every sectional prefix drawn where its mail is.
+The consequence for analysis is specific. Join a table keyed by ZIP code to a table of ZIP areas and roughly one row in five silently fails to match, and the failures are not random. They are office buildings, box renters and service members, three specific populations excluded without a warning printed anywhere.
+
+What the codes that remain do map is the postal system itself.
 
 ```{r digits-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -74,92 +67,11 @@ Which states sit under which leading digit is not a convention anybody has to re
 ```{r digits-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
 
-**Figure 1. The mail system, drawn.** One mark per three-digit prefix, `r n(sum(scf$in_frame))` of them, placed at the population-weighted centre of the areas that carry it and sized by how many areas that is. Colour is the leading digit. `r FV("scf_out_of_frame")` prefixes are outside the frame, in `r FV("scf_out_of_frame_states")`. They are left undrawn rather than moved somewhere they are not.
+**Figure 1. The mail system, drawn from the data.** One mark per three-digit sorting prefix, `r n(sum(scf$in_frame))` of them, placed at the population-weighted centre of the tabulation areas carrying it and sized by how many areas that is; colour is the leading digit. A dot map fits the question because the postal system is a system of routes and sorting plants, not of areas: nothing here has a boundary to draw. `r FV("scf_out_of_frame")` prefixes fall outside the frame, in `r FV("scf_out_of_frame_states")`, and are left undrawn rather than moved.
 
-**Nobody drew that map, and it is a real map.** Ten bands, running west from the north-east corner, each one a coherent block of territory. It comes from nothing but the requirement that mail be sorted in stages. A bag routed to area 1 can be sorted again into 15, then into 152, then into 15213, and each stage only has to look at one more digit.
+The ten bands are real and coherent, running west from the north-east corner, because a bag routed to area 1 can be sorted again into 15, then 152, then 15213. But it is a map of mail, not of communities, markets or anything drawn with a resident in mind. Every use of a ZIP code as one of those things borrows this figure's authority for a claim it does not make.
 
-```{r digit-rows}
-```
-
-So the reel is right, and it is worth being precise about *why* it is right. The map is real because the mail system is real. **What it is a map of is mail.** It is not a map of communities, or of markets, or of anything drawn with a person in mind. Every use of a ZIP code as though it were one of those things borrows the authority of this figure for a claim the figure does not make.
-
-## The codes that name no ground
-
-Look again at the two lists. There were more routing keys than areas, and the difference is not rounding.
-
-> **Before you read on, commit to a number.** There are
-> `r n(FV("n_usps"))` ZIP codes in circulation. Some of them cannot be drawn as
-> areas at all, because the addresses they serve do not cover any territory: a
-> single office tower, a wall of post office boxes, a mail channel that follows
-> the Navy. **What share of the `r n(FV("n_usps"))` do you think those are?**
-> One in a thousand? One in a hundred? Write a percentage down before you turn
-> the page.
-
-```{r no-ground}
-```
-
-**`r n(FV("n_no_ground"))` of the `r n(FV("n_usps"))` name no ground, or `r pc(FV("pct_no_ground"))`%.** Close to one in five. The Census Bureau does not fail to draw them; there is nothing to draw. A code assigned to the Empire State Building covers the footprint of one building and the hundred businesses stacked inside it. A code assigned to a bank of post office boxes covers the boxes, whose renters live wherever they live.
-
-`r n(FV("no_ground_military"))` of them are military and diplomatic mail. 09096 is listed at longitude `r FV("apo_lon")`, latitude `r FV("apo_lat")`, which is in Germany. It is an American ZIP code, and there is no American ground under it.
-
-These are not exotic edge cases parked in a corner of the country. `r FV("no_ground_states")` states have at least one, and the state with the most is `r FV("no_ground_top_state")`, with `r n(FV("no_ground_top_state_n"))`.
-
-The reverse case exists too and is smaller: `r n(FV("n_no_code"))` tabulation areas carry a code the postal compilation no longer lists. Every one of them was a live ZIP code when the areas were drawn, and has left circulation since. The next section explains why that is guaranteed.
-
-**What this does to an analysis is specific and easy to miss.** Join a table of ZIP codes to a table of ZIP areas and roughly one row in five silently fails to match — and the rows that fail are not a random sample. They are office buildings, PO box clusters, and military addresses, which is to say they are businesses, people without stable residential delivery, and service members. A join that drops them is a join that has quietly excluded three specific populations and reported nothing.
-
-## How a ZIP code becomes a ZCTA
-
-The two words are used interchangeably, including by people who know better, and almost every map labelled "ZIP codes" is really the second of them. They are different objects made by different agencies for different reasons, and the translation between them is a specific procedure with specific losses.
-
-Here is the whole of the difference in one table.
-
-```{r zip-vs-zcta}
-```
-
-**The procedure has four steps**, and the Bureau states each of them.
-
-1. **A ZIP code enters the Bureau's files as an attribute of an address**, not
-   as a shape. Every delivery point in the Master Address File carries the ZIP
-   code the Postal Service uses for it. At this stage the data is a scatter of
-   points with labels, and nothing about it is an area.
-2. **Each census block takes the ZIP code carried by the most addresses inside
-   it.** This is where the losses happen, and they are unavoidable: a block whose
-   addresses are split between two ZIP codes goes entirely to one of them, and
-   the minority is gone. A ZIP code that never wins a block anywhere — a single
-   office tower, a bank of post office boxes — gets no ground at all, which is
-   the `r n(FV("n_no_ground"))` from the previous section.
-3. **Blocks with the same answer are glued together** and the result takes those
-   five digits. Because the pieces are whole blocks, **a ZCTA boundary is always
-   a census block boundary** — while a ZIP code's notional edge, if it had one,
-   would run down the middle of streets, because that is how a carrier's route
-   is built.
-4. **Land nobody lives on can be left out.** All inhabited ground gets covered,
-   but empty stretches over two square miles are potentially left unassigned,
-   which is why the tabulation areas do not tile the country.
-
-Only codes valid on 1 January 2020 were used, which is why `r n(FV("n_no_code"))` tabulation areas now carry a code that has since left circulation.
-
-Step 3 is the one worth seeing, because it is what makes a ZCTA an object you can measure and a ZIP code not.
-
-```{r blocks-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r blocks-static, eval=!knitr::is_html_output(), fig.height=4.1}
-```
-
-**Figure 2. The pieces a ZIP area is made of.** The `r n(FV("blocks_15213"))` census blocks assigned to 15213 and the `r n(FV("blocks_15260"))` assigned to 15260, with the published outline of each ZIP area drawn over them. The outline never crosses a block; it runs along block edges, because it was made by gluing blocks together.
-
-The claim can be checked rather than admired. Adding up the population of those `r n(FV("blocks_15213"))` blocks gives `r n(FV("pgh_15213_pop"))` people, which is exactly the published population of 15213, and the `r n(FV("blocks_15260"))` blocks of 15260 give exactly `r n(FV("pgh_15260_pop"))`. It is the same people counted twice, once by block and once by ZIP area, and the two counts agree to the person.
-
-Commercial ZIP boundary files exist too, and they are inferences of a different kind — usually drawn from address point files or delivery route geometry, often proprietary, and generally not identical to the Bureau's. Two ZIP code maps of the same city need not agree, and neither is wrong, because there is no original they are both copying.
-
-There is a consequence the gluing cannot avoid, and it is visible on the ground.
-
-```{r pgh-facts}
-```
-
-## 15213, and the two holes in it
+What forcing a delivery route to be a polygon does to a neighborhood is visible where this book is written.
 
 ```{r pgh-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -167,55 +79,25 @@ There is a consequence the gluing cannot avoid, and it is visible on the ground.
 ```{r pgh-static, eval=!knitr::is_html_output(), fig.height=3.9}
 ```
 
-**Figure 3. A ZIP code with two holes in it.** ZIP area 15213 in blue, the ZIP area 15260 in red, neighbouring areas in gray. 15213 is a single shape with `r FV("pgh_15213_rings")` rings: one outline and two holes. The two holes are 15260, which is `r FV("pgh_15260_parts")` disconnected pieces and touches nothing else.
+**Figure 2. A ZIP code with two holes in it.** ZIP area 15213 in blue with neighboring areas in gray; the red shape is 15260, which the Bureau drew as `r FV("pgh_15260_parts")` disconnected pieces punched out of the middle of 15213.
 
-This is where this course is taught. 15213 is Oakland: Carnegie Mellon, the museums, most of the University of Pittsburgh's ground. 15260 is the University of Pittsburgh's *mail*: a code assigned to the university's own delivery. Its tabulation area comes out as two islands of campus buildings, punched out of the middle of the neighbourhood around them. The 2020 census counted `r n(FV("pgh_15260_pop"))` people in it, against `r n(FV("pgh_15213_pop"))` in the ZIP area whose middle it occupies.
+15213 is Oakland in Pittsburgh: Carnegie Mellon, the museums, most of the University of Pittsburgh's ground, and `r n(FV("pgh_15213_pop"))` people counted in 2020. 15260 is the University of Pittsburgh's *mail*, a code assigned to the university's own delivery, and its area comes out as two islands of campus buildings holding `r n(FV("pgh_15260_pop"))` counted people. No step of this is a mistake; each is a sensible rule correctly applied to a question about delivery. A district drawn to include 15213 has holes in it unless it also takes 15260. A statistic for 15213 describes a neighborhood with its university buildings cut out. Two survey respondents writing 15213 and 15260 may work in the same building.
 
-Nothing here is a mistake. Every step of it is the correct application of a sensible rule. It is simply what happens when you ask "where is this delivery route?" and require the answer to be a polygon.
-
-**Now imagine using these two shapes as building blocks for anything.** A district drawn to include 15213 has a hole in it unless it also takes 15260. A statistic reported for 15213 describes a neighbourhood with its university buildings cut out. A survey respondent who writes "15213" and a survey respondent who writes "15260" may work in the same building.
-
-## It does not fit a county, and sometimes not a state
-
-The census geography of the United States nests: a block is inside a block group, inside a tract, inside a county, inside a state, and each identifier contains its parents. ZIP areas were drawn against delivery routes, which respect none of that.
+The same indifference to civic lines shows up at every scale, in the Bureau's own arithmetic, in [`nesting.csv`](data/derived/nesting.csv):
 
 ```{r nesting}
 ```
 
-**`r n(NS("in_two_or_more_counties"))` of the `r n(FV("n_zcta"))` ZIP areas have land in more than one county**, or `r pc(NS("pct_multi_county"))`% of them. And `r pc(NS("pct_pop_multi_county"))`% of everybody who lives inside a ZIP area at all lives in one of them. `r n(NS("in_two_or_more_states"))` cross a state line. The widest reaches into `r FV("zcta_max_counties")` counties.
+**`r n(NS("in_two_or_more_counties"))` of the `r n(FV("n_zcta"))` ZIP areas have land in more than one county**, and `r pc(NS("pct_pop_multi_county"))`% of everyone living in a ZIP area lives in one of those. `r n(NS("in_two_or_more_states"))` cross a state line; the widest reaches into `r FV("zcta_max_counties")` counties. The threshold rows exist because a relationship file records every overlap, including slivers of digitising noise, and raising the bar to five per cent of the area's own land still leaves `r n(NS("in_two_or_more_counties", "5%"))` county-crossers. And a fifth of the country's land sits under no ZIP area at all, `r n(FV("uncovered_sq_km"))` square kilometres of forest, range and desert the two-square-mile rule lets the Bureau skip.
 
-The threshold column is there because it has to be. A relationship file records every overlap, including the few square metres where two boundaries follow the same riverbank slightly differently, so a count with no threshold counts digitising noise as a crossing. Raising the bar to five per cent of the ZIP area's own land removes about a quarter of the crossings and leaves `r n(NS("in_two_or_more_counties", "5%"))`. The conclusion is not sensitive to that choice. The number is.
+The boxes do not hold still either. Between the 2010 and 2020 vintages, `r n(CH("2010 codes gone by 2020"))` codes lost their area and `r n(CH("2020 codes that did not exist in 2010"))` gained one, and of the codes present in both, only `r n(CH("codes in both, whose area is unchanged"))` kept the same shape. The median survivor holds `r pc(FV("kept_median_pct"))`% of the land it held in 2010. So "15217" in a 2011 file and "15217" in a 2021 file are the same string and not the same place, and nothing in either file says so.
 
-There is a stranger fact underneath. Tabulation areas do not cover the country.
+For democracy, the live question is whether these boxes could carry representation. Curiel and Steelman (2018) propose building congressional districts from ZIP codes, on the ground that splitting them damages the link between voters and representatives. Grofman and Cervas (2021) reply that the unit cannot bear the job. Both sides can be measured, starting under Pennsylvania's current map, in [`pa_split.csv`](data/derived/pa_split.csv):
 
-```{r uncovered}
+```{r pa-split}
 ```
 
-**A fifth of the United States has no ZIP code over it.** This follows from step four. Inhabited ground is always covered; empty stretches larger than two square miles are the ones that may be left out — and the last row is that rule caught in the act. `r FV("uncovered_over_2sqmi_pct")`% of the uncovered land lies in pieces above the Bureau's own stated threshold, which is about as close as a documentation page and a data file ever come to agreeing.
-
-So the fifth is not a gap in the record. It is national forest, range, desert and tundra, declared out of scope by a rule written down in advance. But if you colour a map of the country by ZIP code, that fifth is a hole. The usual fix is to snap it to the nearest ZIP area, which invents coverage the source is explicitly declining to claim.
-
-## It does not stay where you left it
-
-A census tract is redrawn every ten years, and everybody knows it. A ZIP code changes whenever routing changes, and it is nobody's job to tell you.
-
-```{r churn}
-```
-
-Between the 2010 and 2020 vintages, `r n(CH("2010 codes gone by 2020"))` codes stopped having an area and `r n(CH("2020 codes that did not exist in 2010"))` acquired one for the first time. That is the small part. The large part is that of the codes present in both, **only `r n(CH("codes in both, whose area is unchanged"))` came through the decade with the same shape.** The median survivor holds `r pc(FV("kept_median_pct"))`% of the land it used to hold; `r n(CH("codes in both, that kept less than 95% of their 2010 land"))` kept less than nineteen twentieths of it.
-
-So "15217" in a 2011 file and "15217" in a 2021 file are the same string and not the same place, and nothing in either file says so. A time series by ZIP code is a time series over a moving denominator — a bottom number that will not hold still, and the movement is invisible because the label did not change.
-
-## It does not fit a city
-
-Grofman and Cervas (2021) argue against a proposal to build congressional districts out of ZIP codes, and report a small piece of fieldwork on their own city. Pieces of seventeen ZIP codes are in Irvine, California, and by their best judgment only two are wholly inside it. The claim is recomputed below against the Bureau's own relationship file — which measures tabulation areas, not ZIP codes, and so is expected to differ a little.
-
-```{r cities}
-```
-
-`r n(CI("Irvine", "touching"))` ZIP areas have a real piece inside Irvine and `r n(CI("Irvine", "wholly_inside"))` are wholly within it. The published figures were seventeen and two. **The gap between the two accounts is not an error in either of them.** The paper counted ZIP codes as the Postal Service describes them, and this counts the Bureau's approximation of the same thing. The two lists were never the same list. That the answers land in the same neighbourhood is the reassurance available; that they differ at all is the chapter.
-
-For Pittsburgh: `r n(CI("Pittsburgh", "touching"))` ZIP areas have a real piece inside the city limits, and `r n(CI("Pittsburgh", "wholly_inside"))` are wholly inside.
+**`r n(PS("split"))` of Pennsylvania's `r n(FV("pa_zip_areas"))` ZIP areas are split between congressional districts, and those areas hold `r pc(PS("pct_pop_in_split"))`% of the people**, because a district line through a city runs through the most populous codes. So the harm Curiel and Steelman describe, if it is one, falls on roughly a fifth of Pennsylvanians. But the repair would be built from units that cross counties and occasionally states, arrive with holes and in pieces, change shape without announcement, and are missing entirely for one code in five. Grofman and Cervas add a check on the premise, replicated here. Their fieldwork found pieces of seventeen ZIP codes in Irvine, California, with two wholly inside the city; the Bureau's relationship file gives `r n(CI("Irvine", "touching"))` and `r n(CI("Irvine", "wholly_inside"))` for the same city. The two accounts differ because they count the two different lists, which is this brief's finding caught in a single number.
 
 ```{r pgh-city-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -223,117 +105,79 @@ For Pittsburgh: `r n(CI("Pittsburgh", "touching"))` ZIP areas have a real piece 
 ```{r pgh-city-static, eval=!knitr::is_html_output(), fig.height=4.3}
 ```
 
-**Figure 4. The City of Pittsburgh, and the ZIP areas that do not fit it.** The city limits in red; every ZIP area near them shaded by whether it is wholly inside, partly inside, or outside. `r n(CI("Pittsburgh", "touching"))` have a real piece inside the line and `r n(CI("Pittsburgh", "wholly_inside"))` are wholly within it.
+**Figure 3. The City of Pittsburgh, and the ZIP areas that do not fit it.** The city limits in red; each nearby ZIP area shaded by whether it is wholly inside, partly inside, or outside. `r n(CI("Pittsburgh", "touching"))` areas have a real piece of the city and `r n(CI("Pittsburgh", "wholly_inside"))` sit wholly within it.
 
-Neither city is unusual. Across the hundred largest cities, the median has `r FV("big_median_touching")` ZIP areas with a real piece inside it and `r pc(FV("big_median_pct_wholly"))`% of them wholly inside; `r FV("big_cities_none_wholly")` of the hundred contain no ZIP area whole at all.
+Neither city is unusual. Across the hundred largest American cities, the median city has `r FV("big_median_touching")` ZIP areas with land inside it and only `r pc(FV("big_median_pct_wholly"))`% of them wholly inside, and `r FV("big_cities_none_wholly")` of the hundred contain not one whole ZIP area. Most state constitutions tell line-drawers to keep counties and cities intact where possible. A unit that fits neither is a poor brick for a district, however well it routes a letter.
 
-## It does not fit a district
+## What this brief cannot tell you
 
-Which brings the argument to the case this book cares about. Curiel and Steelman (2018, 2020) propose building congressional districts out of ZIP codes, on the ground that ZIP codes are how constituents and representatives find each other, and that splitting them damages the link. Grofman and Cervas (2021) reply that the evidence does not support the claim and that the unit is unsuited to the job.
+The list of ZIP codes is a compilation, not a register. The Postal Service sells the authoritative file, so the `r n(FV("n_usps"))` counted here come from an open compilation built from address data, and a different compilation would differ in the low hundreds. That the central object of this brief has no free authoritative list is itself a finding.
 
-The measurement below is the one thing in this chapter with no relationship file behind it. The Bureau publishes none between ZIP areas and congressional districts. So it is done by overlapping the shapes directly, and the threshold is reported rather than buried.
+Everything geographic here is the tabulation area, because the ZIP code has no shape of its own; the Irvine seam shows what that substitution costs. The crossing counts are land, not people, except where a population figure is named. The district measurements cover one state under one map. And nothing here measures what voters actually know: the claim that people cannot draw their own ZIP code's boundary is Grofman and Cervas's observation, not a survey result.
 
-```{r pa-split}
-```
+## What you should have learned
 
-**`r n(PS("split"))` of Pennsylvania's `r n(FV("pa_zip_areas"))` ZIP areas are split between two or more of the state's `r FV("pa_districts")` congressional districts**, or `r pc(PS("pct_split"))`% of them. But those areas hold `r pc(PS("pct_pop_in_split"))`% of the people. **The split ZIP areas are the populous ones**, which is what you would expect. A district boundary has to run somewhere, and where it runs through a city it runs through the ZIP areas with the most people in them.
+- A ZIP code is a routing key and a ZCTA is the Census Bureau's drawn approximation of it, and the difference is measurable: `r n(FV("n_no_ground"))` of `r n(FV("n_usps"))` codes, `r pc(FV("pct_no_ground"))`%, have no area at all.
+- The population of a ZIP code is really the population of the blocks the Bureau glued under that label, and two federal sources give answers a median of `r pc(FV("acs_vs_count_median_pct"))`% apart for the same areas.
+- ZIP areas ignore civic geography: `r n(NS("in_two_or_more_counties"))` cross county lines, `r n(NS("in_two_or_more_states"))` cross state lines, and only `r n(CH("codes in both, whose area is unchanged"))` kept the same shape across the decade.
+- Building districts from ZIP codes would trade a split affecting `r pc(PS("pct_pop_in_split"))`% of Pennsylvanians for units with holes, pieces, missing codes and moving edges.
+- A statistic computed over ZIP codes stands on boxes drawn to move mail. That is the purest form of the modifiable areal unit problem, the fact that a statistic about areas depends on how the areas were cut.
 
-Take the argument seriously in both directions and it points the same way.
+## Extensions
 
-**If splitting ZIP codes damages the link between a voter and their representative**, then under the current map that damage falls on roughly a fifth of Pennsylvanians. It is concentrated in exactly the dense places where a district line has no choice but to cut something.
+Every question below can be answered by sorting or grouping in a spreadsheet, using the tables handed over under Sources.
 
-**If you fix it by drawing districts from whole ZIP codes**, you buy that with everything above. Units that cross county lines, `r pc(NS("pct_multi_county"))`% of them, and occasionally state lines. Units that leave a fifth of the state's land uncovered. Units with holes in them, and units in two pieces.
+- `no_ground_kind.csv` counts each state's codes with no area, in its `codes_with_no_ground` and `share_of_state` columns. Which states hold the most, and where is the share of the state's own codes highest?
+- `nesting.csv` reports county-crossing at several values of its `threshold` column. How much does the count in `in_two_or_more_counties` move as the threshold rises, and does `pct_pop_multi_county` move as much?
+- `churn.csv` counts the decade's changes in its `what` and `count` columns. What share of codes present in both vintages came through unchanged?
+- `pa_split.csv` carries `pct_split` and `pct_pop_in_split` at each threshold. Why is the population share so much larger than the area share, and what does that say about where district lines run?
 
-Units whose boundaries move between censuses with no announcement. And roughly one code in five with no area to use at all. Most state constitutions require line-drawers to keep counties and cities whole where they can. ZIP areas do not nest inside either.
-
-And there is the question Grofman and Cervas put most directly, which no amount of data can settle for you: **do you know the boundary of your own ZIP code?** Not the code — the boundary. Which streets are in it, where it stops. The argument for ZIP-code districting rests on voters recognising the unit. The authors, who study redistricting for a living, report that before writing the paper neither of them could have drawn the edges of the ZIP code they live in.
-
-## Why it is used anyway
-
-None of this is obscure, and ZIP codes remain the most-used geography in American applied work. The reason is not ignorance. It is that **the ZIP code is the only piece of geography an ordinary person knows about themselves.**
-
-Ask someone for their census tract and you will get nothing. Ask for their county and about half of urban respondents will guess wrong. Ask for their ZIP code and you get five digits, instantly, correctly, from nearly everybody. It is the cheapest geographic question in survey research, and the answer arrives pre-coded.
-
-So a survey collects ZIP codes because that is what people can supply. An insurer rates by ZIP code because that is what is on the application. A health study reports by ZIP code because that is what the medical record carries. And a news story says "life expectancy varies by twenty years between these two ZIP codes" because that is the unit the underlying study used. At every step the choice is reasonable, and at no step does anyone reopen the question of what the unit is.
-
-That is worth naming plainly, because it is the same shape as two problems this book meets everywhere. The first is the **modifiable areal unit problem** (Openshaw 1984). A statistic computed over areas depends on how the areas were cut, and ZIP areas were cut by the Postal Service for reasons having nothing to do with the statistic.
-
-The second is the **ecological fallacy** (Robinson 1950). A relationship that holds across ZIP areas need not hold across people, and can even reverse.
-
-A ZIP code makes both worse than usual. It is the one unit whose boundaries were drawn with no reference to any social fact at all, and the one unit whose users mostly do not know that.
-
-## What a routing key can testify to
-
-The evidence here is unusually good in one specific way and narrow in several.
-
-It is good because the crossing counts are not estimates. The relationship files are the Census Bureau's own account of how its own two geographies overlap, measured in square metres of shared land. So "this ZIP area is in three counties" is the Bureau's arithmetic, not a by-product of some tolerance chosen here. The one measurement that *is* the by-product of a chosen tolerance, ZIP areas against congressional districts, is reported at three thresholds so you can see how much the choice is doing.
-
-It is narrow in six ways, and none of them is fixable with a better file.
-
-**The list of ZIP codes is a compilation, not a register.** The Postal Service does not publish a free list of its own codes; the authoritative file is sold on subscription. The `r n(FV("n_usps"))` codes counted here come from an open compilation assembled from address data, and it is close to right rather than right by definition. Anyone reproducing the count from a different compilation should expect a different number in the low hundreds. **That the central object of this chapter has no free authoritative list is itself one of its findings.**
-
-**Everything geographic here is the tabulation area, not the ZIP code.** That is unavoidable, because the ZIP code has no shape of its own. But it means every count of crossings, splits and containments is a count about the Bureau's approximation. The Irvine comparison is the visible seam.
-
-**The crossing counts are land, not people, except where they say otherwise.** Land area is what the relationship files measure, so "this ZIP area is in three counties" is a statement about ground. Where population appears it is the 2020 census count for the whole tabulation area. That answers "how many people live in a ZIP area that is split." It does not answer "how many people live on the far side of the split." That second question would need the count block by block, and it is the more interesting one.
-
-**One state's districts, in one decade.** Pennsylvania under the map in force for the 119th Congress. Whether a state with fewer, larger districts splits fewer ZIP areas is not settled here and plainly could go either way.
-
-**Two cities, chosen.** Irvine because the paper being replicated used it, Pittsburgh because it is where this course sits. The hundred-largest table is there so neither is taken for typical, and the hundred largest cities are not the country either.
-
-**Nothing here measures what anybody knows.** The claim that voters cannot identify their own ZIP code boundary is quoted from the paper, not tested. It would take a survey, and it is a good one to want.
-
-So the sentences this chapter will bear are these. **A ZIP code is a routing key, not a place.** Roughly one in five names no ground at all, and a fifth of the country has no ZIP code over it. The areas that do exist are the Census Bureau's guess from delivery routes. They cross counties, cross states, contain holes, arrive in pieces, and change shape between censuses without announcement.
-
-**The map they draw is a real map of the postal system**, and Figure 1 is not a trick. It is not a map of anything else. Anyone who uses the unit inherits a hundred sorting decisions made by an agency whose one aim was the cost of moving mail.
-
-Three things stay open. Whether voters recognise ZIP boundaries, which is an empirical question nobody has answered well. What to use instead when a survey needs a geography respondents can supply — because "census tract" is not an answer people have. And whether the Postal Service should publish its own list. That is a policy question with a plain answer about where the data comes from: at present the most widely used geography in American applied research is one whose definitive definition is for sale.
-
-The letter to 20500 arrives. That is the whole of what the five digits promise, and it is the only thing they were ever asked to do.
+Two questions point past the spreadsheet. The relationship files cover every state, so you can fetch another state's rows from the address below and ask whether its districts split more or fewer ZIP areas than Pennsylvania's. And `cities_big.csv` ranks the hundred largest cities by how badly ZIP areas fit them; pick a city you know and find its worst-fitting code.
 
 ## Sources
 
 **Data**
 
-- GeoNames, *Postal Codes, United States* — the list of codes in circulation.
-  <https://download.geonames.org/export/zip/US.zip> Creative Commons Attribution.
-  A compilation assembled from address data, not a Postal Service register; the
-  authoritative *City State Product* is sold by USPS on subscription and is not
-  used here.
-- U.S. Census Bureau, *Gazetteer Files*, 2024 — the tabulation areas, their land
-  area and their interior points.
-  <https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/>
-- U.S. Census Bureau, *2020 Census Demographic and Housing Characteristics File*,
-  table P1, at summary level 860 — the decennial count for each tabulation area,
-  and the population behind every figure above.
-  <https://api.census.gov/data/2020/dec/dhc>
-  This is the one source here that needs a key. The Census data API has required
-  one since 2025; it is free, it arrives in about a minute, and it goes in
-  `~/.Renviron` as `CENSUS_API_KEY`. The metadata endpoints — which variables
-  and which geographies exist — are still open, and the ZCTA row in the
-  geography list is how the tabulation above was confirmed.
-- U.S. Census Bureau, *American Community Survey 5-year estimates*, 2023, table
-  B01003 — the second reading of the same areas, and the place populations used
-  to rank the hundred largest cities.
-  <https://www2.census.gov/programs-surveys/acs/summary_file/2023/table-based-SF/data/5YRData/>
+- GeoNames, *Postal Codes, United States* — the codes in circulation. A
+  compilation assembled from address data; the authoritative *City State
+  Product* is sold by USPS on subscription.
+  <https://download.geonames.org/export/zip/US.zip>
 - U.S. Census Bureau, *2020 ZCTA relationship files* — how ZCTA land divides
-  among counties and places, and how the 2010 areas map to the 2020 ones.
-  <https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/>
+  among counties, states and places, and how the 2010 areas map to the 2020
+  ones. <https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/>
+- U.S. Census Bureau, *2020 Census Demographic and Housing Characteristics
+  File*, table P1 at summary level 860 — the decennial count for each
+  tabulation area. <https://api.census.gov/data/2020/dec/dhc> The one source
+  here needing a key; it is free, and goes in `~/.Renviron` as
+  `CENSUS_API_KEY`.
+- U.S. Census Bureau, *American Community Survey 5-year estimates*, 2023,
+  table B01003 — the second reading of the same areas, and the populations
+  ranking the hundred largest cities.
+  <https://www2.census.gov/programs-surveys/acs/summary_file/2023/table-based-SF/data/5YRData/>
+- U.S. Census Bureau, *Gazetteer Files*, 2024 — each tabulation area's land
+  area and interior point.
+  <https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/>
 - U.S. Census Bureau, *Cartographic Boundary Files* — the ZCTA, place and
-  congressional district geometry.
+  congressional district geometry behind the figures.
   <https://www2.census.gov/geo/tiger/GENZ2020/shp/> and
   <https://www2.census.gov/geo/tiger/GENZ2024/shp/>
 - U.S. Census Bureau, *TIGER/Line Shapefiles, 2020, tabulation blocks* — the
-  Pennsylvania block file, from which the blocks of Figure 2 and their
-  population come. A 409 MB download for one county's worth of blocks; there is
-  no smaller unit of it.
+  Pennsylvania blocks behind the Pittsburgh anatomy.
   <https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/>
-- U.S. Census Bureau, *ZIP Code Tabulation Areas* — the delineation rules quoted
-  in "How a ZIP code becomes a ZCTA": the majority-of-addresses assignment, the
-  two-square-mile threshold, and the requirement that a ZCTA code be a ZIP code
-  valid on 1 January 2020.
+- U.S. Census Bureau, *ZIP Code Tabulation Areas* — the delineation rules
+  quoted in "The data".
   <https://www.census.gov/programs-surveys/geography/guidance/geo-areas/zctas.html>
 
-Every Census source above is keyless except the decennial counts, which come through the API. The data used for the Pittsburgh figures is the `pgh_rings.csv` and `pgh_blocks.csv` files; the digit map is drawn from `scf.csv`.
+**Writing**
+
+- Curiel, J. A., and T. Steelman (2018). "Redistricting Out Representation:
+  Democratic Harms in Splitting Zip Codes." *Election Law Journal* 17(4):
+  328–353. <https://doi.org/10.1089/elj.2017.0480>
+- Grofman, B., and J. Cervas (2021). "ZIP Codes as Geographic Bases of
+  Representation." *Election Law Journal* 20(1).
+  <https://doi.org/10.1089/elj.2020.0687>
+- Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* CATMOG 38.
+  <https://alexsingleton.github.io/OpenCATMOG/38-maup-openshaw.pdf>
 
 **The data itself**
 
@@ -341,53 +185,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`churn.csv`](data/derived/churn.csv), [`cities.csv`](data/derived/cities.csv), [`cities_big.csv`](data/derived/cities_big.csv), [`digit_rows.csv`](data/derived/digit_rows.csv), [`lists.csv`](data/derived/lists.csv), [`nesting.csv`](data/derived/nesting.csv), [`no_ground.csv`](data/derived/no_ground.csv), [`no_ground_kind.csv`](data/derived/no_ground_kind.csv), [`pa_split.csv`](data/derived/pa_split.csv), [`pgh_blocks.csv`](data/derived/pgh_blocks.csv), [`pgh_ids.csv`](data/derived/pgh_ids.csv), [`pgh_rings.csv`](data/derived/pgh_rings.csv), [`scf.csv`](data/derived/scf.csv), [`zip_vs_zcta.csv`](data/derived/zip_vs_zcta.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `lists.csv` counts the postal codes in circulation and the areas that have been drawn. The two do not match. Work out the gap and what falls into it.
-- `nesting.csv` counts the ZCTAs that cross a county line and a state line, and the population in them. Look at `pct_pop_multi_county`. What happens to any analysis that treats a ZIP code as sitting inside one county?
-- `no_ground.csv` and `no_ground_kind.csv` cover codes that name no ground at all — a single building, a post office box. Find the state with the highest share. What does a map of ZIP codes do with those?
-- `pa_split.csv` counts ZIP areas split across congressional districts and the population living in them. If a campaign bought a mailing list by ZIP code, how many of those letters land in the wrong district?
-
-**Academic literature**
-
-- Curiel, J. A., and T. Steelman (2018). "Redistricting Out Representation:
-  Democratic Harms in Splitting Zip Codes." *Election Law Journal* 17(4):
-  328–353.
-- Curiel, J. A., and T. Steelman (2020). "A Response to 'Tests for
-  Unconstitutional Partisan Gerrymandering in a Post-*Gill* World' in a
-  Post-*Rucho* World." *Election Law Journal* 19(1): 101–109.
-- Grofman, B., and J. Cervas (2021). "ZIP Codes as Geographic Bases of
-  Representation." *Election Law Journal* 20(1). doi:10.1089/elj.2020.0687
-- Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* Norwich: Geo Books.
-- Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
-  Individuals." *American Sociological Review* 15(3): 351–357.
-
-**Further reading**
-
-- Grubesic, T. H. (2008). "Zip Codes and Spatial Analysis: Problems and
-  Prospects." *Socio-Economic Planning Sciences* 42(2): 129–149.
-- Stephanopoulos, N. O. (2012). "Redistricting and the Territorial Community."
-  *University of Pennsylvania Law Review* 160(5): 1379–1477.
-
-**Watched**
-
-- U.S. Census Bureau, "DATA GEMS: What is a ZCTA? Making Sense of Census
-  Geography." The Bureau explaining the tabulation area in its own words, which
-  is the distinction this chapter spends its length on.
-  <https://youtu.be/dluu8NcTyrM>
-- Matt Forrest, "Your ZIP code isn't about you, it's about a mail truck."
-  <https://www.instagram.com/reel/DZNsovSJGpG/>
-
-**Checks**
-
-```{r checks}
-```
-
-Each line is asserted before any of the tables above are written; a change in any source that moved one of these numbers would stop the document rather than change it quietly.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
