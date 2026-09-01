@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -32,9 +33,6 @@ OK <- big$rate[big$state == "OK"]; VT <- big$rate[big$state == "VT"]
 
 hole  <- st[st$mail_returned == 0, ]
 NOJOIN <- rb("C9a") - rb("C1b")
-
-pv <- st[st$prov_cast > 10000, ]
-pv$prate <- 100 * pv$prov_rejected / pv$prov_cast
 
 pc <- function(x, k = 2) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
@@ -80,6 +78,12 @@ GCOL <- c(sig = "#C41230", auto = "#4d9221", judge = "#54278F",
           other = "#BDBDBD")
 COVA  <- mean(rs$cov[rs$grp == "auto"])
 COVJ  <- mean(rs$cov[rs$grp == "judge"])
+# The same four groups with the labels the D3 legend shows. dd_fig()'s legend
+# takes its labels from the data's own values, so the values are the labels.
+rs$grplab <- c(sig   = "signature mismatch: the largest reason of all",
+               auto  = "falls out of the system automatically",
+               judge = "someone had to write down a judgment",
+               other = "the other stated reasons")[rs$grp]
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 knit_print.data.frame <- function(x, ...) {
@@ -94,33 +98,6 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 ## ---- instrument
 knitr::include_graphics("../../_lib/assets/eavs-2024-items-c1-c9.png")
 
-## ---- clean-states
-o <- st[st$state %in% c("AL", "GA", "TX", "WI"),
-        c("state", "jurisdictions", "mail_sent", "mail_returned",
-          "mail_rejected")]
-o$rate <- ifelse(o$mail_returned > 0,
-                 paste0(pc(100 * o$mail_rejected / o$mail_returned), "%"),
-                 "cannot be computed")
-o$mail_sent     <- n(o$mail_sent)
-o$mail_returned <- n(o$mail_returned)
-o$mail_rejected <- n(o$mail_rejected)
-names(o) <- c("state", "jurisdictions", "mail sent", "mail returned",
-              "mail rejected", "rejection rate")
-o
-
-## ---- shape
-data.frame(
-  stage = c("Downloaded", "After cleaning"),
-  rows = c(n(JUR), n(nrow(st))),
-  columns = c("535", "8"),
-  one_row_is = c("one election office", "one state or territory"))
-
-## ---- rows
-data.frame(
-  quantity = c("Rows in the survey", "States and territories covered",
-               "Columns in the source file"),
-  value = c(n(JUR), nrow(st), "535"))
-
 ## ---- units
 o <- rbind(head(u, 3), tail(u, 3))
 o$voters <- n(o$voters)
@@ -134,13 +111,6 @@ o <- nat[, c("item", "total", "reported_by", "pct_reporting")]
 o$total <- n(o$total); o$reported_by <- n(o$reported_by)
 names(o) <- c("item", "national total", "jurisdictions reporting it", "% reporting")
 o
-
-## ---- mail
-data.frame(
-  quantity = c("Mail ballots transmitted to voters", "Returned by voters",
-               "Never returned", "Rejected", "Rejection rate"),
-  value = c(n(g("C1a")), n(g("C1b")), n(g("C1a") - g("C1b")),
-            n(g("C9a")), paste0(pc(MRATE), "% of those returned")))
 
 ## ---- journey-static
 FC <- c(sent = "#cfe3f2", ret = "#2c7fb8", noret = "#D9D9D9",
@@ -265,46 +235,29 @@ names(o) <- c("state", "mail ballots returned", "rejected", "rate (%)")
 o
 
 ## ---- d3-states
-b <- big[order(-big$rate), ]
-rows <- paste(sprintf('{"s":"%s","v":%.2f,"n":%d}', b$state, b$rate,
-                      b$mail_rejected), collapse = ",")
-cat(sprintf('
-<div id="eav" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const d=[%s], nat=%s;
-const W=760,H=380,M={t:18,r:20,b:44,l:52};
-const svg=d3.select("#eav").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleBand().domain(d.map(q=>q.s)).range([M.l,W-M.r]).padding(0.18);
-const y=d3.scaleLinear().domain([0,d3.max(d,q=>q.v)*1.1]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x)).selectAll("text").attr("font-size","9px")
-  .attr("transform","rotate(-60)").attr("text-anchor","end").attr("dy","0.1em").attr("dx","-0.4em");
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(6).tickFormat(v=>v+"%%"));
-svg.append("text").attr("x",M.l).attr("y",M.t-4).attr("font-size","11px")
-  .attr("fill","#666").text("%% of returned mail ballots rejected");
-const tip=d3.select("#eav").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("rect").data(d).join("rect")
-  .attr("x",q=>x(q.s)).attr("y",q=>y(q.v)).attr("width",x.bandwidth())
-  .attr("height",q=>y(0)-y(q.v)).attr("rx",1)
-  .attr("fill",q=>q.v>2?"#C41230":"#2c7fb8")
-  .on("mousemove",function(e,q){ d3.select(this).attr("opacity",0.7);
-    tip.style("opacity",1).html(`<b>${q.s} &mdash; ${q.v.toFixed(2)}%%</b><br>${d3.format(",")(q.n)} ballots rejected`)
-      .style("left",Math.min(e.offsetX+12,W-190)+"px").style("top",(e.offsetY-6)+"px"); })
-  .on("mouseleave",function(){ d3.select(this).attr("opacity",1); tip.style("opacity",0); });
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(nat)).attr("y2",y(nat))
-  .attr("stroke","#333").attr("stroke-dasharray","4 3");
-svg.append("text").attr("x",W-M.r).attr("y",y(nat)-5).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#333").text(`national ${nat.toFixed(2)}%%`);
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-States handling more than 100,000 returned mail ballots. Hover for counts.
-%d states and territories are missing from this chart entirely.</p>
-', rows, pc(MRATE), nrow(hole)))
+# The ranking as a plain bar chart, drawn with the shared library
+# (_lib/dd-charts.js). d3 itself is already on the page: the journey figure
+# above loads it, so dd_fig() emits only dd-charts.js here.
+b <- big[order(-big$rate), c("state", "rate", "mail_rejected")]
+b$cls <- ifelse(b$rate > 2, "series-2", "series-1")
+dd_fig("eav-states", "bar", b,
+  size = list(w = 760, h = 380, m = list(t = 18, r = 20, b = 48, l = 52)),
+  x = list(field = "state"),
+  y = list(field = "rate", label = "% of returned mail ballots rejected",
+           fmt = "pct1", ticks = 6),
+  tiltLabels = TRUE,
+  annotations = list(
+    dd_annot_hline(MRATE, class = "zero"),
+    dd_annot_text("VT", MRATE, sprintf("national %s%%", pc(MRATE)),
+                  anchor = "end", dy = -6)),
+  tip = dd_tip(c(rate = "share rejected", mail_rejected = "ballots rejected"),
+               fmt = c(rate = "pct2", mail_rejected = "comma"),
+               title = "state"),
+  d3 = FALSE)
+cat(sprintf('<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+States handling more than 100,000 returned mail ballots; bars above 2%%
+take the second color. Hover a bar for counts. %d states and territories are
+missing from this chart entirely.</p>', nrow(hole)))
 
 ## ---- state-static
 b <- big[order(-big$rate), ]
@@ -322,19 +275,6 @@ mtext(paste0("States handling more than 100,000 returned mail ballots. The ",
 o <- head(rsn[, c("reason", "ballots", "pct_of_rejected")], 6)
 o$ballots <- n(o$ballots)
 names(o) <- c("reason recorded", "ballots", "% of all rejections")
-o
-
-## ---- reason-check
-data.frame(
-  quantity = c("Stated national total rejected", "Sum of the stated reasons",
-               "Unexplained"),
-  value = c(n(g("C9a")), n(sum(rsn$ballots)), n(g("C9a") - sum(rsn$ballots))))
-
-## ---- reporting
-o <- rsn[order(-rsn$reported_by), c("reason", "reported_by", "ballots")]
-o <- rbind(head(o, 3), tail(o, 3))
-o$reported_by <- n(o$reported_by); o$ballots <- n(o$ballots)
-names(o) <- c("reason recorded", "jurisdictions reporting it", "ballots")
 o
 
 ## ---- reasons-static
@@ -368,56 +308,33 @@ mtext(paste0("Signature mismatch, the largest category of all, sits at ",
       side = 1, line = 4.8, cex = 0.58, col = "#666666")
 
 ## ---- reasons-d3
-rows <- paste(sprintf('{"s":"%s","x":%.2f,"y":%d,"g":"%s","n":"%s","j":"%s"}',
-                      rs$short, rs$cov, rs$ballots, rs$grp, n(rs$ballots),
-                      n(rs$reported_by)), collapse = ",")
-cat(paste0('
-<div id="rsn" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '];
-const C={sig:"', GCOL[["sig"]], '",auto:"', GCOL[["auto"]], '",judge:"',
-  GCOL[["judge"]], '",other:"', GCOL[["other"]], '"};
-const W=760,H=400,M={t:16,r:26,b:52,l:74};
-const svg=d3.select("#rsn").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([8,102]).range([M.l,W-M.r]);
-const y=d3.scaleLog().domain([90,4e5]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(v=>v+"%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickValues([100,1000,10000,100000])
-    .tickFormat(d3.format(",")));
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-16).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("% of the country’s jurisdictions that reported this reason");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",16).attr("text-anchor","middle").attr("font-size","12px")
-  .attr("fill","#444").text("ballots rejected for this reason (log scale)");
-const cap=d3.select("#rsn").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.x)).attr("cy",d=>y(d.y)).attr("r",6)
-  .attr("fill",d=>C[d.g]).style("cursor","pointer")
-  .on("mousemove",(e,d)=>cap.html("<b>"+d.s+"</b>: "+d.n+" ballots, reported by "+
-    d.j+" jurisdictions."))
-  .on("mouseleave",()=>cap.html("<b>Hover a dot.</b> Up the page is how many. Across is how well we know."));
-svg.append("g").selectAll("text").data(D.filter(d=>d.g!=="other")).join("text")
-  .attr("x",d=>d.x>70?x(d.x)-10:x(d.x)+10).attr("y",d=>y(d.y)+4)
-  .attr("text-anchor",d=>d.x>70?"end":"start").attr("font-size","11px")
-  .attr("fill",d=>C[d.g]).text(d=>d.s);
-const lg=svg.append("g").attr("transform",`translate(${M.l+10},${M.t+6})`);
-[["sig","signature mismatch: the largest reason of all"],
- ["auto","falls out of the system automatically"],
- ["judge","someone had to write down a judgment"],
- ["other","the other ', sum(rs$grp == 'other'), ' stated reasons (hover for names)"]].forEach((r,i)=>{
-  lg.append("circle").attr("cx",5).attr("cy",i*16).attr("r",5).attr("fill",C[r[0]]);
-  lg.append("text").attr("x",16).attr("y",i*16+4).attr("font-size","11px")
-    .attr("fill","#333").text(r[1]);});
-cap.html("<b>Hover a dot.</b> Up the page is how many. Across is how well we know.");
-})();
-</script>
-'))
+# The same scatter, drawn with the shared library. The library's scatter
+# labels any row carrying `lbl`, puts a `side:"left"` label on the left, and
+# takes its legend straight from the group labels in the data.
+r2 <- rs[, c("short", "cov", "ballots", "grplab", "reported_by")]
+r2$lbl  <- ifelse(rs$grp != "other", rs$short, NA)
+r2$side <- ifelse(rs$cov > 70, "left", NA)
+dd_fig("eav-reasons", "scatter", r2,
+  size = list(w = 760, h = 400, m = list(t = 16, r = 26, b = 46, l = 74)),
+  x = list(field = "cov",
+           label = "% of the country's jurisdictions that reported this reason",
+           domain = c(8, 102), fmt = "pct0", ticks = 6),
+  y = list(field = "ballots",
+           label = "ballots rejected for this reason (log scale)",
+           log = TRUE, domain = c(90, 4e5),
+           # label only the powers of ten; the minor log ticks stay as marks
+           fmt = dd_js('function(v){return Math.abs(Math.log10(v)%1)<1e-9 ?
+                        (+v).toLocaleString("en-US") : "";}')),
+  series = list(field = "grplab", classes = list(
+    "signature mismatch: the largest reason of all" = "series-2",
+    "falls out of the system automatically"         = "series-3",
+    "someone had to write down a judgment"          = "series-4",
+    "the other stated reasons"                      = "series-8")),
+  r = 6, legend = TRUE,
+  tip = dd_tip(c(ballots = "ballots", reported_by = "jurisdictions reporting"),
+               fmt = c(ballots = "comma", reported_by = "comma"),
+               title = "short"),
+  d3 = FALSE)
 
 ## ---- denominator-gap
 data.frame(
@@ -444,14 +361,6 @@ data.frame(
                "Rejection rate", "Reported by"),
   value = c(n(g("E1a")), n(g("E1b")), n(g("E1d")),
             paste0(pc(PRATE, 1), "%"), paste0(pc(pr("E1d"), 1), "% of jurisdictions")))
-
-## ---- prov-state
-o <- rbind(head(pv[order(-pv$prate), ], 4), head(pv[order(pv$prate), ], 3))
-o <- o[, c("state", "prov_cast", "prov_rejected", "prate")]
-o$prov_cast <- n(o$prov_cast); o$prov_rejected <- n(o$prov_rejected)
-o$prate <- pc(o$prate, 1)
-names(o) <- c("state", "provisional cast", "rejected", "rate (%)")
-o
 
 ## ---- on-mark
 # Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for

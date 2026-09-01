@@ -188,12 +188,6 @@ svg.append("text").attr("x",18).attr("y",362).attr("font-size","12px").attr("fil
   .text("Punch hole 2 and then hole 3, and the ballot carries no presidential vote at all.");
 })();
 </script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Schematic, not a facsimile. Only the arrangement the U.S. Commission on Civil
-Rights recorded is drawn: names on two facing pages, punch holes down the
-center, arrows from each name to its hole, Bush and Gore first and second on the
-left page, and the Reform Party hole second in the column. The order of the
-remaining seven tickets is not reproduced here.</p>
 ')
 
 ## ---- butterfly-static
@@ -261,76 +255,6 @@ names(o) <- c("state", "county", "FIPS", "ballots cast (EAVS)",
               "presidential votes", "residual", "residual rate (%)")
 o
 
-## ---- raweavs
-# Verbatim captures from the EAVS public-release file, elided where marked.
-# The column count quoted below is the twelve named here plus the number the
-# elision itself states, added up at knit time rather than asserted.
-NSHOWN <- 12L
-HD <- paste0("FIPSCode,Jurisdiction_Name,State_Full,State_Abbr,A1a,A1b,A1c,",
-             "A1d_Other,A1d,A1Comments,A2a,A2b,",
-             "... 523 more columns, F1a among them ...")
-R1 <- paste0("\"0100100000\",\"AUTAUGA COUNTY\",\"ALABAMA\",\"AL\",46292,",
-             "41817,4475,\"\",,\"\",-88,-88,-88,\"\",25747,15365,-99,3,",
-             "10309,70, ...")
-SL <- c(
-"FIPSCode    Jurisdiction_Name State_Abbr   F1a  F1b  F1c   F1d  F1e  F1f",
-"0100100000  AUTAUGA COUNTY    AL         28388  -99  -99  1670  -99  -88",
-"0100300000  BALDWIN COUNTY    AL        122542  -99  -99  7771  -99  -88",
-"0100500000  BARBOUR COUNTY    AL          9919  -99  -99   593  -99  -88")
-NC_EAVS <- NSHOWN + as.integer(sub(".*\\.\\.\\. ([0-9]+) more.*", "\\1", HD))
-
-# Column against value, one per row. The sentinels are what the next paragraph
-# is about, and a sentinel is only visible as a sentinel when it sits next to
-# the column name it answers.
-.hd <- strsplit(HD, ",", fixed = TRUE)[[1]][seq_len(NSHOWN)]
-.r1 <- read.csv(text = R1, header = FALSE, stringsAsFactors = FALSE,
-                colClasses = "character")
-.r1 <- as.character(unlist(.r1))[seq_len(NSHOWN)]
-.eav <- c(
-  FIPSCode = "the jurisdiction's identifier, ten digits, quoted",
-  Jurisdiction_Name = "its name",
-  State_Full = "the state, spelled out",
-  State_Abbr = "the state, abbreviated — the same fact twice",
-  A1a = "total registered voters",
-  A1b = "of those, the active registrations",
-  A1c = "of those, the inactive registrations",
-  A1d_Other = "what the jurisdiction means by 'other', in words",
-  A1d = "registrations in some other status",
-  A1Comments = "free text the jurisdiction wrote about section A",
-  A2a = "registration activity — not reported here",
-  A2b = "registration activity — not reported here")
-# The three registration counts, read out of the row rather than retyped, so
-# the sentence below cannot drift away from the table above it.
-REG_T <- as.numeric(.r1[match("A1a", .hd)])
-REG_A <- as.numeric(.r1[match("A1b", .hd)])
-REG_I <- as.numeric(.r1[match("A1c", .hd)])
-stopifnot(REG_A + REG_I == REG_T)
-rbind(
-  data.frame(Column = .hd,
-             Value_for_Autauga = ifelse(is.na(.r1) | !nzchar(.r1), "(empty)",
-                                        .r1),
-             What_it_holds = unname(.eav[.hd]),
-             stringsAsFactors = FALSE),
-  data.frame(Column = paste0("… ", NC_EAVS - NSHOWN,
-                             " more columns, F1a among them"),
-             Value_for_Autauga = "…",
-             What_it_holds = "…", stringsAsFactors = FALSE))
-
-## ---- raweavs2
-# Three counties across section F. Whitespace-aligned in the capture, so it is
-# split on runs of spaces -- no value here contains one.
-.p <- lapply(SL, function(x) strsplit(trimws(x), " {2,}")[[1]])
-.d <- as.data.frame(do.call(rbind, .p[-1]), stringsAsFactors = FALSE)
-names(.d) <- .p[[1]]
-.d
-
-## ---- cleanresid
-co[co$fips %in% c("01001", "01003", "01005"), ]
-
-## ---- cleananom
-head(an[order(an$residual_rate),
-        c("state_name", "county_name", "ballots", "total_votes", "residual")], 3)
-
 ## ---- summary
 data.frame(
   statistic = c("Counties with a usable comparison",
@@ -341,71 +265,6 @@ data.frame(
             pc(quantile(u$residual_rate, .25)),
             pc(quantile(u$residual_rate, .75)),
             pc(100 * (sum(u$ballots) - sum(u$total_votes)) / sum(u$ballots))))
-
-## ---- hist-static
-par(mar = c(6.0, 4.4, 0.8, 1.4))
-hist(u$residual_rate[u$residual_rate < 6], breaks = seq(0, 6, 0.1),
-     col = "#2c7fb8", border = "white", main = "", las = 1,
-     ylab = "counties",
-     xlab = "residual vote rate, % of ballots cast")
-abline(v = median(u$residual_rate), col = "#C41230", lwd = 2)
-text(median(u$residual_rate) + 0.09, par("usr")[4] * 0.94,
-     paste0("median ", pc(median(u$residual_rate)), "%"),
-     adj = c(0, 1), cex = 0.72, col = "#C41230")
-mtext(sprintf(paste("%s of the %s usable counties sit at or above 6%% and are",
-                    "omitted from this view;"),
-              n(sum(u$residual_rate >= 6)), n(nrow(u))),
-      side = 1, line = 3.7, cex = 0.62, col = "#666")
-mtext("they are the tail this chapter returns to. The highest is  ", side = 1,
-      line = 4.5, cex = 0.62, col = "#666")
-mtext(sprintf("%s%% in %s, %s.", pc(max(u$residual_rate)),
-              u$county_name[which.max(u$residual_rate)],
-              u$state_name[which.max(u$residual_rate)]),
-      side = 1, line = 5.3, cex = 0.62, col = "#666")
-
-## ---- d3-hist
-b <- hist(u$residual_rate[u$residual_rate < 6], breaks = seq(0, 6, 0.1), plot = FALSE)
-rows <- paste(sprintf('{"x":%.2f,"n":%d}', b$mids, b$counts), collapse = ",")
-cat(sprintf('
-<div id="res" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const bins=[%s];
-const W=760,H=400,M={t:20,r:24,b:44,l:56};
-const svg=d3.select("#res").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,6]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,d3.max(bins,d=>d.n)*1.05]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("residual vote rate (%% of ballots cast)");
-svg.append("text").attr("x",M.l).attr("y",M.t-4).attr("font-size","11px").attr("fill","#666").text("counties");
-const w=(x(0.1)-x(0))-1;
-const tip=d3.select("#res").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("rect").data(bins).join("rect")
-  .attr("x",d=>x(d.x)-w/2).attr("y",d=>y(d.n)).attr("width",w)
-  .attr("height",d=>y(0)-y(d.n)).attr("fill","#2c7fb8")
-  .on("mousemove",function(e,d){ d3.select(this).attr("fill","#C41230");
-    tip.style("opacity",1).html(`<b>${d.x.toFixed(2)}%%</b><br>${d.n} counties`)
-      .style("left",Math.min(e.offsetX+12,W-140)+"px").style("top",(e.offsetY-8)+"px"); })
-  .on("mouseleave",function(){ d3.select(this).attr("fill","#2c7fb8"); tip.style("opacity",0); });
-const med=%s;
-svg.append("line").attr("x1",x(med)).attr("x2",x(med)).attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#C41230").attr("stroke-width",2);
-svg.append("text").attr("x",x(med)+6).attr("y",M.t+12).attr("font-size","11px")
-  .attr("fill","#C41230").text(`median ${med}%%`);
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-%s of the %s usable counties sit at or above 6%% and are omitted from this view;
-they are the tail this chapter returns to. The highest is %s%% in %s, %s.</p>
-', rows, pc(median(u$residual_rate)),
-   n(sum(u$residual_rate >= 6)), n(nrow(u)), pc(max(u$residual_rate)),
-   u$county_name[which.max(u$residual_rate)],
-   u$state_name[which.max(u$residual_rate)]))
 
 ## ---- anomalies
 h <- head(an[order(-an$gap), c("state_name", "county_name", "ballots", "total_votes", "gap")], 6)
@@ -636,26 +495,10 @@ for (i in 1:3) {
   text(750, yy + 11, key[i, 2], cex = 0.5, col = "#444", adj = 0)
 }
 
-## ---- extremes
-h <- head(u[order(-u$residual_rate), c("state_name", "county_name", "ballots",
-                                       "total_votes", "residual_rate")], 5)
-h$ballots <- n(h$ballots); h$total_votes <- n(h$total_votes)
-h$residual_rate <- pc(h$residual_rate, 1)
-names(h) <- c("state", "county", "ballots", "presidential votes", "residual rate (%)")
-h
-
 ## ---- unusable
 o <- un
 names(o) <- c("state", "median rate (%)", "why it was set aside")
 o
-
-## ---- final
-data.frame(
-  stage = c("Counties joined", "Dropped: arithmetic impossible",
-            "Dropped: state-level reporting failure", "Usable",
-            "Median residual rate among usable counties (%)"),
-  count = c(n(nrow(co) + nrow(an)), nrow(an), sum(!co$state_usable),
-            n(nrow(u)), pc(median(u$residual_rate))))
 
 ## ---- on-mark
 # Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for
