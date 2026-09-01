@@ -164,14 +164,6 @@ names(o) <- c("jurisdiction", "language group", "voting-age citizens",
               "10,000 test", "5% test", "illiteracy test", "covered")
 o
 
-## ---- files
-data.frame(
-  file = c("sect203_counties.csv", "sect203_determined.csv"),
-  rows = c(n(nrow(cty)), n(nrow(det))),
-  what_it_is = c("every county, every language group with any limited-English population",
-                 "every jurisdiction the Bureau made a determination about"),
-  covered_rows = c(n(sum(cty$FLAG_COV == 1)), n(nrow(cv))))
-
 ## ---- determinations
 data.frame(
   quantity = c("Coverage determinations issued",
@@ -182,91 +174,6 @@ data.frame(
                "Determinations for Spanish (recorded as 'Hispanic')"),
   value = c(nrow(cv), n_juris, lev[["County"]], lev[["MCD"]], lev[["State"]],
             n_spanish))
-
-## ---- raws203
-# A verbatim capture, folded at the commas. The column count in the prose is
-# read back out of the header line rather than asserted beside it.
-HD <- paste0("SUMLVL,LEVEL,S203_GEOID,AIAN,ANRC,ST,CNTY,MCD,NAMELSAD,",
-             "LANCOUNT,LANGUAGE,POP,MPOP,VAPOP,MVAPOP,VACIT,MVACIT,VACLEP,",
-             "MVACLEP,ILLIT,MILLIT,LEPPCT,MLEPPCT,ILLRAT,MILLRAT,FLAG10,",
-             "FLAG5,FLAG_EDU,FLAG_ST,FLAG_JURIS,FLAG_AIAN,FLAG_ANRC,FLAG_COV")
-RW <- c(
- "010,Nation,0100000US,0000,00000,00,000,NNNNN,,01,Total Population,,,,,",
- ",,,,,,,,1.3200,,,,,,,,,",
- "040,State,0400000US01,0000,00000,01,000,NNNNN,Alabama,02,Hispanic,",
- "208600,",
- "354,125600,240,72020,1196,13190,588,1352,182,0.4000,0.0000,10.3000,",
- "1.3000,,0,1,0,,,,0")
-NRAW <- 1L + sum(strsplit(HD, "", fixed = TRUE)[[1]] == ",")
-fold <- function(s, w = 71) {
-  ch <- strsplit(s, "", fixed = TRUE)[[1]]
-  brk <- which(ch == ",")
-  out <- character(0); i <- 1L
-  while (i <= length(ch)) {
-    cand <- brk[brk >= i & brk < i + w]
-    j <- if (length(ch) - i + 1L <= w || !length(cand)) length(ch) else max(cand)
-    out <- c(out, paste(ch[i:j], collapse = "")); i <- j + 1L
-  }
-  out
-}
-# The capture is wrapped at the page width; the two records are rejoined and
-# parsed. Empty cells are shown as such rather than trimmed away, because the
-# emptiness of the Nation row is what the next paragraph is about.
-.r1 <- paste0(RW[1], RW[2])
-.r2 <- paste0(RW[3], RW[4], RW[5], RW[6])
-.p  <- read.csv(text = paste(HD, .r1, .r2, sep = "\n"),
-                stringsAsFactors = FALSE, check.names = FALSE,
-                colClasses = "character", na.strings = character(0))
-.s203 <- c(
-  SUMLVL = "summary level code — what kind of geography this row is",
-  LEVEL = "the same thing in words",
-  S203_GEOID = "geographic identifier for the jurisdiction",
-  AIAN = "American Indian / Alaska Native area code",
-  ANRC = "Alaska Native Regional Corporation code",
-  ST = "state FIPS code", CNTY = "county FIPS code",
-  MCD = "minor civil division code — NNNNN where none applies",
-  NAMELSAD = "the jurisdiction's name",
-  LANCOUNT = "numeric code for the language group",
-  LANGUAGE = "the same language group, named in words",
-  POP = "population of the language group", MPOP = "its margin of error",
-  VAPOP = "voting-age population of the group", MVAPOP = "its margin of error",
-  VACIT = "voting-age citizens in the group", MVACIT = "its margin of error",
-  VACLEP = "voting-age citizens with limited English proficiency",
-  MVACLEP = "its margin of error",
-  ILLIT = "of those, the number below a fifth-grade education",
-  MILLIT = "its margin of error",
-  LEPPCT = "limited-English citizens as a percentage of the group",
-  MLEPPCT = "its margin of error",
-  ILLRAT = "the illiteracy rate — on the Nation row, the statutory threshold",
-  MILLRAT = "its margin of error",
-  FLAG10 = "meets the 10,000-person trigger",
-  FLAG5 = "meets the 5-percent trigger",
-  FLAG_EDU = "meets the education (illiteracy) condition",
-  FLAG_ST = "covered statewide", FLAG_JURIS = "covered as a jurisdiction",
-  FLAG_AIAN = "covered as an American Indian area",
-  FLAG_ANRC = "covered as an Alaska Native corporation",
-  FLAG_COV = "covered under Section 203, all conditions taken together")
-data.frame(
-  Column_as_it_arrives = names(.p),
-  Row_1_the_Nation = ifelse(nzchar(unlist(.p[1, ])), unlist(.p[1, ]), "(empty)"),
-  Row_2_Alabama    = ifelse(nzchar(unlist(.p[2, ])), unlist(.p[2, ]), "(empty)"),
-  What_it_holds    = unname(.s203[names(.p)]))
-
-## ---- cleans203
-o <- cty[cty$NAMELSAD == "Los Angeles County" &
-         cty$LANGUAGE %in% c("Hispanic", "Korean alone or in combination"),
-         c("LANGUAGE", "VACIT", "VACLEP", "MVACLEP", "LEPPCT",
-           "FLAG10", "FLAG_COV")]
-o$LANGUAGE <- sub(" alone or in combination", "", o$LANGUAGE)
-o
-
-## ---- languages
-o <- as.data.frame(sort(table(cv$LANGUAGE), decreasing = TRUE),
-                   stringsAsFactors = FALSE)
-names(o) <- c("language group", "determinations")
-o$`language group` <- shorten(o$`language group`)
-rbind(head(o, 4), data.frame(`language group` = "...", determinations = "",
-                             check.names = FALSE), tail(o, 5))
 
 ## ---- langs-static
 yy <- seq_len(nrow(lang))
@@ -337,13 +244,6 @@ data.frame(
   value = c(sum(pass10), sum(cty$FLAG10 == 1),
             ifelse(identical(which(pass10), which(cty$FLAG10 == 1)),
                    "TRUE", "FALSE")))
-
-## ---- near
-o <- s10[, c("NAMELSAD", "LANGUAGE", "VACLEP", "FLAG10", "FLAG5", "FLAG_COV")]
-o$LANGUAGE <- shorten(o$LANGUAGE); o$VACLEP <- n(o$VACLEP)
-names(o) <- c("county", "language", "estimate", "10,000 test", "5% test",
-              "covered")
-o
 
 ## ---- moe
 o <- s10[, c("NAMELSAD", "LANGUAGE", "VACLEP", "MVACLEP", "lo", "hi",
@@ -423,15 +323,6 @@ data.frame(
                "For comparison: counties straddling the 10,000 line"),
   value = c(nrow(p5), sum(p5$FLAG_COV == 1), sum(p5$FLAG_COV == 0), nrow(s10)))
 
-## ---- pct-ex
-o <- head(p5[order(-p5$VACLEP),
-             c("NAMELSAD", "LANGUAGE", "VACIT", "VACLEP", "LEPPCT", "MLEPPCT",
-               "FLAG_COV")], 5)
-o$LANGUAGE <- shorten(o$LANGUAGE); o$VACIT <- n(o$VACIT); o$VACLEP <- n(o$VACLEP)
-names(o) <- c("county", "language", "voting-age citizens", "limited English",
-              "% of all", "margin on the %", "covered")
-o
-
 ## ---- funnel-static
 # This is the one figure in the document drawn to a raster device rather than
 # straight into the PDF. It plots 10,565 points, and as vector art those points
@@ -505,36 +396,12 @@ const lg=svg.append("g").attr("transform",`translate(${W-M.r-268},${M.t+6})`);
 </script>
 ', rows, med, MASSC, TRNDC, STRDC, MASSC, STRDC, TRNDC))
 
-## ---- edu
-data.frame(
-  quantity = c("County-language rows in the file",
-               "Rows that fail the illiteracy test",
-               "Rows that clear the 10,000 bar",
-               "Rows that clear the 5% bar",
-               "Rows that clear either bar and are then blocked by the illiteracy test"),
-  value = c(n(nrow(cty)), n(n_edu_fail), n(sum(pass10)), n(sum(pass5)),
-            n(edu_blocks)))
-
 ## ---- odd
 o <- head(odd[, c("NAMELSAD", "LANGUAGE", "VACLEP", "LEPPCT", "FLAG_AIAN",
                   "FLAG_ANRC", "FLAG_COV")], 5)
 o$LANGUAGE <- shorten(o$LANGUAGE)
 names(o) <- c("jurisdiction", "language", "limited-English citizens", "% of all",
               "American Indian provision", "Alaska Native provision", "covered")
-o
-
-## ---- moepct
-o <- head(lt[, c("LANGUAGE", "counties", "VACLEP", "MVACLEP", "moe_pct")], 6)
-o$LANGUAGE <- shorten(o$LANGUAGE)
-names(o) <- c("language", "counties covered", "median estimate",
-              "median margin", "margin as % of estimate")
-o
-
-## ---- thresholds
-o <- thtab
-o$threshold <- n(o$threshold)
-names(o) <- c("if the threshold were", "county-language pairs qualifying",
-              "added vs. the real rule", "dropped vs. the real rule")
 o
 
 ## ---- hist-static
@@ -596,107 +463,6 @@ cap.html(base);
 })();
 </script>
 ', rows, hw[1], hw[2], n(10000), COVC, NCOVC, STATC, STATC, STATLAB))
-
-## ---- duo-static
-xr <- c(min(duo$lo) - 400, max(duo$hi) + 400)
-par(mar = c(4.4, 9.6, 2.2, 3.2))
-plot(NA, xlim = xr, ylim = c(0.42, 2.62), yaxt = "n", bty = "n", ylab = "",
-     xlab = "voting-age citizens with limited English")
-rect(10000, 0.3, xr[2], 2.8, col = paste0(COVC, "11"), border = NA)
-abline(v = 10000, lwd = 2, lty = 2, col = STATC)
-mtext(STATLAB, side = 3, at = 10000, line = 0.2, cex = 0.78, col = STATC)
-cl <- ifelse(duo$FLAG_COV == 1, COVC, NCOVC)
-segments(duo$VACLEP[1], 2, duo$VACLEP[2], 1, col = "#777777", lwd = 2.2)
-segments(duo$lo, 2:1, duo$hi, 2:1, col = cl, lwd = 7, lend = 1)
-points(duo$VACLEP, 2:1, pch = 21, bg = "white", col = cl, cex = 1.5, lwd = 2.4)
-axis(2, at = 2:1, labels = duo$lab, las = 1, tick = FALSE, cex.axis = 0.82)
-# pushed clear of the statutory line, which otherwise strikes through this text
-text(duo$VACLEP + c(280, -280), c(2.42, 0.58), n(duo$VACLEP), cex = 0.74,
-     col = cl)
-text(duo$hi, 2:1, ifelse(duo$FLAG_COV == 1, "  covered", "  not covered"),
-     pos = 4, cex = 0.74, col = cl, xpd = NA)
-text(mean(duo$VACLEP), 1.5, paste0(n(duo$VACLEP[1] - duo$VACLEP[2]), " apart"),
-     pos = 4, cex = 0.74, col = "#555555")
-
-## ---- duo-d3
-rows <- paste(sprintf('{"l":"%s","e":%d,"m":%d,"lo":%d,"hi":%d,"c":%d}',
-                      duo$lab, duo$VACLEP, duo$MVACLEP, duo$lo, duo$hi,
-                      duo$FLAG_COV), collapse = ",")
-cat(sprintf('
-<div id="duo" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=250,M={t:40,r:120,b:52,l:190};
-const svg=d3.select("#duo").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([d3.min(D,d=>d.lo)-400,d3.max(D,d=>d.hi)+400])
-  .range([M.l,W-M.r]);
-const yv=[M.t+16,M.t+80];
-svg.append("rect").attr("x",x(10000)).attr("y",M.t-14)
-  .attr("width",W-M.r-x(10000)).attr("height",H-M.b-M.t+14).attr("fill","%s")
-  .attr("fill-opacity",0.07);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d3.format(",")));
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-12).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("voting-age citizens with limited English");
-svg.append("line").attr("x1",x(10000)).attr("x2",x(10000)).attr("y1",M.t-14)
-  .attr("y2",H-M.b).attr("stroke","%s").attr("stroke-width",2)
-  .attr("stroke-dasharray","6,4");
-svg.append("text").attr("x",x(10000)).attr("y",M.t-20).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("font-weight","600").attr("fill","%s").text("%s");
-const col=d=>d.c?"%s":"%s";
-svg.append("line").attr("x1",x(D[0].e)).attr("y1",yv[0]).attr("x2",x(D[1].e))
-  .attr("y2",yv[1]).attr("stroke","#777").attr("stroke-width",2.2);
-svg.append("text").attr("x",(x(D[0].e)+x(D[1].e))/2+8).attr("y",(yv[0]+yv[1])/2+4)
-  .attr("font-size","11.5px").attr("fill","#555")
-  .text(d3.format(",")(D[0].e-D[1].e)+" apart");
-D.forEach((d,i)=>{
-  svg.append("line").attr("x1",x(d.e)).attr("x2",x(d.e)).attr("y1",yv[i])
-    .attr("y2",yv[i]).attr("stroke",col(d)).attr("stroke-width",8)
-    .attr("stroke-linecap","butt")
-    .transition().duration(800).attr("x1",x(d.lo)).attr("x2",x(d.hi));
-  svg.append("circle").attr("cx",x(d.e)).attr("cy",yv[i]).attr("r",6)
-    .attr("fill","#fff").attr("stroke",col(d)).attr("stroke-width",2.6);
-  svg.append("text").attr("x",M.l-12).attr("y",yv[i]+4).attr("text-anchor","end")
-    .attr("font-size","12px").text(d.l);
-  svg.append("text").attr("x",W-M.r+10).attr("y",yv[i]+4).attr("font-size","11.5px")
-    .attr("fill",col(d)).text(d.c?"covered":"not covered");});
-})();
-</script>
-', rows, COVC, STATC, STATC, STATLAB, COVC, NCOVC))
-
-## ---- on-mark
-# Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for
-# the dark page; over a light bar or cell that would give near-white on
-# near-white, so these pin the ink tokens back to the values the figure was
-# drawn with. Listed per figure and per fill, because the same hex elsewhere in
-# the chapter IS on the page and does want lifting.
-# Sites found by _lib/check-contrast.js; re-run it after touching these figures.
-cat('<style>
-#duo text[fill="#555" i]
-  { --ink:#12181D; --ink-2:#4E5A63; --ink-3:#76838C;
-    --map-gop:#C41230; --map-dem:#2C7FB8; }
-</style>')
-
-## ---- on-mark-halo
-# A label lying across a saturated or mid-toned mark, where neither the
-# authored colour nor the lifted one reaches 3:1. Recolouring cannot fix a
-# label the same colour as the thing it labels, so it gets a halo instead:
-# paint-order draws a --paper outline behind the glyph. It is invisible where
-# the text sits on the page, so scoping by figure and fill is safe.
-# LIGHT PAGE ONLY: the on-mark chunk above pins this fill dark for the dark
-# page, so a --paper stroke there would sit dark behind a dark ink, and the
-# checker scores the fill against the stroke it touches.
-# Sites found by _lib/check-contrast.js --light.
-cat('<style>
-@media (prefers-color-scheme: light) {
-#duo text[fill="#555" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
-</style>')
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
