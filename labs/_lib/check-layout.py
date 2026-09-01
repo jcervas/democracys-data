@@ -63,13 +63,18 @@ LABS = os.path.dirname(HERE)
 #                 advisory checks (language, captions).
 #
 # A bare run prints both, which is what a person at the keyboard wants.
-# DD_STRICT_TEMPLATE=1 turns the advisory checks into gates; until the
-# rewrite completes they never touch the exit status, because render-brief.R
-# runs check-all.sh before every render and a new gate the whole corpus
-# fails would stop every render in the book.
+#
+# THE TEMPLATE AND TITLE CHECKS NOW GATE. They were advisory through the
+# 3rd-edition rewrite, because render-brief.R runs check-all.sh before every
+# render and a gate the whole corpus failed would have stopped every render
+# in the book. The rewrite finished on 31 August 2026 with all 112 documents
+# conforming, so the standard is now enforced: a new document that does not
+# end the way its type requires, or whose title withholds its subject, fails
+# the build. DD_STRICT_TEMPLATE=0 relaxes them to advisory again, which is
+# worth doing only while deliberately mid-rewrite of many documents at once.
 GATE_ONLY = "--gate-only" in sys.argv[1:]
 TEMPLATE_ONLY = "--template" in sys.argv[1:]
-STRICT_TEMPLATE = os.environ.get("DD_STRICT_TEMPLATE") == "1"
+STRICT_TEMPLATE = os.environ.get("DD_STRICT_TEMPLATE") != "0"
 
 # A script may sit at the top of data/ whatever it is written in. .mjs is here
 # because follower-counts collects through a browser, which R and Python cannot
@@ -423,9 +428,8 @@ for slug, p in ALL:
 
 
 def report_template():
-    print("template tail (STYLE.md rule 13; advisory"
-          + (", DD_STRICT_TEMPLATE=1 so it gates" if STRICT_TEMPLATE else "")
-          + "):")
+    how = "gating" if STRICT_TEMPLATE else "advisory, DD_STRICT_TEMPLATE=0"
+    print("template tail (STYLE.md rule 13; %s):" % how)
     for slug, typ, got in tail_bad:
         print("  %-28s (%s) ends: %s" % (slug, typ, got))
     print("%d of %d chapters follow the 3rd-edition template"
@@ -433,7 +437,7 @@ def report_template():
     print("  (briefs end learned > Extensions > Sources; chapters carry "
           "learned and end on Sources)")
     print()
-    print("title policy (STYLE.md rule 14; advisory):")
+    print("title policy (STYLE.md rule 14; %s):" % how)
     if title_bad:
         for slug, title in title_bad:
             print("  %-28s %s" % (slug, title))

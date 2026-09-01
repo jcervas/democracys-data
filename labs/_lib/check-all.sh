@@ -84,12 +84,13 @@ echo
 echo "=== one figure, one caption (STYLE.md rule 4) ==="
 python3 "$LIB/check-captions.py" || true
 
-# Advisory like captions, and for the same reason: the corpus is mid-rewrite
-# toward the 3rd-edition template, and gating today would stop every render.
-# DD_STRICT_TEMPLATE=1 makes check-layout.py gate on these once it is done.
+# GATING since the 3rd-edition rewrite finished, 31 August 2026. Every
+# document ends the way its type requires and every title names its subject,
+# so a new one that does not is a mistake worth stopping for.
+# DD_STRICT_TEMPLATE=0 relaxes it to advisory while mid-rewrite.
 echo
 echo "=== 3rd-edition template and titles (STYLE.md Part Three) ==="
-python3 "$LIB/check-layout.py" --template || true
+python3 "$LIB/check-layout.py" --template || fail=1
 
 # Opt-in, because it breaks the rule the rest of this file keeps. It drives a
 # browser over every render and takes minutes, and render-brief.R runs this
