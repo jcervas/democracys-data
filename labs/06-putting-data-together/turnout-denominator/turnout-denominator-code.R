@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -18,15 +19,17 @@ na <- read.csv("data/derived/national.csv",   stringsAsFactors = FALSE)
 st <- read.csv("data/derived/states.csv",     stringsAsFactors = FALSE)
 tr <- read.csv("data/derived/state_trends.csv", stringsAsFactors = FALSE)
 pr <- read.csv("data/derived/pairs2024.csv",  stringsAsFactors = FALSE)
-ov <- read.csv("data/derived/overlap.csv",    stringsAsFactors = FALSE)
 ck <- read.csv("data/derived/checks.csv",     stringsAsFactors = FALSE)
 
 cv <- function(k) ck$value[ck$check == k]
 n  <- function(x) format(round(x), big.mark = ",")
 f1 <- function(x) formatC(x, format = "f", digits = 1)
 f2 <- function(x) formatC(x, format = "f", digits = 2)
-f3 <- function(x) formatC(x, format = "f", digits = 3)
 sg <- function(x, k = 2) sprintf("%+.*f", k, x)
+
+# The static twins run through base-R devices, which cannot restyle for the
+# dark page the way the shared library's classes do. Light values here.
+RED <- "#C41230"; BLU <- "#2c7fb8"; GRY <- "#8c8c8c"; PUR <- "#54278F"
 
 # ---- the paper's own regression, on the paper's own numbers -----------------
 # Reported per ELECTION, not per year: that is the unit the article quotes,
@@ -38,11 +41,6 @@ W72  <- PRES[PRES$year >= 1972, ]
 fit  <- function(y, x) summary(lm(y ~ x))$coefficients[2, ] * 4
 B_VAP <- fit(W72$vap_rate, W72$year)
 B_VEP <- fit(W72$vep_rate, W72$year)
-RATIO <- abs(B_VAP[1] / B_VEP[1])
-
-# ---- the size of the correction, before and after 1972 ---------------------
-GAP_EARLY <- mean(mp$gap[mp$year <= 1970])
-GAP_LATE  <- mean(mp$gap[mp$year >= 1972])
 
 # ---- 2024, one row, taken apart --------------------------------------------
 N24  <- na[na$YEAR == 2024, ]
@@ -54,30 +52,10 @@ EXTRA <- N24$VAP * N24$rate_vep_tb / 100 - N24$TOTAL_BALLOTS_COUNTED
 FLIP  <- tr[tr$sign_flip, ]
 FLIP  <- FLIP[order(FLIP$b_vap), ]
 TX    <- tr[tr$state == "Texas", ]
-# The smallest p-value among the TEN trends in the sign-flip table -- not
-# across all 51 states, where plenty of trends are well determined. The five
-# states that flip are exactly the states where neither slope is.
-P_MIN  <- min(c(FLIP$p_vap, FLIP$p_vep))
-P_SIG  <- sum(c(tr$p_vap, tr$p_vep) < 0.05)      # over all 51 states
-P_SIGF <- sum(c(FLIP$p_vap, FLIP$p_vep) < 0.05)  # over the five that flip
+P_SIG <- sum(c(tr$p_vap, tr$p_vep) < 0.05)      # over all 51 states
 
 # ---- the pair the 2024 section is written around ---------------------------
 TOP <- pr[1, ]
-
-# ---- the two panels the figures draw ---------------------------------------
-# Defined once, here, rather than inside the figure chunks: only one of each
-# HTML/PDF pair ever evaluates, and prose after the figure refers to both.
-TXD <- st[st$STATE == "Texas" & st$presidential == TRUE &
-            st$YEAR >= 1980 & st$YEAR <= 2016, ]
-TXD <- TXD[order(TXD$YEAR), ]
-S <- st[st$YEAR == 2024, ]
-S$hl <- S$STATE %in% c(TOP$state_a, TOP$state_b)
-S$lift <- S$rate_vep_tb - S$rate_vap_tb
-
-# ---- the disenfranchisement chapter's number, borrowed ---------------------
-# Read rather than re-derived: that chapter's build script parses the five
-# categories out of a PDF and has already decided what they mean.
-DIS <- read.csv("../disenfranchisement/data/derived/national.csv", stringsAsFactors = FALSE)
 
 # ---- the ineligible share of the voting-age population ---------------------
 # The one quantity here with no numerator in it, which is what makes it safe
@@ -85,6 +63,10 @@ DIS <- read.csv("../disenfranchisement/data/derived/national.csv", stringsAsFact
 # kept whole and drawn separately; they are never averaged or spliced.
 SH_MP <- mp[, c("year", "inelig_pct")]
 SH_EP <- data.frame(year = na$YEAR, inelig_pct = na$inelig_pct)
+
+# ---- every state in 2024, on both denominators -----------------------------
+S <- st[st$YEAR == 2024, ]
+S$hl <- S$STATE %in% c(TOP$state_a, TOP$state_b)
 
 # ---- render every data.frame in this document as a TABLE, not code output --
 # These are front-facing documents. A data.frame printed the ordinary way
@@ -101,14 +83,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- raw-capture
-RAW <- readLines("data/raw/mp2001-table1.txt", warn = FALSE)
-hdr <- RAW[1:4]
-pick <- function(y) RAW[grep(paste0("^\\s*", y, "\\s"), RAW)][1]
-blk <- c(hdr, unlist(lapply(c(1948, 1960, 1972, 1984, 2000), pick)))
-blk <- substr(blk, 1, 78)
-cat("```\n", paste(blk, collapse = "\n"), "\n```\n", sep = "")
-
 ## ---- vep-def
 data.frame(
   term = c("Voting-age population", "less noncitizens", "less ineligible felons",
@@ -120,20 +94,52 @@ data.frame(
                   "the people who could have cast a ballot"),
   check.names = FALSE)
 
-## ---- recon-check
-data.frame(
-  check = c("The test",
-            "Election years where the rebuilt rate matches the printed one",
-            "Largest disagreement anywhere, percentage points",
-            "Second test",
-            "Years where the printed adjustments sum to the printed rate"),
-  result = c("(vote for highest office) / (VAP - noncitizens - felons + overseas)",
-             paste(cv("rows where the rebuilt VEP rate matches the printed one within 0.1 pts"),
-                   "of", cv("Table 1 data rows parsed")),
-             cv("largest disagreement between rebuilt and printed VEP rate, pts"),
-             "VAP rate + each printed adjustment = VEP rate",
-             paste(cv("rows where the printed adjustments sum to the printed VEP rate within 0.2 pts"),
-                   "of", cv("Table 1 data rows parsed"))))
+## ---- fig1-d3
+# ---------------------------------------------------------------------------
+# The two series, presidential years, 1948-2000, with 1972 marked. Drawn with
+# the shared library (_lib/dd-charts.js): the two series share a numerator
+# exactly, so a single frame with two lines is the whole comparison. dd_fig()
+# emits the two <script src> tags for the document.
+# ---------------------------------------------------------------------------
+P <- data.frame(year = PRES$year,
+                vep = round(PRES$vep_rate, 1),
+                vap = round(PRES$vap_rate, 1))
+dd_fig("f1", "line", P,
+  size = list(w = 760, h = 430, m = list(t = 24, r = 120, b = 46, l = 52)),
+  x = list(field = "year", fmt = "d", ticks = 8),
+  y = list(field = "vep", label = "turnout for president",
+           domain = c(44, 66), fmt = "pct0", ticks = 6),
+  series = list(fields = list(
+    list(field = "vep", label = "VEP  eligible", class = "series-1"),
+    list(field = "vap", label = "VAP  voting-age", class = "series-2"))),
+  points = TRUE, endLabels = TRUE,
+  annotations = list(dd_annot_vline(1972),
+                     dd_annot_text(1972, 65.4, "1972", dx = 5)),
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+
+      "<span class=\'series-2-txt\'>&#9632;</span> voting-age: "+
+        d.vap.toFixed(1)+"%<br>"+
+      "<span class=\'series-1-txt\'>&#9632;</span> eligible: "+
+        d.vep.toFixed(1)+"%";
+  }'))
+
+## ---- fig1-static
+par(mar = c(3.6, 4.0, 1.2, 6.6))
+plot(PRES$year, PRES$vep_rate, type = "n", ylim = c(44, 66),
+     xlim = c(1946, 2002), xlab = "", ylab = "", axes = FALSE)
+abline(v = 1972, lty = 2, col = "#bbbbbb")
+axis(1, at = seq(1948, 2000, 8), cex.axis = 0.8)
+axis(2, las = 1, cex.axis = 0.8)
+lines(PRES$year, PRES$vep_rate, col = BLU, lwd = 2)
+lines(PRES$year, PRES$vap_rate, col = RED, lwd = 2, lty = 2)
+points(PRES$year, PRES$vep_rate, pch = 19, col = BLU, cex = 0.7)
+points(PRES$year, PRES$vap_rate, pch = 19, col = RED, cex = 0.7)
+text(2001, tail(PRES$vep_rate, 1), "VEP", col = BLU, adj = 0,
+     font = 2, cex = 0.8, xpd = NA)
+text(2001, tail(PRES$vap_rate, 1), "VAP", col = RED, adj = 0,
+     font = 2, cex = 0.8, xpd = NA)
+text(1973, 65, "1972", col = "#888888", adj = 0, cex = 0.75)
+mtext("turnout for president (%)", 2, line = 2.6, cex = 0.8)
 
 ## ---- trend-tab
 data.frame(
@@ -144,164 +150,42 @@ data.frame(
   standard_error = c(f2(B_VAP[2]), f2(B_VEP[2])),
   check.names = FALSE)
 
-## ---- fig1-d3
-# ---------------------------------------------------------------------------
-# The two series, presidential years, 1948-2000, with 1972 marked. Both this
-# figure and the base-R equivalent below read the same `PRES` rows and the
-# same formatted strings, so the interactive and static versions cannot drift.
-#
-# This chunk carries the ONE d3 <script src> for the document. A second copy
-# would silently double the payload; the later figures use the library loaded
-# here.
-# ---------------------------------------------------------------------------
-J <- paste(sprintf('{"y":%d,"vap":%s,"vep":%s}', PRES$year,
-                   f1(PRES$vap_rate), f1(PRES$vep_rate)), collapse = ",")
-cat(sprintf('
-<div id="f1" style="margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=430,M={t:52,r:120,b:46,l:52};
-const svg=d3.select("#f1").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1946,2002]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([44,66]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(8));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",8).attr("y",22).attr("font-size","13px")
-  .attr("font-weight","600").attr("fill","#333")
-  .text("Presidential turnout, 1948-2000: the same ballots, two denominators");
-svg.append("text").attr("x",8).attr("y",39).attr("font-size","11.5px")
-  .attr("fill","#666").text("After 1972 the two lines stop agreeing about the direction of travel");
-// the 1972 divide
-svg.append("line").attr("x1",x(1972)).attr("x2",x(1972)).attr("y1",M.t)
-  .attr("y2",H-M.b).attr("stroke","#bbb").attr("stroke-dasharray","4,3");
-svg.append("text").attr("x",x(1972)+5).attr("y",M.t+12).attr("font-size","11px")
-  .attr("fill","#888").text("1972");
-const mk=(k,c,dash)=>{
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",c)
-    .attr("stroke-width",2).attr("stroke-dasharray",dash)
-    .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[k])));
-  svg.selectAll("circle."+k).data(D).join("circle").attr("class",k)
-    .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[k])).attr("r",3.4).attr("fill",c);
-};
-mk("vep","#2c7fb8",null); mk("vap","#C41230","5,3");
-const lab=(k,c,t)=>svg.append("text").attr("x",x(2000)+9)
-  .attr("y",y(D[D.length-1][k])+4).attr("font-size","12px")
-  .attr("font-weight","600").attr("fill",c).text(t);
-lab("vep","#2c7fb8","VEP  eligible"); lab("vap","#C41230","VAP  voting-age");
-// hover readout
-const rd=svg.append("text").attr("x",W-M.r+9).attr("y",M.t+2)
-  .attr("font-size","11.5px").attr("fill","#333");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","none").attr("pointer-events","all")
-  .on("mousemove",function(e){
-    const yr=x.invert(d3.pointer(e,this)[0]);
-    const d=D.reduce((a,b)=>Math.abs(b.y-yr)<Math.abs(a.y-yr)?b:a);
-    rd.text(d.y+":  "+d.vap+"  vs  "+d.vep);
-  }).on("mouseleave",()=>rd.text(""));
-})();
-</script>
-', J))
-
-## ---- fig1-static
-par(mar = c(3.6, 4.0, 3.0, 6.6))
-plot(PRES$year, PRES$vep_rate, type = "n", ylim = c(44, 66),
-     xlim = c(1946, 2002), xlab = "", ylab = "", axes = FALSE)
-abline(v = 1972, lty = 2, col = "#bbbbbb")
-axis(1, at = seq(1948, 2000, 8), cex.axis = 0.8)
-axis(2, las = 1, cex.axis = 0.8)
-lines(PRES$year, PRES$vep_rate, col = "#2c7fb8", lwd = 2)
-lines(PRES$year, PRES$vap_rate, col = "#C41230", lwd = 2, lty = 2)
-points(PRES$year, PRES$vep_rate, pch = 19, col = "#2c7fb8", cex = 0.7)
-points(PRES$year, PRES$vap_rate, pch = 19, col = "#C41230", cex = 0.7)
-text(2001, tail(PRES$vep_rate, 1), "VEP", col = "#2c7fb8", adj = 0,
-     font = 2, cex = 0.8, xpd = NA)
-text(2001, tail(PRES$vap_rate, 1), "VAP", col = "#C41230", adj = 0,
-     font = 2, cex = 0.8, xpd = NA)
-text(1973, 65, "1972", col = "#888888", adj = 0, cex = 0.75)
-mtext("Presidential turnout, 1948-2000: the same ballots, two denominators",
-      3, line = 1.4, adj = 0, cex = 0.9, font = 2)
-mtext("After 1972 the two lines stop agreeing about the direction of travel",
-      3, line = 0.3, adj = 0, cex = 0.75, col = "#666666")
-
-## ---- gap-tab
-data.frame(
-  period = c("1948-1970", "1972-2000", "2024"),
-  mean_gap_between_the_two_rates = c(paste0(f2(GAP_EARLY), " pts"),
-                                     paste0(f2(GAP_LATE), " pts"),
-                                     paste0(f2(GAP24), " pts")),
-  check.names = FALSE)
-
 ## ---- fig2-d3
-JA <- paste(sprintf('{"y":%d,"v":%s}', SH_MP$year, f2(SH_MP$inelig_pct)), collapse = ",")
-JB <- paste(sprintf('{"y":%d,"v":%s}', SH_EP$year, f2(SH_EP$inelig_pct)), collapse = ",")
-cat(sprintf('
-<div id="f2" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const A=[%s],B=[%s];
-const W=760,H=340,M={t:52,r:118,b:44,l:50};
-const svg=d3.select("#f2").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1946,2026]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,10]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(9));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",8).attr("y",22).attr("font-size","13px")
-  .attr("font-weight","600").attr("fill","#333")
-  .text("Share of the voting-age population that cannot vote, 1948-2024");
-svg.append("text").attr("x",8).attr("y",39).attr("font-size","11.5px")
-  .attr("fill","#666").text("No ballots in this figure at all - it is only a statement about who lives here");
-const ln=d3.line().x(d=>x(d.y)).y(d=>y(d.v));
-svg.append("path").datum(A).attr("fill","none").attr("stroke","#8c8c8c")
-  .attr("stroke-width",2).attr("d",ln);
-svg.append("path").datum(B).attr("fill","none").attr("stroke","#54278F")
-  .attr("stroke-width",2).attr("d",ln);
-svg.selectAll("circle.a").data(A).join("circle").attr("class","a")
-  .attr("cx",d=>x(d.y)).attr("cy",d=>y(d.v)).attr("r",2.6).attr("fill","#8c8c8c");
-svg.selectAll("circle.b").data(B).join("circle").attr("class","b")
-  .attr("cx",d=>x(d.y)).attr("cy",d=>y(d.v)).attr("r",2.6).attr("fill","#54278F");
-svg.append("text").attr("x",x(A[A.length-1].y)-6).attr("y",y(A[A.length-1].v)-11)
-  .attr("text-anchor","end")
-  .attr("font-size","11.5px").attr("font-weight","600").attr("fill","#8c8c8c")
-  .text("the 2001 article");
-svg.append("text").attr("x",W-M.r+8).attr("y",y(B[B.length-1].v)+4)
-  .attr("font-size","11.5px").attr("font-weight","600").attr("fill","#54278F")
-  .text("the current file");
-svg.append("line").attr("x1",x(1972)).attr("x2",x(1972)).attr("y1",M.t)
-  .attr("y2",H-M.b).attr("stroke","#bbb").attr("stroke-dasharray","4,3");
-svg.append("text").attr("x",x(1972)+5).attr("y",M.t+12).attr("font-size","11px")
-  .attr("fill","#888").text("1972");
-})();
-</script>
-', JA, JB))
+# The two sources drawn as two series on one frame, joined on year and left
+# NA where a source has nothing: they are never averaged or spliced. The
+# script tags went out with Figure 1, so this adds nothing to the payload.
+I <- merge(data.frame(year = SH_MP$year, article = round(SH_MP$inelig_pct, 2)),
+           data.frame(year = SH_EP$year, current = round(SH_EP$inelig_pct, 2)),
+           by = "year", all = TRUE)
+I <- I[order(I$year), ]
+dd_fig("f2", "line", I,
+  size = list(w = 760, h = 340, m = list(t = 24, r = 118, b = 44, l = 50)),
+  x = list(field = "year", fmt = "d", ticks = 9),
+  y = list(field = "current", label = "share that cannot vote",
+           domain = c(0, 10), fmt = "pct0", ticks = 5),
+  series = list(fields = list(
+    list(field = "article", label = "the 2001 article", class = "series-8"),
+    list(field = "current", label = "the current file", class = "series-5"))),
+  points = 2.6, endLabels = TRUE,
+  annotations = list(dd_annot_vline(1972),
+                     dd_annot_text(1972, 9.6, "1972", dx = 5)))
 
 ## ---- fig2-static
-par(mar = c(3.6, 4.0, 3.0, 7.4))
+par(mar = c(3.6, 4.0, 1.2, 7.4))
 plot(SH_MP$year, SH_MP$inelig_pct, type = "n", ylim = c(0, 10),
      xlim = c(1946, 2026), xlab = "", ylab = "", axes = FALSE)
 abline(v = 1972, lty = 2, col = "#bbbbbb")
 axis(1, at = seq(1950, 2020, 10), cex.axis = 0.8)
 axis(2, las = 1, cex.axis = 0.8)
-lines(SH_MP$year, SH_MP$inelig_pct, col = "#8c8c8c", lwd = 2)
-lines(SH_EP$year, SH_EP$inelig_pct, col = "#54278F", lwd = 2)
-points(SH_MP$year, SH_MP$inelig_pct, pch = 19, col = "#8c8c8c", cex = 0.5)
-points(SH_EP$year, SH_EP$inelig_pct, pch = 19, col = "#54278F", cex = 0.5)
+lines(SH_MP$year, SH_MP$inelig_pct, col = GRY, lwd = 2)
+lines(SH_EP$year, SH_EP$inelig_pct, col = PUR, lwd = 2)
+points(SH_MP$year, SH_MP$inelig_pct, pch = 19, col = GRY, cex = 0.5)
+points(SH_EP$year, SH_EP$inelig_pct, pch = 19, col = PUR, cex = 0.5)
 text(tail(SH_MP$year, 1) - 1, tail(SH_MP$inelig_pct, 1) + 1.1,
-     "the 2001 article", col = "#8c8c8c", adj = 1, font = 2, cex = 0.7)
-text(2027, tail(SH_EP$inelig_pct, 1), "the\ncurrent\nfile", col = "#54278F",
+     "the 2001 article", col = GRY, adj = 1, font = 2, cex = 0.7)
+text(2027, tail(SH_EP$inelig_pct, 1), "the\ncurrent\nfile", col = PUR,
      adj = 0, font = 2, cex = 0.7, xpd = NA)
-mtext("Share of the voting-age population that cannot vote, 1948-2024",
-      3, line = 1.4, adj = 0, cex = 0.9, font = 2)
-mtext("No ballots in this figure at all", 3, line = 0.3, adj = 0,
-      cex = 0.75, col = "#666666")
+mtext("share of voting-age adults who cannot vote (%)", 2, line = 2.6, cex = 0.8)
 
 ## ---- decomp
 data.frame(
@@ -314,51 +198,6 @@ data.frame(
              paste0("-", n(N24$INELIGIBLE_FELONS_TOTAL)),
              paste0("+", n(N24$ELIGIBLE_OVERSEAS)), n(N24$VEP)))
 
-## ---- ep-check
-data.frame(
-  check = c("Rows in the file",
-            "Rows where VEP = VAP x (1 - noncitizen%) - felons + overseas",
-            "Largest disagreement on that identity",
-            "Rows carrying a published turnout rate",
-            "Of those, rows this chapter reproduces within 0.05 points",
-            "Largest disagreement with a published rate"),
-  result = c(cv("Elections Project rows, 1980-2024"),
-             paste(cv("rows where VEP equals VAP*(1-noncitizen%) - felons + overseas within 0.1%"),
-                   "of", cv("Elections Project rows, 1980-2024")),
-             paste0(cv("largest disagreement on that identity, %"), "%"),
-             cv("rows with a published turnout rate to check against"),
-             paste(cv("of those, rows reproduced within 0.05 pts"), "of",
-                   cv("rows with a published turnout rate to check against")),
-             paste0(cv("largest disagreement with a published rate, pts"), " pts")))
-
-## ---- numerator-cov
-cov <- function(v) {
-  yy <- na$YEAR[!is.na(na[[v]])]
-  paste0(min(yy), "-", max(yy), "  (", length(yy), " elections)")
-}
-data.frame(
-  numerator = c("VOTE_FOR_HIGHEST_OFFICE", "TOTAL_BALLOTS_COUNTED"),
-  what_it_counts = c("votes for the top statewide office",
-                     "every ballot, including undervotes"),
-  years_available_nationally = c(cov("VOTE_FOR_HIGHEST_OFFICE"),
-                                 cov("TOTAL_BALLOTS_COUNTED")),
-  check.names = FALSE)
-
-## ---- overlap-tab
-data.frame(
-  quantity = c("Numerator: votes for the highest office",
-               "Denominator: voting-age population",
-               "Result: the published VAP turnout rate"),
-  mean_change_since_2001 = c(
-    paste0(cv("mean revision to the numerator since 2001, %"), "%"),
-    paste0(cv("mean revision to the denominator since 2001, %"), "%"),
-    paste0(f2(mean(abs(ov$vap_rate_move))), " pts")),
-  largest_single_change = c(
-    paste0(f3(max(abs(ov$num_move_pct))), "%"),
-    paste0(f2(max(abs(ov$vap_move_pct))), "%"),
-    paste0(cv("largest revision to a published VAP turnout rate, pts"), " pts")),
-  check.names = FALSE)
-
 ## ---- flip-tab
 data.frame(
   state = FLIP$state,
@@ -366,77 +205,6 @@ data.frame(
   fitted_change_on_VAP = paste0(sg(FLIP$fit_vap, 1), " pts"),
   fitted_change_on_VEP = paste0(sg(FLIP$fit_vep, 1), " pts"),
   check.names = FALSE)
-
-## ---- fig3-d3
-JT <- paste(sprintf('{"y":%d,"vap":%s,"vep":%s}', TXD$YEAR,
-                    f1(TXD$rate_vap_hi), f1(TXD$rate_vep_hi)), collapse = ",")
-cat(sprintf('
-<div id="f3" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[%s];
-const W=760,H=340,M={t:52,r:126,b:44,l:50};
-const svg=d3.select("#f3").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1978,2018]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([38,58]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(6));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",8).attr("y",22).attr("font-size","13px")
-  .attr("font-weight","600").attr("fill","#333")
-  .text("Texas presidential turnout, 1980-2016");
-svg.append("text").attr("x",8).attr("y",39).attr("font-size","11.5px")
-  .attr("fill","#666").text("Falling and rising, at the same time, from the same ballots");
-const fitline=(k,c)=>{
-  const n=D.length,sx=d3.sum(D,d=>d.y),sy=d3.sum(D,d=>d[k]);
-  const sxy=d3.sum(D,d=>d.y*d[k]),sxx=d3.sum(D,d=>d.y*d.y);
-  const b=(n*sxy-sx*sy)/(n*sxx-sx*sx),a=(sy-b*sx)/n;
-  svg.append("line").attr("x1",x(1980)).attr("x2",x(2016))
-    .attr("y1",y(a+b*1980)).attr("y2",y(a+b*2016))
-    .attr("stroke",c).attr("stroke-width",2.4).attr("opacity",0.9);
-};
-const mk=(k,c)=>{
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",c)
-    .attr("stroke-width",1).attr("opacity",0.35)
-    .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[k])));
-  svg.selectAll("circle."+k).data(D).join("circle").attr("class",k)
-    .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[k])).attr("r",3.2)
-    .attr("fill",c).attr("opacity",0.55);
-  fitline(k,c);
-};
-mk("vep","#2c7fb8"); mk("vap","#C41230");
-svg.append("text").attr("x",x(2016)+9).attr("y",y(D[D.length-1].vep)+4)
-  .attr("font-size","12px").attr("font-weight","600").attr("fill","#2c7fb8")
-  .text("VEP  rising");
-svg.append("text").attr("x",x(2016)+9).attr("y",y(D[D.length-1].vap)+4)
-  .attr("font-size","12px").attr("font-weight","600").attr("fill","#C41230")
-  .text("VAP  falling");
-})();
-</script>
-', JT))
-
-## ---- fig3-static
-par(mar = c(3.6, 4.0, 3.0, 7.0))
-plot(TXD$YEAR, TXD$rate_vep_hi, type = "n", ylim = c(38, 58),
-     xlim = c(1978, 2018), xlab = "", ylab = "", axes = FALSE)
-axis(1, at = seq(1980, 2016, 8), cex.axis = 0.8)
-axis(2, las = 1, cex.axis = 0.8)
-for (k in list(c("rate_vep_hi", "#2c7fb8"), c("rate_vap_hi", "#C41230"))) {
-  lines(TXD$YEAR, TXD[[k[1]]], col = adjustcolor(k[2], 0.35), lwd = 1)
-  points(TXD$YEAR, TXD[[k[1]]], pch = 19, col = adjustcolor(k[2], 0.55), cex = 0.7)
-  abline(lm(TXD[[k[1]]] ~ TXD$YEAR), col = k[2], lwd = 2.4)
-}
-text(2018.5, tail(TXD$rate_vep_hi, 1), "VEP\nrising", col = "#2c7fb8",
-     adj = 0, font = 2, cex = 0.72, xpd = NA)
-text(2018.5, tail(TXD$rate_vap_hi, 1), "VAP\nfalling", col = "#C41230",
-     adj = 0, font = 2, cex = 0.72, xpd = NA)
-mtext("Texas presidential turnout, 1980-2016", 3, line = 1.4, adj = 0,
-      cex = 0.9, font = 2)
-mtext("Falling and rising, at the same time, from the same ballots",
-      3, line = 0.3, adj = 0, cex = 0.75, col = "#666666")
 
 ## ---- pair-tab
 data.frame(
@@ -447,85 +215,42 @@ data.frame(
   check.names = FALSE) |>
   setNames(c("Denominator", TOP$state_a, TOP$state_b, "Turned out more"))
 
-## ---- fig4-d3
-JS <- paste(sprintf('{"s":"%s","x":%s,"y":%s,"h":%s}', S$STATE,
-                    f2(S$rate_vap_tb), f2(S$rate_vep_tb),
-                    tolower(as.character(S$hl))), collapse = ",")
-cat(sprintf('
-<div id="f4" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[%s];
-const W=760,H=430,M={t:52,r:26,b:52,l:56};
-const svg=d3.select("#f4").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([42,74]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([42,74]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",8).attr("y",22).attr("font-size","13px")
-  .attr("font-weight","600").attr("fill","#333")
-  .text("Every state in 2024, measured both ways");
-svg.append("text").attr("x",8).attr("y",39).attr("font-size","11.5px")
-  .attr("fill","#666")
-  .text("Distance above the diagonal is how much the denominator is doing");
-svg.append("line").attr("x1",x(42)).attr("y1",y(42)).attr("x2",x(74))
-  .attr("y2",y(74)).attr("stroke","#ccc").attr("stroke-dasharray","4,3");
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-12)
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#555")
-  .text("turnout on the voting-age population");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",15).attr("text-anchor","middle").attr("font-size","11.5px")
-  .attr("fill","#555").text("turnout on the voting-eligible population");
-const tip=svg.append("text").attr("x",M.l+8).attr("y",H-M.b-10)
-  .attr("font-size","12px").attr("font-weight","600").attr("fill","#333");
-svg.selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.x)).attr("cy",d=>y(d.y)).attr("r",d=>d.h?6:4)
-  .attr("fill",d=>d.h?"#C41230":"#54278F").attr("fill-opacity",d=>d.h?0.95:0.42)
-  .style("cursor","pointer")
-  .on("mouseover",(e,d)=>tip.text(d.s+":  "+d.x+"%% of voting-age,  "+d.y+"%% of eligible"))
-  .on("mouseout",()=>tip.text(""));
-D.filter(d=>d.h).forEach(d=>{
-  svg.append("text").attr("x",x(d.x)+10).attr("y",y(d.y)+4)
-    .attr("font-size","12px").attr("font-weight","600").attr("fill","#C41230")
-    .text(d.s);
-});
-})();
-</script>
-', JS))
+## ---- fig3-d3
+# Every state twice, as one point: the diagonal is where the two denominators
+# would agree, and the vertical distance above it is the whole subject of this
+# brief. The two states of the reversal table are called out.
+J <- data.frame(state = S$STATE,
+                vap = round(S$rate_vap_tb, 2),
+                vep = round(S$rate_vep_tb, 2),
+                grp = ifelse(S$hl, "pair", "other"),
+                lbl = ifelse(S$hl, S$STATE, NA_character_),
+                stringsAsFactors = FALSE)
+dd_fig("f3", "scatter", J,
+  size = list(w = 760, h = 430, m = list(t = 20, r = 26, b = 52, l = 56)),
+  x = list(field = "vap", label = "turnout on the voting-age population",
+           domain = c(42, 74), fmt = "pct0", ticks = 6),
+  y = list(field = "vep", label = "turnout on the voting-eligible population",
+           domain = c(42, 74), fmt = "pct0", ticks = 6),
+  series = list(field = "grp",
+                classes = list(pair = "series-2", other = "series-5")),
+  r = 5, opacity = 0.6,
+  annotations = list(dd_annot_rule(42, 42, 74, 74)),
+  tip = dd_tip(c(vap = "on voting-age", vep = "on eligible"),
+               fmt = c(vap = "pct1", vep = "pct1"), title = "state"))
 
-## ---- fig4-static
-par(mar = c(4.0, 4.2, 3.0, 1.4))
+## ---- fig3-static
+par(mar = c(4.0, 4.2, 1.2, 1.4))
 plot(S$rate_vap_tb, S$rate_vep_tb, type = "n", xlim = c(42, 74),
      ylim = c(42, 74), xlab = "", ylab = "", axes = FALSE)
 abline(0, 1, lty = 2, col = "#cccccc")
 axis(1, cex.axis = 0.8); axis(2, las = 1, cex.axis = 0.8)
 points(S$rate_vap_tb[!S$hl], S$rate_vep_tb[!S$hl], pch = 19,
-       col = adjustcolor("#54278F", 0.42), cex = 0.9)
-points(S$rate_vap_tb[S$hl], S$rate_vep_tb[S$hl], pch = 19,
-       col = "#C41230", cex = 1.4)
+       col = adjustcolor(PUR, 0.42), cex = 0.9)
+points(S$rate_vap_tb[S$hl], S$rate_vep_tb[S$hl], pch = 19, col = RED, cex = 1.4)
 text(S$rate_vap_tb[S$hl] + 0.7, S$rate_vep_tb[S$hl], S$STATE[S$hl],
-     adj = 0, cex = 0.72, font = 2, col = "#C41230")
+     adj = 0, cex = 0.72, font = 2, col = RED)
 mtext("turnout on the voting-age population", 1, line = 2.4, cex = 0.8)
 mtext("turnout on the voting-eligible population", 2, line = 2.8, cex = 0.8)
-mtext("Every state in 2024, measured both ways", 3, line = 1.4, adj = 0,
-      cex = 0.9, font = 2)
-mtext("Distance above the diagonal is how much the denominator is doing",
-      3, line = 0.3, adj = 0, cex = 0.75, col = "#666666")
-
-## ---- still-in
-data.frame(
-  population = c("Voting-eligible population, 2024",
-                 "of which: post-sentence and still barred from voting",
-                 "share of the VEP that cannot actually vote"),
-  figure = c(n(N24$VEP), n(DIS$post_sentence),
-             paste0(f2(100 * DIS$post_sentence / N24$VEP), "%")))
-
-## ---- checks
-ck
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

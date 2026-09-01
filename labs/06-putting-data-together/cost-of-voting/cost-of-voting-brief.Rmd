@@ -16,58 +16,44 @@ dd_read_chunks("cost-of-voting-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A voter in Oregon is mailed a ballot. It arrives without being asked for, it comes with prepaid postage, and it can be dropped at a box or put in the mail. Nobody checks identification, because nobody meets the voter.
+A voter in Oregon is mailed a ballot. It arrives unasked for, it carries prepaid postage, and it can go in a drop box or in the mail. Nobody checks identification, because nobody meets the voter.
 
-A voter in `r HARD` is not mailed a ballot. To vote absentee they must qualify under one of a fixed list of excuses, request the ballot, enclose a copy of their identification, and **get the envelope notarized**. That last step has no counterpart anywhere in Oregon. To vote in person they must produce a photo ID, on a day that is not a state holiday, at a polling place open for a fixed number of hours, having registered thirty days earlier.
+A voter in `r HARD` is not mailed a ballot. Voting absentee there means qualifying under a fixed list of excuses, requesting the ballot, enclosing a copy of an identification document, and getting the envelope notarized. Voting in person means producing a photo ID, having registered thirty days earlier.
 
-Those are two different acts wearing the same name. The question this chapter is about is what happens when somebody tries to put a number on the difference.
+Those are two different acts wearing the same name. Is it genuinely harder to vote in some states than in others, and how would you measure that? Both voters are casting the same federal vote, and the difference between them is written entirely in state law.
 
-## Somebody does
+## The test
 
-The Cost of Voting Index is that number. **Li, Pomante and Schraufnagel (2018)** built it. A team of political scientists reads the election law of all fifty states, scores it against a fixed list of considerations, and compresses the result into a single value per state per election. It has been maintained since 1996 and is republished in a peer-reviewed journal each cycle, most recently by **Pomante (2025)**. And it is used the way such numbers get used: in litigation, in journalism, and in other people's regressions — other people's attempts to draw a best line through a scatter of points.
+Somebody has already tried to measure it. The Cost of Voting Index reads the election law of all fifty states, scores it against a fixed list of considerations, and compresses the result into one value per state per election. It has been maintained since 1996, most recently by Pomante (2025), at <https://costofvotingindex.com>.
 
-```{r source-table}
-```
+This brief joins three sources on one key: the state, in an election year. The index supplies the laws and the score. Turnout comes from the United States Elections Project (<https://election.lab.ufl.edu/data-downloads/>), measured over the voting-eligible population, meaning adult citizens less those a state's felony law excludes. Party control of state government is not in the index at all. For 1996 through 2008 it is Carl Klarner's state partisan balance measures (<https://ippsr.msu.edu/public-policy/correlates-state-policy>); later elections are coded from governors and chamber majorities.
 
-That fifth row is worth pausing on, because it is the opposite of the usual situation. Numbers this widely quoted are typically available only as a table inside a report, to be recovered by parsing a PDF by character position, if at all. Here the underlying data, the codebook and the weights are all published, in that order of usefulness. That means **this index can be taken apart and rebuilt**. This chapter does exactly that, because rebuilding it is the only way to see what it is made of.
+This index can answer the question, where most cannot, because it publishes its own ingredients. The laws, the codebook and the component weights are all on the site, so the number can be rebuilt rather than taken on trust. Every join here inherits the assumptions of both files, plus one more about how they line up. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the chapter on that third assumption, and on the crosswalk, a table that translates one set of identifiers into another.
 
-The rest of this chapter is about four decisions inside that number. None of them is hidden, none is a mistake, and every one of them changes the answer.
+## The data
 
-## What a row is
-
-`r fact("n_state_years")` rows: fifty states, `r fact("n_years")` elections. Each row carries the state's score, its rank, and the ten *issue areas* the score is built from.
+`r fact("n_state_years")` rows: fifty states, `r fact("n_years")` elections. Each row carries the state's `final` score, its `final_rank`, and the ten *issue areas* the score is built from. `covi_2024.csv` holds one election with `vep_turnout` and `control` joined on; `covi_panel.csv` holds them all.
 
 ```{r one-row}
 ```
 
-Five of the ten issue areas, for three states. Each column is a different kind of thing, and that is the first thing to notice about the file. **`reg. deadline` is a number of days** — how far before the election registration closes, so Oregon's `r d$reg_deadline[d$state == "Oregon"]` means twenty-one days and a same-day state scores zero. **`voter ID` is a five-point scale**, running from no identification required to strict photo. **`absentee` and `inconveniences` are counts of restrictions**, each one a yes-or-no law that either exists in that state or does not. **`early voting` is a number of days, reversed**, so that more days means a lower number, because everything in the file is oriented so that bigger is worse.
+Each of those columns is a different kind of thing, which is the first thing to notice about the file. **`reg. deadline` and `early voting` are numbers of days.** **`voter ID` is a five-point scale**, from no identification required to strict photo. **`absentee` and `inconveniences` are counts of restrictions**, each one a law that either exists in a state or does not. Everything is oriented so that bigger is worse. Underneath the ten columns sit `r nrow(it)` individual yes-or-no items, listed in `items_2024.csv`, and the additive issue areas are those items added up.
 
-Underneath those ten columns sit `r nrow(it)` individual yes-or-no items — the actual laws. `noallmailvoting`, `nofoodordrink`, `MentalCompReg`, `AddReguirements4mailballotreturn`. The additive issue areas are just those items added up.
-
-```{r items-extremes}
-```
-
-`r nrow(it)` items, and the range at the two ends of that table is the whole problem of building an index out of them. Some of these laws exist in one state. One of them exists in `r max(it$states_scored)`.
-
-## Fifty-six laws, one number
-
-The recipe is published, and it fits in a sentence. Standardize the ten issue areas, run a principal component analysis, keep the first four components, weight each one by the share of the variation it accounts for, and add them up.
-
-```{r weights}
-```
-
-A principal component analysis takes ten correlated columns and finds the directions along which states differ most. The first component is the single line through the data that separates the states as much as possible; the second is the best remaining direction at right angles to it, and so on. Four of them capture `r pc(100 * Y24$var_explained, 1)`% of the variation across the ten issue areas, and each is weighted by how much of that it accounts for.
-
-Those weights are the project's own published numbers, printed in its codebook. The numbers in the table above were recomputed from the laws, and they agree to four decimal places. That is the first check this chapter can offer.
-
-The stronger check is the whole index:
+The recipe for turning them into one number is published. Standardize the ten issue areas, run a principal component analysis, and keep the first four components. Then add them up, weighting each by how much of the variation it accounts for, which means counting some parts of the score for more than others. A principal component analysis takes ten correlated columns and finds the directions along which states differ most.
 
 ```{r rebuild-check}
 ```
 
-**The index reproduces exactly.** Not approximately. Every state lands in the same rank, and the largest disagreement anywhere is `r fact("repro_max_difference")` on a scale running from about −2.5 to 2.
+**The index rebuilds exactly** from the published laws. Every state lands in the same rank, and the largest disagreement is `r fact("repro_max_difference")` on a scale running from about −2.5 to 2. That matters below, because when this brief re-weights the index it re-weights the real thing rather than a model of it.
 
-That matters for everything below. In a moment this chapter re-weights the index, counting some parts of it for more than others. When it does, it is re-weighting the real thing rather than a model of it.
+> **Before you read on, commit to a number.** The index weights its four
+> components by variance. Suppose you weighted them equally instead, a rule at
+> least as easy to defend. **How many places would the worst-affected state
+> move?** Write down a number out of 50.
+
+## What it says about democracy
+
+The states really are far apart. `r EASY_NOW` scores `r pc(min(d$final))` and `r HARD` scores `r pc(max(d$final))`, and the spread between them is the largest thing in the file.
 
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=6.4}
 ```
@@ -75,44 +61,14 @@ That matters for everything below. In a moment this chapter re-weights the index
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The 2024 Cost of Voting Index, all fifty states.** Lower is easier. `r EASY_NOW` is lowest at `r pc(min(d$final))`, `r HARD` highest at `r pc(max(d$final))`. The colour is party control of state government, which the index itself does not contain — it was added here, and the section on polarization below takes up what it shows.
+**Figure 1. The 2024 Cost of Voting Index, all fifty states.** Lower is easier. A sorted bar per state is the right form because the data is fifty named cases with one value each, and the question is who sits where in the order. The colour is party control, joined on from outside; the index does not contain it.
 
-## The weights nobody chose
-
-Now the first of the four decisions, and it is the one that does the most work.
-
-The index weights each component by **how much variation it explains**. That is a defensible rule and the codebook describes it as letting the data speak for itself. But it has a consequence that is easy to state and hard to unsee: *a law that nearly every state has cannot matter much, no matter how burdensome it is.*
-
-Variance is a measure of disagreement. An item on which forty-eight states agree carries almost none, so it contributes almost nothing to any component, so it is nearly invisible in the score.
-
-```{r near-universal}
-```
-
-The top row is the sharp case. **`r max(it$states_scored)` of 50 states forbid people in prison from registering to vote.** As a barrier to voting that is absolute. It is the difference between voting and not voting, for everyone it touches, and roughly four million American adult citizens are on the far side of it (**Uggen and colleagues 2024**). As a *variable* it is nearly worthless, because it barely separates one state from another. It sits in the index carrying a standard deviation of `r pc(it$sd[it$states_scored == max(it$states_scored)], 2)`.
-
-This is not a flaw that anyone concealed; it is what variance weighting means, and it applies to every index built this way. **A variance-weighted index measures how unusual a state is, not how hard it is to vote there.** Those two quantities agree often enough to be useful and they are not the same, and the gap between them is widest exactly where American practice is uniform.
-
-The same logic runs at the level of the ten issue areas:
-
-```{r loadings}
-```
-
-Nine of the ten issue areas load on the first component at between `r pc(min(abs(LOAD$pc1[abs(LOAD$pc1) > 0.1])), 2)` and `r pc(max(abs(LOAD$pc1)), 2)`, which is what it looks like when restrictive states are restrictive across the board. The exception is **`r LOAD$area[which.min(abs(LOAD$pc1))]`**, at `r pc(LOAD$pc1[which.min(abs(LOAD$pc1))], 3)` — an entire issue area that is, to the first component, noise. It has its own dimension: it loads `r pc(LOAD$pc2[which.min(abs(LOAD$pc1))], 2)` on the second. Restrictions on voter registration drives are not a thing restrictive states happen to also do, and the index's headline number therefore has almost nothing to say about them.
-
-## The same laws, four different answers
-
-Nothing in this section changes a single law. Every state has exactly the laws it has in 2024; only the rule for combining them moves.
-
-> **Before you read on, commit to a number.** The index weights four components
-> by variance. Suppose you weighted them equally instead — a rule at least as
-> easy to defend. **How many places would the worst-affected state move?**
-> Write down a number out of 50. Then write down what you think happens if the
-> ten issue areas are not standardized before the analysis.
+Now the answer to the prediction. Equal weights move the average state `r pc(mean(abs(rw$equal_move)), 1)` places and the worst-affected state `r max(abs(rw$equal_move))`. Leaving the ten issue areas unstandardized moves one state `r max(abs(rw$unstandardized_move))` places.
 
 ```{r reweight-table}
 ```
 
-Equal weights move the average state `r pc(mean(abs(rw$equal_move)), 1)` places and the worst-affected state `r max(abs(rw$equal_move))`. Leaving the issue areas unstandardized moves one state `r max(abs(rw$unstandardized_move))` places, and the reason is worth naming. Two of the ten issue areas are measured in **days**: the registration deadline and early voting. Their spreads are around `r pc(max(LOAD$sd), 0)`, against about `r pc(min(LOAD$sd), 1)` for automatic registration. Skip the standardizing step and those two columns write the index nearly on their own, not because days matter more but because days are numbered higher.
+The reason the unstandardized version behaves so badly is worth naming. Two issue areas are measured in **days**, the registration deadline and early voting, and their spreads run around `r pc(max(LOAD$sd), 0)` against about `r pc(min(LOAD$sd), 1)` for automatic registration. Skip the standardizing step and those two columns write the index nearly on their own, not because days matter more but because days are numbered higher.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=5.6}
 ```
@@ -120,31 +76,21 @@ Equal weights move the average state `r pc(mean(abs(rw$equal_move)), 1)` places 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same fifty states, ranked four ways.** Each line is a state, carried from its published rank across three alternative weighting rules. No law changed between the columns. The states highlighted in the print version are the largest movers; in the HTML version, hovering any line follows one state across all four.
+**Figure 2. The same fifty states, ranked four ways.** Each line is a state, carried from its published rank across three alternative weighting rules. No law changed between the columns.
 
-The point is not that the published rule is wrong. It is that **the rule is a choice, the choice is not visible in the number, and a state's rank is an artifact of it.** Rhode Island ranks `r rw$published_rank[rw$state == "Rhode Island"]` of 50 under the published rule and `r rw$unstandardized_rank[rw$state == "Rhode Island"]` if the ten issue areas are left unstandardized. A reader given either number has been told something about Rhode Island's laws and something about a decision made in a spreadsheet, in unmarked proportions.
+The published rule is not wrong. The point is that the rule is a choice, the choice is invisible in the number, and a state's rank is partly an artifact of it. Rhode Island ranks `r rw$published_rank[rw$state == "Rhode Island"]` of 50 under the published rule and `r rw$unstandardized_rank[rw$state == "Rhode Island"]` unstandardized. A reader given either number has been told something about Rhode Island's laws and something about a decision made in a spreadsheet, in unmarked proportions.
 
-## Does it predict turnout?
+Variance weighting has one further consequence that is easy to state and hard to unsee. *A law that nearly every state has cannot matter much, no matter how burdensome it is.*
 
-An index of the cost of voting is worth building because of an assumption nobody states: that cost affects behaviour. Higher cost, fewer voters.
-
-> **Commit to a second number before reading on.** Across the fifty states in
-> 2024, **how much of the variation in turnout is explained by the cost of
-> voting?** Write down a percentage from 0 to 100.
-
-```{r turnout-table}
+```{r near-universal}
 ```
 
-The correlation is `r fact("turnout_correlation")` — negative, so in the expected direction: costlier states do turn out somewhat lower. And it accounts for `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation between states, which at `r nrow(d)` states does not clear the conventional threshold for statistical significance (p = `r fact("turnout_p_value")`).
+**`r max(it$states_scored)` of 50 states forbid people in prison from registering to vote.** As a barrier that is absolute. It is the difference between voting and not voting for everyone it touches, and roughly four million American adult citizens are on the far side of it (Uggen and colleagues 2024). As a *variable* it is nearly worthless, because it barely separates one state from another, and it sits in the index carrying a standard deviation of `r pc(it$sd[it$states_scored == max(it$states_scored)], 2)`. That is what an index buys and what it hides: a single comparable number, at the price of everything the states agree about.
 
-Most readers write down something between 40 and 70.
-
-The individual states say it more plainly than the correlation does.
+That leads directly to the assumption the whole enterprise rests on, which is that cost affects behaviour.
 
 ```{r turnout-cases}
 ```
-
-**Hawaii is the `r d$final_rank[d$state == "Hawaii"]`rd easiest state in the country in which to vote and turns out `r pc(d$vep_turnout[d$state == "Hawaii"], 1)`% of its eligible adults.** `r HARD` is the hardest, `r d$final_rank[d$state == HARD]`th of 50, and turns out `r pc(d$vep_turnout[d$state == HARD], 1)`% — nearly `r pc(d$vep_turnout[d$state == HARD] - d$vep_turnout[d$state == "Hawaii"], 0)` points *higher*. Wisconsin ranks `r d$final_rank[d$state == "Wisconsin"]`th on cost and turns out `r pc(d$vep_turnout[d$state == "Wisconsin"], 1)`%, among the highest in the country.
 
 ```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -152,155 +98,81 @@ The individual states say it more plainly than the correlation does.
 ```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Cost against turnout, 2024.** Each point is a state. The dashed line is the best straight-line fit; it slopes the way the theory says it should and explains `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation between states. The states at the far left have turnout ranging from about `r pc(min(d$vep_turnout[d$final_rank <= 10]), 0)`% to `r pc(max(d$vep_turnout[d$final_rank <= 10]), 0)`%.
+**Figure 3. Cost against turnout, 2024.** Each point is a state, and the dashed line is the best straight line through them. It slopes the way the theory says it should, with a correlation of `r fact("turnout_correlation")`, and explains `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation between states.
 
-Three readings of that scatter are available and the chapter is not going to choose between them for you. It may be that **the cost of voting genuinely matters little** at the margins the states actually occupy, and that the people put off by a thirty-day registration deadline are few. It may be that **the index is measuring the wrong thing**, weighting statutes rather than the experience of voting. Or it may be that **turnout is driven by something stronger that is not in this picture at all**. How competitive the state is, how much money is spent there, what the population looks like.
+Hawaii is the `r d$final_rank[d$state == "Hawaii"]`rd easiest state in which to vote and turns out `r pc(d$vep_turnout[d$state == "Hawaii"], 1)`% of its eligible adults. `r HARD` is the hardest of all `r nrow(d)` and turns out `r pc(d$vep_turnout[d$state == HARD], 1)`%, which is `r pc(d$vep_turnout[d$state == HARD] - d$vep_turnout[d$state == "Hawaii"], 1)` points *higher*. Wisconsin ranks `r d$final_rank[d$state == "Wisconsin"]`th on cost and turns out `r pc(d$vep_turnout[d$state == "Wisconsin"], 1)`%.
 
-Hawaii is distant, safely one-party and has the lowest turnout in the country; `r HARD` was not competitive either, but it has a large mobilized Black electorate. Nothing in Figure 3 can separate those explanations, because a cross-section of fifty states in one year cannot.
+Three readings of that scatter are available. Cost may genuinely matter little at the margins the states actually occupy. The index may be measuring the wrong thing, scoring statutes rather than the experience of voting. Or turnout may be driven by something stronger and absent here, such as how competitive the state is. What the figure establishes is narrower and worth having: whatever drives American turnout, it is not mostly the ease of voting.
 
-What the figure does establish is narrower and still worth having: **whatever else drives American turnout, it is not mostly the ease of voting**, and any argument that assumes otherwise has to contend with Hawaii.
+One pattern the index carries easily, and it is the largest in the data.
 
-## Which 2024?
-
-The second decision is about time, and it produces the sharpest fact in this chapter.
-
-The article reporting the 2024 index says `r EASY_PUB` is the most accessible state in the country. The data file on the project's own website says `r EASY_NOW` is.
-
-```{r two-scorings}
+```{r control-trend}
 ```
 
-Both numbers are the 2024 Cost of Voting Index. Both were produced by the same researcher from the same fifty states. The values file carries them side by side, in columns named `InitialCOVI` and `FinalCOVI`. The difference between them is a matter of *when the law was read*. The published index reflects state law as of 1 May 2024, and the article says so in a footnote promising a revision after the election. The revision happened, and it is the second column.
+In 1996 the average Republican-trifecta state ranked `r fact("r_rank_1996")` of 50 and the average Democratic-trifecta state ranked `r fact("d_rank_1996")`. Voting was easier, on average, in the states Republicans controlled. The lines cross in `r CROSS`, and by 2024 the gap has inverted and widened to `r pc(as.numeric(fact("gap_2024")), 1)` places the other way.
 
-That is ordinary and it is honest — laws did change between May and November. But the codebook records something else about that revision, in a note repeated against four separate items:
-
-> the NCSL site was updated on Oct. 9, 2024. This update resulted in a
-> significant number of states to be changed between the initial 2024 COVI
-> values and the final 2024 COVI values.
-
-**A number of states changed their measured cost of voting because a reference website was revised.** The National Conference of State Legislatures maintains the tables from which several of the absentee-voting items are coded; NCSL edited those tables in October 2024; states moved. No legislature acted. What changed was the description of the law, not the law.
-
-This is the ordinary condition of quantitative political data and it is almost never visible. Here it is visible only because the codebook says so. That kind of disclosure makes a source more trustworthy while making its numbers less solid. It is an uncomfortable combination, and the correct one.
-
-## A series that is not a time series
-
-The third decision is the one most likely to produce a wrong answer in somebody else's work, because the file makes it so easy to get wrong. Nine elections sit in one spreadsheet with a `year` column. It looks exactly like a panel.
-
-```{r structure-table}
-```
-
-Two columns of that table make cross-year comparison hard, and they are independent problems.
-
-**The index is not made of the same things in different years.** It had `r Y96$n_issue_areas` issue areas in 1996 and `r Y24$n_issue_areas` in 2024, because new categories of law were invented. Automatic voter registration did not exist to be measured in 1996, and absentee restrictions became their own issue area only in 2022. The component analysis is re-run separately on each year's set, so the weights differ too. A state's 1996 score and its 2024 score are positions in two different spaces.
-
-The 2024 article's own account of the biggest riser makes the point. Indiana jumped 17 places, and the article puts that down partly to real reform and partly to *the inclusion of new elements in the index*.
-
-**And the back series has been rewritten.** The `r pc(Y96$cor_init_final, 3)` in the first row is the correlation between the 1996 index as it was originally published and the 1996 index as the current file gives it. Not `r pc(0.99, 2)`. `r pc(Y96$cor_init_final, 3)`.
-
-```{r moves-1996}
-```
-
-`r Y96$max_move_state` moves `r Y96$max_rank_move` places between two published versions of the same year, and the average state moves `r pc(Y96$mean_rank_move, 1)`. By 2024 the two versions of a year agree closely, `r pc(Y24$mean_rank_move, 1)` places apart on average. That is the pattern you would expect if the early years were reconstructed later, under a scheme built for the present, from sources assembled decades after the fact.
-
-```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
 
 ```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. Why the nine years are not nine comparable measurements.** In red, how far the average state moves between the version of an election published at the time and the version in the current file — `r pc(Y96$mean_rank_move, 1)` places in 1996, `r pc(Y24$mean_rank_move, 1)` in 2024. In blue, the number of issue areas the index was built from, which rises from `r Y96$n_issue_areas` to `r Y24$n_issue_areas` over the same period.
+**Figure 4. Mean cost-of-voting rank by party control of state government, 1996–2024.** Ranks closer to 1 are more accessible. Divided governments sit between the two lines and move least.
 
-None of this makes the series useless. It makes it a series of nine careful snapshots rather than a measuring instrument held steady for thirty years, and those support different claims. "`r Y96$max_move_state` got harder between 1996 and 2024" is not a sentence this file can support on its own.
+That pattern survives every re-weighting tried above, which is what makes it worth trusting. Note what kind of claim it is. It is a trend in ranks rather than in laws, because every year is a separate cross-section ranked within itself.
 
-## What the index is very good at
+## What this brief cannot tell you
 
-Having spent four sections on what the number cannot bear, it is worth being precise about what it carries easily. The answer is the thing the project was built to show, and it is not subtle.
+**It measures statutes, not experience.** Every quantity in it is a property of a state's law, so two counties in the same state have the same score. A five-hour line in one and a five-minute line in the next are the same observation. Where election administration actually varies, county by county, this index is silent by design.
 
-```{r control-table}
-```
+**Its weights come from variance, not from burden.** It would not notice if all fifty states adopted the same harsh new requirement tomorrow, because nothing would have changed *between* states. An index that cannot detect a nationwide restriction is measuring dispersion rather than cost.
 
-The average Democratic-trifecta state ranks `r pc(mean(d$final_rank[d$control == "Democratic trifecta"]), 1)` of 50. The average Republican-trifecta state ranks `r pc(mean(d$final_rank[d$control == "Republican trifecta"]), 1)`. That gap is not a subtle statistical finding requiring a weighting scheme to detect — it survives every re-weighting in Figure 2, because it is the largest thing in the data. Nine of the ten easiest states have unified Democratic control; the hardest states are almost all unified Republican.
+**Its nine years are not one instrument.** The index was built from `r Y96$n_issue_areas` issue areas in 1996 and `r Y24$n_issue_areas` in 2024, and the components are re-estimated on each year's set. The back series has also been rewritten: the 1996 index as first published and as the current file gives it correlate `r pc(Y96$cor_init_final, 3)`, with the average state moving `r pc(Y96$mean_rank_move, 1)` places and `r Y96$max_move_state` moving `r Y96$max_rank_move`.
 
-And it is recent. Carrying the same classification back through all nine elections turns up something more interesting than the gap itself: **the two parties swapped ends.**
+**Its yes-or-no items flatten laws that are not yes-or-no.** Which photo IDs count, and how long a voter has to cure a provisional ballot, differ by state and decide who actually votes.
 
-```{r control-trend}
-```
+**And it has no people in it.** No race, no age, no income. The claim that most motivates this literature is that voting costs fall hardest on people with the least slack in their lives, and this file cannot test it.
 
-In 1996 the average Republican-trifecta state ranked `r fact("r_rank_1996")` of 50 and the average Democratic-trifecta state ranked `r fact("d_rank_1996")`: **voting was easier, on average, in the states Republicans controlled**, by `r pc(abs(as.numeric(fact("gap_1996"))), 1)` places. The lines cross in `r CROSS`. By 2024 the gap has not merely closed but inverted and widened, to `r pc(as.numeric(fact("gap_2024")), 1)` places in the other direction.
+## What you should have learned
 
-```{r fig5-static, eval=!knitr::is_html_output(), fig.height=4.8}
-```
+- American states impose genuinely different costs to cast the same federal vote: `r EASY_NOW` scores `r pc(min(d$final))` and `r HARD` scores `r pc(max(d$final))` on the 2024 index.
+- An index is a weighting rule wearing a number's clothing. Weighting the four components equally moves the average state `r pc(mean(abs(rw$equal_move)), 1)` places and one state `r max(abs(rw$equal_move))`; leaving the issue areas unstandardized moves one state `r max(abs(rw$unstandardized_move))`.
+- Variance weighting measures how unusual a state is, not how hard it is to vote there. The item `r max(it$states_scored)` of 50 states share carries a standard deviation of `r pc(it$sd[it$states_scored == max(it$states_scored)], 2)` and is nearly invisible in the score.
+- Cost explains `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation in 2024 turnout between states, and `r HARD`, the hardest state of all, turns out `r pc(d$vep_turnout[d$state == HARD] - d$vep_turnout[d$state == "Hawaii"], 1)` points above the `r d$final_rank[d$state == "Hawaii"]`rd easiest.
+- The parties swapped ends. The average Republican-trifecta state ranked `r fact("r_rank_1996")` of 50 in 1996 against `r fact("d_rank_1996")` for Democratic trifectas, and `r fact("r_rank_2024")` against `r fact("d_rank_2024")` in 2024.
 
-```{r fig5-d3, results='asis', eval=knitr::is_html_output()}
-```
+## Extensions
 
-**Figure 5. Mean cost-of-voting rank by party control of state government, 1996–2024.** Ranks closer to 1 are more accessible. The Republican-trifecta line begins below the Democratic one, meaning voting was easier on average in the states Republicans controlled. It crosses in the early 2000s and ends `r pc(as.numeric(fact("gap_2024")), 1)` places above. Divided governments sit between the two throughout and move least.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-Two things about that figure need saying before it is used for anything.
-
-**The classification is not in the index, and it does not come from one place.** The Cost of Voting Index scores laws, not legislatures, so party control had to be brought in from outside. For 1996 through 2008 it is Klarner's standard measure of state partisan balance; for 2012 onward that series stops, and the classification here was coded from each state's governor and the majority in each chamber. The article's own count of states in each category, printed for every election, is the test.
-
-The five coded years reproduce it exactly. The four Klarner years differ from it on `r fact("control_states_differing")` states in total: the tied chambers and coalition majorities where "control" is genuinely arguable rather than merely unrecorded.
-
-**And the trend is a trend in ranks, not in laws.** Every year in Figure 5 is a separate cross-section, ranked within itself. A line going up means *this group of states moved toward the restrictive end, relative to the other states that year*. That is exactly the claim the ranking can support, and it is not the same as "these states got harder." Some of both is happening; this figure cannot say how much of each.
-
-With that said, note what kind of claim survives. It is not "voting is hard in Republican states," which would be a statement about levels and would run into everything this chapter has said about comparability. It is a statement about *which states sit at which end of the spread*, repeated in nine separate years and built from different sets of laws under separately estimated weights. A pattern that survives that many changes of measure is a pattern in the world rather than in the measure. The comparability problems above are real, and this conclusion is the one thing they do not touch.
-
-## What this index cannot tell you
-
-Its strengths first, because they are real. The underlying laws are published, the weights are published, and the whole index rebuilds exactly from them. The codebook cites a source for every item. And the one big conclusion the project rests on survives every alternative tried here.
-
-The limits bound different claims.
-
-**It measures statutes, not experience.** Every quantity in it is a property of a state's law. Two counties in the same state have the same score, so a five-hour line in one and a five-minute line in the next are the same observation. The wait-time item is scored at state level too: one number for Texas.
-
-Where election administration actually varies, which is county by county, this index is silent by design. Reaching that variation takes a source built at the level of the office that runs the election, and this is not one.
-
-**Its weights come from variance, not from burden.** A restriction that `r max(it$states_scored)` states share is nearly weightless in the score, no matter how much it costs the people it affects. The index would not notice if all fifty states adopted the same harsh new requirement tomorrow. The scores would barely move, because nothing would have changed *between* states. An index that cannot detect a nationwide restriction is measuring dispersion, not cost.
-
-**Its yes/no items flatten laws that are not yes/no.** `strictPhoto` is one column, but which photo IDs count, how a provisional ballot is cured and how long the voter has to cure it differ by state and decide who actually votes. Several items carry a `0.5` precisely because the drafters ran into this, which is an honest patch on a real problem rather than a solution to it.
-
-**Its nine years are not one instrument.** Documented above, and the reason the sensible unit of analysis is the cross-section.
-
-**And it has no people in it.** No demographics, no race, no age, no income. The claim that most motivates this literature is that voting costs fall hardest on the people with the least slack in their lives. It cannot be computed from this file at all, only cited from elsewhere.
-
-Two questions stay open. Whether the weak turnout relationship in Figure 3 reflects a genuinely small effect or a badly measured cause is not settled here, or in the literature. Careful studies of individual reforms tend to find small turnout effects and larger effects on the make-up of the electorate: who votes changes more than how many.
-
-And whether an index is the right form at all is worth asking. What a voter faces is not a single number, and every choice this chapter listed exists because somebody had to force a single number out of fifty-six separate facts.
-
-What the file does establish is worth stating plainly. American states impose genuinely different costs to cast the same federal vote. The range is wide and it is not narrowing. And the states at the two ends of it sort by party control in a way they did not thirty years ago. That much is in the data under every weighting rule tried here. The precise rank of any one state, on the other hand, is partly a fact about that state and partly a fact about a decision made in a spreadsheet.
-
-```{r checks-table}
-```
+- `reweight_2024.csv` re-ranks every state three other ways in `equal_rank`, `pc1_rank` and `unstandardized_rank`. Sort by `unstandardized_move` and read the ten biggest movers. Do they have anything in common?
+- `covi_2024.csv` puts `vep_turnout` next to `final_rank` and `control`. Group the states by `control` and compare each group's average turnout against its average cost rank.
+- `items_2024.csv` has `states_scored` and `sd` for every law item. Sort by `states_scored` and list the ten laws nearly every state has. Which would you call the heaviest burden?
+- `covi_panel.csv` carries `initial` and `final` for every state in every year. Pick a state and follow both columns across nine elections. Does its score move when its party control changes, or before?
+- **Stretch.** Check three states' current law on one issue area against a state legislature's own website. How many still match what the index says?
+- **Stretch.** Find a county-level source for wait times or polling-place closures in one state. Is the variation inside that state larger than the variation between states this index measures?
 
 ## Sources
 
 **Data**
 
 - Michael J. Pomante II, *Cost of Voting Index*, <https://costofvotingindex.com>
-  — the Data page, which publishes three files: the COVI values and ranks for
-  1996 through 2024, the master spreadsheet of state voting requirements with
-  one sheet per election, and the codebook defining every item and citing a
-  source for it. All three are committed as they arrived, because the site
-  serves them from versioned URLs and the announced 2026 edition will
+  — the Data page, which publishes the COVI values and ranks for 1996 through
+  2024, the master spreadsheet of state voting requirements, and the codebook
+  defining every item. All three are committed as they arrived, because the
+  site serves them from versioned URLs and the announced 2026 edition will
   re-estimate the whole series.
 - Turnout is the 2024 rate over the voting-eligible population, from the United
   States Elections Project's general election turnout series (Michael McDonald,
-  University of Florida), <https://election.lab.ufl.edu/data-downloads/>. The
-  eligible population is adult citizens less those a state's felony law
-  excludes, which is a different denominator from voting-age population, meaning a
-  different bottom number to divide by, and gives a different answer; the 2024 file was still a preliminary release when
-  it was taken.
-- Party control of state government is not in the index and came from two
-  places. For 1996 through 2008 it is Carl Klarner's state partisan balance
-  measures, distributed in the Correlates of State Policy Project (Grossmann,
-  Jordan and McCrain, Michigan State University),
-  <https://ippsr.msu.edu/public-policy/correlates-state-policy>, whose
-  `rep_unified`, `dem_unified` and `divided_gov` indicators end after 2011. For
-  2012 through 2024 there is no comparable file — Ballotpedia, which Pomante
-  (2025) cites for this, publishes it only as web pages and refuses automated
-  requests — so those five elections were classified from each state's governor
-  and chamber majorities. Anyone checking that classification should use the
-  counts printed in Pomante (2025) Table 2, which is what it was tested against.
+  University of Florida), <https://election.lab.ufl.edu/data-downloads/>. That
+  file was still a preliminary release when it was taken.
+- Party control of state government came from two places. For 1996 through 2008
+  it is Carl Klarner's state partisan balance measures, in the Correlates of
+  State Policy Project (Grossmann, Jordan and McCrain, Michigan State
+  University), <https://ippsr.msu.edu/public-policy/correlates-state-policy>.
+  The 2012 through 2024 elections were classified from each state's governor
+  and chamber majorities and tested against Pomante (2025) Table 2; the Klarner
+  years differ from that test on `r fact("control_states_differing")` states.
 
 **The data itself**
 
@@ -309,22 +181,6 @@ open in a spreadsheet, and they are yours to take further.
 
 [`control_check.csv`](data/derived/control_check.csv), [`control_panel.csv`](data/derived/control_panel.csv), [`control_trend.csv`](data/derived/control_trend.csv), [`covi_2024.csv`](data/derived/covi_2024.csv), [`covi_panel.csv`](data/derived/covi_panel.csv), [`items_2024.csv`](data/derived/items_2024.csv), [`rebuild_2024.csv`](data/derived/rebuild_2024.csv), [`reweight_2024.csv`](data/derived/reweight_2024.csv), [`year_structure.csv`](data/derived/year_structure.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `rebuild_2024.csv` sets the published index beside one rebuilt from its
-  parts, and the differences are tiny. What would you conclude if they were
-  not?
-- `reweight_2024.csv` re-ranks every state three other ways. Find the state
-  that moves the most. Is the index measuring the state, or measuring the
-  weighting?
-- `covi_2024.csv` puts `vep_turnout` next to `final_rank`. Sort them together.
-  Do states that are harder to vote in actually turn out fewer voters?
-- `control_panel.csv` runs across every year in the series. Does a state's
-  score move when its party control changes, or before it changes?
-
 **Academic literature**
 
 - Pomante, M. J. II (2025). "Cost of Voting in the American States: 2024."
@@ -332,14 +188,11 @@ tables you just opened.
 - Li, Q., Pomante, M. J. II and Schraufnagel, S. (2018). "Cost of Voting in the
   American States." *Election Law Journal* 17(3): 234–247. The paper that
   built the 1996–2016 series.
-- Schraufnagel, S., Pomante, M. J. II and Li, Q. (2020, 2022). "Cost of Voting
-  in the American States: 2020" and ": 2022." *Election Law Journal* 19(4) and
-  21(3).
 - Klarner, C. (2013). "State Partisan Balance Data, 1937–2011." Harvard
   Dataverse, hdl:1902.1/20403.
 - Uggen, C., Larson, R., Shannon, S. and Stewart, R. (2024). *Locked Out 2024:
-  Estimates of People Denied Voting Rights.* The Sentencing Project — the
-  source of the four million figure quoted above.
+  Estimates of People Denied Voting Rights.* The Sentencing Project — the four
+  million figure quoted above.
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

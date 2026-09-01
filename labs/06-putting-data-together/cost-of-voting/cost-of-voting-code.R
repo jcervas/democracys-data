@@ -8,37 +8,33 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
 options(scipen = 999)
 
 d  <- read.csv("data/derived/covi_2024.csv",       stringsAsFactors = FALSE)
-pn <- read.csv("data/derived/covi_panel.csv",      stringsAsFactors = FALSE)
 ys <- read.csv("data/derived/year_structure.csv",  stringsAsFactors = FALSE)
 rb <- read.csv("data/derived/rebuild_2024.csv",    stringsAsFactors = FALSE)
 rw <- read.csv("data/derived/reweight_2024.csv",   stringsAsFactors = FALSE)
 it <- read.csv("data/derived/items_2024.csv",      stringsAsFactors = FALSE)
 tr <- read.csv("data/derived/control_trend.csv",   stringsAsFactors = FALSE)
-cp <- read.csv("data/derived/control_panel.csv",   stringsAsFactors = FALSE)
 cc <- read.csv("data/derived/control_check.csv",   stringsAsFactors = FALSE)
 fa <- read.csv("data/derived/facts.csv",           stringsAsFactors = FALSE)
-ch <- read.csv("data/derived/checks.csv",          stringsAsFactors = FALSE)
 
 fact <- function(k) fa$value[fa$key == k]
 pc   <- function(x, k = 2) formatC(as.numeric(x), format = "f", digits = k)
 n    <- function(x) format(round(as.numeric(x)), big.mark = ",")
 
 # named once here so no two paragraphs can disagree about them
-EASY_PUB <- fact("easiest_2024_published")     # the state the article ranks first
 EASY_NOW <- fact("easiest_2024_current")       # the state the current file ranks first
 HARD     <- fact("hardest_2024")
 Y96      <- ys[ys$year == 1996, ]
 Y24      <- ys[ys$year == 2024, ]
-R_TURN   <- as.numeric(fact("turnout_correlation"))
 
 # the election at which the Republican-trifecta mean rank first sits ABOVE the
-# Democratic one -- i.e. where the two lines in Figure 5 cross
+# Democratic one -- i.e. where the two lines in Figure 4 cross
 TRY   <- sort(unique(tr$year))
 TRGAP <- vapply(TRY, function(y)
   tr$mean_rank[tr$year == y & tr$control == "Republican trifecta"] -
@@ -54,18 +50,22 @@ IA_LAB <- c("Registration deadline", "Registration restrictions",
             "Voting inconveniences", "Voter ID", "Poll hours",
             "Early voting days", "Absentee voting")
 
-# the component structure of the 2024 index, recomputed here so the loadings
+# the component structure of the 2024 index, recomputed here so the spreads
 # quoted in the text come from the same arithmetic the build script verified
 P24 <- prcomp(d[, IA], scale. = TRUE)
-SG  <- sign(colSums(P24$rotation[, 1:4]))
-LOAD <- data.frame(area = IA_LAB, sd = sapply(d[, IA], sd),
-                   pc1 = P24$rotation[, 1] * SG[1],
-                   pc2 = P24$rotation[, 2] * SG[2], row.names = NULL)
+LOAD <- data.frame(area = IA_LAB, sd = sapply(d[, IA], sd), row.names = NULL)
 
+# The static twins run through base-R devices, which cannot restyle for the
+# dark page the way the shared library's classes do. Light values here; the
+# D3 twins use the gop/dem/series classes brief.css owns.
 CTRL_COL <- c(`Republican trifecta` = "#C41230",
               `Democratic trifecta` = "#2c7fb8",
               `Divided`             = "#9E9E9E",
               `Nonpartisan legislature` = "#4D4D4D")
+CTRL_CLS <- list(`Republican trifecta` = "gop",
+                 `Democratic trifecta` = "dem",
+                 `Divided`             = "series-8",
+                 `Nonpartisan legislature` = "series-7")
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 knit_print.data.frame <- function(x, ...) {
@@ -78,17 +78,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- source-table
-data.frame(
-  item = c("Who compiles it", "Published as", "Unit", "Coverage",
-           "Machine-readable version", "Replication material"),
-  value = c("Pomante, Schraufnagel and Li (academic researchers)",
-            "A journal article each cycle, plus a project website",
-            "State, in an election year",
-            paste0(fact("n_years"), " elections, 1996-2024, all 50 states"),
-            "Yes -- three spreadsheets on the project site",
-            "The laws, the codebook, and the component weights"))
-
 ## ---- one-row
 o <- d[d$state %in% c("Oregon", "Pennsylvania", HARD),
        c("state", "reg_deadline", "voter_id", "early_voting", "absentee",
@@ -96,25 +85,6 @@ o <- d[d$state %in% c("Oregon", "Pennsylvania", HARD),
 o <- o[order(o$final), ]
 names(o) <- c("state", "reg. deadline", "voter ID", "early voting",
               "absentee", "inconveniences", "COVI", "rank")
-o
-
-## ---- items-extremes
-o <- rbind(
-  data.frame(item = it$item[1:4], states = it$states_scored[1:4],
-             group = "in only a few states"),
-  data.frame(item = tail(it$item, 4), states = tail(it$states_scored, 4),
-             group = "in nearly every state"))
-names(o) <- c("law item", "states scoring it", "")
-o
-
-## ---- weights
-o <- data.frame(
-  component = c("First", "Second", "Third", "Fourth", "Total"),
-  variance_explained = c(pc(P24$sdev[1:4]^2 / sum(P24$sdev^2), 4),
-                         pc(sum(P24$sdev[1:4]^2) / sum(P24$sdev^2), 4)),
-  weight_in_the_index = c(pc((P24$sdev[1:4]^2 / sum(P24$sdev^2)) /
-                             (sum(P24$sdev[1:4]^2) / sum(P24$sdev^2)), 4), "1.0000"))
-names(o) <- c("component", "share of variance explained", "weight in the index")
 o
 
 ## ---- rebuild-check
@@ -145,62 +115,34 @@ mtext(paste0(EASY_NOW, " is lowest, ", HARD, " highest. Colour is party control 
       side = 1, line = 3.4, cex = 0.62, col = "#666666")
 
 ## ---- fig1-d3
-o <- d[order(d$final), ]
-rows <- paste(sprintf('{"s":"%s","a":"%s","v":%.4f,"r":%d,"c":"%s","t":%.2f}',
-                      o$state, o$abbr, o$final, o$final_rank, o$control,
-                      o$vep_turnout), collapse = ",")
-cat(sprintf('
-<div id="f1" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const D=[%s];
-const COL={"Republican trifecta":"%s","Democratic trifecta":"%s","Divided":"%s","Nonpartisan legislature":"%s"};
-const W=760,H=720,M={t:12,r:20,b:44,l:52};
-const svg=d3.select("#f1").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-2.8,2.3]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.a)).range([M.t,H-M.b]).padding(0.18);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(7));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).tickSize(0))
-  .selectAll("text").attr("font-size","9.5px");
-svg.append("line").attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#888").attr("stroke-dasharray","2,2");
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("Cost of Voting Index, 2024  (lower = easier to vote)");
-const cap=d3.select("#f1").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const DEF="<b>Hover a state.</b> Colour is party control of state government in 2024.";
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",d=>Math.min(x(0),x(d.v))).attr("y",d=>y(d.a)).attr("height",y.bandwidth())
-  .attr("fill",d=>COL[d.c]).attr("width",0).style("cursor","pointer")
-  .on("mousemove",(e,d)=>cap.html("<b>"+d.s+"</b> \\u2014 ranked "+d.r+" of 50, score "+
-    d.v.toFixed(2)+". "+d.c+". Turnout "+d.t.toFixed(1)+"%% of eligible adults."))
-  .on("mouseleave",()=>cap.html(DEF))
-  .transition().delay((d,i)=>i*12).duration(320)
-  .attr("width",d=>Math.abs(x(d.v)-x(0)));
-const lg=svg.append("g").attr("transform",`translate(${W-250},${H-150})`);
-Object.entries(COL).forEach(([k,v],i)=>{
-  lg.append("rect").attr("y",i*17).attr("width",11).attr("height",11).attr("fill",v);
-  lg.append("text").attr("x",16).attr("y",i*17+10).attr("font-size","11px").text(k);});
-cap.html(DEF);
-})();
-</script>', rows, CTRL_COL[["Republican trifecta"]], CTRL_COL[["Democratic trifecta"]],
-   CTRL_COL[["Divided"]], CTRL_COL[["Nonpartisan legislature"]]))
+# Drawn with the shared library (_lib/dd-charts.js): fifty named cases with one
+# value each, sorted, which is what the bar type is for. dd_fig() emits the two
+# <script src> tags for the document, and the hand-written figure below uses
+# the d3 loaded here.
+o <- d[order(d$final),
+       c("abbr", "state", "final", "final_rank", "control", "vep_turnout")]
+dd_fig("f1", "bar", o,
+  size = list(w = 760),
+  rowHeight = 14, padding = 0.16, catLabels = "inline",
+  y = list(field = "abbr", band = TRUE),
+  x = list(field = "final", domain = c(-2.8, 2.3), fmt = "f1", ticks = 7),
+  series = list(field = "control", classes = CTRL_CLS),
+  legend = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.state+"</b><br>ranked "+d.final_rank+" of 50, score "+
+      d.final.toFixed(2)+"<br>"+d.control+"<br>turnout "+
+      d.vep_turnout.toFixed(1)+"% of eligible adults";
+  }'))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Cost of Voting Index, 2024 (lower = easier to vote). Hover a bar for the
+state, its rank and its turnout.</p>')
 
 ## ---- near-universal
 o <- it[it$states_scored >= 40 | it$states_scored <= 3, ]
 o <- o[order(-o$states_scored), c("item", "states_scored", "sd")]
 o$sd <- pc(o$sd, 2)
 names(o) <- c("law item", "states scoring it", "standard deviation")
-o
-
-## ---- loadings
-o <- LOAD[order(-abs(LOAD$pc1)), ]
-o$sd <- pc(o$sd, 2); o$pc1 <- pc(o$pc1, 3); o$pc2 <- pc(o$pc2, 3)
-names(o) <- c("issue area", "sd across states", "loading, 1st component",
-              "loading, 2nd")
 o
 
 ## ---- reweight-table
@@ -253,6 +195,11 @@ mtext("Each grey line is a state. The same 2024 laws under four weighting rules.
       side = 3, line = 0.2, cex = 0.62, col = "#666666")
 
 ## ---- fig2-d3
+# A DESIGNATED SHOWPIECE, and the one hand-written figure left in this brief.
+# Fifty lines carried across four ranking rules is a parallel-coordinates plot,
+# which the shared library has no type for, and the interaction -- raise one
+# state to the front and read its four ranks -- is the whole point of the
+# figure. d3 was loaded by Figure 1 above; nothing new is fetched here.
 o <- rw[order(rw$published_rank), ]
 o$control <- d$control[match(o$abbr, d$abbr)]
 rows <- paste(sprintf('{"s":"%s","a":"%s","c":"%s","r":[%d,%d,%d,%d]}',
@@ -260,7 +207,6 @@ rows <- paste(sprintf('{"s":"%s","a":"%s","c":"%s","r":[%d,%d,%d,%d]}',
                       o$pc1_rank, o$unstandardized_rank), collapse = ",")
 cat(sprintf('
 <div id="f2" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
 <script>
 (function(){
 const D=[%s];
@@ -297,18 +243,6 @@ cap.html(DEF);
 </script>', rows, CTRL_COL[["Republican trifecta"]], CTRL_COL[["Democratic trifecta"]],
    CTRL_COL[["Divided"]], CTRL_COL[["Nonpartisan legislature"]]))
 
-## ---- turnout-table
-data.frame(
-  quantity = c("Correlation, cost against turnout",
-               "Variation in turnout explained",
-               "p-value", "Turnout in the 3 cheapest states",
-               "Turnout in the 3 most expensive"),
-  value = c(fact("turnout_correlation"),
-            paste0(pc(100 * as.numeric(fact("turnout_r_squared")), 1), "%"),
-            fact("turnout_p_value"),
-            paste0(pc(mean(d$vep_turnout[order(d$final)][1:3]), 1), "%"),
-            paste0(pc(mean(d$vep_turnout[order(-d$final)][1:3]), 1), "%")))
-
 ## ---- turnout-cases
 o <- d[d$state %in% c("Hawaii", HARD, "Wisconsin", "Oregon", "Texas"),
        c("state", "final_rank", "final", "vep_turnout")]
@@ -343,161 +277,29 @@ mtext(paste0("r = ", fact("turnout_correlation"), "; the line explains ",
       side = 1, line = 3.4, cex = 0.62, col = "#666666")
 
 ## ---- fig3-d3
-fit <- lm(vep_turnout ~ final, data = d)
-rows <- paste(sprintf('{"s":"%s","a":"%s","x":%.4f,"y":%.2f,"c":"%s","r":%d}',
-                      d$state, d$abbr, d$final, d$vep_turnout, d$control,
-                      d$final_rank), collapse = ",")
-cat(sprintf('
-<div id="f3" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[%s];
-const COL={"Republican trifecta":"%s","Democratic trifecta":"%s","Divided":"%s","Nonpartisan legislature":"%s"};
-const W=760,H=470,M={t:16,r:20,b:52,l:60};
-const svg=d3.select("#f3").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-2.8,2.3]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([45,78]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(7));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("line").attr("x1",x(-2.8)).attr("y1",y(%.4f+%.4f*-2.8))
-  .attr("x2",x(2.3)).attr("y2",y(%.4f+%.4f*2.3))
-  .attr("stroke","#333").attr("stroke-dasharray","4,4");
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-14).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("Cost of Voting Index, 2024  (lower = easier to vote)");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H/2)).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("turnout, %% of eligible adults");
-const cap=d3.select("#f3").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const DEF="<b>Hover a state.</b> The dashed line is the best straight-line fit; it explains %s%% of the variation.";
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.x)).attr("cy",d=>y(d.y)).attr("r",0)
-  .attr("fill",d=>COL[d.c]).attr("stroke","#fff").attr("stroke-width",1.2)
-  .style("cursor","pointer")
-  .on("mousemove",(e,d)=>cap.html("<b>"+d.s+"</b> \\u2014 cost rank "+d.r+
-    " of 50, turnout "+d.y.toFixed(1)+"%% of eligible adults."))
-  .on("mouseleave",()=>cap.html(DEF))
-  .transition().delay((d,i)=>i*10).duration(300).attr("r",6);
-const lg=svg.append("g").attr("transform",`translate(${M.l+10},${H-M.b-76})`);
-Object.entries(COL).forEach(([k,v],i)=>{
-  lg.append("circle").attr("cy",i*17).attr("r",5).attr("fill",v);
-  lg.append("text").attr("x",11).attr("y",i*17+4).attr("font-size","11px").text(k);});
-cap.html(DEF);
-})();
-</script>', rows, CTRL_COL[["Republican trifecta"]], CTRL_COL[["Democratic trifecta"]],
-   CTRL_COL[["Divided"]], CTRL_COL[["Nonpartisan legislature"]],
-   coef(fit)[1], coef(fit)[2], coef(fit)[1], coef(fit)[2],
-   pc(100 * as.numeric(fact("turnout_r_squared")), 1)))
-
-## ---- two-scorings
-o <- d[order(d$initial)[1:5], c("state", "initial", "initial_rank",
-                                "final", "final_rank")]
-o$initial <- pc(o$initial); o$final <- pc(o$final)
-names(o) <- c("state", "as published", "rank", "current file", "rank")
-o
-
-## ---- structure-table
-o <- ys[, c("year", "n_issue_areas", "n_components", "var_explained",
-            "cor_init_final", "mean_rank_move", "max_rank_move",
-            "max_move_state")]
-o$var_explained  <- pc(o$var_explained, 3)
-o$cor_init_final <- pc(o$cor_init_final, 3)
-o$mean_rank_move <- pc(o$mean_rank_move, 1)
-names(o) <- c("year", "issue areas", "components", "variance explained",
-              "r, published vs current", "mean rank move", "max", "biggest mover")
-o
-
-## ---- moves-1996
-p96 <- pn[pn$year == 1996, ]
-p96$ir <- rank(p96$initial); p96$fr <- rank(p96$final)
-p96$mv <- p96$fr - p96$ir
-o <- p96[order(-abs(p96$mv))[1:6], c("state", "ir", "fr", "mv")]
-o$ir <- round(o$ir); o$fr <- round(o$fr); o$mv <- round(o$mv)
-names(o) <- c("state", "rank as published", "rank in current file", "move")
-o
-
-## ---- fig4-static
-par(mar = c(4.0, 4.4, 1.0, 4.2))
-plot(ys$year, ys$mean_rank_move, type = "n", axes = FALSE, xlab = "", ylab = "",
-     ylim = c(0, 15), xlim = c(1994, 2026))
-segments(ys$year, 0, ys$year, ys$mean_rank_move, col = "#DCDCDC", lwd = 6)
-points(ys$year, ys$mean_rank_move, pch = 19, col = "#C41230", cex = 1.1)
-lines(ys$year, ys$mean_rank_move, col = "#C41230", lwd = 1.4)
-axis(1, at = ys$year, cex.axis = 0.68); axis(2, las = 1, cex.axis = 0.75)
-mtext("mean rank move between\nthe two published scorings", side = 2, line = 2.0,
-      cex = 0.72)
-par(new = TRUE)
-plot(ys$year, ys$n_issue_areas, type = "s", col = "#2c7fb8", lwd = 1.6,
-     axes = FALSE, xlab = "", ylab = "", ylim = c(0, 12), xlim = c(1994, 2026))
-axis(4, las = 1, cex.axis = 0.75, col = "#2c7fb8", col.axis = "#2c7fb8")
-mtext("issue areas in the index", side = 4, line = 2.4, cex = 0.72, col = "#2c7fb8")
-# one line only: the caption below carries the rest, and a second line here
-# collided with it
-mtext("Red: mean rank move between the two scorings.   Blue: issue areas in the index.",
-      side = 1, line = 2.5, cex = 0.6, col = "#666666")
-
-## ---- fig4-d3
-rows <- paste(sprintf('{"y":%d,"m":%.2f,"n":%d,"r":%.3f,"s":"%s","x":%d}',
-                      ys$year, ys$mean_rank_move, ys$n_issue_areas,
-                      ys$cor_init_final, ys$max_move_state, ys$max_rank_move),
-              collapse = ",")
-cat(sprintf('
-<div id="f4" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[%s];
-const W=760,H=400,M={t:18,r:60,b:46,l:62};
-const svg=d3.select("#f4").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scalePoint().domain(D.map(d=>d.y)).range([M.l,W-M.r]).padding(0.5);
-const y=d3.scaleLinear().domain([0,15]).range([H-M.b,M.t]);
-const y2=d3.scaleLinear().domain([0,12]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("g").attr("transform",`translate(${W-M.r},0)`)
-  .call(d3.axisRight(y2).ticks(6)).selectAll("text").attr("fill","#2c7fb8");
-svg.append("path").datum(D).attr("fill","none").attr("stroke","#2c7fb8")
-  .attr("stroke-width",1.8)
-  .attr("d",d3.line().curve(d3.curveStepAfter).x(d=>x(d.y)).y(d=>y2(d.n)));
-svg.append("path").datum(D).attr("fill","none").attr("stroke","%s")
-  .attr("stroke-width",1.8).attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d.m)));
-const cap=d3.select("#f4").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const DEF="<b>Hover an election.</b> Red: how far the average state moves between the two published scorings of that year. Blue: how many issue areas the index was built from.";
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.y)).attr("cy",d=>y(d.m)).attr("r",6).attr("fill","%s")
-  .style("cursor","pointer")
-  .on("mousemove",(e,d)=>cap.html("<b>"+d.y+"</b> \\u2014 built from "+d.n+
-    " issue areas. Between the two scorings the average state moves "+d.m.toFixed(1)+
-    " places and "+d.s+" moves "+d.x+"; the two versions correlate "+d.r.toFixed(3)+"."))
-  .on("mouseleave",()=>cap.html(DEF));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H/2)).attr("y",14)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#444")
-  .text("mean rank move between scorings");
-svg.append("text").attr("transform","rotate(90)").attr("x",H/2).attr("y",-(W-14))
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#2c7fb8")
-  .text("issue areas in the index");
-cap.html(DEF);
-})();
-</script>', rows, CTRL_COL[["Republican trifecta"]], CTRL_COL[["Republican trifecta"]]))
-
-## ---- control-table
-o <- do.call(rbind, lapply(c("Democratic trifecta", "Divided",
-                             "Republican trifecta"), function(g) {
-  s <- d[d$control == g, ]
-  data.frame(control = g, states = nrow(s),
-             mean_rank = pc(mean(s$final_rank), 1),
-             mean_covi = pc(mean(s$final)),
-             easiest = s$state[which.min(s$final)],
-             hardest = s$state[which.max(s$final)])
-}))
-names(o) <- c("party control, 2024", "states", "mean rank", "mean COVI",
-              "easiest", "hardest")
-o
+# One point per state on the shared library's scatter. The fitted line is an
+# annotation rather than a series: it is a summary of the points, not a second
+# measurement of them.
+fitl <- lm(vep_turnout ~ final, data = d)
+LB <- c("Hawaii", HARD, "Wisconsin", "Oregon", "Texas", "West Virginia")
+J <- data.frame(state = d$state, abbr = d$abbr, final = round(d$final, 4),
+                turnout = round(d$vep_turnout, 2), control = d$control,
+                rank = d$final_rank,
+                lbl = ifelse(d$state %in% LB, d$abbr, NA_character_),
+                stringsAsFactors = FALSE)
+dd_fig("f3", "scatter", J,
+  size = list(w = 760, h = 470, m = list(t = 18, r = 22, b = 52, l = 60)),
+  x = list(field = "final", label = "Cost of Voting Index, 2024 (lower = easier)",
+           domain = c(-2.8, 2.3), fmt = "f1", ticks = 7),
+  y = list(field = "turnout", label = "turnout, % of eligible adults",
+           domain = c(45, 78), fmt = "pct0", ticks = 6),
+  series = list(field = "control", classes = CTRL_CLS),
+  r = 6, opacity = 0.75, legend = TRUE,
+  annotations = list(dd_annot_rule(-2.8, coef(fitl)[[1]] + coef(fitl)[[2]] * -2.8,
+                                    2.3, coef(fitl)[[1]] + coef(fitl)[[2]] *  2.3)),
+  tip = dd_tip(c(rank = "cost rank of 50", turnout = "turnout",
+                 control = "government"),
+               fmt = c(rank = "d", turnout = "pct1"), title = "state"))
 
 ## ---- control-trend
 o <- reshape(tr[, c("year", "control", "mean_rank")], idvar = "year",
@@ -510,7 +312,7 @@ names(o) <- c("year", "R trifecta", "D trifecta", "divided",
               "R minus D", "control from")
 o
 
-## ---- fig5-static
+## ---- fig4-static
 G <- c("Republican trifecta", "Democratic trifecta", "Divided")
 par(mar = c(4.0, 4.4, 1.0, 6.6))
 plot(NA, xlim = c(1994, 2026), ylim = c(40, 5), axes = FALSE, xlab = "", ylab = "")
@@ -531,54 +333,32 @@ mtext(paste0("Ranks closer to 1 are more accessible. The two trifecta lines ",
              "cross in the early 2000s."),
       side = 1, line = 2.5, cex = 0.6, col = "#666666")
 
-## ---- fig5-d3
-G <- c("Republican trifecta", "Democratic trifecta", "Divided")
-ser <- paste(sapply(G, function(g) {
-  z <- tr[tr$control == g, ]
-  sprintf('{"g":"%s","c":"%s","p":[%s]}', g, CTRL_COL[[g]],
-          paste(sprintf('{"y":%d,"r":%.2f,"n":%d}', z$year, z$mean_rank, z$n),
-                collapse = ","))
-}), collapse = ",")
-cat(sprintf('
-<div id="f5" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const S=[%s];
-const W=760,H=430,M={t:18,r:150,b:46,l:64};
-const svg=d3.select("#f5").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const YRS=S[0].p.map(d=>d.y);
-const x=d3.scalePoint().domain(YRS).range([M.l,W-M.r]).padding(0.5);
-const y=d3.scaleLinear().domain([40,5]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(5));
-const line=d3.line().x(d=>x(d.y)).y(d=>y(d.r));
-const cap=d3.select("#f5").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const DEF="<b>Hover a point.</b> Each line is the average rank of the states under that kind of government. Lower is easier to vote.";
-S.forEach(s=>{
-  svg.append("path").datum(s.p).attr("fill","none").attr("stroke",s.c)
-    .attr("stroke-width",2.4)
-    .attr("stroke-dasharray",s.g==="Divided"?"4,3":null).attr("d",line);
-  svg.append("text").attr("x",x(2024)+10).attr("y",y(s.p[s.p.length-1].r)+4)
-    .attr("font-size","11.5px").attr("fill",s.c).text(s.g);
-  svg.append("g").selectAll("circle").data(s.p).join("circle")
-    .attr("cx",d=>x(d.y)).attr("cy",d=>y(d.r)).attr("r",5).attr("fill",s.c)
-    .style("cursor","pointer")
-    .on("mousemove",(e,d)=>cap.html("<b>"+d.y+"</b> \\u2014 the "+d.n+
-      " states with "+s.g.toLowerCase()+" averaged rank "+d.r.toFixed(1)+" of 50."))
-    .on("mouseleave",()=>cap.html(DEF));
-});
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H/2)).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#444")
-  .text("mean rank (1 = easiest to vote)");
-cap.html(DEF);
-})();
-</script>', ser))
-
-## ---- checks-table
-ch
+## ---- fig4-d3
+# Three groups across nine elections, on the shared library. The y domain runs
+# 40 down to 5 because rank 1 is the accessible end and belongs at the top.
+W <- reshape(tr[, c("year", "control", "mean_rank")], idvar = "year",
+             timevar = "control", direction = "wide")
+names(W) <- c("year", "rep", "dem", "div")
+W <- W[order(W$year), ]
+for (k in c("rep", "dem", "div")) W[[k]] <- round(W[[k]], 2)
+dd_fig("f4", "line", W,
+  size = list(w = 760, h = 430, m = list(t = 18, r = 150, b = 46, l = 64)),
+  x = list(field = "year", fmt = "d", ticks = 9),
+  y = list(field = "rep", label = "mean rank (1 = easiest to vote)",
+           domain = c(40, 5), fmt = "d", ticks = 5),
+  series = list(fields = list(
+    list(field = "rep", label = "Republican trifecta", class = "gop"),
+    list(field = "dem", label = "Democratic trifecta", class = "dem"),
+    list(field = "div", label = "Divided", class = "series-8"))),
+  points = TRUE, endLabels = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+
+      "<span class=\'gop-txt\'>&#9632;</span> Republican trifectas: "+
+        d.rep.toFixed(1)+"<br>"+
+      "<span class=\'dem-txt\'>&#9632;</span> Democratic trifectas: "+
+        d.dem.toFixed(1)+"<br>"+
+      "<span class=\'series-8-txt\'>&#9632;</span> divided: "+d.div.toFixed(1);
+  }'))
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt"), tone = "frozen"))
