@@ -20,7 +20,7 @@ absent <- p[is.na(p$d2), ]
 
 # the national two-party margin, one row per election, from the national file
 nat <- read.csv("data/derived/pres_national.csv", stringsAsFactors = FALSE)
-dr  <- nat[nat$party %in% c("Democratic", "Republican") & nat$year >= 1864, ]
+dr  <- nat[nat$party %in% c("Democratic", "Republican"), ]
 agp <- aggregate(pop_votes ~ year + party, data = dr, FUN = sum)
 nm  <- reshape(agp, idvar = "year", timevar = "party", direction = "wide")
 names(nm) <- c("year", "dem", "rep")
