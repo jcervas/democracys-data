@@ -2,34 +2,56 @@ I want to rebuild a public dataset from its original source, without any
 starting files. Please do the following and show your work.
 
 THE SOURCE. U.S. Census Bureau, 2020 Census Redistricting Data
-(P.L. 94-171) Summary File, legacy format -- the file the Bureau is
-required by law to hand every state so it can draw districts. One zip
-per state under
+(P.L. 94-171) Summary File -- the file the Bureau is required by law
+to hand every state so it can draw districts. It is published two
+ways, and part of this exercise is choosing between them.
+
+The Census data API serves it as the dataset 2020/dec/pl:
+https://api.census.gov/data/2020/dec/pl
+A free key is required (https://api.census.gov/data/key_signup.html);
+an unkeyed request redirects to a "missing key" page. The whole
+country arrives in one request of about a quarter of a megabyte, as
+JSON: an array of arrays with the header row first. Ask for
+&for=county:* to get every county, and note that the NAME field
+carries a comma ("Autauga County, Alabama"), so split it carefully.
+
+The same file is also published in legacy format, one zip per state,
+under
 https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/
-No account or key is needed. Fetch six states -- Pennsylvania, Texas,
-New York, Hawaii, Mississippi and New Mexico -- each from a folder of
-that name (two-word states use an underscore), for example
-Pennsylvania/pa2020.pl.zip. Together they are roughly 300 MB down for
-a few hundred rows out; that ratio is normal for this file. Each zip
-holds four pipe-delimited files with no headers: a geographic header,
-one row per geographic unit, and three data segments that join to it
-on the LOGRECNO column. Counties are summary level 050. In the first
-segment, Table P1 (race) starts at field 6 and Table P2 (Hispanic or
-Latino origin by race) at field 77; in the third segment, Table P5
-(group quarters) starts at field 6. Read every code as text -- FIPS
-codes lose their leading zeros the moment they become numbers.
+No key is needed for those, but there are fifty-one of them and about
+1.3 GB to download, and the Bureau publishes no national archive.
+Each zip holds four pipe-delimited files with no headers: a geographic
+header, one row per geographic unit, and three data segments that join
+to it on the LOGRECNO column. Counties are summary level 050. In the
+first segment, Table P1 (race) starts at field 6 and Table P2
+(Hispanic or Latino origin by race) at field 77; in the third segment,
+Table P5 (group quarters) starts at field 6.
+
+Read every code as text -- FIPS codes lose their leading zeros the
+moment they become numbers.
 
 WHAT TO BUILD.
-1. One county table covering all six states: total population, the
-   six race-alone counts, two or more races, the Hispanic and
-   non-Hispanic breakdown of each, and the group-quarters counts
-   (correctional, college, military, nursing).
+1. One county table covering all fifty states and the District of
+   Columbia: total population, the six race-alone counts, two or more
+   races, the Hispanic and non-Hispanic breakdown of each, and the
+   group-quarters counts (correctional, college, military, nursing).
+   Leave out Puerto Rico, which ships in the same dataset but whose
+   municipios are not counties of a state.
+2. If you use the API, satisfy yourself that it really is the same
+   file: pull one state's legacy archive as well and compare every
+   cell for that state's counties. Do not assume two deliveries of a
+   file agree because they are supposed to.
 
-CHECK YOUR WORK. The copies this book used were fetched in August
+CHECK YOUR WORK. The copies this book used were fetched in September
 2026. If your rebuild matches them, you should find:
-- 503 county rows: 67 in Pennsylvania, 254 in Texas, 62 in New York,
-  5 in Hawaii, 82 in Mississippi and 33 in New Mexico
+- 3,143 county rows across 50 states and DC
+- the county totals summing to 331,449,281, the published 2020
+  resident population, exactly -- the privacy noise in this file is
+  applied so as to leave state and national totals untouched
 - Honolulu County, Hawaii: 1,016,508 people, of whom 436,853 are
   Asian alone
+- Connecticut with eight counties, not nine planning regions: the
+  2020 tabulation predates the change, so a current county name list
+  will not join to it cleanly
 These are the final legal files of the 2020 census; nothing in them
 will change before the 2030 cycle.

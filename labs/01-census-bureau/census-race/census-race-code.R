@@ -30,6 +30,11 @@ st$other_h     <- 100 * (st$other_race  - st$nh_other) / st$other_race
 st$two_h       <- 100 * (st$two_or_more - st$nh_two)   / st$two_or_more
 S <- function(s, v) st[[v]][st$state == s]
 
+# the states where the choice between the two definitions crosses 50%: white
+# by the race question, not white once the origin question is counted
+flip <- st[st$white_pct >= 50 & st$nhwhite_pct < 50, ]
+flip <- flip[order(-flip$gap), ]
+
 tot_other  <- sum(d$other_race); nh_other <- sum(d$nh_other)
 hisp_other <- tot_other - nh_other
 pct_other_h <- 100 * hisp_other / tot_other
@@ -46,14 +51,30 @@ cor_other <- cor(d$hisp_pct, d$other_pct)
 cor_gap   <- cor(st$hisp_pct, st$gap)
 
 top_two <- head(d[order(-d$two_pct), ], 10)
+top_two_tx <- sum(top_two$state == "Texas")
 hi_two  <- d[d$state == "Hawaii", ]
 hi_top  <- hi_two[which.max(hi_two$two_pct), ]
+# where Hawaii's counties actually sit once every county in the country is in
+# the ranking: high, but not the top -- which is the whole point of Figure 3
+d$two_rank <- rank(-d$two_pct, ties.method = "min")
+hi_rank <- range(d$two_rank[d$state == "Hawaii"])
+hi_state_two <- 100 * sum(hi_two$two_or_more) / sum(hi_two$total)
 
 p1ok <- all(d$one_race + d$two_or_more == d$total)
 p2ok <- all(d$hispanic + d$not_hispanic == d$total)
 
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",")
+
+# Counts under eleven are spelled out in prose, which is the book's habit and
+# the only way a sentence does not open on a numeral. Still computed, so a
+# changed file changes the sentence rather than quietly contradicting it.
+wd <- function(k) {
+  w <- c("one", "two", "three", "four", "five", "six", "seven", "eight",
+         "nine", "ten")
+  if (k >= 1 && k <= 10) w[k] else n(k)
+}
+Wd <- function(k) sub("^(.)", "\\U\\1", wd(k), perl = TRUE)
 
 # ---- the alluvial the two sankey chunks share -------------------------------
 # every race answer, split by the ethnicity answer
@@ -98,9 +119,11 @@ data.frame(
   item = c("Source", "Reference date", "Counties", "States", "People covered",
            "Share of the U.S. population", "Tables kept"),
   value = c("2020 Census Redistricting Data (P.L. 94-171) Summary File",
-            "1 April 2020", nrow(d), length(unique(d$state)),
+            "1 April 2020", n(nrow(d)),
+            paste0(length(unique(d$state)) - 1, " and the District of Columbia"),
             n(sum(d$total)),
-            paste0(pc(100 * sum(d$total) / 331449281, 0), "%"),
+            paste0(pc(100 * sum(d$total) / 331449281, 0),
+                   "% -- every resident of the 50 states and DC"),
             "P1 (race), P2 (Hispanic origin by race), P5 (group quarters)"))
 
 ## ---- checks
@@ -111,20 +134,24 @@ data.frame(
   counties_tested = c(nrow(d), nrow(d)))
 
 ## ---- two-static
+# Fifty-one rows, so the row labels set the type size rather than the other way
+# round. The 50% rule is drawn because three states cross it between the two
+# readings, which is the fact the figure exists to show.
 s <- st[order(st$white_pct), ]
 yy <- seq_len(nrow(s))
-par(mar = c(4.2, 8.6, 1.2, 2))
-plot(NA, xlim = c(0, 80), ylim = c(0.6, nrow(s) + 0.4), yaxt = "n", bty = "n",
+par(mar = c(4.2, 8.2, 1.2, 2))
+plot(NA, xlim = c(0, 100), ylim = c(0.4, nrow(s) + 0.6), yaxt = "n", bty = "n",
      xlab = "% of the state's population", ylab = "")
-abline(v = seq(0, 80, 20), col = "#eeeeee")
-segments(s$nhwhite_pct, yy, s$white_pct, yy, col = "#bbbbbb", lwd = 2.5)
-points(s$nhwhite_pct, yy, pch = 19, col = "#2166AC", cex = 1.2)
-points(s$white_pct, yy, pch = 19, col = "#92C5DE", cex = 1.2)
-axis(2, at = yy, labels = s$state, las = 1, tick = FALSE, cex.axis = 0.9)
+abline(v = seq(0, 100, 20), col = "#eeeeee")
+abline(v = 50, col = "#999999", lty = 2)
+segments(s$nhwhite_pct, yy, s$white_pct, yy, col = "#bbbbbb", lwd = 1.8)
+points(s$nhwhite_pct, yy, pch = 19, col = "#2166AC", cex = 0.7)
+points(s$white_pct, yy, pch = 19, col = "#92C5DE", cex = 0.7)
+axis(2, at = yy, labels = s$state, las = 1, tick = FALSE, cex.axis = 0.52)
 legend("bottomright",
        c("non-Hispanic white (both questions)",
          "white by the race question alone"),
-       col = c("#2166AC", "#92C5DE"), pch = 19, bty = "n", cex = 0.8)
+       col = c("#2166AC", "#92C5DE"), pch = 19, bty = "n", cex = 0.75)
 
 ## ---- two-d3
 # Drawn with the shared library: one row per state, two readings of the same
@@ -136,9 +163,12 @@ dd_fig("two", "dumbbell",
   a = list(field = "nhwhite_pct", label = "non-Hispanic white (both questions)"),
   b = list(field = "white_pct", label = "white by the race question alone"),
   y = list(field = "state"),
-  x = list(domain = c(0, 80), fmt = "pct0",
+  x = list(domain = c(0, 100), fmt = "pct0",
            label = "% of the state's population"),
-  rowHeight = 36,
+  # the majority line: three states sit on one side of it by the race question
+  # and the other side once the origin question is counted
+  annotations = list(dd_annot_vline(50)),
+  rowHeight = 17, r = 3.6,
   tip = dd_tip(c(white_pct = "white, race question alone",
                  nhwhite_pct = "non-Hispanic white",
                  gap = "both Hispanic and white",
@@ -189,63 +219,109 @@ text(1.012, (rt$y0 + rt$y1) / 2 + 0.022 * hgt, n(rt$tot), pos = 4, cex = 0.66,
      col = "#666666")
 
 ## ---- sankey-d3
+# The alluvial has no dd-charts type -- it is two node columns and fourteen
+# ribbons -- so it is drawn by hand. What it does borrow is the library's
+# furniture: the .dd-fig container and DD.tip(), so the readout is the same
+# hovering box as every other figure in the book, and picks up the same
+# dark-mode CSS instead of hard-coding a grey.
+#
+# The readout used to be a caption under the chart, which meant reading a
+# number with your eye in one place and the ribbon under your cursor in
+# another. It is a tooltip now, and it carries BOTH percentages a cell of a
+# cross-tabulation has: the row share (what fraction of this race answer said
+# yes to the origin question) and the column share (what fraction of all
+# Hispanics this ribbon is). The row share is the chapter's argument; the
+# column share is what stops a reader inferring the argument backwards.
+#
+# Built with paste0(), not sprintf(): the D3 below is full of % signs, and one
+# unescaped one in a format string is a silent corruption.
 lr <- paste(sprintf(
   '{"r":"%s","t":%d,"h":%d,"nn":%d,"s":%.1f,"y0":%.0f,"y1":%.0f,"hy":%.0f,"ny":%.0f,"c":"%s"}',
   rc$race, rc$tot, rc$hisp, rc$nonh, rc$share, rc$y0, rc$y1, rc$hy, rc$ny,
   rc$fill), collapse = ",")
 rr <- paste(sprintf('{"n":"%s","t":%d,"y0":%.0f,"y1":%.0f,"c":"%s"}',
                     rt$name, rt$tot, rt$y0, rt$y1, rt$fill), collapse = ",")
-cat(sprintf('
-<div id="snk" style="position:relative;margin:1em 0"></div>
+cat(paste0('
+<div class="dd-fig" id="snk" style="margin:1em 0"></div>
 <script>
 (function(){
-const L=[%s],R=[%s],HG=%.0f;
+const L=[', lr, '],R=[', rr, '],HG=', sprintf("%.0f", hgt), ';
 const W=760,H=470,M={t:10,r:210,b:10,l:200},NW=13;
-const svg=d3.select("#snk").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
+const box=d3.select("#snk");
+const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
 const y=d3.scaleLinear().domain([0,HG]).range([M.t,H-M.b]);
 const xa=M.l,xb=W-M.r,xm=(xa+xb)/2;
 const band=(a0,a1,b0,b1)=>
   `M${xa+NW},${y(a0)} C${xm},${y(a0)} ${xm},${y(b0)} ${xb},${y(b0)}`+
   ` L${xb},${y(b1)} C${xm},${y(b1)} ${xm},${y(a1)} ${xa+NW},${y(a1)} Z`;
-const fmt=d3.format(",");
-const cap=d3.select("#snk").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const base="<b>Hover a band.</b> The top two ribbons carry almost all of their people into the Hispanic node \\u2014 %s%% and %s%% of them.";
-const g=svg.append("g");
-L.forEach(d=>{
-  const dim=d.c==="#999999";
-  g.append("path").attr("d",band(d.y0,d.y0+d.h,d.hy,d.hy+d.h))
-    .attr("fill",d.c).attr("fill-opacity",dim?0.32:0.6).style("cursor","pointer")
-    .on("mousemove",()=>cap.html("<b>"+d.r+" \\u2192 Hispanic:</b> "+fmt(d.h)+
-      " people, "+d.s.toFixed(1)+"%% of everyone who chose "+d.r+"."))
-    .on("mouseleave",()=>cap.html(base));
-  g.append("path").attr("d",band(d.y0+d.h,d.y1,d.ny,d.ny+d.nn))
-    .attr("fill",d.c).attr("fill-opacity",dim?0.14:0.22).style("cursor","pointer")
-    .on("mousemove",()=>cap.html("<b>"+d.r+" \\u2192 not Hispanic:</b> "+fmt(d.nn)+
-      " people, "+(100-d.s).toFixed(1)+"%% of everyone who chose "+d.r+"."))
-    .on("mouseleave",()=>cap.html(base));});
+const fmt=d3.format(","), TOT=R[0].t+R[1].t;
+const pct=(a,b)=>(100*a/b).toFixed(1)+"%";
+const tip=DD.tip(box);
+
+// one datum per ribbon: which race answer, and which side of the origin
+// question it flows into
+const ribs=[];
+L.forEach(d=>{ribs.push({d:d,hisp:true},{d:d,hisp:false});});
+const op=r=>{const dim=r.d.c==="#999999";
+  return r.hisp?(dim?0.32:0.6):(dim?0.14:0.22);};
+const paths=svg.append("g").selectAll("path").data(ribs).join("path")
+  .attr("d",r=>r.hisp?band(r.d.y0,r.d.y0+r.d.h,r.d.hy,r.d.hy+r.d.h)
+                     :band(r.d.y0+r.d.h,r.d.y1,r.d.ny,r.d.ny+r.d.nn))
+  .attr("fill",r=>r.d.c).attr("fill-opacity",op).style("cursor","pointer");
+
+function ribTip(r){
+  const d=r.d,node=r.hisp?R[0]:R[1],k=r.hisp?d.h:d.nn;
+  return "<b>"+d.r+" \\u2192 "+node.n+"<\\/b><br>"+
+    fmt(k)+" people<br>"+
+    pct(k,d.t)+" of everyone who chose \\u201c"+d.r+"\\u201d<br>"+
+    pct(k,node.t)+" of everyone "+(r.hisp?"Hispanic":"not Hispanic");
+}
+paths.on("mousemove",function(e,r){
+    tip.show(ribTip(r),e);
+    paths.attr("fill-opacity",q=>q===r?Math.min(0.9,op(q)+0.28):op(q)*0.3);})
+  .on("mouseleave",function(){tip.hide();paths.attr("fill-opacity",op);});
+
+// the node bars are hoverable too: the race answer as a whole on the left,
+// the origin answer as a whole on the right
 svg.append("g").selectAll("rect").data(L).join("rect")
   .attr("x",xa).attr("y",d=>y(d.y0)).attr("width",NW)
-  .attr("height",d=>y(d.y1)-y(d.y0)).attr("fill",d=>d.c);
+  .attr("height",d=>y(d.y1)-y(d.y0)).attr("fill",d=>d.c)
+  .style("cursor","pointer")
+  .on("mousemove",function(e,d){tip.show("<b>"+d.r+"<\\/b><br>"+fmt(d.t)+
+    " people, "+pct(d.t,TOT)+" of the country<br>"+
+    d.s.toFixed(1)+"% of them Hispanic or Latino",e);})
+  .on("mouseleave",()=>tip.hide());
 svg.append("g").selectAll("rect").data(R).join("rect")
   .attr("x",xb-NW).attr("y",d=>y(d.y0)).attr("width",NW)
-  .attr("height",d=>y(d.y1)-y(d.y0)).attr("fill",d=>d.c);
-const lt=svg.append("g").selectAll("g").data(L).join("g");
-lt.append("text").attr("x",xa-8).attr("y",d=>(y(d.y0)+y(d.y1))/2-1)
+  .attr("height",d=>y(d.y1)-y(d.y0)).attr("fill",d=>d.c)
+  .style("cursor","pointer")
+  .on("mousemove",function(e,d){tip.show("<b>"+d.n+"<\\/b><br>"+fmt(d.t)+
+    " people, "+pct(d.t,TOT)+" of the country",e);})
+  .on("mouseleave",()=>tip.hide());
+
+const lt=svg.append("g").selectAll("g").data(L).join("g")
+  .style("pointer-events","none");
+lt.append("text").attr("class","ttl").attr("x",xa-8)
+  .attr("y",d=>(y(d.y0)+y(d.y1))/2-1)
   .attr("text-anchor","end").attr("font-size","12px").text(d=>d.r);
-lt.append("text").attr("x",xa-8).attr("y",d=>(y(d.y0)+y(d.y1))/2+12)
-  .attr("text-anchor","end").attr("font-size","10.5px").attr("fill","#777")
-  .text(d=>d.s.toFixed(1)+"%% Hispanic");
-const rtg=svg.append("g").selectAll("g").data(R).join("g");
-rtg.append("text").attr("x",xb+9).attr("y",d=>(y(d.y0)+y(d.y1))/2-1)
+lt.append("text").attr("class","foot").attr("x",xa-8)
+  .attr("y",d=>(y(d.y0)+y(d.y1))/2+12)
+  .attr("text-anchor","end").attr("font-size","10.5px")
+  .text(d=>d.s.toFixed(1)+"% Hispanic");
+const rtg=svg.append("g").selectAll("g").data(R).join("g")
+  .style("pointer-events","none");
+rtg.append("text").attr("class","ttl").attr("x",xb+9)
+  .attr("y",d=>(y(d.y0)+y(d.y1))/2-1)
   .attr("font-size","12.5px").attr("font-weight","600").text(d=>d.n);
-rtg.append("text").attr("x",xb+9).attr("y",d=>(y(d.y0)+y(d.y1))/2+13)
-  .attr("font-size","10.5px").attr("fill","#777").text(d=>fmt(d.t)+" people");
-cap.html(base);
+rtg.append("text").attr("class","foot").attr("x",xb+9)
+  .attr("y",d=>(y(d.y0)+y(d.y1))/2+13)
+  .attr("font-size","10.5px").text(d=>fmt(d.t)+" people");
 })();
 </script>
-', lr, rr, hgt, pc(rc$share[1]), pc(rc$share[2])))
+<p style="font-size:0.85em;color:var(--ink-2);margin-top:0.2em">Hover any
+ribbon for its two counts, or either end bar for the totals.</p>
+'))
 
 ## ---- top-two
 o <- top_two[, c("county", "state", "total", "two_pct", "hisp_pct")]
@@ -255,8 +331,11 @@ names(o) <- c("county", "state", "population", "% two or more races",
 o
 
 ## ---- scatter-static
-plot(d$hisp_pct, d$two_pct, pch = 19, cex = 0.6,
-     col = ifelse(d$state == "Hawaii", "#C41230", "#2166AC66"),
+# Three thousand dots rather than five hundred, so the ink per dot comes down:
+# smaller marks and more transparency, or the cloud fills in solid and stops
+# showing where the counties actually are.
+plot(d$hisp_pct, d$two_pct, pch = 19, cex = 0.34,
+     col = ifelse(d$state == "Hawaii", "#C41230", "#2166AC44"),
      xlab = "% of the county that is Hispanic",
      ylab = "% reporting two or more races", xlim = c(0, 100), ylim = c(0, 50))
 points(hi_two$hisp_pct, hi_two$two_pct, pch = 19, col = "#C41230", cex = 1.1)
@@ -277,7 +356,12 @@ dd_fig("hisp-two", "scatter", dd,
   series = list(field = "grp",
                 classes = list("Hawaii counties" = "series-2",
                                "all other counties" = "series-1")),
-  r = 3.4, opacity = 0.5, legend = TRUE,
+  r = 2.3, opacity = 0.35, legend = TRUE,
+  # 3,143 dots need less ink each than 503 did, but Hawaii's five are the
+  # comparison the figure is making and would vanish at the cloud's weight.
+  # The hook is the library's escape hatch: same marks, one series restyled.
+  hook = dd_js('function(f){f.svg.selectAll("circle.series-2-fill")
+                  .attr("r",4.6).attr("fill-opacity",1).raise();}'),
   tip = dd_tip(c(state = "state", hisp_pct = "Hispanic",
                  two_pct = "two or more races"),
                fmt = c(hisp_pct = "pct1", two_pct = "pct1"),
