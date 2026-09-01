@@ -1,7 +1,7 @@
 ---
-title: "The Same Votes, Redrawn"
+title: "Mid-Decade Redistricting: The Same Votes, Different Seats"
 type: brief
-subtitle: "Seventeen elections, thirty-eight districts, and a mid-decade map that never comes out behind"
+subtitle: "The Same Votes, Redrawn: Texas in 2025, Florida in 2026"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,47 +16,35 @@ dd_read_chunks("mid-decade-code.R")
 ```{r setup, include=FALSE}
 ```
 
-## A claim worth checking
+Texas held `r fx("n_elections")` statewide elections between 2016 and 2024, and every ballot in them has been counted. In 2025 the legislature redrew the state's congressional districts, four years into a ten-year cycle, with the stated aim of electing five more Republicans. Those two facts make an unusual test possible. The votes are fixed; the lines are not. So you can ask a question that usually has no answer: with the same people voting exactly the way they already voted, does a new map send different people to Congress?
 
-In August 2026 a Texas congressman told *POLITICO* that his redrawn district might favor him more than the one it replaced (**Benson 2026**). Henry Cuellar represents the 28th district, which the 2025 mid-decade map made about three points more Republican at the top of the ballot. His staff found races further down the 2024 ballot where the new lines looked better for his party, and he carried the numbers to the Speaker of the House.
+The question belongs to you rather than to a mapmaker. You cast one vote, in one place. Whether it lands in a district your side wins narrowly, loses narrowly, or wins by forty points is settled by other people, in a room, after the last election and before the next one. This brief pours already-counted votes into both sets of lines and reports what comes out.
 
-The claim is testable, and this chapter tests it. Texas replaced its congressional map in 2025, between censuses, with the stated aim of electing five more Republicans. The votes already cast in seventeen statewide elections can be re-counted inside both sets of lines. Same ballots, same totals; the only thing that changes is which district each precinct belongs to.
+## The test
 
-That re-count is the whole method here. If the new lines really were friendly to the congressman's party, some election among the seventeen should elect more Democrats under them. You are about to see whether any does.
+Using `r fx("n_elections")` Texas statewide elections, 2016 through 2024, re-counted inside two congressional plans: the map Texas enacted in 2021 and the map that replaced it in 2025. Both re-counts come from Dave's Redistricting (<https://davesredistricting.org>), a free public site. It rebuilds American elections at the precinct level, the few thousand voters who share one polling place, then re-sums them inside any district map you load.
 
-## Nothing federal stops a state doing this
+Almost nothing else can answer this question. No agency reports statewide results inside a map that has never held an election. A private volunteer project does, which is why this site turns up wherever a proposed plan is argued about.
 
-Redrawing a map between censuses is legal, and the reason is that no federal rule says otherwise. The Constitution orders a count every ten years. It does not say how often the lines may move, and Congress has never said either. **Once a decade is a habit, not a requirement.**
+**Two files meet here, and the meeting is the whole method.** Precinct returns are joined to a district plan by geography: each precinct falls inside one district, and the district's number is the label that comes back. Do that twice, once per plan, and the two results are then joined to each other on that number. The assumption is that district 28 in 2021 and district 28 in 2025 name comparable things.
 
-What limits it is each state's own law, and a few states have written the limit down. Missouri's constitution bars its commission from changing boundaries between cycles. North Carolina's constitution prohibits mid-decade redistricting. Tennessee forbids mid-decade changes to congressional lines by statute. Texas has no such provision, which is why 2025 was available to it.
+[Join Keys and Crosswalks](../data-sources/data-sources-brief.html) works that kind of match on the best-behaved key in American data. It also says what to do when a key stops behaving: build a crosswalk, a table that translates one set of areas into another. Texas needed none. Florida, at the end of this brief, did.
 
-**Texas has done this before, and the case it produced is the leading one.** After Republicans took the legislature, Texas replaced its congressional map in 2003, mid-decade, in circumstances the chapter above should sound familiar against. The plaintiffs asked the Supreme Court to hold that a mid-decade redraw is presumptively a purely partisan act. In *League of United Latin American Citizens v. Perry* (2006) the Court declined. It required proof of an actual burden on representation, measured by a reliable standard, whatever the timing.
+Nothing in federal law stops a state from redrawing between censuses. Missouri, North Carolina and Tennessee have written their own bars into state law, and Texas has not (NCSL 2019). In *League of United Latin American Citizens v. Perry* (2006) the Supreme Court declined to treat a mid-decade redraw as presumptively partisan. *Rucho v. Common Cause* (2019) then closed the federal courts to partisan gerrymandering claims altogether. So the question is not whether the 2025 map was allowed. It was.
 
-The plaintiffs did win on other ground, and it was racial rather than partisan. The 2003 map had reworked District 23 so that Latino voters were a majority of its adults but no longer a majority of its *citizen* adults. As compensation the legislature offered a new District 25, stitched together from two distant Latino communities. The Court held that a district reaching out to grab scattered communities does not make up for dismantling a compact one.
+## The data
 
-**Both halves of that outcome still matter, and one of them has since been closed.** *Rucho v. Common Cause* (2019) held that partisan gerrymandering claims cannot be heard in federal court at all, so the burden test *LULAC* laid down has nothing left to apply to. What survives is the racial route, and the [vote-dilution chapter](../../06-putting-data-together/vote-dilution/vote-dilution-brief.html) follows what happened to that in 2026.
+The table underneath everything here is `district_shares.csv`, one row per district per election, `r nrow(long)` rows. Each row carries `district`, `election` and `year`, then `share_old` and `share_new`: the Democratic share of the two-party vote inside the 2021 lines and inside the 2025 lines. A two-party share is the Democratic vote divided by the Democratic and Republican votes together, third parties set aside, so fifty per cent means tied. `seats_by_election.csv` collapses those rows to one per election, with `rep_old`, `rep_new` and `rep_gain`. `district_summary.csv` gives each district its `mean_old` and `mean_new` across all `r fx("n_elections")` races.
 
-So the question this chapter asks is not whether the 2025 map was allowed. It was. The question is what it did.
+Three things happened to the votes before they reached those columns. Precincts cut by a district line were split, with votes shared out in proportion to population. Every district total was reduced to a two-party share. And the identical arithmetic was run twice, once per map, which is what makes the two columns comparable.
 
-## Where the data comes from, and what it is for
+One further file carries a second join. `tx_overlap_pop.csv` holds `old`, `new`, `pop` and `weight`: how much of each 2021 district's population sits inside each 2025 district. It is built by giving every 2020 census block group to whichever district contains its centre of population, under each plan in turn. That match is approximate, reproducing district totals to within about 1.5%, so read its shares to the point rather than to the decimal.
 
-The two spreadsheets behind this chapter come from Dave's Redistricting, a free public site. It rebuilds American elections at the precinct level, the few thousand voters who share one polling place, and re-sums them inside any district map you load. One file carries the map Texas enacted in 2021; the other carries the 2025 replacement. Each holds the same seventeen statewide elections from 2016 through 2024.
+> **Before you scroll, write down two numbers.** Across `r fx("n_elections")`
+> statewide elections, in how many does the new Texas map elect more
+> Republicans than the old one, and in how many does it elect fewer?
 
-**Who is in it, and how they got there.** Every voter who cast a countable vote for a Democratic or Republican candidate in those seventeen races. Their ballots entered the file through the official county canvasses, which the site's volunteers collect and reconcile precinct by precinct.
-
-**Who it was made for.** People who draw and judge district maps. The site exists so that anyone proposing a plan can see, before any election is held, how the votes already on record would fall inside it.
-
-**What it costs to get.** Nothing but an account and patience. There is no address a script can call; each election is exported by hand from a browser with the right map open, which is why this chapter ships its copies.
-
-**What has already been done to it.** Three things. Precincts that straddle a district line were split, with votes shared out in proportion to population. Each district's votes were then reduced to a two-party share — the Democratic vote divided by the Democratic and Republican votes together, third parties set aside. And the same arithmetic was run twice, once per map, which is what makes the comparison possible.
-
-> **Before you scroll, make two predictions.** Across seventeen statewide
-> elections, in how many does the new map elect more Republicans than the old
-> one — and in how many does it elect fewer? Write both numbers down.
-
-## Watch the lines move
-
-The map below carries both sets of lines. Every district's outline was traced with the same number of points under each plan, so the old shape can slide into the new one. Press the buttons and the lines themselves show you what the legislature did. Color is the Democratic share of the two-party vote in whichever election you pick.
+## What it says about democracy
 
 ```{r mm-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
@@ -67,11 +55,9 @@ The map below carries both sets of lines. Every district's outline was traced wi
 ```{r mm-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Thirty-eight districts, two maps, one set of votes, and any one district's full history.** The morph button slides every boundary from its 2021 position to its 2025 position; color re-counts whichever statewide race you select inside the lines shown. Click any district, or pick one from the District menu, to load all seventeen of its elections below the map, under both plans at once, its outline overlaid in the inset. In print, the two plans sit side by side, colored by the 2024 presidential race, with district 28 below as the worked example.
+**Figure 1. Thirty-eight districts, two maps, one set of votes.** A map, because what the legislature changed was geography, and no other form lets you watch a boundary move. Every district is traced with the same number of points under both plans, so pressing the morph button slides the old shape into the new one. Color is the Democratic share of the two-party vote in the race you pick. Click a district to load all `r fx("n_elections")` of its elections. In print the two plans sit side by side, colored by the 2024 presidential race, with district 28 below.
 
-## Seventeen elections, one direction
-
-The seat count settles the congressman's claim in aggregate. Count the districts where the Democratic candidate's two-party share tops one-half, election by election, under each map. Every one of the seventeen races elects more Republicans under the new lines: at least `r fx("rep_gain_min")` more seats, at most `r fx("rep_gain_max")`, never zero, never negative.
+The seat counts settle the aggregate question immediately. Count the districts where the Democratic share tops one-half, election by election, under each map. Every one of the `r fx("n_elections")` races elects more Republicans under the new lines: at least `r fx("rep_gain_min")` more seats, at most `r fx("rep_gain_max")`, never zero and never negative.
 
 ```{r sb-static, eval=!knitr::is_html_output(), fig.height=5.4}
 ```
@@ -79,13 +65,9 @@ The seat count settles the congressman's claim in aggregate. Count the districts
 ```{r sb-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The gain, race by race.** Each row re-counts one statewide election under both maps. The dot never moves left. One row keeps the collection's own shorthand: the 2022 race labeled `trea` arrives that way in the source export, and this chapter will not guess at an office name the file does not state.
+**Figure 2. The gain, race by race.** Each row re-counts one statewide election under both maps, and the dot never moves left. One row keeps the collection's own shorthand: the 2022 race labeled `trea` arrives that way in the source export, and this brief will not guess at an office name the file does not state.
 
 The size of the gain moves with the year. The 2018 races, a strong Democratic year nationally, hand the new map its smallest gains; the 2024 races hand it some of its largest. A map drawn from recent returns is tuned to recent returns, and you are watching the tuning.
-
-## Every district, every election
-
-Seat counts hide the districts that never flip. The scatter below keeps all of them: `r nrow(long)` points, one per district per election, with the old share across and the new share up. A district the swap left alone sits on the diagonal. Below the diagonal, the new lines made it more Republican; the shaded corners hold the districts where the winning party changes.
 
 ```{r xy-static, eval=!knitr::is_html_output(), fig.height=5.6}
 ```
@@ -93,89 +75,87 @@ Seat counts hide the districts that never flip. The scatter below keeps all of t
 ```{r xy-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. What the swap did to every district at once.** Gray points barely move: most districts were already safe and stayed safe. The colored points are the exchange the map was drawn to make — a handful of Democratic-held districts pushed across the line, and almost nothing pushed back. In the online version, pick a district from the menu above the chart, or from any of the other district figures, to pick its seventeen points out of all of them.
+**Figure 3. What the swap did to every district at once.** One point per district per election, `r nrow(long)` of them, with the old share across and the new share up. Gray points barely move: most districts were already safe and stayed safe. The colored points are the exchange the map was drawn to make, a handful of Democratic-held districts pushed across the line with almost nothing pushed back.
 
-## Where each district's people came from
+**One district argues with that finding, and it is worth hearing out.** In August 2026 Representative Henry Cuellar told *POLITICO* that his redrawn 28th district might favor him more than the one it replaced (Benson 2026). He is reading real numbers. In the 2024 presidential race the new lines are worse for a Democrat, moving from `r fx("d28_pres2024_old_pct")`% to `r fx("d28_pres2024_new_pct")`% Democratic. But in `r fx("d28_bluer_elections")` of the `r fx("n_elections")` races, all of them from 2016 through 2022, the new district is the bluer one.
 
-The seat counts and the scatter both treat a district as a fixed thing that merely got redder or bluer. It is not. A mid-decade map moves people, and a district that gains five points can do it by trading a quarter of its residents for someone else's. The figure below tracks that directly. Every 2020 census block group carries its population into whichever district holds it under each plan. Each ribbon is then a group of Texans, leaving the district that held them for the one that holds them now.
+The overlap table says where those voters came from. The new 28th keeps `r sprintf("%.0f", ovw(28, 28))`% of the people who lived in the old 28th and takes in `r sprintf("%.0f", ovw(15, 28))`% of the old 15th. Nearly half the district he is arguing about is territory he has never represented. His staff and the map's drafter can both be right, because they are looking at different electorates: voters who backed Democrats reliably before 2024 and swung hard toward Trump in 2024. Which of those two turns out in 2026 is the bet the whole redraw rests on.
 
-Nineteen of the thirty-eight districts keep essentially everyone they had. The rest were rebuilt to varying degrees, and a few were rebuilt almost completely: the new 9th keeps only 3% of the people who lived in the old 9th, and the new 35th keeps 10%. Those are the seats the map was drawn to move, and this is what moving one actually looks like.
+## The same test, run in Florida
 
-```{r ov-prep}
-```
+Florida ran the same exercise a year later, and it comes out the same shape. The legislature replaced its congressional map in 2026. The same site re-counted `r flx("n_elections")` statewide elections from 2016 through 2024 inside the 2022 plan and the 2026 plan, with the same two-party arithmetic. Every one of the `r flx("n_elections")` races elects more Republicans under the new lines, from `r flx("rep_gain_min")` to `r flx("rep_gain_max")` more seats. Under the 2024 presidential race, Republican-carried districts go from `r flx("rep_seats_old_pres2024")` to `r flx("rep_seats_new_pres2024")` of `r flx("n_districts")`. That is exactly the swing the map's own drafters described in public as the point of the exercise.
 
-```{r ov-static, eval=!knitr::is_html_output(), fig.height=8.8}
-```
+Two things make Florida the harder case. Its constitution forbids drawing a district with the intent to favor a party, language voters added by initiative in 2010, and a state court has already voided one congressional plan under it. Every number above measures effect rather than intent, so it is the wrong shape for that rule, however plainly the drafters named the seat count they wanted.
 
-```{r ov-d3, results='asis', eval=knitr::is_html_output()}
-```
+The second difference is the join. The redraw renumbered `r flx("n_renumbered")` of Florida's districts as well as redrawing them, so the district number stopped naming the same thing on both sides. Pairing the two plans took a crosswalk. Every one of Florida's 2020 census blocks was assigned into both maps, and each new district matched to the old one it drew most of its people from. That match is only a plurality: the old 23rd supplies `r flx("spot_predecessor_pop_pct")`% of the new 25th's population, not a majority.
 
-**Figure 4. Where one district's people came from.** Every ribbon is a group of residents, leaving the 2021 district that held them and landing in the 2025 district that holds them now. One district is opened up to fill the frame while the other thirty-seven collapse to slivers, because thirty-eight districts at equal size leaves each one too thin to read. Opened here is district 28, which keeps 53% of its own people and imports 42% from the old 15th. Online, click any district or ribbon and the diagram re-opens around it.
+## What this brief cannot tell you
 
-## The district the congressman is looking at
+These are statewide contests re-counted inside district lines, not House contests. A House race has its own candidates, its own money and an incumbent voters know. Cuellar's evidence came from House returns, which this data does not carry; the map's drafter answered him with statewide returns, which it does. You have been reading the drafter's kind of evidence, and should say so when you quote it.
 
-Both sides of the argument over district 28 are reading real numbers. In the 2024 presidential race the new lines are worse for a Democrat: Trump's margin grows by about three points, from `r 100 - fx("d28_pres2024_old_pct")`% to `r 100 - fx("d28_pres2024_new_pct")`% of the two-party vote. But in `r fx("d28_bluer_elections")` of the seventeen races, all from 2016 through 2022, the new district is the bluer one. Figure 1's panel carries this pattern directly, with district 28 as its default view: the new district runs bluer in the older races, redder in the newest ones.
+The re-count also holds turnout fixed. It assumes the people who voted between 2016 and 2024 are the people who will vote in 2026, in the same numbers, with the same loyalties. Districts full of voters who changed sides recently, like the ones along the Texas border, are exactly where that assumption is weakest.
 
-Figure 4 says where those voters came from. The new 28th keeps 53% of the people who lived in the old 28th and imports 42% from the old 15th. Nearly half the district he is arguing about is territory he has never represented. A claim about how it will behave is partly a claim about people who were somebody else's constituents until last year.
+Nothing here reaches intent. The tables can say what the new lines do to votes already cast, precisely and in every election available. They cannot say why anyone drew them, which is the only question Florida's constitution actually asks.
 
-So the congressman's staff and the map's drafter can both be right, because they are looking at different elections. The new 28th holds voters who backed Democrats reliably before 2024 and swung hard toward Trump in 2024. Whether it favors its incumbent depends on which of those electorates shows up next. That is the bet the whole gerrymander rests on, in his district and in the four others the map was drawn to move.
+## What you should have learned
 
-Notice what the claim has become. It began as "the new map might elect more Democrats" and survives only as "one district might swing back if 2024 proves unusual." The seat counts in Figure 2 already answered the larger question, in every election the data can ask.
+- In Texas and Florida alike, votes already cast elect more Republicans under the new lines in every election available: `r fx("rep_gain_min")`–`r fx("rep_gain_max")` extra seats across `r fx("n_elections")` Texas races, `r flx("rep_gain_min")`–`r flx("rep_gain_max")` across `r flx("n_elections")` Florida ones.
+- A re-count holds the voters still and moves only the lines, which is why it can attribute the difference to the map and to nothing else.
+- Most districts do not move: of `r nrow(long)` Texas district-elections, the ones that change hands are a small minority against a background of seats safe before and after.
+- A map drawn from recent returns is tuned to recent returns, so its gains are largest in the years closest to the drawing and smallest in a year that ran the other way.
+- The district number is the key that joins one plan to another, and it holds only while nobody renumbers. Texas did not; Florida renumbered `r flx("n_renumbered")` districts, and pairing its maps took a crosswalk built from census blocks.
 
-## What re-run elections cannot tell you
+## Extensions
 
-These seventeen races are statewide contests re-counted inside district lines, not district contests. A House race has its own candidates, its own money, and an incumbent voters know. The congressman's own evidence came from House returns, which this data does not carry, and the map's drafter answered him with statewide returns, which it does. You have been reading the drafter's kind of evidence, and should say so when you quote it.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The re-count also holds turnout fixed. It assumes the people who voted in 2016 through 2024 are the people who will vote in 2026, in the same numbers, with the same loyalties. Districts full of voters who switched sides recently, like the ones along the border, are exactly where that assumption is weakest. The map's authors bet five seats on 2024 being the new normal; the data here can describe the bet, but cannot settle it.
+- `seats_by_election.csv` replays every election on both maps and reports `rep_gain`. Count the elections where the new map does worse for its authors. What does a column with only one sign mean?
+- `district_summary.csv` has `mean_old` beside `mean_new` for each district. Sort by the difference. Which districts absorbed the change, and which were left alone?
+- `tx_overlap_pop.csv` gives the population shared between each old and new district as a `weight`. Find the districts that were rebuilt almost from scratch, and the ones that kept everybody.
+- Pick one election in `district_shares.csv` and compare `share_old` against `share_new` across all districts. Do the shares move together, or does the map take from some and give to others?
+- **Stretch.** Other states moved on their maps in the same cycle. Find one state's before-and-after plans and check whether the one-sided pattern repeats.
 
 ## Sources
 
 **Data**
 
-- District-level results for seventeen Texas statewide elections, 2016–2024,
-  under the 2021 and 2025 congressional plans, from Dave's Redistricting
-  (<https://davesredistricting.org>), which rests on reconstructed
-  precinct-level results from the official county canvasses. District
-  boundary files for both plans come from the same site's exports.
+- District-level results for `r fx("n_elections")` Texas statewide elections,
+  2016–2024, under the 2021 and 2025 congressional plans, from Dave's
+  Redistricting (<https://davesredistricting.org>), which rests on
+  reconstructed precinct-level results from the official county canvasses.
+  Boundary files for both plans come from the same site's exports. The
+  Florida figures are the same exercise on the 2022 and 2026 Florida plans,
+  from the same site, read from the tables the folded Florida chapter built.
 - 2020 Census centers of population by block group (`CenPop2020_Mean_BG48`,
-  U.S. Census Bureau), used only for Figure 4, to carry each block group's
-  population into whichever district holds it under each plan. A block group
-  split by a district line is charged whole to the district containing its
-  population center, which reproduces district totals to within about 1.5%;
-  read that figure's shares to the point, not the decimal. The companion
-  Florida chapter runs the same idea on individual census blocks, which it
-  needs because three of its districts were renumbered and Texas's were not.
+  U.S. Census Bureau), used only to carry a block group's people into the
+  district that holds it under each plan.
   <https://www2.census.gov/geo/docs/reference/cenpop2020/blkgrp/CenPop2020_Mean_BG48.txt>
+- 2020 Census population by block (`tl_2020_12_tabblock20`, U.S. Census
+  Bureau TIGER/Line), used only to build Florida's district crosswalk.
+  <https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_12_tabblock20.zip>
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
+The Texas figures above are drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`district_shares.csv`](data/derived/district_shares.csv), [`district_summary.csv`](data/derived/district_summary.csv), [`seats_by_election.csv`](data/derived/seats_by_election.csv), [`tx-districts-tween.json`](data/derived/tx-districts-tween.json), [`tx_overlap_pop.csv`](data/derived/tx_overlap_pop.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `seats_by_election.csv` replays every election on both maps and reports `rep_gain`. Count the elections where the new map does worse for its authors. What does a column with one sign mean?
-- `district_summary.csv` has `mean_old` and `mean_new` for each district. Sort by the difference. Which districts absorbed the change, and which were left alone?
-- `tx_overlap_pop.csv` gives the population shared between each old and new district, with a `weight`. Find the districts that were essentially rebuilt from scratch.
-- Pick one election in `district_shares.csv` and compare `share_old` against `share_new` across all districts. Do the shares move together, or does the map take from some and give to others?
-
-**Cases and state law**
+**Cases, constitutions and state law**
 
 - *League of United Latin American Citizens v. Perry*, 548 U.S. 399 (2006) —
   the challenge to Texas's 2003 mid-decade map: no presumption against
   mid-decade redistricting, and District 23 struck under Section 2 of the
   Voting Rights Act.
 - *Rucho v. Common Cause*, 588 U.S. 684 (2019).
+- Fla. Const. art. III, §§ 20–21 (the Fair Districts amendments, adopted by
+  initiative in 2010), and *League of Women Voters of Florida v. Detzner*,
+  172 So. 3d 363 (Fla. 2015), holding the 2012 congressional plan drawn with
+  intent to favor a party and its incumbents.
 - National Conference of State Legislatures, *Redistricting Law 2020*
   (Denver: NCSL, October 2019), ch. 10 for the states that bar mid-decade
-  redistricting and ch. 6 for what *LULAC* settled. Read there rather than
-  from each state's code, and frozen at 2019: a state could have added or
-  repealed such a provision since.
+  redistricting and ch. 6 for what *LULAC* settled. Frozen at 2019: a state
+  could have added or repealed such a provision since.
 
 **Press**
 
