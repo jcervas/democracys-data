@@ -16,120 +16,43 @@ dd_read_chunks("electoral-map-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Americans do not elect a president. They elect fifty-one separate slates of electors, under fifty-one separate rules, and the electors elect a president. The entire 2024 result, as the law understands it, therefore fits in fifty-one rows. Here is one of them.
+Americans do not elect a president. They elect fifty-one separate slates of electors, under fifty-one separate rules, and the electors elect a president. Nearly everyone agrees the system is unequal; the live argument is about **which inequality is the important one.** One candidate is the small-state bonus: every state gets two electors for its senators regardless of population, so Wyoming's `r st("WY","ev")` electors cover far fewer people than California's `r st("CA","ev")`. The other is winner-take-all: forty-eight states award every elector to the plurality winner, erasing the losing side of every state. These are different problems with different remedies, and a reform that fixes one can leave the other entirely untouched.
+
+Both claims can be put to the record, because the entire 2024 result, as the law understands it, fits in fifty-one rows. This brief asks two questions of them: **where are the electoral votes — and where was the election actually contested?** The gap between those two answers is where campaign strategy lives, and it decides which inequality a reform would actually touch.
+
+## The test
+
+The vote columns come from Jason Timm's `PresElectionResults` compilation (<https://github.com/jaytimm/PresElectionResults>), state-level shares for the 2024 presidential election, resting on the fifty-one certified state canvasses. The electoral votes are the 2020 census apportionment, fixed in law until 2032. This resolution is the right one, not a simplification of something better: the rule under examination operates on whole states, so a `r nrow(e)`-row table is the object the law actually acts on.
+
+No federal body adds up American election returns, so the compilation is a private assembly of fifty-one official publications — the ordinary way election data reaches anyone. What a certified return is, and why the national file is always somebody's private act, is the [returns-source chapter's](../returns-source/returns-source-brief.html) subject.
+
+## The data
+
+One row per jurisdiction: fifty states and the District of Columbia, which has had three electoral votes since the Twenty-Third Amendment. Here is Pennsylvania's.
 
 ```{r one-row}
 ```
 
-Two things about that row decide everything that follows.
+That row is three different kinds of thing sitting in a single line. The percentages, `harris`, `trump`, `other` and the computed `margin`, were **measured**: counted by county officials, certified by a state board, assembled by the compiler. The `ev` column was **legislated**: it is typed into the build by hand, as fifty-one numbers checked by one assertion that they sum to `r n(sum(e$ev))`. It is nonetheless the most certain number in the file, because it is a legal fact rather than an estimate. And two columns, `col` and `row`, were **drawn**: they are a design decision placing each state on the tile grid of the figures below, so the maps can show electoral weight without showing land. Nothing in the row records which is which.
 
-**`harris` and `trump` are percentages, not counts.** Pennsylvania's `r pc(st("PA","margin"), 2)`-point margin and Wyoming's `r pc(st("WY","margin"), 2)`-point margin are the same *kind* of number and nothing like the same event. A percentage has no size in it.
+Two cleaning decisions set this brief's limits. First, the compilation records a third-party figure only sporadically, and the build turns every missing `other` into a zero. `r nrow(e) - sum(e$other > 0)` of `r nrow(e)` jurisdictions therefore report a zero that is not a zero, and not one state's three percentages add to 100. States reporting a zero fall short of 100 by `r pc(mean(sh_zero), 2)` points on average, against `r pc(mean(sh_rep), 2)` where a number was recorded. The shortfall *is* the third-party vote, sitting there unlabeled. **A zero and a missing value are not the same thing, and a spreadsheet cannot tell them apart.**
 
-**`ev` is not a measurement at all.** It is a legal quantity, fixed by the 2020 census and unchanged by anything that happened on election day. It is the only column in the file that is not about voters, and it is the column that decides the election.
+Second, one row per state with one winner per state assumes winner-take-all, and two states do not use it. Maine and Nebraska award two electors statewide and one per congressional district, and there is no cell in this schema in which a split could be expressed. A schema is a claim about how the world is arranged, and this one quietly claims that winner-take-all is universal. The cost of that claim is measured below.
 
-Every electoral system is a machine for turning a distribution of preferences into a single decision, and every such machine throws information away. The question is never whether it distorts, because it always does. The question is **which distortions it produces, whom they favor, and whether anyone chose them.** The Electoral College's distortions were not designed for the country now living under them. They are the residue of an eighteenth-century compromise about slavery, federalism and the mechanics of a count, and they are the reason a presidential campaign can rationally ignore most of the population.
+> **Before you read the findings, commit to a winner and to a margin.** Under
+> winner-take-all the 2024 result was
+> `r sum(e$ev[e$winner == "Trump"])`&ndash;`r sum(e$ev[e$winner == "Harris"])`, a
+> margin of
+> `r abs(sum(e$ev[e$winner == "Trump"]) - sum(e$ev[e$winner == "Harris"]))`
+> electoral votes. Now give every state's electors out in proportion to its
+> two-party vote instead. **Does the winner change — and what is the new
+> margin?** Write down a name and a number. They are two separate questions,
+> and one answer is much larger than most people expect while the other is not
+> what the size of that change would suggest.
 
-Nearly everyone agrees the system is unequal. The live argument is about **which inequality is the important one.** One candidate is the small-state bonus: every state gets two electors for its senators regardless of population, so Wyoming's `r st("WY","ev")` electors cover far fewer people than California's `r st("CA","ev")`. The other is winner-take-all: forty-eight states award every elector to the plurality winner, erasing the losing side of every state. These are different problems with different remedies, and a reform that fixes one can leave the other entirely untouched.
+## What it says about democracy
 
-## Measured, legislated, drawn
-
-That one row is three different kinds of thing sitting in a single line, and telling them apart is most of what this chapter needs.
-
-The vote percentages were measured. They come from Jason Timm's `PresElectionResults` compilation, which rests on the certified state canvasses. That is the same private chain of custody that carries American election returns generally, because certification is an act each state performs for itself and no federal body adds up the results. Somebody counted ballots in a county, a state canvassing board certified a total, and a compiler on GitHub assembled fifty-one of those certifications into one table.
-
-Getting that table costs about a second: one `.rda` file at a public URL, no key, no form, nothing to piece together. But a second is what *this* chapter paid, not what the column cost. Fifty-one canvasses had to be located, read, and forced into columns that would sit beside each other, by somebody who chose to, and then kept current across elections. That is the bargain a compilation offers, and it is the ordinary way election data reaches anyone. It arrives usable because the cleaning already happened, somewhere else, before the download.
-
-Two things follow that a reader should carry. The judgment calls are already made, and listed nowhere in the file: a percentage does not record which of the fifty-one canvasses was awkward. And the file continues to exist for exactly as long as one person keeps choosing to build it.
-
-The electoral votes were legislated, and they did not come from that source at all. The `ev` column is typed in by hand, as a list of `r nrow(e)` numbers reflecting the 2020 apportionment. One line checks it, asserting that the values add to `r n(sum(e$ev))` and that there are `r nrow(e)` of them. That is worth sitting with. The column that decides the presidency is typed in by hand and checked by one sum. It is nonetheless the most certain number in the file, because it is a legal fact rather than an estimate of anything.
-
-The tile coordinates were drawn. `col` and `row` are neither measurement nor law; they are a design decision, also typed into the build, and they exist so that the maps below can show electoral weight without showing land. A reader who disagreed with the layout could change two columns and every map in this chapter would move.
-
-This resolution is the right one, not a simplification of something better. The rule under examination operates on whole states, so a `r nrow(e)`-row table is the object the law actually acts on. What is genuinely lost is that these are percentages rather than counts, so turnout and population are absent and cannot be recovered. And comparing the rows assumes something the law never claims. Fifty-one jurisdictions each decided for themselves what counts as a vote, which ballots could be fixed, and when counting stopped. The certified percentages arrive looking perfectly comparable anyway.
-
-There is also a rule the table has no room for. One row per state with one winner per state cannot express a state that splits its electors by congressional district, which two states do. A schema is a claim about how the world is arranged, and this one quietly claims that winner-take-all is universal.
-
-The cleaning was almost nothing, and the almost is the interesting part. The build subsets the compilation to 2024, attaches the two typed vectors, and writes the file. It verifies the electoral votes and it does not verify the vote percentages — which is exactly where the next section begins.
-
-## One row, assembled from three places
-
-Watch a row get built. Two of the three ingredients are shown here exactly as they arrive.
-
-The percentages come out of the downloaded `.rda`, which for 2024 holds `r nrow(e)` rows in seven columns. Alabama and California, verbatim:
-
-| year | state_abbrev | winner | party_win | democrat | other | republican |
-|---:|:---|:---|:---|---:|---:|---:|
-| 2024 | AL | Donald Trump | republican | 34.10 | NA | 64.57 |
-| 2024 | CA | Kamala Harris | democrat | 58.47 | NA | 38.33 |
-
-The electoral votes come from nowhere at all. They are typed in by hand, and this is the whole of where that column came from:
-
-```
-ev <- c(AL=9, AK=3, AZ=11, AR=6, CA=54, CO=10, CT=7, DE=3, DC=3,
-        FL=30, GA=16, HI=4, ID=4, IL=19, IN=11, IA=6, KS=6, KY=8,
-        ... 33 more ...
-stopifnot(sum(ev) == 538, length(ev) == 51)
-```
-
-And the tile coordinates are typed in the same way, as a small block of text that is a picture of the country rather than a measurement of it:
-
-| abbrev | col | row |
-|:---|---:|---:|
-| AL | 7 | 7 |
-| CA | 1 | 5 |
-
-Put them together and you get this:
-
-```{r clean-em}
-```
-
-**Nothing in that row records where any of it came from.** `harris` was counted by election officials in sixty-seven Alabama counties and certified by a canvassing board. `ev` is a number in a statute. `col` is somebody's opinion about where Alabama looks right on a grid. They are the same width, the same type, and they sit in the same row, and a reader has no way to tell them apart without leaving the file.
-
-The scanner makes part of that visible and misses the rest:
-
-```{r scan-em}
-```
-
-It catches `col` and `row`: whole numbers that are labels, not amounts, so averaging them would be meaningless. It cannot catch `ev`, which is a perfectly ordinary count and is also a hand-keyed constant. **No automatic check can tell you that a column was typed rather than measured.**
-
-### Where the row was decided rather than assembled
-
-**A missing value became a zero, and this is the one that matters.** Look at the `other` column in the raw rows above: `NA` for both states, and for `r sum(e$other == 0)` of the `r nrow(e)` altogether. The compilation records a third-party figure only sporadically. The build turns every one of those into `0` — and the scan above duly reports that `other` has no missing values, because by the time anything looks, it hasn't. **The file's own final check, `stopifnot(!any(is.na(out)))`, passes for the same reason.** An assertion that the data has no holes, satisfied by having filled them.
-
-That single substitution is why the next section exists, and why Figure 1 has to be drawn: a zero in `other` does not mean nobody voted third-party in Alabama. It means nobody wrote the number down.
-
-**The winner column has no room for the truth.** `party_win` collapses to `Harris` or `Trump`, one label per state. Two states award electors by congressional district and can therefore split, and there is no cell in this schema in which that could be expressed. The table does not get it wrong so much as it cannot say it.
-
-**The verification checks the column that could not be wrong.** `ev` is asserted to sum to `r n(sum(e$ev))` across `r nrow(e)` entries — a real check, and it would catch a typo. The percentages get no equivalent, and they are the ones that came from somewhere else, through four sets of hands, with nobody's judgment calls written down.
-
-## Fifty-one rows, and one column that lies
-
-```{r counts}
-```
-
-Fifty-one rows: fifty states and the District of Columbia, which has had three electoral votes since the Twenty-Third Amendment and no voting representation in Congress.
-
-Then the last two rows of that table. **`other` is zero in `r nrow(e) - sum(e$other > 0)` of `r nrow(e)` states, and not one state's three percentages add to 100.** Every state is short by between `r pc(100 - max(e$harris + e$trump + e$other), 1)` and `r pc(100 - min(e$harris + e$trump + e$other), 1)` points.
-
-Figure 1 shows that shortfall for every jurisdiction, split by whether the file reported a third-party number at all.
-
-```{r short-static, eval=!knitr::is_html_output(), fig.height=3.8}
-```
-
-```{r short-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 1. Every jurisdiction falls short of 100%.** The horizontal position is the shortfall: 100 minus the three reported percentages. Hollow circles are the `r sum(e$other > 0)` jurisdictions that report a third-party number and are short by `r pc(mean(sh_rep), 2)` points on average; filled circles are the `r sum(e$other == 0)` that report a zero, and they are short by `r pc(mean(sh_zero), 2)`. The vertical bars are those two means.
-
-The shortfall *is* the third-party vote, sitting there unlabeled. A zero in this column does not mean nobody voted third party. It means whoever assembled the file did not tabulate it separately. The `r sum(e$other == 0)` states reporting a zero are short by `r pc(mean(sh_zero), 2)` points on average, against `r pc(mean(sh_rep), 2)` for the `r sum(e$other > 0)` that report something. That is exactly what you would expect if the zero were a missing value carrying the whole third-party vote inside it. **A zero and a missing value are not the same thing, and a spreadsheet cannot tell them apart.**
-
-This is the first live example in this chapter of not knowing where a number came from. It is a reason to find out where a set of returns came from before arguing about what they say.
-
-## The first map anybody makes
-
-Color each state by margin, meaning Trump's percentage minus Harris's, and draw every state the same size, laid out roughly where it belongs. Land does not vote, so we will not draw land.
-
-Then draw it a second time with each square's **area** proportional to that state's electoral votes. Neither version is the map; both are choices, and the pair of them is the point. Figure 2 is both.
+Start with the map, drawn the only honest way a state-level rule can be drawn: land does not vote, so no land is drawn.
 
 ```{r tile-static, eval=!knitr::is_html_output(), fig.height=7.9}
 ```
@@ -137,17 +60,11 @@ Then draw it a second time with each square's **area** proportional to that stat
 ```{r tile-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The 2024 result as a grid, drawn twice.** One square per jurisdiction, positioned roughly where the state belongs and colored by margin, on a scale capped at `r CAP` points in each direction. The margin is Trump's percentage minus Harris's. In the first version every square is the same size, so every state counts once. In the second, each square's area is proportional to its electoral votes, which is what the Constitution actually counts.
+**Figure 1. The 2024 result as a grid, drawn twice.** One square per jurisdiction fits this data, because the rule acts on whole states. Each square sits roughly where the state belongs and is colored by margin, Trump's percentage minus Harris's, on a scale capped at `r CAP` points in each direction. In the first version every square is the same size, so every state counts once; in the second, each square's area is proportional to its electoral votes, which is what the Constitution actually counts. `r sum(abs(e$margin) > CAP)` of the `r nrow(e)` jurisdictions lie beyond the cap and are painted the same extreme shade; the largest is `r e$state[which.max(abs(e$margin))]` at `r pc(e$margin[which.max(abs(e$margin))], 1)`.
 
-Land does not vote and no land is drawn. `r sum(abs(e$margin) > CAP)` of the `r nrow(e)` jurisdictions lie beyond the cap and are painted the same extreme shade; the largest is `r e$state[which.max(abs(e$margin))]` at `r pc(e$margin[which.max(abs(e$margin))], 1)`.
+Read the legend before you read the map. The margin runs from `r pc(min(e$margin), 1)` in `r e$state[which.min(e$margin)]` to `r pc(max(e$margin), 1)` in `r e$state[which.max(e$margin)]`, a spread of `r pc(diff(range(e$margin)), 0)` points, and the capped scale cannot show the difference among the blowouts. A cap makes the middle of the scale readable by making the ends of it lie. **Every choropleth you will ever see has made this trade; most do not tell you.**
 
-The margin runs from **`r pc(min(e$margin), 1)` in `r e$state[which.min(e$margin)]` to `r pc(max(e$margin), 1)` in `r e$state[which.max(e$margin)]`** — a spread of `r pc(diff(range(e$margin)), 0)` points. It is a picture of a country pulled to its two ends.
-
-Read the legend before you read the map. The color scale is **capped at `r CAP` points in each direction**. So the `r sum(abs(e$margin) > CAP)` jurisdictions beyond that cap are all painted the same extreme shade, even though they are nothing like each other. `r e$state[which.min(e$margin)]` at `r pc(min(e$margin), 1)` is `r pc(abs(min(e$margin)) / max(e$margin), 1)` times as lopsided as `r e$state[which.max(e$margin)]` at `r pc(max(e$margin), 1)`, and the map cannot show you that. A cap makes the middle of the scale readable by making the ends of it lie. **Every choropleth you will ever see has made this trade; most do not tell you.**
-
-## The same data, colored differently
-
-Now color by Harris's *share* instead of the margin. Nothing about the data changes, and to keep the comparison honest nothing about the drawing changes either: same `r nrow(e)` squares, same positions, same blue-white-red ramp, same cap of `r CAP` points either side of a tie. The left map measures the gap between the two candidates. The right map measures how far Harris's own share sits from 50.
+The color itself is a choice too. Color the same squares by Harris's *share* instead of the margin, changing nothing else, and the country pales:
 
 ```{r sharemap-static, eval=!knitr::is_html_output(), fig.height=4.5}
 ```
@@ -155,73 +72,29 @@ Now color by Harris's *share* instead of the margin. Nothing about the data chan
 ```{r sharemap-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Margin and share, side by side, on one color ramp.** The same `r nrow(e)` squares in the same positions, the same blue-white-red scale, the same cap of `r CAP` points either side of a tie. On the left, color is the gap between the two candidates; on the right, it is how far Harris's own share sits from 50. `r sum(abs(d_marg) > CAP)` jurisdictions reach the cap on the left and `r sum(abs(d_shar) > CAP)` on the right. Nothing about the country differs between the two panels.
+**Figure 2. Margin and share, side by side, on one color ramp.** The same `r nrow(e)` squares, the same blue-white-red scale, the same cap of `r CAP` points either side of a tie. On the left, color is the gap between the two candidates; on the right it is how far Harris's own share sits from 50. `r sum(abs(d_marg) > CAP)` jurisdictions reach the cap on the left and `r sum(abs(d_shar) > CAP)` on the right, and nothing about the country differs between the panels.
 
-The right-hand map is the paler one, and the reason is arithmetic rather than politics. A margin counts the same voters twice, once as a gain for one candidate and once as a loss for the other. So it is about `r pc(diff(range(d_marg)) / diff(range(d_shar)), 1)` times a share's distance from 50. On the margin map `r sum(abs(d_marg) > CAP)` jurisdictions are dark enough to hit the cap; on the share map, only `r sum(abs(d_shar) > CAP)` is. Nothing about the country changed between those two pictures.
+The reason is arithmetic rather than politics. A margin counts the same voters twice, once as a gain for one candidate and once as a loss for the other, so it is about `r pc(diff(range(d_marg)) / diff(range(d_shar)), 1)` times a share's distance from 50. Neither map is lying. **The choice of scale is an argument**, and the only dishonest version is the one that does not tell you which was chosen.
 
-```{r scales}
-```
+### Counting to 270, and the assumption in the count
 
-**Halving the spread halves the visual drama.** A margin scale spans `r pc(diff(range(e$margin)), 0)` points; a share scale spans `r pc(diff(range(e$harris)), 0)`. On the share map the blowout states stop screaming and the country looks divided but overlapping.
-
-The maps make the difference visible. Figure 4 makes it countable. Both rows hold the same `r nrow(e)` jurisdictions, measured in percentage points and anchored at the same place, a tie. The gray line joining each jurisdiction's two positions is the whole argument: every one of them sits about twice as far from the tie on the margin row as on the share row.
-
-```{r two-scales-static, eval=!knitr::is_html_output(), fig.height=3.9}
-```
-
-```{r two-scales-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. The same `r nrow(e)` jurisdictions, measured two ways from a tie.** Circles are margins, triangles are Harris's distance from 50, and each gray line joins one jurisdiction's two positions. The margin scale spans `r pc(diff(range(d_marg)), 0)` points and the share scale `r pc(diff(range(d_shar)), 0)`, a factor of `r pc(diff(range(d_marg)) / diff(range(d_shar)), 1)`, because both ends of the share scale move in toward the tie at once.
-
-Neither map is lying. A 70–30 state and a 60–40 state sit 20 points apart on a margin scale and 10 apart on a share scale. The same two electorates, with one gap drawn twice as wide as the other. **The choice of scale is an argument**, and the only dishonest version is the one that does not tell you which was chosen.
-
-## Counting to 270
-
-The map shows who won where. It does not show who won.
-
-```{r ev-total}
-```
-
-`r n(sum(e$ev[e$winner == "Trump"]))` to `r n(sum(e$ev[e$winner == "Harris"]))`, and `r n(sum(e$ev))` in total. That is the certified result.
-
-But look at what the arithmetic just assumed. It handed **every** one of a state's electoral votes to whoever carried it, which is winner-take-all. **Maine and Nebraska do not do that.** Both award two electors statewide and one per congressional district, and in 2024 both split: Trump carried Maine's second district, Harris carried Nebraska's second.
+Hand every state's electors to whoever carried it and the total is `r n(sum(e$ev[e$winner == "Trump"]))` to `r n(sum(e$ev[e$winner == "Harris"]))`, which is the certified result. But that arithmetic assumed winner-take-all everywhere, and Maine and Nebraska both split in 2024: Trump carried Maine's second district, Harris carried Nebraska's second.
 
 ```{r me-ne}
 ```
 
-Winner-take-all gives Harris all `r st("ME","ev")` of Maine's and none of Nebraska's. Reality gave her three from Maine and one from Nebraska. Four either way. **The two errors canceled.**
+Winner-take-all gives Harris all `r st("ME","ev")` of Maine's and none of Nebraska's. Reality gave her three from Maine and one from Nebraska. Four either way — **the two errors canceled.** That is luck, not a rule, and a model that produces the right number for the wrong reason will keep producing it until the day it does not.
 
-That is luck, not a rule. A model that produces the right number for the wrong reason will keep producing it until the day it does not, and nothing in the output announces which day that is.
+### Large is not the same as close
 
-## Where the electoral votes are
+Sort the states by electoral votes and add them up: **`r k` states of `r nrow(e)` hold a majority of the Electoral College**, and the ten largest alone hold `r n(sum(o$ev[1:10]))`, which is `r pc(100 * sum(o$ev[1:10]) / sum(e$ev), 0)`% of the whole. That is where most accounts of the Electoral College stop: a handful of big states hold the presidency, so a campaign should go where the electoral votes are.
 
-Sort the states by electoral votes and add them up until you cross 270.
-
-```{r to270}
-```
-
-**`r k` states of `r nrow(e)` hold a majority of the Electoral College.** The ten largest alone hold `r n(sum(o$ev[1:10]))`, which is `r pc(100 * sum(o$ev[1:10]) / sum(e$ev), 0)`% of the whole.
-
-That number is genuinely striking, and it is where most accounts of the Electoral College stop: a handful of big states hold the presidency, so a campaign should go where the electoral votes are.
-
-There is a column in that table which has not been used yet.
-
-## Large is not the same as close
-
-The margin column changes the picture completely.
-
-```{r large-and-close}
-```
-
-**Only `r sum(abs(top12$margin) < 5)` of the `r k` states that reach 270 were decided by less than five points.** California, Texas, New York, Illinois and Ohio are enormous and were never in doubt; each was decided by double digits. They contribute electoral votes to a total, not decisions to a contest.
-
-The states that decide an election are the ones that are **large *and* close**, and that is a much smaller set:
+The margin column changes the picture completely. Only `r sum(abs(top12$margin) < 5)` of those `r k` states were decided by less than five points. California, Texas, New York, Illinois and Ohio are enormous and were never in doubt; they contribute electoral votes to a total, not decisions to a contest. The states that decide an election are the ones that are **large *and* close**, and that is a much smaller set:
 
 ```{r close-states}
 ```
 
-`r nrow(cl)` states holding `r n(sum(cl$ev))` electoral votes carried the entire uncertainty of the election. That is **`r pc(100 * sum(cl$ev) / sum(e$ev), 1)`% of the College**. Tighten the threshold to three points and it is `r sum(abs(e$margin) < 3)` states and `r n(sum(e$ev[abs(e$margin) < 3]))` electoral votes. Figure 5 puts every jurisdiction on the two axes at once.
+`r nrow(cl)` states holding `r n(sum(cl$ev))` electoral votes, `r pc(100 * sum(cl$ev) / sum(e$ev), 1)`% of the College, carried the entire uncertainty of the election. Figure 3 puts every jurisdiction on the two axes at once.
 
 ```{r quad-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -229,42 +102,23 @@ The states that decide an election are the ones that are **large *and* close**, 
 ```{r quad-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 5. Size against closeness, one point per jurisdiction.** The vertical axis is electoral votes and the horizontal axis is the margin, ignoring its sign; the shaded band holds the `r nrow(cl)` jurisdictions decided by under five points. The states that decide an election sit in the upper left, large and close. The upper right is where most of the Electoral College lives: enormous, and settled before the campaign began.
+**Figure 3. Size against closeness, one point per jurisdiction.** The vertical axis is electoral votes and the horizontal axis is the margin, ignoring its sign; the shaded band holds the `r nrow(cl)` jurisdictions decided by under five points. The states that decide an election sit in the upper left, large and close. The upper right is where most of the Electoral College lives: enormous, and settled before the campaign began.
 
-**"Where the votes are" and "where the votes are in play" are different questions with almost disjoint answers**, and the whole logic of campaign strategy lives in the gap between them. A campaign that allocated its time in proportion to electoral votes would be behaving irrationally, and every campaign knows it.
+**"Where the votes are" and "where the votes are in play" are different questions with almost disjoint answers**, and the whole logic of campaign strategy lives in the gap between them. This is also the strongest evidence against the standard small-state defense of the system. A small *safe* state receives essentially no attention despite its inflated per-voter weight: Wyoming, Vermont, the Dakotas. Winner-take-all swamps the senator bonus, which is Edwards' (2004) argument at book length. Whether the net bias favors large states or small ones is still contested among people who model it carefully; Gelman, Katz and Bafumi (2004) showed the classical voting-power indexes overstate large-state power. Both sides agree that the biggest effect is neither one: it is closeness.
 
-## What the rule does to a voter
+### Abolish winner-take-all and see what happens
 
-Put the two inequalities side by side and give each a number.
+The two inequalities are separable, and that matters, because reforms are usually proposed as though they were the same problem.
 
 ```{r inequality}
 ```
 
-These are separable. That matters, because reforms are usually proposed as though they were the same problem.
-
-## Abolish winner-take-all and see what happens
-
-Split each state's electors in proportion to its two-party vote instead of awarding them all to the winner.
-
-> **Before you read the table, commit to a winner and to a margin.** Under
-> winner-take-all the result was
-> `r sum(e$ev[e$winner == "Trump"])`&ndash;`r sum(e$ev[e$winner == "Harris"])`, a
-> margin of
-> `r abs(sum(e$ev[e$winner == "Trump"]) - sum(e$ev[e$winner == "Harris"]))`
-> electoral votes. Now give every state's electors out in proportion to its
-> two-party vote instead. **Does the winner change — and what is the new
-> margin?**
->
-> Write down a name and a number. They are two separate questions, and the
-> answer to one of them is much larger than most people expect while the answer
-> to the other is not what the size of that change would suggest.
+Now run the reform the table points at. Split each state's electors in proportion to its two-party vote instead of awarding them all to the winner:
 
 ```{r prop}
 ```
 
-**The margin collapses from `r abs(sum(e$ev[e$winner == "Trump"]) - sum(e$ev[e$winner == "Harris"]))` electoral votes to `r abs(sum(t_prop) - sum(h_prop))`. Trump still wins.**
-
-The collapse is not spread evenly. Figure 6 shows what the rule change does state by state.
+**The margin collapses from `r abs(sum(e$ev[e$winner == "Trump"]) - sum(e$ev[e$winner == "Harris"]))` electoral votes to `r abs(sum(t_prop) - sum(h_prop))`. Trump still wins.** Check the two numbers you wrote down against those.
 
 ```{r propshift-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -272,47 +126,35 @@ The collapse is not spread evenly. Figure 6 shows what the rule change does stat
 ```{r propshift-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 6. Electoral votes moved by replacing winner-take-all with proportional allocation.** One bar per jurisdiction, ordered by the size of the change; blue bars move electors to Harris, red bars to Trump. The reform hands her `r sum(dh[dh > 0])` electors out of states she lost and takes `r -sum(dh[dh < 0])` out of states she carried, and `r sum(abs(dh) <= 2)` of the `r nrow(e)` jurisdictions move by two electoral votes or fewer.
+**Figure 4. Electoral votes moved by replacing winner-take-all with proportional allocation.** One bar per jurisdiction, ordered by the size of the change; blue bars move electors to Harris, red bars to Trump. The reform hands her `r sum(dh[dh > 0])` electors out of states she lost and takes `r -sum(dh[dh < 0])` out of states she carried, and `r sum(abs(dh) <= 2)` of the `r nrow(e)` jurisdictions move by two electoral votes or fewer.
 
-How far a state moves is almost entirely a matter of how large it is, and hardly at all a matter of how close it was. The size of the move correlates `r pc(cor(abs(dh), e$ev), 2)` with a state's electoral votes.
+How far a state moves is almost entirely a matter of how large it is, and hardly at all a matter of how close it was. The size of the move correlates `r pc(cor(abs(dh), e$ev), 2)` with a state's electoral votes. Proportional allocation is fairer to **voters in landslide states** — a Republican in California and a Democrat in Wyoming would finally count for something. It is emphatically not fairer to **small states**, which keep their two-senator bonus under either rule. The reform changes *which* inequity you live with, and it does not touch the malapportionment at the heart of the system. And the rule producing the concentration in Figure 3 is written in state law rather than in the Constitution, and could be changed by any legislature that wanted to.
 
-This is the most useful result in the file, and not because of the winner. Proportional allocation is fairer to **voters in landslide states** — a Republican in California and a Democrat in Wyoming would finally count for something. It is emphatically not fairer to **small states**, which keep their two-senator bonus under either rule. The reform changes *which* inequity you live with; it does not remove inequity, and it does not touch the malapportionment at the heart of the system.
+## What this brief cannot tell you
 
-One more thing worth noticing: the proportional columns sum to `r sum(h_prop) + sum(t_prop)`, exactly `r sum(e$ev)`. **They did not have to.** Each state was rounded independently, and independent rounding does not have to reconcile to a fixed total. That is the apportionment problem, which is a chapter of its own.
+**There are no people in this file.** The vote columns are percentages and `ev` is a legal quantity, so turnout, population and votes per elector cannot be computed here, and the per-voter inequality the small-state argument turns on is out of reach. Everything is state-level, which hides the rule's most important feature: a state's losing voters vanish, and the file has no unit small enough to show the disappearance.
 
-## Where the election was actually decided
+**It cannot separate the rule from the country.** Close states would be more interesting than safe ones under almost any system; winner-take-all sharpens the difference, and nothing here separates the sharpening from the underlying distribution.
 
-The 2024 electoral map was decided by `r nrow(cl)` states holding `r pc(100 * sum(cl$ev) / sum(e$ev), 1)`% of the Electoral College, and the `r k` states large enough between them to reach 270 are mostly not those states. Size and closeness are nearly independent properties, and only one of them determines where a campaign goes.
+**It is one election.** Competitiveness is a property of a state *in a given election*, not of the state: the Solid South was uncompetitive for eighty years and then was not, and Vermont ran the same path in reverse. The `r nrow(cl)` competitive states of 2024 are a snapshot of a single November.
 
-Sharper than that: the Electoral College's two inequalities are independent of each other, and the reform most often proposed, proportional allocation, addresses only one of them. On 2024's numbers it would have changed the margin by `r abs(sum(e$ev[e$winner=="Trump"]) - sum(e$ev[e$winner=="Harris"])) - abs(sum(t_prop) - sum(h_prop))` electoral votes and not the outcome.
+**And the reform arithmetic holds the world constant.** Change the rule and you change the campaign, the turnout and probably the vote itself. What proportional allocation would actually do is not what it does to a fixed set of votes.
 
-What these rows cannot say is how much of that concentration is produced by the rule and how much by the country. Close states would be more interesting than safe ones under almost any system; winner-take-all sharpens the difference, and nothing here separates the sharpening from the underlying distribution. Nor can they say anything about turnout, population, or votes per elector, because every number in the file is either a percentage or a legal quantity. **There are no people in this file.**
+## What you should have learned
 
-## Does the Electoral College help small states?
+- `r k` states hold a majority of the Electoral College, but only `r sum(abs(top12$margin) < 5)` of them were decided by under five points: where the electoral votes are and where they are contested are nearly disjoint questions.
+- The 2024 election's entire uncertainty sat in `r nrow(cl)` states holding `r pc(100 * sum(cl$ev) / sum(e$ev), 1)`% of the College, and that list is a property of the election, not of the states.
+- The Electoral College's two inequalities are independent: proportional allocation would have cut the 2024 margin from `r abs(sum(e$ev[e$winner == "Trump"]) - sum(e$ev[e$winner == "Harris"]))` electoral votes to `r abs(sum(t_prop) - sum(h_prop))` without changing the winner, and without touching the two-senator bonus.
+- A margin scale spans about `r pc(diff(range(d_marg)) / diff(range(d_shar)), 1)` times what a share scale spans for the same result, because it counts every voter twice; which one a map uses is an argument.
+- In this file, `r nrow(e) - sum(e$other > 0)` of `r nrow(e)` jurisdictions report a third-party zero that is really a missing value, and no state's percentages sum to 100.
 
-This is the standard defense, and the evidence against it is stronger than most people realize. Edwards (2004) assembles it at length: the College does not reliably protect small states, racial minorities, or federalism, because the two-senator bonus is swamped by winner-take-all. A small *safe* state receives essentially no campaign attention despite its inflated per-voter weight: Wyoming, Vermont, the Dakotas. The states that get attention are the ones in the upper-left corner of Figure 5, and most of them are large.
+## Extensions
 
-There is a formal version of the same dispute. A tradition of voting-power indexes, running back to Banzhaf, argued that winner-take-all makes voters in *large* states more powerful, because a large state delivers a bigger block. Those indexes rest on an assumption: that every possible arrangement of votes is equally likely. Gelman, Katz and Bafumi (2004) tested it against actual election data and rejected it. **The probability of casting a decisive vote turns out to scale roughly as 1/n rather than 1/√n**, which means the standard indexes systematically overstate the power of voters in large jurisdictions.
-
-The honest summary is that the direction of the large-state/small-state bias is still contested among people who work on it carefully, and that both sides agree the biggest effect is neither: it is **closeness**.
-
-## Is a state's competitiveness a property of the state?
-
-No, and this is where the map misleads most. Competitiveness is a property of a state *in a given election*. The Solid South was uncompetitive for eighty years and then was not; Vermont ran the same path in reverse. The `r nrow(cl)` competitive states of 2024 are not a permanent list, and an account that treated them as one would be making exactly the mistake this chapter exists to prevent.
-
-## What fifty-one rows can testify to
-
-The strengths of this file are unusual ones. It is complete: all `r nrow(e)` jurisdictions, no missing rows, and nothing imputed — no gap filled in by guessing. The electoral vote counts are legal facts rather than estimates, so the arithmetic of 270 and of proportional allocation depends on no measurement at all. And it is small enough that every claim made above can be checked by eye against the tables that produced it.
-
-The weaknesses are the price of that smallness. The vote columns are percentages, not counts. So there is no turnout, no population and no votes per elector, and the per-voter inequality that the whole small-state argument turns on cannot be computed here at all. The `other` column is unusable. `r nrow(e) - sum(e$other > 0)` of `r nrow(e)` jurisdictions report a zero that is not a zero, and no jurisdiction's percentages add to 100.
-
-Winner-take-all is assumed throughout, so Maine and Nebraska are misrepresented. In 2024 the two errors happened to cancel, which is luck rather than correctness. It is one election, so nothing here is a trend, and the list of competitive states is a snapshot of a single November.
-
-And everything is state-level, which hides the rule's most important feature: a state's losing voters vanish. The file has no unit smaller than a state, so the disappearance is invisible in it.
-
-Three questions stay open, and none of them will be settled by adding rows. Whether winner-take-all favors large states or small ones on net is still disputed, and the dispute is about a model rather than about these numbers. What proportional allocation would actually do is not what it does to a fixed set of votes. Change the rule and you change the campaign, the turnout and probably the vote itself. The arithmetic above holds all of that constant, which is precisely what a real reform would not. And whether the concentration in Figure 5 is stable is a question one election cannot answer.
-
-What can be said is this. A country appointing `r n(sum(e$ev))` electors settled the question inside `r nrow(cl)` states holding `r n(sum(cl$ev))` of them. The rule producing that concentration is written in state law rather than in the Constitution, and could be changed by any legislature that wanted to. And the change would leave the older inequality exactly where the Convention put it: two electors per state, whoever lives there.
+- `pres2024_states.csv` has `ev` and `margin` for every state. Sort by `margin` and add up the electoral votes of the closest states until you cross 270. How much of the map was actually in play?
+- The `other` column of `pres2024_states.csv` is zero in most rows. Compute each state's shortfall from 100 using `harris`, `trump` and `other`, and compare the states with a zero against the states without one. What is the zero hiding?
+- Using `ev` and `winner` in `pres2024_states.csv`, find the smallest combination of states that reaches 270. How few jurisdictions is that?
+- **Stretch.** The same compilation carries every election back to 1864. Fetch 2020, rebuild Figure 3, and see how much of the competitive list survives one cycle.
+- **Stretch.** Maine and Nebraska publish district-level results. Fetch them and compute how often, since 2000, a split elector would have decided the presidency.
 
 ## Sources
 
@@ -330,16 +172,6 @@ open in a spreadsheet, and they are yours to take further.
 
 [`pres2024_states.csv`](data/derived/pres2024_states.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `pres2024_states.csv` has `ev` and `margin` for every state. Sort by `margin` and add up the electoral votes of the closest states. How much of the map was actually in play?
-- Work out electoral votes per voter for the largest and smallest states in the file. How much more is one person's vote worth in one place than another?
-- The `other` column is zero in many rows. Check whether that is really true. What would a zero mean if it were not?
-- Add up the `ev` column. Then find the smallest combination of states that reaches a majority, and see how few voters that represents.
-
 **Academic literature**
 
 - Edwards, G. C. III (2004). *Why the Electoral College Is Bad for America.*
@@ -351,8 +183,8 @@ tables you just opened.
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
 
-```{r ai-prompt, echo=FALSE, results="asis"}
+```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
 
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
+```{r ai-prompt, echo=FALSE, results="asis"}
 ```

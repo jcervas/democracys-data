@@ -124,107 +124,6 @@ names(o1) <- c("state", "abbrev", "electoral votes", "Harris %", "Trump %",
                "other %", "winner", "margin")
 o1
 
-## ---- clean-em
-o <- e[e$abbrev %in% c("AL", "CA"),
-       c("state", "abbrev", "ev", "harris", "trump", "other", "winner",
-         "col", "row", "margin")]
-o
-
-## ---- scan-em
-source("../../_lib/structure.R")
-s <- dd_scan(e)
-s <- s[s$column %in% c("ev", "other", "col", "row"),
-       c("column", "stored", "level", "distinct", "missing", "mismatch")]
-names(s)[1] <- "field"
-s
-
-## ---- counts
-data.frame(
-  quantity = c("Rows", "Electoral votes in total", "Jurisdictions Harris carried",
-               "States reporting a nonzero third-party vote",
-               "States whose three percentages sum to 100"),
-  value = c(nrow(e), sum(e$ev), sum(e$winner == "Harris"), sum(e$other > 0),
-            sum(abs(e$harris + e$trump + e$other - 100) <= 0.01)))
-
-## ---- short-static
-par(mar = c(4.2, 5.8, 0.8, 1.4))
-plot(NA, xlim = c(0, max(e$short) * 1.06), ylim = c(0.5, 2.6), yaxt = "n",
-     bty = "n", las = 1, ylab = "",
-     xlab = "shortfall: 100 minus the three reported percentages (points)")
-axis(2, at = c(2, 1), tick = FALSE, las = 1, cex.axis = 0.78,
-     labels = c(sprintf("other > 0\n(%d states)", sum(e$other >  0)),
-                sprintf("other = 0\n(%d states)", sum(e$other == 0))))
-gvl <- list(sh_rep, sh_zero)
-gcl <- c("#2c7fb8", "#C41230")
-gpc <- c(1, 19)
-for (i in 1:2) {
-  v  <- gvl[[i]]
-  yy <- (3 - i) + seq(-0.17, 0.17, length.out = length(v))[rank(v, ties.method = "first")]
-  points(v, yy, pch = gpc[i], col = gcl[i], cex = 0.9, lwd = 1.5)
-  segments(mean(v), (3 - i) - 0.3, mean(v), (3 - i) + 0.3, lwd = 2.2, col = gcl[i])
-  text(mean(v), (3 - i) + 0.33, paste0("mean ", pc(mean(v), 2)), adj = c(0.5, 0),
-       cex = 0.7, col = gcl[i])
-}
-for (j in c(which.min(e$short), which.max(e$short)))
-  text(e$short[j], (if (e$other[j] > 0) 2 else 1) - 0.30, e$abbrev[j],
-       cex = 0.68, col = "grey30")
-
-## ---- short-d3
-rows <- paste(sprintf('{"a":"%s","s":"%s","v":%.2f,"o":%.2f,"h":%.2f,"t":%.2f,"g":%d}',
-                      e$abbrev, e$state, e$short, e$other, e$harris, e$trump,
-                      ifelse(e$other > 0, 1, 2)), collapse = ",")
-cat(sprintf('
-<div id="shrt" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const D=[%s],M1=%.2f,M2=%.2f,N1=%d,N2=%d;
-const W=760,H=300,M={t:30,r:26,b:48,l:96};
-const box=d3.select("#shrt");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,%.2f]).range([M.l,W-M.r]);
-const yb={1:M.t+42,2:H-M.b-42};
-const cols={1:"#2c7fb8",2:"#C41230"};
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(8));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("shortfall: 100 minus the three reported percentages (points)");
-const L=[{g:1,t1:"other > 0",t2:"("+N1+" states)",m:M1},
-         {g:2,t1:"other = 0",t2:"("+N2+" states)",m:M2}];
-L.forEach(d=>{
-  svg.append("text").attr("x",M.l-12).attr("y",yb[d.g]-2).attr("text-anchor","end")
-    .attr("font-size","12px").attr("fill","#333").text(d.t1);
-  svg.append("text").attr("x",M.l-12).attr("y",yb[d.g]+14).attr("text-anchor","end")
-    .attr("font-size","11px").attr("fill","#777").text(d.t2);
-  svg.append("line").attr("x1",x(d.m)).attr("x2",x(d.m)).attr("y1",yb[d.g]-26)
-    .attr("y2",yb[d.g]+26).attr("stroke",cols[d.g]).attr("stroke-width",2.2);
-  svg.append("text").attr("x",x(d.m)).attr("y",yb[d.g]-32).attr("text-anchor","middle")
-    .attr("font-size","11px").attr("fill",cols[d.g]).text("mean "+d.m.toFixed(2));
-});
-const by={};D.forEach(d=>{(by[d.g]=by[d.g]||[]).push(d)});
-Object.values(by).forEach(g=>{g.sort((a,b)=>a.v-b.v);
-  g.forEach((d,i)=>{d.off=(i-(g.length-1)/2)/Math.max(1,g.length-1)*34;});});
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.v)).attr("cy",d=>yb[d.g]+d.off).attr("r",4.5)
-  .attr("fill",d=>d.g===2?cols[2]:"#fff").attr("stroke",d=>cols[d.g])
-  .attr("stroke-width",1.6)
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(`<b>${d.s}</b><br>Harris ${d.h}%% + Trump ${d.t}%% `+
-      `+ other ${d.o}%%<br>short by ${d.v.toFixed(2)} points`)
-      .style("left",Math.min(ev.offsetX+14,W-300)+"px").style("top",(ev.offsetY-40)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-All %d jurisdictions fall short of 100. Hollow circles are the %d that report a
-third-party number; filled circles are the %d that report a zero, and they are
-short by more.</p>
-', rows, mean(sh_rep), mean(sh_zero), length(sh_rep), length(sh_zero),
-   max(e$short) * 1.06, nrow(e), sum(e$other > 0), sum(e$other == 0)))
-
 ## ---- tile-static
 over <- abs(e$margin) > CAP
 layout(matrix(1:3, ncol = 1), heights = c(1, 1, 0.46))
@@ -247,6 +146,7 @@ rows <- paste(sprintf(
   collapse = ",")
 cat(sprintf('
 <div id="tile" style="position:relative;margin:1em 0"></div>
+<script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const D=[%s],CAP=%d,NOVER=%d,NALL=%d,EVMIN=%d;
@@ -405,137 +305,10 @@ is about %s times the distance of a share from 50. Hover either map.</p>
 ', CAP, sum(abs(d_marg) > CAP), sum(abs(d_shar) > CAP),
    pc(diff(range(d_marg)) / diff(range(d_shar)), 1)))
 
-## ---- scales
-data.frame(
-  scale = c("Margin (Trump % minus Harris %)", "Harris share of the vote (%)"),
-  lowest = c(paste0(pc(min(e$margin), 1), " (", e$state[which.min(e$margin)], ")"),
-             paste0(pc(min(e$harris), 1), " (", e$state[which.min(e$harris)], ")")),
-  highest = c(paste0("+", pc(max(e$margin), 1), " (", e$state[which.max(e$margin)], ")"),
-              paste0(pc(max(e$harris), 1), " (", e$state[which.max(e$harris)], ")")),
-  spread = c(pc(diff(range(e$margin)), 0), pc(diff(range(e$harris)), 0)))
-
-## ---- two-scales-static
-par(mar = c(4.2, 5.6, 1.9, 1.6))
-xr <- range(c(d_marg, d_shar))
-plot(NA, xlim = c(xr[1] * 1.05, xr[2] * 1.12), ylim = c(0.55, 2.55),
-     yaxt = "n", bty = "n", las = 1, ylab = "",
-     xlab = "distance from a tie, in percentage points (positive = Trump ahead)")
-abline(v = 0, col = "grey45", lty = 2)
-text(0, 2.50, "tie", cex = 0.72, col = "grey35", adj = c(0.5, 0.5))
-segments(d_marg, 1.84, d_shar, 1.16, col = "grey85")
-points(d_marg, rep(1.84, nrow(e)), pch = 19, col = "#6A3D9A", cex = 0.8)
-points(d_shar, rep(1.16, nrow(e)), pch = 17, col = "#00857C", cex = 0.8)
-axis(2, at = c(1.84, 1.16), tick = FALSE, las = 1, cex.axis = 0.78,
-     labels = c(sprintf("margin\n(spans %s)", pc(diff(range(d_marg)), 0)),
-                sprintf("Harris share\n(spans %s)", pc(diff(range(d_shar)), 0))))
-arrows(min(d_marg), 2.24, max(d_marg), 2.24, code = 3, length = 0.05,
-       col = "#6A3D9A")
-text(mean(range(d_marg)), 2.34, sprintf("%s points wide",
-     pc(diff(range(d_marg)), 0)), cex = 0.72, col = "#6A3D9A")
-arrows(min(d_shar), 0.76, max(d_shar), 0.76, code = 3, length = 0.05,
-       col = "#00857C")
-text(mean(range(d_shar)), 0.66, sprintf("%s points wide, %s times narrower",
-     pc(diff(range(d_shar)), 0),
-     pc(diff(range(d_marg)) / diff(range(d_shar)), 1)),
-     cex = 0.72, col = "#00857C")
-text(min(d_marg), 2.02, e$abbrev[which.min(d_marg)], cex = 0.7, col = "grey30")
-text(max(d_marg), 2.02, e$abbrev[which.max(d_marg)], cex = 0.7, col = "grey30")
-text(min(d_shar), 0.98, e$abbrev[which.min(d_shar)], cex = 0.7, col = "grey30")
-text(max(d_shar), 0.98, e$abbrev[which.max(d_shar)], cex = 0.7, col = "grey30")
-
-## ---- two-scales-d3
-rows <- paste(sprintf('{"a":"%s","s":"%s","dm":%.2f,"ds":%.2f,"m":%.2f,"h":%.2f}',
-                      e$abbrev, e$state, d_marg, d_shar, e$margin, e$harris),
-              collapse = ",")
-cat(sprintf('
-<div id="twos" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s],SM=%.2f,SH=%.2f,X0=%.2f,X1=%.2f;
-const W=760,H=310,M={t:48,r:34,b:52,l:96};
-const box=d3.select("#twos");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([X0,X1]).range([M.l,W-M.r]);
-const yA=M.t+26,yB=H-M.b-56;
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).ticks(9));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("distance from a tie, in percentage points (positive = Trump ahead)");
-svg.append("line").attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t-16)
-  .attr("y2",H-M.b).attr("stroke","#999").attr("stroke-dasharray","3,3");
-svg.append("text").attr("x",x(0)).attr("y",M.t-21).attr("text-anchor","middle")
-  .attr("font-size","11px").attr("fill","#666").text("tie");
-svg.append("g").selectAll("line.j").data(D).join("line").attr("class","j")
-  .attr("x1",d=>x(d.dm)).attr("y1",yA+8).attr("x2",d=>x(d.ds)).attr("y2",yB-8)
-  .attr("stroke","#d8d8d8");
-[["margin","spans "+SM.toFixed(0)+" points",yA],
- ["Harris share","spans "+SH.toFixed(0)+" points",yB]].forEach(r=>{
-  svg.append("text").attr("x",M.l-12).attr("y",r[2]-2).attr("text-anchor","end")
-    .attr("font-size","12px").attr("fill","#333").text(r[0]);
-  svg.append("text").attr("x",M.l-12).attr("y",r[2]+14).attr("text-anchor","end")
-    .attr("font-size","11px").attr("fill","#777").text(r[1]);});
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-function hov(sel){ sel.on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(`<b>${d.s}</b><br>margin ${d.m>0?"+":""}${d.m}`+
-      `<br>Harris share ${d.h}%%, i.e. ${d.ds>0?"+":""}${d.ds.toFixed(2)} from a tie`)
-      .style("left",Math.min(ev.offsetX+14,W-270)+"px").style("top",(ev.offsetY-40)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0)); }
-hov(svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.dm)).attr("cy",yA).attr("r",4.5).attr("fill","#6A3D9A")
-  .attr("fill-opacity",0.8));
-hov(svg.append("g").selectAll("path").data(D).join("path")
-  .attr("d",d3.symbol().type(d3.symbolTriangle).size(46))
-  .attr("transform",d=>`translate(${x(d.ds)},${yB})`).attr("fill","#00857C")
-  .attr("fill-opacity",0.8));
-[["dm",yA-26,yA-32,"#6A3D9A",SM,yA-13],
- ["ds",yB+30,yB+44,"#00857C",SH,yB+15]].forEach(a=>{
-  const lo=d3.min(D,d=>d[a[0]]), hi=d3.max(D,d=>d[a[0]]);
-  svg.append("line").attr("x1",x(lo)).attr("x2",x(hi)).attr("y1",a[1]).attr("y2",a[1])
-    .attr("stroke",a[3]).attr("stroke-width",1.4);
-  svg.append("text").attr("x",(x(lo)+x(hi))/2).attr("y",a[2])
-    .attr("text-anchor","middle").attr("font-size","11px")
-    .attr("fill",a[3]).text(a[4].toFixed(0)+" points wide");
-  // name the two extremes, as the PDF version does
-  [lo,hi].forEach(v=>svg.append("text").attr("x",x(v)).attr("y",a[5])
-    .attr("text-anchor","middle").attr("font-size","10.5px").attr("fill","#777")
-    .text(D.find(d=>d[a[0]]===v).a));});
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Each gray line is one jurisdiction, joining its margin to its share. The share
-scale packs the same country into a span %s times narrower than the margin
-scale does, because both ends move in toward the tie.</p>
-', rows, diff(range(d_marg)), diff(range(d_shar)),
-   min(c(d_marg, d_shar)) * 1.05, max(c(d_marg, d_shar)) * 1.12,
-   pc(diff(range(d_marg)) / diff(range(d_shar)), 1)))
-
-## ---- ev-total
-o2 <- as.data.frame(tapply(e$ev, e$winner, sum))
-o2 <- data.frame(candidate = rownames(o2), electoral_votes = o2[[1]])
-o2
-
 ## ---- me-ne
 o3 <- e[e$abbrev %in% c("ME", "NE"), c("state", "winner", "ev", "margin")]
 names(o3) <- c("state", "statewide winner", "electoral votes", "margin")
 o3
-
-## ---- to270
-o4 <- data.frame(state = top12$state, ev = top12$ev, running_total = cum[1:k],
-                 margin = pc(top12$margin, 1))
-names(o4) <- c("state", "electoral votes", "running total", "margin")
-o4
-
-## ---- large-and-close
-o5 <- data.frame(
-  group = c(paste("The", k, "states that reach 270"),
-            "... of those, decided by under 5 points",
-            "All states decided by under 5 points",
-            "Their share of the Electoral College"),
-  value = c(k, sum(abs(top12$margin) < 5), nrow(cl),
-            paste0(pc(100 * sum(cl$ev) / sum(e$ev), 1), "%")))
-o5
 
 ## ---- close-states
 o6 <- cl[order(-cl$ev), c("state", "ev", "harris", "trump", "margin")]

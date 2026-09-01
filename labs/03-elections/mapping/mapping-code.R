@@ -16,7 +16,7 @@ options(scipen = 999)
 # FIPS is text, always. A county identifier is five digits and every county in
 # Alabama, Alaska, Arizona, Arkansas, California, Colorado and Connecticut
 # begins with a zero. Read as a number, 01001 becomes 1001, which is a county
-# in Georgia. A sibling lab in this course lost the leading zero on 1,549 of
+# in Georgia. A sibling chapter in this book lost the leading zero on 1,549 of
 # 4,489 tract identifiers exactly this way.
 d  <- read.csv("data/derived/counties.csv",      stringsAsFactors = FALSE,
                colClasses = c(fips = "character"))
@@ -49,9 +49,9 @@ nn <- function(x) formatC(round(as.numeric(x)), format = "d", big.mark = ",")
 # followed is the one that matters here: a unit with no Census FIPS gets an
 # EMPTY county_fips, never a guessed one.
 #
-# Nothing in this chapter is redrawn from these files, and the section "The
-# file the states published" says why. They are read here so that every claim
-# the chapter makes about the returns can be measured rather than asserted.
+# Nothing in this brief is redrawn from these files: they are the ruler, not
+# the paint. They are read here so that every claim the brief makes about the
+# returns can be measured rather than asserted.
 OFFD <- file.path("..", "county-returns", "data")
 of <- read.csv(file.path(OFFD, "derived/pres2024_counties_official.csv"),
                stringsAsFactors = FALSE,
@@ -62,7 +62,8 @@ o20 <- read.csv(file.path(OFFD, "derived/pres2020_counties_official.csv"),
 ap <- read.csv(file.path(OFFD, "derived/crosscheck_ap_2024.csv"),
                stringsAsFactors = FALSE)
 # the compilation itself, as committed -- the same copy data/build-data.R read
-cp <- read.csv(file.path("..", "data-sources", "data", "derived", "pres2024_counties.csv"),
+cp <- read.csv(file.path("..", "..", "06-putting-data-together", "data-sources",
+                         "data", "derived", "pres2024_counties.csv"),
                stringsAsFactors = FALSE,
                colClasses = c(county_fips = "character"))
 
@@ -323,46 +324,6 @@ o$votes_tot <- nn(o$votes_tot); o$aland_km2 <- pc(o$aland_km2, 1)
 names(o) <- c("fips", "name", "dem", "rep", "total", "winner", "land km2")
 o
 
-## ---- clean-rings
-o <- head(cr[cr$id == "11001", ], 4)
-names(o) <- c("id", "part", "x", "y")
-o
-
-## ---- official-dc
-# Read out of the file, not typed. The compilation's block earlier in this
-# chapter is a verbatim capture; this one is generated, which is the only way
-# to guarantee that the thing being contrasted with it is current.
-o <- dco[1:4, ]
-# Same columns and same order as the compilation's table above, so the empty
-# identifier column can be found by looking at the same place twice.
-rbind(
-  data.frame(state_name  = o$state_name,
-             county_fips = ifelse(nzchar(o$county_fips), o$county_fips,
-                                  "(empty)"),
-             county_name = o$county_name,
-             votes_dem   = nn(o$votes_dem),
-             votes_gop   = nn(o$votes_gop),
-             total_votes = nn(o$total_votes),
-             stringsAsFactors = FALSE),
-  data.frame(state_name = "… four more wards", county_fips = "",
-             county_name = "", votes_dem = "", votes_gop = "",
-             total_votes = "", stringsAsFactors = FALSE))
-
-## ---- official-frame
-data.frame(
-  `the mapped frame against the states' own returns` = c(
-    "Mapped units with a row in the official file",
-    "Mapped units with no official counterpart",
-    "Units where a major-party count differs",
-    "Units where the winner differs",
-    "Units still differing once Kansas City is put back"),
-  count = c(paste0(nn(n_chk), " of ", nn(nrow(d))),
-            paste0(nn(n_miss), "  (", miss_txt, ")"),
-            nn(n_diff),
-            paste0(nn(n_flip), "  (", flip_nm, " County, ", flip_st, ")"),
-            nn(n_diff_kc)),
-  check.names = FALSE)
-
 ## ---- ledger
 data.frame(
   quantity = c("Counties", "Land area", "Population, 2020",
@@ -379,158 +340,6 @@ data.frame(
                           paste0(nn(g("votes_D_counties")), "  (",
                                  pc(g("pct_votes_D_counties"), 1), "%)")),
   check.names = FALSE)
-
-## ---- fig2-d3
-# ---------------------------------------------------------------------------
-# ONE IDENTICAL SQUARE PER COUNTY. The layout was solved once in
-# data/build-data.R; the cell coordinates are integers on the same canvas as
-# Figure 1, so the two maps are in register and the reader can compare shapes.
-# Metadata comes from window.CTY, published by Figure 1 -- the same array, the
-# same order, so this figure cannot drift out of step with that one.
-# ---------------------------------------------------------------------------
-cells <- paste(paste0("[", D$gcol, ",", D$grow, "]"), collapse = ",")
-cat(paste0('
-<div id="fig2" style="margin:1em 0"></div>
-<script>
-(function(){
-const G=[', cells, '],C=window.CTY,PAL=window.PAL,S=', CELL,
-',OX=', min(D$gx) - min(D$gcol) * CELL, ',OY=', min(D$gy) - min(D$grow) * CELL, ';
-const svg=d3.select("#fig2").append("svg")
-  .attr("viewBox",window.MAPX+" "+window.MAPY+" "+window.MAPW+" "+window.MAPH)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const cap=d3.select("#fig2").append("p").attr("style",
-  "font-size:0.86em;color:#444;min-height:2.6em;margin:0.3em 0 0 0");
-const DEF="One square per county, every square the same size, positioned as "+
-  "near as the grid allows to the county\'s real location. "+
-  "<i>Hover a square.</i>";
-cap.html(DEF);
-svg.append("g").selectAll("rect").data(G.map((d,i)=>i)).join("rect")
-  .attr("x",i=>OX+G[i][0]*S).attr("y",i=>OY+G[i][1]*S)
-  .attr("width",S).attr("height",S)
-  .attr("fill",i=>PAL[C[i][2]]).style("cursor","pointer")
-  .on("mouseenter",function(e,i){
-    d3.select(this).attr("stroke","#111").attr("stroke-width",2).raise();
-    cap.html(window.CNAME(i)+" &mdash; "+window.CNUM(C[i][3])+" votes. On this "+
-      "map it gets the same square as every other county; on Figure 1 it got "+
-      window.CNUM(C[i][4])+" km&sup2;.");
-  })
-  .on("mouseleave",function(){
-    d3.select(this).attr("stroke",null);cap.html(DEF);});
-const lg=svg.append("g").attr("transform","translate(', X0 + 24, ',', round(Y0 + H - 96), ')");
-[["R","Trump"],["D","Harris"]].forEach((r,i)=>{
-  lg.append("rect").attr("y",i*30).attr("width",22).attr("height",22)
-    .attr("fill",PAL[r[0]]);
-  lg.append("text").attr("x",30).attr("y",i*30+16).attr("font-size","17px")
-    .text(r[1]);
-});
-lg.append("text").attr("y",76).attr("font-size","15px").attr("fill","#555")
-  .text("one square = one county = ', pc(g("grid_cell_km"), 1), ' km across");
-})();
-</script>'))
-
-## ---- fig2-static
-par(mar = rep(0.1, 4))
-plot(NA, xlim = c(X0, X0 + W), ylim = c(Y0 + H, Y0), asp = 1, axes = FALSE, ann = FALSE)
-rect(D$gx, D$gy + CELL, D$gx + CELL, D$gy, col = DCOL, border = NA)
-legend(X0 + 24, Y0 + H - 70, c("Trump", "Harris"), fill = c(RED, BLU), border = NA,
-       bty = "n", cex = 0.72,
-       title = paste0("one square = one county"), title.adj = 0)
-
-## ---- fig3-d3
-# ---------------------------------------------------------------------------
-# The two cumulative curves, plus a strip under the axis recording who carried
-# each county in the same order, so that the party pattern and the population
-# pattern can be read off one picture. The polyline was thinned once in the
-# setup chunk and both renderers draw the identical vertices; the strip is the
-# full 3,109-character winner sequence, which costs almost nothing.
-# ---------------------------------------------------------------------------
-cat(paste0('
-<div id="fig3" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const X=[', paste(sprintf("%.3f", LZ$cum_counties), collapse = ","), '],
-      L=[', paste(sprintf("%.3f", LZ$cum_land),     collapse = ","), '],
-      V=[', paste(sprintf("%.3f", LZ$cum_votes),    collapse = ","), '],
-      RG="', RUG, '",PAL=window.PAL;
-const W=760,H=430,M={t:44,r:118,b:46,l:52};
-const svg=d3.select("#fig3").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,120]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickValues([0,25,50,75,100]).tickFormat(d=>d+"%"));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).tickValues([0,25,50,75,100]).tickFormat(d=>d+"%"));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-8)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("counties, ordered from the emptiest land to the fullest");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",14).attr("text-anchor","middle").attr("font-size","12px")
-  .attr("fill","#444").text("cumulative share of the national total");
-const ln=d3.line().x((d,i)=>x(X[i])).y(d=>y(d));
-svg.append("path").datum(L).attr("d",ln).attr("fill","none")
-  .attr("stroke","#8a6d3b").attr("stroke-width",2.6);
-svg.append("path").datum(V).attr("d",ln).attr("fill","none")
-  .attr("stroke","#111111").attr("stroke-width",2.6);
-svg.append("text").attr("x",W-M.r+7).attr("y",y(100)+4).attr("font-size","12.5px")
-  .attr("font-weight","600").attr("fill","#8a6d3b").text("land");
-svg.append("text").attr("x",W-M.r+7).attr("y",y(88)+4).attr("font-size","12.5px")
-  .attr("font-weight","600").attr("fill","#111111").text("votes");
-[[50,', sprintf("%.1f", g("land_at_half_counties")), ',"#8a6d3b"],
- [50,', sprintf("%.1f", g("votes_at_half_counties")), ',"#111111"]].forEach(p=>{
-  svg.append("line").attr("x1",x(p[0])).attr("x2",x(p[0])).attr("y1",y(0))
-    .attr("y2",y(p[1])).attr("stroke","#bbb").attr("stroke-dasharray","3,3");
-  svg.append("circle").attr("cx",x(p[0])).attr("cy",y(p[1])).attr("r",4)
-    .attr("fill",p[2]);
-  svg.append("text").attr("x",x(p[0])+7).attr("y",y(p[1])+4)
-    .attr("font-size","12px").attr("fill",p[2]).text(p[1]+"%");
-});
-svg.append("line").attr("x1",M.l).attr("x2",x(', sprintf("%.2f", g("counties_for_half_votes")), '))
-  .attr("y1",y(50)).attr("y2",y(50)).attr("stroke","#111")
-  .attr("stroke-dasharray","4,3").attr("opacity",0.55);
-svg.append("text").attr("x",x(', sprintf("%.2f", g("counties_for_half_votes")), ')-6)
-  .attr("y",y(50)-7).attr("text-anchor","end").attr("font-size","11.5px")
-  .text("half the votes are in by the ', pc(g("counties_for_half_votes"), 1), 'th percentile of counties");
-const sw=(x(100)-x(0))/RG.length;
-const gg=svg.append("g");
-for(let i=0;i<RG.length;i++){
-  gg.append("rect").attr("x",x(0)+i*sw).attr("y",y(110))
-    .attr("width",Math.max(sw,0.35)).attr("height",y(104)-y(110))
-    .attr("fill",PAL[RG[i]]);
-}
-svg.append("text").attr("x",x(0)).attr("y",y(116)).attr("font-size","11px")
-  .attr("fill","#555").text("who carried each county, in the same order");
-})();
-</script>'))
-
-## ---- fig3-static
-par(mar = c(3.6, 4.2, 2.4, 5.4), mgp = c(2.4, 0.7, 0))
-plot(NA, xlim = c(0, 100), ylim = c(0, 120), axes = FALSE,
-     xlab = "counties, ordered from the emptiest land to the fullest",
-     ylab = "cumulative share of the national total")
-axis(1, at = c(0, 25, 50, 75, 100), labels = paste0(c(0, 25, 50, 75, 100), "%"),
-     cex.axis = 0.8, tcl = -0.25)
-axis(2, at = c(0, 25, 50, 75, 100), labels = paste0(c(0, 25, 50, 75, 100), "%"),
-     las = 1, cex.axis = 0.8, tcl = -0.25)
-lines(LZ$cum_counties, LZ$cum_land,  col = "#8a6d3b", lwd = 2.4)
-lines(LZ$cum_counties, LZ$cum_votes, col = "#111111", lwd = 2.4)
-text(101, 100, "land",  adj = 0, cex = 0.78, font = 2, col = "#8a6d3b", xpd = NA)
-text(101, 88,  "votes", adj = 0, cex = 0.78, font = 2, col = "#111111", xpd = NA)
-for (p in list(c(50, g("land_at_half_counties"), 1), c(50, g("votes_at_half_counties"), 2))) {
-  cl <- c("#8a6d3b", "#111111")[p[3]]
-  segments(p[1], 0, p[1], p[2], col = "#bbbbbb", lty = 3)
-  points(p[1], p[2], pch = 19, col = cl, cex = 0.8)
-  text(p[1] + 1.5, p[2], paste0(pc(p[2], 1), "%"), adj = 0, cex = 0.72, col = cl)
-}
-segments(0, 50, g("counties_for_half_votes"), 50, col = "#111111", lty = 2)
-text(g("counties_for_half_votes") - 1, 54,
-     paste0("half the votes are in by the ", pc(g("counties_for_half_votes"), 1),
-            "th percentile"), adj = 1, cex = 0.66)
-sq <- seq(0, 100, length.out = nrow(lz))
-rect(sq, 104, sq + 100 / nrow(lz), 110,
-     col = ifelse(lz$winner == "R", RED, BLU), border = NA)
-text(0, 116, "who carried each county, in the same order", adj = c(0, 0.5),
-     cex = 0.66, col = "#555555")
 
 ## ---- conc
 data.frame(
@@ -636,22 +445,6 @@ for (i in seq_along(LEGR)) {
 }
 text(RX, BY + 18, "votes cast, area to scale", cex = 0.6, adj = 0,
      col = "#444444")
-
-## ---- encodings
-data.frame(
-  figure = c("1. Choropleth", "2. Grid cartogram", "3. Cumulative curves",
-             "4. Dorling cartogram"),
-  `area means` = c("land", "one county", "nothing; position means share",
-                               "votes cast"),
-  `good for` = c("Which candidate carried the ground you are standing on",
-                            "How many counties, and roughly where",
-                            "How concentrated the electorate is",
-                            "How many votes, and roughly where"),
-  `destroys` = c("Any sense of how many people live there",
-                         "The size of a county, and of its electorate",
-                         "Geography entirely",
-                         "Shape, adjacency, and finding your own county"),
-  check.names = FALSE)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

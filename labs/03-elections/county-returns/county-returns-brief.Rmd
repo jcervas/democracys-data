@@ -16,31 +16,33 @@ dd_read_chunks("county-returns-code.R")
 ```{r setup, include=FALSE}
 ```
 
-The [census chapters](../../01-census-bureau/census-access/census-access-brief.html) had a problem of choosing between doors. This one has the opposite problem. For county-level presidential returns there is no door, because **no federal agency counts votes.** The Federal Election Commission regulates money. The Election Assistance Commission surveys administration. Neither is given the returns, and neither publishes them.
+In the week after a presidential election, any news site can tell you the vote in every county in America. It reads like an official national record. It is not, because **no federal agency counts votes.** The Federal Election Commission regulates campaign money. The Election Assistance Commission surveys election administration. Neither is given the returns, and neither publishes them.
 
-What exists instead is fifty-one separate publications by fifty-one separate officers, each certifying their own state, in whatever form that office happens to use. The [returns-source chapter](../returns-source/returns-source-brief.html) makes that argument. This chapter is what happens when you take it literally and go and get all fifty-one.
+What exists instead is fifty-one separate publications by fifty-one separate officers, each certifying their own state under their own law. Every national county table you have ever seen is somebody's private assembly of those publications. So this brief asks a citizen's question rather than a technician's: **where do national election results actually come from — and when two assemblies of the same election sit side by side, do they agree?**
 
-## What fifty-one publishers actually costs
+## The test
 
-**`r n(FV("prov_rows"))` documents, `r FV("prov_states")` jurisdictions, two elections, `r FV("prov_formats")` distinct file formats.**
+The question is answered by doing the assembly. The certified county-level returns of the 2020 and 2024 presidential elections were collected from all fifty-one chief election officers: every state's, plus the District of Columbia's. Beside that assembly sits the file much of the public conversation actually rests on, Tony McGovern's volunteer compilation of county presidential results (<https://github.com/tonmcg/US_County_Level_Election_Results_08-24>), which several other chapters of this book read too. Comparing the two, county by county, measures what the private assembly step costs.
+
+Certified returns are the right instrument because they are the official record: an officer attested each one under law, which no compilation can say of itself. What a certified return is, who signs it, and what it can never show is the subject of the [returns-source chapter](../returns-source/returns-source-brief.html), this cluster's data biography.
+
+## The data
+
+Collecting fifty-one publishers means collecting **`r n(FV("prov_rows"))` documents from `r FV("prov_states")` jurisdictions, across two elections, in `r FV("prov_formats")` distinct file formats.**
 
 ```{r formats}
 ```
 
 `r n(FV("prov_pdf"))` of the `r n(FV("prov_rows"))` are PDFs, and one of those has **no text layer at all** — it is a photograph of a document, and the only way through it is optical character recognition. Three of the `r n(FV("prov_rows"))` sit on pages that do not say the returns are certified, so they are recorded as `unknown` rather than promoted.
 
-The result covers **`r n(FV("off_rows"))` reporting units and `r n(FV("off_total"))` votes for president**. Every row carries the address it came from, the date it was fetched and the format it arrived in. With fifty-one sources, a citation at the level of the file would be a claim about nothing.
+The result is `r n(FV("off_rows"))` reporting units carrying `r n(FV("off_total"))` votes for president, in `pres2024_counties_official.csv` and its 2020 companion. Each row holds `state_name`, `county_fips`, `county_name`, `votes_dem`, `votes_gop` and `total_votes`. Beside the returns sits a record file, `provenance.csv`, one row per document. It holds the address the document came from, the date it was fetched, the format it arrived in, and whether the page claimed certification, with a note on every judgement made while parsing. With fifty-one sources, a citation at the level of the file would be a claim about nothing.
 
-## Fifty of those rows are not counties
-
-The target was "county-level returns," and fifty rows refuse the category.
+One cleaning decision matters more than the rest. The target was "county-level returns," and fifty rows refuse the category:
 
 ```{r notcty}
 ```
 
-Rhode Island publishes by **town**; its five counties have no government and the state does not report to them. The District of Columbia publishes by **ward**. Kansas City reports separately from Jackson County, which contains most of it. A Maine unit is not a county either.
-
-None of these is a defect in the source. They are what those places publish, and the assembly keeps them as they are — **with no county code**, because inventing one would be the error rather than the fix.
+Rhode Island publishes by **town**; its five counties have no government and the state does not report to them. The District of Columbia publishes by **ward**. Kansas City reports separately from Jackson County, which contains most of it. None of these is a defect in the source. They are what those places publish, and the assembly keeps them as they are — **with no county code**, because inventing one would be the error rather than the fix.
 
 > **Before you read on, commit to two numbers.** You now have the certified
 > returns from every state, and the same GitHub compilation several other
@@ -52,25 +54,26 @@ None of these is a defect in the source. They are what those places publish, and
 > about the Democratic vote? And about the total number of votes cast?**
 > Write both down.
 
-## They agree about who won
+## What it says about democracy
+
+Start with the reassuring half. On the major-party vote the two files are in near-perfect agreement:
 
 ```{r agree}
 ```
 
-On the major-party vote the two files are in near-perfect agreement: **`r FV("diff_dem")` counties** of `r n(FV("matched"))` differ on the Democratic vote and `r FV("diff_gop")` on the Republican. Anybody using either file to say who carried a county will say the same thing almost everywhere.
+**`r FV("diff_dem")` counties** of `r n(FV("matched"))` differ on the Democratic vote and `r FV("diff_gop")` on the Republican. Anybody using either file to say who carried a county will say the same thing almost everywhere.
 
-## The turn: they do not agree about how many people voted
+Then the turn. **`r n(FV("diff_total"))` counties report a different number of votes cast** — `r pc(FV("diff_total_pct"), 1)`% of them, half the country. The two files agree about the numerator and disagree about the denominator: the top number and the bottom number of every rate built from them. That is the more dangerous kind of disagreement, because turnout, margin and share are all computed against the bottom number, and nothing in either file announces the difference.
 
-**`r n(FV("diff_total"))` counties report a different number of votes cast.** That is `r pc(FV("diff_total_pct"), 1)`% of them, half the country.
-
-The two files agree about the numerator and disagree about the denominator — the top number and the bottom number of every rate built from them. That is the more dangerous kind of disagreement, because turnout, margin, share and every rate in this book are computed against it, and nothing in either file announces the difference.
-
-```{r magfig, fig.cap="How large the disagreement is, where there is one. Most are a handful of votes; a few are enormous."}
+```{r magfig-static, eval=!knitr::is_html_output(), fig.height=2.6}
 ```
 
-The median disagreement is **`r FV("dt_median")` votes** — small enough to look like rounding, and it is not rounding. It exceeds a hundred votes in **`r n(FV("dt_over_100"))` counties** and a thousand in **`r n(FV("dt_over_1000"))`**. Nationally the two totals are **`r n(FV("nat_gap"))` votes** apart.
+```{r magfig-d3, results='asis', eval=knitr::is_html_output()}
+```
 
-## Three named reasons, and they do not add up to all of it
+**Figure 1. How large the disagreement over votes cast is, in the `r n(FV("diff_total"))` counties where there is one.** One bar per size class fits the question, because the question is how the disagreements are distributed — and the answer is that most are a handful of votes and a few are enormous. The median is `r FV("dt_median")` votes; the gap exceeds a hundred votes in `r n(FV("dt_over_100"))` counties and a thousand in `r n(FV("dt_over_1000"))`. Nationally the two totals are `r n(FV("nat_gap"))` votes apart.
+
+Three reasons can be named, and they do not add up to all of it.
 
 **Dropped third parties.** In `r FV("third_zero")` counties the compilation's total is exactly the Democratic plus the Republican vote, meaning no other candidate is in the denominator. In **`r FV("third_zero_real")`** of those the certified return does record third-party votes. They are not scattered:
 
@@ -88,54 +91,65 @@ New York and Alaska between them are nearly all of it — the same two states, a
 
 **Write-ins, over-votes and under-votes.** What remains is the long tail of small differences, and it is a question of definition rather than of data quality. Is a spoiled ballot, an over-vote or a write-in for a non-candidate a vote cast for president? States answer it differently and a compiler must answer it once.
 
-## The unit itself is not stable
-
 Worse than a differing number is a differing geography, and Connecticut has one:
 
 ```{r shapes}
 ```
 
-**Connecticut appears as `r FV("ct_certified")` counties in one file and `r FV("ct_compilation")` planning regions in the other.** The state replaced county-equivalents with councils of government for statistical purposes. These are not two codings of one geography. They are different shapes on the ground. A 2020-to-2024 comparison in Connecticut is comparing different objects unless somebody decided otherwise on purpose, and neither file records such a decision.
+**Connecticut appears as `r FV("ct_certified")` counties in one file and `r FV("ct_compilation")` planning regions in the other.** The state replaced county-equivalents with councils of government for statistical purposes. These are not two codings of one geography; they are different shapes on the ground. A 2020-to-2024 comparison in Connecticut is comparing different objects unless somebody decided otherwise on purpose, and neither file records such a decision.
 
-Rhode Island shows the same seam more quietly: **`r FV("ri_certified")` towns in the certified file, `r FV("ri_compilation")` counties in the compilation.** The compilation is not wrong to aggregate. It is only silent about having done it.
+Rhode Island shows the same seam more quietly: `r FV("ri_certified")` towns in the certified file, `r FV("ri_compilation")` counties in the compilation. The compilation is not wrong to aggregate. It is only silent about having done it.
 
 ```{r gaps}
 ```
 
-## What this is for
+The compilation is careful work by somebody under no obligation to anyone: no correction path, no custodian, no undertaking that it will exist next year. Three chapters of this book read it, and this brief is not an argument against doing so. It is an argument for **saying which file you opened**. "The 2024 vote in Jackson County" is not a fact. "The certified Missouri return for Jackson County, excluding Kansas City" is one, and it differs from the other true statement by `r n(FN("kc_com") - FN("kc_off"))` votes.
 
-The compilation is careful work by somebody under no obligation to anyone: no correction path, no custodian, no undertaking that it will exist next year. Three chapters of this book read it. That is a reasonable thing to do and this chapter is not an argument against it.
-
-It is an argument for **saying which file you opened**. "The 2024 vote in Jackson County" is not a fact. "The certified Missouri return for Jackson County, excluding Kansas City" is one, and it differs from the other true statement by `r n(FN("kc_com") - FN("kc_off"))` votes.
-
-## What arrives
-
-Every document is kept as it came: `r n(FV("prov_rows"))` files across `r FV("prov_formats")` formats, including the PDFs and the one scan. A record file carries a row per jurisdiction-year with the address, the retrieval date, the format, whether the page claimed certification, and a note on every judgement made while parsing it. That file is the real output of this chapter. The returns themselves are downstream of it.
-
-## What this chapter cannot tell you
+## What this brief cannot tell you
 
 **It does not say which file is right**, and mostly the question is malformed. Where the two disagree about Kansas City they are answering different questions; where they disagree about a write-in they are applying different definitions. Only the third-party omissions are a defect rather than a choice, and those are `r pc(FV("third_explains"), 1)`% of the disagreement.
 
-**It covers 2024, and 2020 alongside it, and no further back.** How much further back this could go is a separate question with an expensive answer. The good long compilations are licensed rather than published. The public-domain route is the one nobody has assembled, because assembling it is the expensive part. That is the subject the redesign notes set aside, and it is not settled here.
+**It covers 2024, and 2020 alongside it, and no further back.** How much further back this could go is a separate question with an expensive answer. The good long compilations are licensed rather than published, and the public-domain route is the one nobody has assembled, because assembling it is the expensive part.
 
-**It does not audit the states against themselves.** A certified return is the state's own claim, and this chapter takes it at its word. What a canvass can and cannot establish, and the fact that the compilations disagree with the certified national total in both directions — belongs to [returns-source](../returns-source/returns-source-brief.html).
+**It does not audit the states against themselves.** A certified return is the state's own claim, and this brief takes it at its word. What a canvass can and cannot establish belongs to [returns-source](../returns-source/returns-source-brief.html).
 
-**And the parsing is ours.** `r n(FV("prov_pdf"))` PDFs were read by script; a figure recovered from a PDF column is a claim about layout as much as about votes. The state-level crosscheck against an independent wire-service tally is in `derived/` for exactly that reason, and it is the check that would catch a parser that quietly went wrong.
+**And the parsing is ours.** `r n(FV("prov_pdf"))` PDFs were read by script, and a figure recovered from a PDF column is a claim about layout as much as about votes. The state-level crosscheck against an independent wire-service tally is in `derived/` for exactly that reason: it is the check that would catch a parser that quietly went wrong.
+
+## What you should have learned
+
+- No federal agency publishes county-level presidential returns. The national record is `r FV("prov_states")` separate publications in `r FV("prov_formats")` formats, and every national file is a private assembly of them.
+- Two assemblies of the same election agree almost everywhere about who won: `r FV("diff_dem")` counties of `r n(FV("matched"))` differ on the Democratic vote.
+- The same two files disagree about the total votes cast in `r n(FV("diff_total"))` counties — the denominator of every rate — and the gap exceeds a thousand votes in `r n(FV("dt_over_1000"))` of them.
+- The largest single gap, `r n(FN("kc_com") - FN("kc_off"))` votes in Jackson County, Missouri, is a disagreement about the unit rather than the count: one file keeps Kansas City separate and the other folds it in.
+- Even the geography can differ: Connecticut is `r FV("ct_certified")` counties in the certified file and `r FV("ct_compilation")` planning regions in the compilation, and neither file says so.
+
+## Extensions
+
+- `largest_gaps.csv` holds the counties where the certified total and the compilation's total differ most, with the gap in `dt`. Take the biggest gap after Jackson County and work out which of the two sources you would trust, and why.
+- `third_party_zero.csv` counts, in `counties`, how many of each state's counties report no third-party votes at all. Some states let one candidate appear on several party lines. Is that zero a fact about voters, or a choice about formatting?
+- `not_counties.csv` lists, with its `unit` column, the jurisdictions that do not report by county at all. What happens to a national county map if you include them, and what happens if you drop them?
+- `formats.csv` counts in `documents` how many publications arrive in each format. Estimate how many hours it would take you to collect all fifty states by hand.
+- **Stretch.** Pick one state and find its certified 2016 canvass on the same office's site. How much of the work above would extending the file back one election actually be?
+- **Stretch.** Pick one county from `largest_gaps.csv` and find the county's own election office page beneath the state's. Does a third publication of the same number agree with either of the first two?
 
 ## Sources
+
+**Data**
 
 - The certified returns of all `r FV("prov_states")` jurisdictions for the 2020
   and 2024 presidential elections, published by each state's chief election
   officer. Every address, retrieval date and format is recorded per
-  jurisdiction-year in this chapter's `provenance.csv`; they are too many to
-  list here and that is the chapter's point.
+  jurisdiction-year in this brief's `provenance.csv`; they are too many to
+  list here and that is the brief's point.
 - McGovern, Tony. *US County Level Presidential Results 2008–2024.*
   <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
 - U.S. Census Bureau. *2024 Gazetteer Files*, counties, for the FIPS
   resolution and county-name normalisation used when matching state
   publications to codes.
+  <https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html>
 - Connecticut Office of Policy and Management, on the replacement of counties
   by councils of government as county-equivalent geography.
+  <https://portal.ct.gov/opm>
 
 **The data itself**
 
@@ -143,23 +157,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`formats.csv`](data/derived/formats.csv), [`largest_gaps.csv`](data/derived/largest_gaps.csv), [`not_counties.csv`](data/derived/not_counties.csv), [`third_party_zero.csv`](data/derived/third_party_zero.csv), [`unit_shapes.csv`](data/derived/unit_shapes.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `largest_gaps.csv` holds the counties where the state's certified number and
-  the national compilation disagree. Take the biggest gap and work out which
-  of the two sources is wrong.
-- `third_party_zero.csv` counts counties reporting no third-party votes at
-  all. Some states let one candidate appear on several party lines. Is that
-  zero a fact about voters, or a choice about formatting?
-- `not_counties.csv` lists the jurisdictions that do not report by county at
-  all. What happens to a national county map if you include them, and what
-  happens if you drop them?
-- `formats.csv` counts how many of these publications arrive as PDFs. Estimate
-  how many hours it would take you to collect all fifty states by hand.
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -1,7 +1,7 @@
 ---
-title: "What the Panhandle Did"
+title: "Testing a Viral Claim Against Florida's Returns"
 type: brief
-subtitle: "A claim about race and a Republican primary, tested four ways against the returns"
+subtitle: "What the Panhandle did: a claim about race and a Republican primary, tested four ways"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -23,42 +23,52 @@ Then look at where his votes came from. In `r Ft("donalds_max_county")` County h
 ```{r spread-map}
 ```
 
-A claim follows that map around Florida politics, and it is the reason this chapter exists. **Panhandle voters would not vote for the Black candidate.**
+**Figure 1. Donalds against his own statewide share, county by county.** A map fits this question because the claim is about a place: each county is shaded by how far Donalds ran from his statewide `r pc(F("donalds_statewide"))`%, on a diverging scale, because the sign is the subject. The deficit is not scattered. It is the north.
 
-This chapter takes that claim seriously enough to test it, which means being willing to find it true. Four tests follow. The first two make it look stronger than you might expect. The third and fourth do not. And the last section is about why the returns cannot finish the job, which is a fact about election data rather than a fact about Florida.
+A claim follows that map around Florida politics, and it is the reason this brief exists. **Panhandle voters would not vote for the Black candidate.** This brief takes the claim seriously enough to test it, which means being willing to find it true. Four tests follow. The first two make it look stronger than you might expect; the third and fourth do not.
 
-## Test one: the same voters, four times
+## The test
 
-The claim has an obvious rival. Maybe north Florida just votes against whoever is winning.
+Every test runs on official returns published by the Florida Department of State's Division of Elections: county-level results for every statewide contest in the 2026 primary. The 2018 and 2014 primaries sit beside them for comparison. The 2026 file is the one the state published after the counties finished canvassing, not the wire-service snapshot from election night. Alongside the returns sit the Division's book-closing reports for the same primary: registered voters by county, party and race. That report is what lets the electorate be counted rather than guessed at.
 
-That is checkable, because four statewide Republican primaries ran on the same ballot that day. Governor, US Senator, Chief Financial Officer, Commissioner of Agriculture. **Same voters, same ballot, same afternoon.** If a region is simply hostile to frontrunners, all four winners take the hit.
+Returns are the right instrument for the first three tests because they are complete and official: every accepted ballot is in them. And the same voters appear in four contests on one afternoon's ballot, which is the natural experiment the first test runs on. The [returns-source chapter](../returns-source/returns-source-brief.html) is this data's biography: what a return is, who certifies it, and the one thing it can never contain, which is any record of an individual voter. That missing record is exactly where the fourth test will end.
 
-Each contest had a different number of candidates, so the raw shares mean different things. What is comparable is each winner's distance from their own statewide number.
+## The data
 
-```{r same-ballot}
-```
+The build reduces the state's contest-level files to a handful of county tables. `county_results.csv` holds every candidate in every county: `county`, `candidate`, `votes`, `county_total` and `share`. `deviations.csv` holds each county's `share` for each of the four statewide winners, the winner's `statewide` share, and the `deviation` between them. That deviation is what makes a five-way race and a two-way race readable on one scale. `benchmark.csv` pairs each county's `donalds_dev` with `desantis_dev` from 2018 and the `residual`, meaning what is left over after you subtract what 2018 predicts. `electorate.csv` carries each county's registered Republicans by race from the book-closing report, and `regions.csv` and `williams.csv` aggregate the same numbers by region and candidate.
 
-They do not all take the hit. In the Panhandle, Moody ran `r sg(rg$Moody[rg$region == "Panhandle"])` and Simpson `r sg(rg$Simpson[rg$region == "Panhandle"])` against their own statewide shares, while Donalds ran `r sg(F("panhandle_donalds_dev"))`. In the Big Bend the gap is wider still: Donalds `r sg(F("bigbend_donalds_dev"))`.
-
-So it is not turnout, and it is not a regional habit of rejecting frontrunners. **Something about the governor's race specifically.** That is a real finding and it survives the rest of this chapter.
+One constructed column is a decision worth knowing about. The regions are this brief's own: sixteen Panhandle counties, thirteen in the Big Bend and north central belt, and the rest of Florida, assigned by geography before any result was read.
 
 > **Before you read on, commit to a number.** The last contested Republican
 > primary for Florida governor was 2018: Ron DeSantis against Adam Putnam.
 > DeSantis is white, and was endorsed by Trump, as Donalds was. Write down how
 > far below his statewide share you think DeSantis ran in these same Panhandle
 > counties. Then write down whether you expect his county-by-county spread to
-> be **wider or narrower** than Donalds'. Both numbers, before you turn the page.
+> be **wider or narrower** than Donalds'. Both numbers, before you read on.
 
-## Test two: the same map, eight years earlier
+## What it says about democracy
+
+### Test one: the same voters, four times
+
+The claim has an obvious rival. Maybe north Florida just votes against whoever is winning.
+
+That is checkable, because four statewide Republican primaries ran on the same ballot that day. Governor, US Senator, Chief Financial Officer, Commissioner of Agriculture. **Same voters, same ballot, same afternoon.** If a region is simply hostile to frontrunners, all four winners take the hit.
+
+```{r same-ballot}
+```
+
+They do not all take the hit. In the Panhandle, Moody ran `r sg(rg$Moody[rg$region == "Panhandle"])` and Simpson `r sg(rg$Simpson[rg$region == "Panhandle"])` against their own statewide shares, while Donalds ran `r sg(F("panhandle_donalds_dev"))`. In the Big Bend the gap is wider still: Donalds `r sg(F("bigbend_donalds_dev"))`.
+
+So it is not turnout, and it is not a regional habit of rejecting frontrunners. **Something about the governor's race specifically.** That is a real finding and it survives the rest of this brief.
+
+### Test two: the same map, eight years earlier
 
 DeSantis' spread across the 67 counties was **`r pc(F("desantis_2018_spread"))` points**. Donalds' was `r pc(F("donalds_spread"))`. The white candidate's map was the more uneven of the two.
 
 ```{r benchmark-scatter}
 ```
 
-The two maps correlate at **`r pc(F("benchmark_r"), 2)`**. Counties that ran below DeSantis in 2018 ran below Donalds in 2026, in nearly the same order, at nearly the same size. In the Panhandle, DeSantis ran `r sg(F("panhandle_desantis_dev"))` against his statewide share and Donalds ran `r sg(F("panhandle_donalds_dev"))` — a difference of `r pc(abs(F("panhandle_new")))` points.
-
-Most of what the first map shows you was already there before Donalds ran.
+The two maps correlate at **`r pc(F("benchmark_r"), 2)`**. Counties that ran below DeSantis in 2018 ran below Donalds in 2026, in nearly the same order, at nearly the same size. In the Panhandle, DeSantis ran `r sg(F("panhandle_desantis_dev"))` against his statewide share and Donalds ran `r sg(F("panhandle_donalds_dev"))` — a difference of `r pc(abs(F("panhandle_new")))` points. Most of what the first map shows you was already there before Donalds ran.
 
 Not all of it, and the exceptions are where the claim has its best evidence. Okaloosa and Santa Rosa are large, white, heavily Republican Panhandle counties holding about fifty thousand primary votes between them, and both sat *above* DeSantis' statewide share in 2018. In 2026 both sat well below Donalds'.
 
@@ -67,16 +77,14 @@ Not all of it, and the exceptions are where the claim has its best evidence. Oka
 
 Read the last column carefully. It is what 2018 does not account for. Some of it is large.
 
-## Test three: where the missing votes went
+### Test three: where the missing votes went
 
 A deficit is also a surplus somewhere. Donalds' missing points in north Florida went to somebody, and who received them narrows the question a great deal.
 
 ```{r region-shares}
 ```
 
-In the Panhandle they went mostly to Collins and Renner, and Renner is a former House speaker from Palm Coast — a north Florida figure. In the Big Bend something else happened. **Bobby Williams took `r pc(F("williams_statewide"))`% of the state and `r pc(F("williams_bigbend"))`% of the Big Bend.**
-
-A candidate with four per cent of the state absorbed roughly half the region's shortfall. So where is his vote?
+In the Panhandle they went mostly to Collins and Renner, and Renner is a former House speaker from Palm Coast — a north Florida figure. In the Big Bend something else happened. **Bobby Williams took `r pc(F("williams_statewide"))`% of the state and `r pc(F("williams_bigbend"))`% of the Big Bend.** A candidate with four per cent of the state absorbed roughly half the region's shortfall. So where is his vote?
 
 ```{r williams-map}
 ```
@@ -85,54 +93,36 @@ Not in one region. His best county is `r bw$county[1]` at `r pc(F("williams_best
 
 That footprint is agricultural. It is not northern, and it is not obviously racial. Whatever Williams was to those voters, he was the same thing to them in Okeechobee as in Lafayette.
 
-## Test four: the county's people are not the primary's voters
+### Test four: the county's people are not the primary's voters
 
 The natural next move is to put race in the picture directly: take each county's share of Black residents and see whether Donalds ran worse where it is higher.
 
-Do not make that move. It is the ecological fallacy: reasoning from a group's share of an area to how members of that group behaved. Here it fails in an unusually clean way.
-
-Florida registers voters by party and reports them by race, so the electorate can be counted rather than guessed at. **In the Panhandle, `r n(F("black_reg_panhandle"))` of `r n(F("reg_republicans_panhandle"))` registered Republicans are Black.** That is `r pc(F("black_pct_panhandle"))`%.
-
-A county's population is not its primary electorate. Gadsden County is more than half Black and cast about two thousand Republican ballots.
+Do not make that move. It is the ecological fallacy: reasoning from a group's share of an area to how members of that group behaved. Here it fails in an unusually clean way, because Florida registers voters by party and reports them by race, so the electorate can be counted. **In the Panhandle, `r n(F("black_reg_panhandle"))` of `r n(F("reg_republicans_panhandle"))` registered Republicans are Black.** That is `r pc(F("black_pct_panhandle"))`%. A county's population is not its primary electorate: Gadsden County is more than half Black and cast about two thousand Republican ballots.
 
 ```{r correlates}
 ```
 
-The county-population measure gives `r pc(cor4$vs_residual[cor4$covariate == "Black % of county population"], 2)` against what 2018 leaves unexplained — nothing at all. Switching to the registration measure moves it to `r pc(cor4$vs_residual[cor4$covariate == "Black % of registered Republicans"], 2)`, which is weak and positive, meaning Donalds did slightly *better* where more Black Republicans live.
+The county-population measure gives `r pc(cor4$vs_residual[cor4$covariate == "Black % of county population"], 2)` against what 2018 leaves unexplained — nothing at all. Switching to the registration measure moves it to `r pc(cor4$vs_residual[cor4$covariate == "Black % of registered Republicans"], 2)`, which is weak and positive, meaning Donalds did slightly *better* where more Black Republicans live. Neither number is worth much, and the last column says why.
 
-Neither number is worth much, and the last column says why.
+### What the standard method would add, and where it stops
 
-## What the standard method would and would not add
+There is a standard method for questions like this. Racially polarized voting analysis, used in Voting Rights Act litigation, estimates how each racial group voted from precinct returns and precinct composition. The [levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html) grades that family of methods against a counted truth and watches it return an impossible number without complaint.
 
-There is a standard method for questions like this. Racially polarized voting analysis is used in Voting Rights Act litigation to estimate how each racial group voted, from precinct returns and precinct composition. This course teaches it in the `rpv` chapter and grades it in `levels-of-aggregation`, where it returns 194% for a quantity that cannot exceed 100.
-
-The pieces are more available than they look.
-
-**The returns exist.** `r n(F("precinct_counties_north"))` of the `r n(F("north_counties"))` north Florida counties published precinct results, and they are in this chapter's `raw/`.
-
-**The composition is obtainable too.** Florida's voter file is public by law, free, and carries race, party and precinct on every record, so precinct-level Republican composition can be counted rather than modelled. No boundaries and no address matching are needed for it. What stands between you and the file is a written request to the Division of Elections rather than a download link, which the voter-file-access chapter of this part measures across all fifty states.
-
-So the honest position is not that the method is impossible here. It is that **it would tell you something you already know, and still not tell you the thing in dispute.**
+The pieces are more available than they look. `r n(F("precinct_counties_north"))` of the `r n(F("north_counties"))` north Florida counties published precinct results, and they are in this brief's `raw/`. Florida's voter file is public by law and carries race, party and precinct on every record, so precinct composition can be counted rather than modelled. What stands between you and the file is a written request rather than a download link — a gap the [voter-file-access brief](../voter-file-access/voter-file-access-brief.html) measures across all fifty states. So the honest position is not that the method is impossible here. It is that **it would tell you something you already know, and still not tell you the thing in dispute.**
 
 ```{r bounds}
 ```
 
-Here is why. Where an electorate is nearly all white, the overall result very nearly *is* the white result, and no model is required to see it. `r pc(F("panhandle_white_pct"))`% of the Panhandle's registered Republicans are white. Donalds took `r pc(bnd$donalds_share[bnd$region == "Panhandle"])`% there. Even if every non-white Republican in the region had voted for him, and even if none had, white Republicans gave him between **`r pc(F("panhandle_white_low"))`% and `r pc(F("panhandle_white_high"))`%**.
+Here is why. Where an electorate is nearly all white, the overall result very nearly *is* the white result, and no model is required to see it. `r pc(F("panhandle_white_pct"))`% of the Panhandle's registered Republicans are white, and Donalds took `r pc(bnd$donalds_share[bnd$region == "Panhandle"])`% there. Even if every non-white Republican in the region had voted for him, and even if none had, white Republicans gave him between **`r pc(F("panhandle_white_low"))`% and `r pc(F("panhandle_white_high"))`%**. That is a `r pc(F("panhandle_bound_width"))`-point window, it needs no assumptions at all, and it is the method of bounds Duncan and Davis published in 1953.
 
-That is a `r pc(F("panhandle_bound_width"))`-point window, and it needs no assumptions at all. It is the method of bounds that Duncan and Davis published in 1953, and it is the same arithmetic `levels-of-aggregation` uses.
-
-Notice which way the homogeneity cuts. Statewide the same calculation gives a `r pc(F("statewide_bound_width"))`-point window, which is useless, because Florida's Republican electorate is `r pc(100 - bnd$white_pct_of_registered[bnd$region == "STATEWIDE"])`% non-white and there is real room for the two groups to differ. **The uniformity that makes an estimate for Black Republicans hopeless is exactly what makes the white estimate nearly exact.**
-
-In Holmes County, `r n(F("holmes_black_reg"))` of its registered Republicans are Black and `r pc(F("holmes_white_pct"))`% are white. Whatever happened in Holmes, white Republicans did it.
+Notice which way the homogeneity cuts. Statewide, the same calculation gives a `r pc(F("statewide_bound_width"))`-point window, which is useless, because Florida's Republican electorate is `r pc(100 - bnd$white_pct_of_registered[bnd$region == "STATEWIDE"])`% non-white and there is real room for the groups to differ. **The uniformity that makes an estimate for Black Republicans hopeless is exactly what makes the white estimate nearly exact.** In Holmes County, `r n(F("holmes_black_reg"))` of the registered Republicans are Black and `r pc(F("holmes_white_pct"))`% are white. Whatever happened in Holmes, white Republicans did it.
 
 ```{r electorate-range}
 ```
 
-So the estimate this chapter declines to compute would land inside a window already known. The group whose behaviour is genuinely unidentified is Black Republicans, who are between `r pc(F("black_pct_min"))`% and `r pc(F("black_pct_max"))`% of a county's Republicans across the whole state. They are not the group the claim is about.
-
 **The wall is not measurement. It is attribution.** We can say with confidence that somewhere around four in ten white Panhandle Republicans voted for Donalds. No voter file says why the other six did not. Was it because he is Black, because he is from Naples, because the governor's office backed Jay Collins, or because Bobby Williams was the one who came to the county fair? The file has no column for it.
 
-## What this chapter cannot tell you
+## What this brief cannot tell you
 
 **It cannot tell you the claim is false.** Nothing here rules out that some Panhandle Republicans declined to vote for a Black candidate. Okaloosa and Santa Rosa moved several points against the frontrunner relative to 2018, and no benign explanation offered here fully accounts for them.
 
@@ -140,17 +130,26 @@ So the estimate this chapter declines to compute would land inside a window alre
 
 **It cannot separate four things that move together.** Donalds is Black, is from Naples, was Trump's endorsee against the sitting governor's ally, and is a metropolitan south Florida congressman. North Florida is distant from Naples, rural, agricultural, and was DeSantis' base. Every one of those alignments predicts the same map, and 67 counties cannot pull them apart.
 
-**And it cannot be fixed with better data of this kind.** More precincts, finer geography and newer census figures all leave the last section exactly where it is.
+**And it cannot be fixed with better data of this kind.** More precincts, finer geography and newer census figures all leave the attribution wall exactly where it is. What would settle the claim is a different instrument: a survey of Republican primary voters with a candidate-choice question and a race question, or an experiment varying a candidate's race. The returns record `r n(F("gov_total_votes"))` decisions and not one reason. Whichever way you already lean on this claim, the map at the top of this brief is consistent with your view, which is the surest sign that it is not evidence.
 
-## What would actually settle it
+## What you should have learned
 
-Not returns. A survey of Republican primary voters with a candidate-choice question and a race question, or an experiment varying a candidate's race, is the instrument for this. Part II of this course is about what that instrument can and cannot do, and it can do this.
+- A viral claim can be turned into a question and tested: the returns confirm a real, governor's-race-specific deficit — Donalds ran `r sg(F("panhandle_donalds_dev"))` in the Panhandle while the same voters gave Moody `r sg(rg$Moody[rg$region == "Panhandle"])` on the same ballot.
+- Most of the pattern predates the candidate: the 2026 map correlates at `r pc(F("benchmark_r"), 2)` with DeSantis' 2018 map, and the white candidate's spread, `r pc(F("desantis_2018_spread"))` points, was wider than Donalds' `r pc(F("donalds_spread"))`.
+- Reasoning from a county's population to its voters is the ecological fallacy; counting the actual electorate changes the answer, because only `r pc(F("black_pct_panhandle"))`% of the Panhandle's registered Republicans are Black.
+- Where an electorate is `r pc(F("panhandle_white_pct"))`% white, arithmetic alone bounds the white vote inside a `r pc(F("panhandle_bound_width"))`-point window — and no data of this kind can say *why* anyone voted.
 
-That is the transferable point, and it is not about Florida. **A question can be perfectly clear, obviously important, and simply not answerable by the data everyone reaches for.** The returns are complete, official and exact to the vote. They record `r n(F("gov_total_votes"))` decisions and not one reason. Whichever way you already lean on this claim, the map at the top of this chapter is consistent with your view, which is the surest sign that it is not evidence.
+## Extensions
+
+- `benchmark.csv` has each county's `residual` — what 2018 does not explain. Sort it and look at the top and bottom fifteen. Do they share anything the brief did not name, and would you have called that a racial pattern if you saw it first?
+- `williams.csv` gives Bobby Williams' `share` in every county. Pick his fifteen best and find them in `electorate.csv`. Are they alike in the composition of their Republican electorate, or only in being rural?
+- `deviations.csv` has all four statewide winners in all 67 counties. Ingoglia is the one whose `deviation` pattern most resembles Donalds'. Work out where the two agree and where they part. What does the agreement rule out?
+- `electorate.csv` has registered Republicans by race beside `regions.csv`. Work out how many Black Republicans live in the counties where Donalds ran furthest behind. Could their votes have moved his share in those counties at all?
+- `county_results.csv` has every candidate in every county. Collins and Renner both gained where Donalds lost. Which of the two better predicts the counties Donalds lost ground in, and what would each answer imply?
+- **Stretch.** The precinct returns for `r n(F("precinct_counties_north"))` north Florida counties are in this brief's `raw/`. Compute the method of bounds for one county's precincts and see how much narrower the windows get.
+- **Stretch.** Write the records request for Florida's voter file and count one county's Republican electorate by precinct and race. Does the answer land inside the window the brief already knew?
 
 ## Sources
-
-Election returns as a kind of source are introduced in the returns-source chapter of this part: what they are, what they can never say, and why there is no national one.
 
 **Data**
 
@@ -163,13 +162,11 @@ Election returns as a kind of source are introduced in the returns-source chapte
   Election* results, from the results archive's extract utility.
   <https://results.elections.myflorida.com/>
 - The Associated Press count of the same election, as carried by NPR on the
-  night, is in this chapter's `raw/` and is not what any figure above is built
+  night, is in this brief's `raw/` and is not what any figure above is built
   from. <https://apps.npr.org/primary-election-results-2026/states/FL.html>
-  It is a snapshot frozen at 99% of precincts reporting, and it differs from
-  the state's file by 614 votes in 118 of the 1,541 county-by-candidate numbers
-  the two share. That is far too small to move anything in this chapter, and it
-  is the reason the state's file is the one used: it was published after the
-  counties finished canvassing, and the wire service's was not.
+  It is a snapshot frozen at 99% of precincts reporting; the state's file is
+  the one used because it was published after the counties finished
+  canvassing, and the wire service's was not.
 - Florida Department of State, Division of Elections, *Book Closing Reports*,
   2026 Primary — active registered voters by county, party and race, and by
   precinct and party.
@@ -179,8 +176,10 @@ Election returns as a kind of source are introduced in the returns-source chapte
   election-night platform. <https://enr.electionsfl.org/>
   Each county's own address is in `data/raw/enr_county_manifest.tsv`, because
   nothing indexes them.
-- County outlines and the 2024 presidential margin come from the mapping
-  chapter's tables; county population by race from the surnames chapter.
+- County outlines and the 2024 presidential margin come from the
+  [mapping brief's](../mapping/mapping-brief.html) tables; county population
+  by race from the
+  [surnames chapter](../../06-putting-data-together/surnames/surnames-brief.html).
 
 **The data itself**
 
@@ -188,17 +187,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`county_results.csv`](data/derived/county_results.csv), [`deviations.csv`](data/derived/deviations.csv), [`benchmark.csv`](data/derived/benchmark.csv), [`regions.csv`](data/derived/regions.csv), [`candidate_by_region.csv`](data/derived/candidate_by_region.csv), [`williams.csv`](data/derived/williams.csv), [`electorate.csv`](data/derived/electorate.csv), [`correlates.csv`](data/derived/correlates.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `benchmark.csv` has each county's `residual` — what 2018 does not explain. Sort it and look at the top and bottom fifteen. Do they share anything that the chapter did not name, and would you have called that a racial pattern if you saw it first?
-- `williams.csv` gives Bobby Williams' share in every county. Pick his fifteen best and find them in `electorate.csv`. Are they alike in the composition of their Republican electorate, or only in being rural?
-- `deviations.csv` has all four statewide winners in all 67 counties. Ingoglia is the one whose pattern most resembles Donalds'. Work out where the two agree and where they part. What does the agreement rule out?
-- `electorate.csv` has registered Republicans by race beside `regions.csv`. Work out how many Black Republicans live in the counties where Donalds ran furthest behind. Could their votes have moved his share in those counties at all?
-- `county_results.csv` has every candidate in every county. Collins and Renner both gained where Donalds lost. Which of the two better predicts the counties Donalds lost ground in, and what would each answer imply?
 
 **Academic literature**
 
@@ -210,9 +198,8 @@ tables you just opened.
 - Amos, B., McDonald, M. P. and Watkins, R. (2017). "When Boundaries Collide:
   Constructing a National Database of Demographic and Voting Statistics."
   *Public Opinion Quarterly* 81(S1): 385–400.
-
-**Further reading**
-
+- Duncan, O. D. and Davis, B. (1953). "An Alternative to Ecological
+  Correlation." *American Sociological Review* 18(6): 665–666.
 - King, G. (1997). *A Solution to the Ecological Inference Problem.* Princeton
   University Press.
 

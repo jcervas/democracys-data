@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.0,
                       dpi = 96, fig.retina = 1)
@@ -51,7 +52,26 @@ data.frame(
             paste0(pc(FV("diff_total_pct"), 1), "%")),
   stringsAsFactors = FALSE)
 
-## ---- magfig
+## ---- magfig-d3
+# Drawn with the shared library: three size classes, one horizontal bar each.
+# This is the document's only D3 figure, so dd_fig() emits the script tags.
+b <- data.frame(
+  size_class = c("1-100 votes", "101-1,000 votes", "more than 1,000"),
+  counties   = c(FN("diff_total") - FN("dt_over_100"),
+                 FN("dt_over_100") - FN("dt_over_1000"),
+                 FN("dt_over_1000")),
+  stringsAsFactors = FALSE)
+dd_fig("mag", "bar", b,
+  x = list(field = "counties", label = "counties", fmt = "comma"),
+  y = list(field = "size_class", band = TRUE),
+  rowHeight = 46, valueLabels = TRUE,
+  tip = dd_tip(c(counties = "counties"), fmt = c(counties = "comma"),
+               title = "size_class"))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Hover a bar for the exact count.</p>')
+
+## ---- magfig-static
 b <- c(FN("diff_total") - FN("dt_over_100"),
        FN("dt_over_100") - FN("dt_over_1000"),
        FN("dt_over_1000"))
