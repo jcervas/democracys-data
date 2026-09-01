@@ -54,14 +54,6 @@ names(o) <- c("client", "registrant", "client state", "amount", "issues",
               "lobbyists")
 o
 
-## ---- one-filing
-o <- head(paid[order(-paid$amount), ][3:5, ],  3)
-o <- o[, c("client", "registrant", "client_state", "amount", "n_issues", "n_lobbyists")]
-o$amount <- d(o$amount)
-names(o) <- c("client (who pays)", "registrant (who lobbies)", "state",
-              "reported for the quarter", "issue areas", "lobbyists named")
-o
-
 ## ---- sample
 data.frame(
   quantity = c("Filings in the quarter (Q2 2024)", "Filings retrieved here",
@@ -206,74 +198,6 @@ o <- head(en, 8)
 names(o) <- c("government entity contacted", "times mentioned")
 o
 
-## ---- issues-static
-top <- head(is, 14)   # same 14 the D3 view shows
-par(mar = c(4, 13, 1, 2))
-barplot(rev(top$mentions), horiz = TRUE, names.arg = rev(substr(top$issue, 1, 32)),
-        las = 1, cex.names = 0.75, col = "#2c7fb8", xlab = "activity mentions")
-
-## ---- entities-static
-# second view of the toggle: the government-entity field
-tope <- head(en, 14)
-nm <- substr(sub(" \\([A-Z]+\\)$", "", tope$entity), 1, 34)  # drop acronym suffix
-par(mar = c(4, 14, 2, 2))
-barplot(rev(tope$mentions), horiz = TRUE, names.arg = rev(nm),
-        las = 1, cex.names = 0.7, col = "#C41230", xlab = "times mentioned",
-        main = "Parts of government contacted", cex.main = 0.9)
-
-## ---- d3-toggle
-ti <- head(is, 14); te <- head(en, 14)
-ri <- paste(sprintf('{"k":"%s","v":%d}', gsub('"', "", ti$issue), ti$mentions), collapse = ",")
-re <- paste(sprintf('{"k":"%s","v":%d}', gsub('"', "", te$entity), te$mentions), collapse = ",")
-cat(sprintf('
-<div id="lob" style="position:relative;margin:1em 0">
- <div style="margin-bottom:6px">
-  <button id="bI" style="font:12px inherit;padding:4px 10px;margin-right:4px;cursor:pointer">Issues lobbied on</button>
-  <button id="bE" style="font:12px inherit;padding:4px 10px;cursor:pointer">Parts of government contacted</button>
- </div>
-</div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const issues=[%s], ents=[%s];
-const W=760,H=430,M={t:14,r:70,b:34,l:230};
-const svg=d3.select("#lob").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().range([M.l,W-M.r]);
-const y=d3.scaleBand().range([M.t,H-M.b]).padding(0.18);
-const gx=svg.append("g").attr("transform",`translate(0,${H-M.b})`);
-const gy=svg.append("g").attr("transform",`translate(${M.l},0)`);
-const bars=svg.append("g"); const labs=svg.append("g");
-function draw(data,color){
-  const d=data.slice().sort((a,b)=>b.v-a.v);
-  x.domain([0,d3.max(d,q=>q.v)*1.08]); y.domain(d.map(q=>q.k));
-  gx.transition().duration(500).call(d3.axisBottom(x).ticks(6));
-  gy.transition().duration(500).call(d3.axisLeft(y).tickSize(0))
-    .selectAll("text").attr("font-size","11px");
-  bars.selectAll("rect").data(d,q=>q.k).join(
-    e=>e.append("rect").attr("x",M.l).attr("height",y.bandwidth()).attr("rx",2)
-        .attr("y",q=>y(q.k)).attr("width",0),
-    u=>u, ex=>ex.transition().duration(300).attr("width",0).remove())
-    .transition().duration(600)
-    .attr("y",q=>y(q.k)).attr("height",y.bandwidth())
-    .attr("width",q=>x(q.v)-M.l).attr("fill",color);
-  labs.selectAll("text").data(d,q=>q.k).join(
-    e=>e.append("text").attr("font-size","11px").attr("fill","#555").attr("opacity",0),
-    u=>u, ex=>ex.remove())
-    .transition().duration(600)
-    .attr("x",q=>x(q.v)+6).attr("y",q=>y(q.k)+y.bandwidth()/2+4)
-    .attr("opacity",1).text(q=>d3.format(",")(q.v));
-}
-draw(issues,"#2c7fb8");
-d3.select("#bI").on("click",()=>draw(issues,"#2c7fb8"));
-d3.select("#bE").on("click",()=>draw(ents,"#C41230"));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Switch between what lobbyists reported working on and which institutions they
-reported contacting.</p>
-', ri, re))
-
 ## ---- revolving
 data.frame(
   quantity = c("Individual lobbyists named", "Disclosing a former government post",
@@ -293,16 +217,6 @@ data.frame(`also found in the same field` =
   c("Sr. Vice President", "President and CEO", "Consultant",
     "Associate Vice President for Public Policy",
     "Senior Director, Government Affairs"), check.names = FALSE)
-
-## ---- asym
-data.frame(
-  field = c("Former government position", "Amount paid"),
-  precision = c("Names the specific member, committee or agency",
-                "One number per filing, undivided across issues"),
-  `usable in aggregate?` = c("No — free text, no vocabulary",
-                             "No — cannot be attributed to an issue"),
-  `required by` = c("Lobbying Disclosure Act", "Lobbying Disclosure Act"),
-  check.names = FALSE)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
