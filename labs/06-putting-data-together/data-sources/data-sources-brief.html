@@ -1457,8 +1457,8 @@ that actually proves</h3>
 comes from, and what it is for</a></li>
 <li><a href="#how-the-codes-are-published-and-the-specimen-files" id="toc-how-the-codes-are-published-and-the-specimen-files">How the
 codes are published, and the specimen files</a></li>
-<li><a href="#the-cleaning-trap-a-code-is-not-a-number" id="toc-the-cleaning-trap-a-code-is-not-a-number">The cleaning trap: a
-code is not a number</a></li>
+<li><a href="#cleaning-a-code-is-not-a-number" id="toc-cleaning-a-code-is-not-a-number">Cleaning: a code is not a
+number</a></li>
 <li><a href="#a-worked-example-one-join-every-row-accounted-for" id="toc-a-worked-example-one-join-every-row-accounted-for">A worked
 example: one join, every row accounted for</a></li>
 <li><a href="#keys-that-misbehave" id="toc-keys-that-misbehave">Keys
@@ -1483,18 +1483,17 @@ rules, and no question gets answered until they meet.</p>
 holding an identifier that is supposed to name the same thing on both
 sides. Match the rows where the values agree and the two files become
 one table. That operation, the join, is the quietest step in any
-analysis, and it is where this section’s errors live. A join does not
-fail loudly. When a key is missing, the row silently drops. When a key
-is duplicated, rows silently multiply. And when the same key means
-different things in the two files, the join succeeds, and the output is
-wrong in a way no error message will ever report.</p>
+analysis, and it is where this section’s errors live.</p>
+<p>A join does not fail loudly. When a key is missing, the row silently
+drops. When a key is duplicated, rows silently multiply. And when the
+same key means different things in the two files, the join succeeds, and
+the output is wrong in a way no error message will ever report.</p>
 <p>This chapter works the mechanics on the best-behaved key American
-data has — the county FIPS code — joined across two county-level
-election files built four years apart. The join never fails. What that
-proves, and what it does not, is the chapter’s question. At the end
-comes the repair for keys that do not behave: the
-<strong>crosswalk</strong>, a table that translates one set of
-identifiers or areas into another.</p>
+data has, the county FIPS code, joined across two county-level election
+files built four years apart. The join never fails. What that proves,
+and what it does not, is the chapter’s question. At the end comes the
+repair for keys that do not behave: the <strong>crosswalk</strong>, a
+table that translates one set of identifiers or areas into another.</p>
 <div id="where-the-data-comes-from-and-what-it-is-for" class="section level2">
 <h2>Where the data comes from, and what it is for</h2>
 <p>A FIPS code is the federal government’s name for a place: two digits
@@ -1503,9 +1502,9 @@ of state, three of county, so Autauga County, Alabama is
 Information Processing Standard, written so that federal computers
 naming the same county would name it the same way. The standards agency
 retired the formal standard in 2008, and the codes carried on as ANSI
-codes under Census Bureau maintenance, which is where you get them
-today: the Bureau’s annual Gazetteer and code files are the working list
-of what officially counts as a county.</p>
+codes under Census Bureau maintenance. That is where you get them today:
+the Bureau’s annual Gazetteer and code files are the working list of
+what officially counts as a county.</p>
 <p><strong>Who is in it, and how they got there.</strong> Every county
 and county-equivalent in the country — 3,144 of them across the 51
 states and the District of Columbia, once territories are set aside. A
@@ -1515,7 +1514,7 @@ are all “county-equivalents”: rows in the same list, holding codes of
 the same shape.</p>
 <p><strong>Who it was made for.</strong> Machines, and the agencies that
 run them. The list exists so that every federal file about places joins
-to every other federal file about places, which is why the same five
+to every other federal file about places. That is why the same five
 characters appear in census tables, health statistics, farm reports and
 election compilations. It is infrastructure. Nobody reads a FIPS code;
 everything joins on one.</p>
@@ -1530,9 +1529,9 @@ conventions arrive with the file.</p>
 counties are added, renamed and retired as states change them, and each
 yearly file silently reflects the law of its year. For this chapter’s
 copies: the build keeps codes and names, drops areas and coordinates,
-trims the territories, and — the decision the next section is about —
-forces every code column to be read as text. Nothing is edited by
-hand.</p>
+trims the territories, and forces every code column to be read as text.
+That last decision is what the next section is about. Nothing is edited
+by hand.</p>
 </div>
 <div id="how-the-codes-are-published-and-the-specimen-files" class="section level2">
 <h2>How the codes are published, and the specimen files</h2>
@@ -1541,9 +1540,9 @@ one row per county-equivalent, tab-separated, the code in a column
 called <code>GEOID</code>. This chapter reads the 2024 edition. Beside
 it sit two files that carry the same code from a different world: Tony
 McGovern’s county-level compilation of the 2020 and 2024 presidential
-results, scraped from news organisations’ election-night pages, with a
-README stating plainly that the numbers are not authoritative. The
-pairing is the point. An official list of what the code means, and a
+results. He scraped them from news organisations’ election-night pages,
+and the README states plainly that the numbers are not authoritative.
+The pairing is the point. An official list of what the code means, and a
 working file that uses it, is the situation every join in this section
 is in.</p>
 <p>Three files, three row counts: the Bureau lists 3,144
@@ -1552,8 +1551,8 @@ county-equivalents, the 2024 returns hold 3,160 reporting units, and the
 counties, none agreeing how many there are. Keep that disagreement in
 view; the worked example below is an audit of it.</p>
 </div>
-<div id="the-cleaning-trap-a-code-is-not-a-number" class="section level2">
-<h2>The cleaning trap: a code is not a number</h2>
+<div id="cleaning-a-code-is-not-a-number" class="section level2">
+<h2>Cleaning: a code is not a number</h2>
 <p>Before any join, the key has to survive being read, and the most
 common data bug in American political data happens right here. A FIPS
 code is a label made of digits, like a phone number. Software that reads
@@ -1763,11 +1762,11 @@ LEG.forEach(d=>{
 </p>
 <p><strong>Figure 1. What became of every reporting unit between the two
 files.</strong> A flow diagram fits this question because the question
-is bookkeeping — where did every unit go — and the ribbons carry counts:
-3,103 units keep a code that means the same place in both years, 48
-exist in 2020 and are gone in 2024, and 56 appear in 2024 with no
-counterpart. The 4 thinnest ribbons are drawn at a minimum width so they
-stay visible; every other ribbon is to scale.</p>
+is bookkeeping: where did every unit go. The ribbons carry counts. 3,103
+units keep a code that means the same place in both years, 48 exist in
+2020 and are gone in 2024, and 56 appear in 2024 with no counterpart.
+The 4 thinnest ribbons are drawn at a minimum width so they stay
+visible; every other ribbon is to scale.</p>
 <p>So the join “never failed” in a precise and narrow sense: every row
 it returned matched a real code on both sides, and every unit it dropped
 announced itself in the row count. That is what a maintained key buys.
@@ -1776,15 +1775,15 @@ failures are loud ones.</p>
 <p>Except one. The red ribbon is a single row whose code survives intact
 while the place underneath it changes. Both files carry a row labeled
 <code>11001</code>, the federal code for the District of Columbia. In
-the 2020 file that string means the whole city; in the 2024 file it
+the 2020 file that string means the whole city. In the 2024 file it
 means Ward 1, roughly an eighth of it, because the compiler took that
-year’s returns from a source that reports by ward. The join runs, the
-row count comes back full, and the resulting “swing” for DC is fiction.
-It is the only failure in this figure that a row count cannot see. A
-join key is only as good as the promise that the same string means the
-same thing on both sides, and <strong>that promise is not stored
-anywhere.</strong> No column records it, and no software can check
-it.</p>
+year’s returns from a source that reports by ward.</p>
+<p>The join runs, the row count comes back full, and the resulting
+“swing” for DC is fiction. It is the only failure in this figure that a
+row count cannot see. A join key is only as good as the promise that the
+same string means the same thing on both sides, and <strong>that promise
+is not stored anywhere.</strong> No column records it, and no software
+can check it.</p>
 </div>
 <div id="keys-that-misbehave" class="section level2">
 <h2>Keys that misbehave</h2>
@@ -1831,13 +1830,13 @@ alone:</p>
 </table>
 <p>A merge matches every row on the left against every row on the right
 that shares the key. With 30 Washington Counties on each side, one name
-produces 900 rows, of which 30 are right and 870 are garbage — and
-nothing in the output tells them apart. Names are also spelled,
-abbreviated, accented and re-punctuated differently across files, so a
-name join fails in both directions at once: it multiplies rows it should
-not match and misses rows it should. Matching on state <em>and</em> name
-does better, at 3,112 rows, but still drops 48 — and a key built by
-pasting columns together inherits every quirk of both.</p>
+produces 900 rows, of which 30 are right and 870 are garbage. Nothing in
+the output tells them apart. Names are also spelled, abbreviated,
+accented and re-punctuated differently across files, so a name join
+fails in both directions at once: it multiplies rows it should not match
+and misses rows it should. Matching on state <em>and</em> name does
+better, at 3,112 rows, but still drops 48. A key built by pasting
+columns together inherits every quirk of both.</p>
 <p><strong>Codes can be invented, and inventions collide.</strong> Join
 the 2024 returns to the census list on FIPS and 3,116 rows match. Check
 the names that came along and 4 of them disagree:</p>
@@ -1891,7 +1890,7 @@ split, and nothing distinguishes the two, which is why <a href="../../03-electio
 precincts across two elections</a> is its own chapter. A ZIP code is a
 routing instruction for mail trucks, not an area, and <a href="../../01-census-bureau/zip-codes/zip-codes-brief.html">what
 happens when it is used as one</a> has a chapter too. And people carry
-no key at all: matching a person across two files means guessing from
+no key at all. Matching a person across two files means guessing from
 name and birthdate, and <a href="../../03-elections/false-matches/false-matches-brief.html">the
 false-matches chapter</a> shows a voter purge built on the assumption
 that such guesses cannot collide. They can, and they do.</p>
@@ -1903,10 +1902,10 @@ is a <strong>crosswalk</strong>: a table that translates one set of
 areas or identifiers into another. One column holds the key as the first
 file speaks it, another holds the key as the second file speaks it, and
 joining through the middle table carries you across. The Census Bureau
-publishes them for its own geography — relationship files translating
-2010 census blocks into 2020 blocks, for instance — and researchers
-build them for everything else: precincts to districts, ZIP codes to
-census tracts, counties across a boundary change.</p>
+publishes them for its own geography: relationship files translating
+2010 census blocks into 2020 blocks, for instance. Researchers build
+them for everything else, from precincts to districts, ZIP codes to
+census tracts, and counties across a boundary change.</p>
 <p>Two things make a crosswalk more than a lookup table. First, the
 relationship is rarely one-to-one. When an old unit splits across
 several new ones, the crosswalk must say <em>how much</em> of it goes to
@@ -1920,7 +1919,7 @@ strong as its newest link.</p>
 Connecticut’s planning regions are not the old counties regrouped: the
 boundaries cut across each other, so no county-to-region lookup table is
 possible, with or without weights. The honest translation has to descend
-to a smaller unit — census blocks — that nests inside both, and rebuild
+to census blocks, a smaller unit that nests inside both, and rebuild
 each side from below. That is the general lesson. A crosswalk between
 two sets of areas is really a claim that some smaller unit tiles both,
 and when none does, the translation is a modelling exercise wearing a
@@ -1931,9 +1930,9 @@ table’s clothing.</p>
 <p><strong>No file can tell you its own key has changed
 meaning.</strong> The promise that <code>11001</code> names the same
 ground in both files lives in a README, in somebody’s memory, or
-nowhere. Every check in this chapter — row counts, dropped keys, names
-carried along and compared — is circumstantial evidence gathered from
-outside the key itself. There is no test in any language that detects a
+nowhere. Every check in this chapter is circumstantial evidence gathered
+from outside the key itself: row counts, dropped keys, names carried
+along and compared. There is no test in any language that detects a
 definition that moved.</p>
 <p><strong>A successful join is not evidence that the values are
 right.</strong> The FIPS join above matches perfectly on files whose
