@@ -28,3 +28,19 @@ at the commit it sits in, not a mirror. If the two disagree, the one in
 `_syllabus-template/` is the one that ran.
 
 Copied 12 August 2026, after adding the pre-render check hook.
+
+## Is this copy still true?
+
+A frozen copy that has quietly drifted is worse than no copy: it answers
+questions wrongly. `MANIFEST.txt` records the sha256 of each file as of the
+snapshot, and `verify.sh` re-checks them against the live renderer:
+
+    sh _render-template/verify.sh
+
+It prints `snapshot matches the live renderer`, or names the files that
+drifted. If it reports drift, find out what changed in the shared template
+before refreshing the copy — another course may have changed it for reasons
+this book needs to know about.
+
+Snapshot refreshed 1 September 2026, after the 3rd-edition rewrite added the
+`.dd-fig` block to `brief.css` for the shared chart library.
