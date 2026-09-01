@@ -165,9 +165,12 @@ dd_fig("two", "dumbbell",
   y = list(field = "state"),
   x = list(domain = c(0, 100), fmt = "pct0",
            label = "% of the state's population"),
-  # the majority line: three states sit on one side of it by the race question
-  # and the other side once the origin question is counted
-  annotations = list(dd_annot_vline(50)),
+  # The majority line: three states sit on one side of it by the race question
+  # and the other side once the origin question is counted. Classed "zero"
+  # rather than taking the default "rule", because the dumbbell's own connector
+  # lines are class "rule" and the re-sort below selects them by it -- left on
+  # the default, this one annotation would ride up and down with the rows.
+  annotations = list(dd_annot_vline(50, class = "zero")),
   rowHeight = 17, r = 3.6,
   tip = dd_tip(c(white_pct = "white, race question alone",
                  nhwhite_pct = "non-Hispanic white",
@@ -175,7 +178,58 @@ dd_fig("two", "dumbbell",
                  hisp_pct = "Hispanic, any race"),
                fmt = c(white_pct = "pct1", nhwhite_pct = "pct1",
                        gap = "pct1", hisp_pct = "pct1"),
-               title = "state"))
+               title = "state"),
+  # ---- the sort toggle ------------------------------------------------------
+  # Rank order is an argument, and this figure can make three of them. Sorted
+  # by white share it is a league table; sorted by the gap it says which states
+  # the choice of definition moves most, which is the chapter's point and is
+  # invisible in the default order; alphabetical is the one that plays no
+  # rhetorical games and lets a reader find their own state.
+  #
+  # Done through the library's hook, which hands back the finished figure, so
+  # the only thing this adds is a re-scale: the y domain is a list of state
+  # names, and reordering that list moves every mark. Nothing is redrawn and no
+  # data is re-sent. The buttons are built here rather than cat() as loose HTML
+  # so the control cannot outlive or drift from the figure it drives.
+  hook = dd_js('function(f){
+  const F=f.cfg.y.field, D=620, rows=f.data;
+  const by=(k)=>rows.slice().sort(k).map(d=>d[F]);
+  const ord={white: by((a,b)=>b.white_pct-a.white_pct),
+             gap:   by((a,b)=>b.gap-a.gap),
+             az:    by((a,b)=>d3.ascending(a[F],b[F]))};
+  // The left axis is the one translated to the left margin; the bottom axis
+  // carries the same class. Its ticks are moved rather than the axis re-called:
+  // d3 keys axis ticks by POSITION, so re-calling it relabels the ticks where
+  // they stand and the names appear to teleport. Each tick is already bound to
+  // its own state name, so moving it by that datum carries the label along with
+  // the row it belongs to, which is the thing a reader is trying to follow.
+  const yAxis=f.svg.selectAll("g.axis").filter(function(){
+    return d3.select(this).attr("transform")==="translate("+f.M.l+",0)";});
+  // Motion is decoration here; the new order is the information. Honour a
+  // reduced-motion preference, and skip the animation on a hidden page, where
+  // requestAnimationFrame never fires and a transition would never land --
+  // either way the marks must end up in the right place.
+  const still=(window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const move=(sel)=>(still||document.hidden)?sel:sel.transition().duration(D);
+  const bar=f.box.insert("div",":first-child").attr("class","dd-sort");
+  const btn=bar.selectAll("button")
+    .data([["white","most white first"],["gap","widest gap first"],
+           ["az","A to Z"]])
+    .join("button").attr("type","button").text(d=>d[1])
+    .on("click",function(e,d){go(d[0]);});
+  function go(k){
+    btn.classed("on",d=>d[0]===k);
+    f.y.domain(ord[k]);
+    // class "rule" is the connector joining the two dots of one state; the 50%
+    // annotation is classed "zero" so that it stays put
+    move(f.svg.selectAll("line.rule"))
+      .attr("y1",d=>f.y(d[F])).attr("y2",d=>f.y(d[F]));
+    move(f.svg.selectAll("circle.pt")).attr("cy",d=>f.y(d[F]));
+    move(yAxis.selectAll(".tick")).attr("transform",d=>"translate(0,"+f.y(d)+")");
+  }
+  go("white");
+}'))
 
 ## ---- other-who
 data.frame(
