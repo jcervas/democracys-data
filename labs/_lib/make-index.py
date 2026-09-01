@@ -215,7 +215,7 @@ SECTIONS = [
       "crossover", "nationalization", "bellwether", "vote-targeting",
       "ga-precinct-returns", "precinct-geography", "cast-vote-records",
       "residual-votes", "eavs"]),
-    ("Rosters of Officeholders", ["rosters-source", "clerk-source"],
+    ("Rosters of Officeholders", ["rosters-source"],
      ["house-competition", "midterm-loss", "retirements", "primary-defeats",
       "primary-positions", "nomination-anchors", "nomination-rules",
       "careers"]),

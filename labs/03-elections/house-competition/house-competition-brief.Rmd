@@ -16,168 +16,79 @@ dd_read_chunks("house-competition-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A ballot is a list of offices, and under each office a list of names. Somewhere below the presidential line, in a box of its own, sits the heading *Representative in Congress*. In `r pc(UNALL)`% of the `r n(nrow(d))` district-elections held between `r Y1` and `r Y2`, about one in seven, there was a single name in that box. Not a weak challenger, not a hopeless one who lost by forty points. Nobody at all.
+Competitive elections are the mechanism by which voters control officeholders. That is the claim every civics class makes about the House: a member who serves badly can be voted out, so members behave. Mayhew (1974) argued that this single incentive, the perpetual pursuit of re-election, explains much of how Congress is organized. The claim assumes something it never states — that there is a contest to lose. So turn it into a question the record can answer: how often does an American voter actually get a choice for the House?
 
-That fact has to be recorded somehow, and the way the standard dataset records it is the first thing worth looking at. Each row of the file is one district in one election year. Here are four of them from 2014, two ordinary and two not.
+The answer, more often than most readers guess, is never. In `r pc(UNALL)`% of the `r n(nrow(d))` district-elections held between `r Y1` and `r Y2`, about one in seven, a single name sat in the box for *Representative in Congress*. Not a weak challenger who lost by forty points. Nobody at all, `r n(un)` times.
+
+## The test
+
+Using every House general election from `r Y1` through `r Y2`, coded the same way throughout. The series is spliced from two sources. Gary Jacobson's House elections dataset covers 1946–2014: one political scientist's file, built and corrected across a career, and the standard dataset for studying congressional elections. The Clerk of the House's *Statistics of the Presidential and Congressional Election*, the official returns Congress publishes about itself, extends it through 2024 (<https://clerk.house.gov/Votes/ElectionStatistics>).
+
+This is the right source because the question is about change across seventy years, and answering it needs seventy years measured the same way. No agency maintains such a series; the Clerk's volumes are authoritative and begin again each cycle. Jacobson's file is one hand and one convention across decades, which is the shape the question needs, and the splice exists only because his file stops in 2014 and the question does not. The brief sits in the cluster [the roster chapter](../rosters-source/rosters-source-brief.html) leads, on the records Congress and its scholars keep about its own seats; this is the election-statistics half of that record.
+
+## The data
+
+The table is `races.csv`, one row per district in one election year, `r n(nrow(d))` rows. Each row carries `year`, `state`, and `stcd`, a state-district code, plus `south`, flagging the eleven former Confederate states. `dv` is the Democratic share of the two-party vote, `incwin` says whether the sitting member won, and `margin` is the winner's distance from 50. `uncontested` flags the races this brief is about, and `source` names which side of the splice the row came from. Here are four rows from 2014, two ordinary and two not:
 
 ```{r one-record}
 ```
 
-Look at the `Dem % of two-party vote` column in the bottom two rows. **It is `NA`.** Not zero, not 100 — missing.
+Look at the vote-share column in the bottom two rows. **It is `NA` — missing, not zero and not 100.** When only one candidate runs there is no two-party share to compute, so the uncontested marker in this file is defined as exactly that: the vote share is missing. Jacobson's file documents no uncontested flag anywhere; treating the missing share as one is a guess about a coding habit, well supported and still a guess. Anyone who opened the file and dropped the empty cells as bad rows would delete every race where competition failed completely, then report on how competitive American elections are.
 
-That is not a data-quality problem. **It is the finding, encoded as missingness.**
-
-When only one candidate runs there is no two-party share to compute, so the field is empty. The uncontested marker in this file is defined as exactly that: *the vote share is missing.*
-
-Anyone who opened the file, saw the empty cells and dropped them as bad rows would have deleted every race where competition failed completely. Then they would have reported on how competitive American elections are.
-
-An empty box on a ballot is a small thing to find in a democracy and a strange one. Competitive elections are the mechanism by which voters control officeholders — not the only one, since primaries, courts and the press all matter, but the central one, and the one the constitutional design leans on. **Mayhew (1974)** argued that members of Congress behave as though perpetually seeking re-election, and that this single incentive explains a great deal about how the institution is organized. Where no opponent appears, the incentive has been cut. The member still answers to a primary electorate, a party and a set of donors, but not to a general election. That happened `r n(sum(d$uncontested, na.rm = TRUE))` times across the `r nrow(b)` general elections gathered here.
-
-## Where the seventy years come from
-
-```{r scope}
-```
-
-`r n(nrow(d))` district-elections, coded the same way throughout. That consistency is the reason a series like this exists at all. It is the standard dataset for studying congressional elections, kept by one political scientist over decades and joined at the end to the Clerk of the House's own statistics.
-
-## One scholar's file and a stack of PDFs
-
-The two sources spliced together above could hardly differ more in kind. `r n(sum(d$source == "Jacobson"))` of these district-elections come from Gary Jacobson's House elections dataset, which is not an agency product at all. It is one political scientist's file, built and corrected across a career, circulated among researchers, and stored in a Stata format old enough that base R can still open it. The other `r n(sum(d$source == "Clerk of the House"))` come from the Clerk of the House's *Statistics of the Presidential and Congressional Election*, which is official, is issued after every general election, and is issued as a PDF. Those PDFs are kept alongside the text pulled back out of them, because there is no machine-readable version to hold instead. A third source enters once: presidential results by congressional district are calculated by The Downballot, formerly Daily Kos Elections, because no government calculates them at all.
-
-The private file rather than the official one, for most of the run, because the question is whether competition declined across seventy years, and answering it needs seventy years measured the same way. The Clerk's volumes are authoritative and begin again each cycle; nobody in that office is maintaining a series. Jacobson's file is one hand and one convention across decades, which is the shape this question needs and the thing no agency produces. The splice exists only because his file stops in `r max(d$year[d$source == "Jacobson"])` and the question does not.
-
-The two halves also arrive by routes that could hardly be less alike, and the splice is exactly where those routes meet.
-
-Jacobson's file has no web address. It is not downloaded but read off a disk. A file that circulates among researchers is obtained by knowing whom to ask, and it is not shipped with this chapter either.
-
-The Clerk's volumes are the opposite in every respect. Public addresses, no account, no key, no rate limit. And no structure. `r length(unique(d$year[d$source == "Clerk of the House"]))` PDFs are fetched from those addresses. Each is converted to text, and the table is recovered from where the columns happen to land on the page. That is a scrape in all but name.
-
-It already needs two address patterns, because the older volumes were moved to the House historian. And it will break the first time the Clerk changes a typesetting decision nobody announces. So one half of this series cannot be fetched by a reader at all. The other half can be fetched, but cannot be relied on to parse the same way twice.
-
-Neither cost shows up in `races.csv`, where the rows on both sides of the seam look identical.
-
-Two difficulties are worth naming before any number is read. The first is that the file's central fact is undocumented. There is no uncontested marker in Jacobson's data.
-
-There is a missing vote share. Treating the one as the other is a guess about somebody's coding habit, rather than something written down anywhere. The guess is well supported. The incumbent won in nearly every race where the share is missing, and the gaps track the one-party South and fade as it ends. But it is still a guess, and this entire chapter stands on it.
-
-The second is that the source file arrives padded. 14,777 of its 30,005 rows carry no year and no data at all, and anything computed before they are dropped is meaningless. Neither of those two counts can be recomputed here, because the source file itself is not shipped. Both are recorded when the file is read.
-
-The cleaning was substantial rather than cosmetic. The padding goes first.
-
-The split-district measure then uses the file's own `split` column, but only after that column was checked by recomputing it from the vote-share fields. An earlier build read `dvp` as *Democratic presidential vote* when it means *Democratic vote, previous election*. That produced a series which counted seats changing party while calling them split districts.
-
-The correction was confirmed twice over. The recomputed marker agreed with the file's own column in every year. And Jacobson's district presidential figure for Alabama's first district in 2012, `r pc(d$dpres[d$year == 2012 & d$stcd == 101], 2)`, matched the same quantity worked out separately from The Downballot's sheets, `r pc(with(read.csv("data/derived/pres_by_cd.csv"), dpres[district == "AL-01" & pres_year == 2012 & lines == "2012-2021"]), 2)`. At full precision The Downballot's value is 37.70161, quoted from the build log rather than computed here, since the shipped extract carries two decimals.
-
-The Clerk's PDFs were parsed to the same columns, and the overlapping years were compared race by race. What survived that comparison is set out near the end of this chapter, and it is not a formality either.
-
-## What a PDF looks like before it is a table
-
-The Clerk's volume is a book. It was typeset to be read by a person holding it. The only thing a computer can get out of it is the text layer: the characters, and roughly where on the page they sat. `pdftotext -layout` returns that and nothing else. Here is the top of Alabama's House results in the 2024 volume, read out of `clerk_2024.txt` as this page is built:
-
-```{r raw-clerk, results='asis'}
-```
-
-That is the real thing, with two cosmetic changes. The runs of dots and the gap before each vote total have been shortened, because in the file every one of those lines is about 190 characters wide. Nothing else has been touched.
-
-Now notice what is *not* in it. **There is no column called `district`.** There is no column at all. A district begins where a line begins with a number and a full stop. The lines beneath it belong to that district because they are indented. That is the entire structure, and it is a typesetting convention rather than a data format.
-
-**There is no party column either.** The party is part of the candidate's name, spelled out after a comma. And the third district has one candidate and a write-in line. That is what an uncontested race looks like in this document: an absence, expressed as a short block.
-
-Here is the whole state after the parse has read it, all seven districts — the three above and the four below them on the page:
-
-```{r clean-clerk}
-```
-
-One row per district, a column for each party. The dash in districts `r paste(o$district[o$uncontested == "yes"], collapse = ", ")` is the same missing value Jacobson's file carries, which is the whole reason the two halves of this series can be laid end to end.
-
-### Five decisions, none of them about code
-
-**The indent is the key.** Nothing on a candidate's line says which district it belongs to. The parser carries the district number forward from the last line that opened with one, so a single stray line break in the typesetting would assign a candidate to the wrong seat. There is no identifier to check it against.
-
-**Write-ins are dropped.** Alabama's third district recorded `r n(tail_num(tx24[grep("Mike Rogers", tx24)[1] + 1]))` write-in votes. They carry no party, so they cannot enter a two-party share, and they are discarded. That is defensible and it is still a decision: the district is then described as having had one candidate, when in fact several thousand people wrote in somebody else.
-
-**An unopposed candidate gets a missing share, not a hundred percent.** This is the convention that makes the splice possible, and it is the same one the opening table of this chapter warns about. Coding it as 100 would have buried every uncontested race inside the landslide category and made the chapter's central series disappear.
-
-**A number in the votes column may not be a vote count.** The Clerk prints footnote references as superscripts. The text extraction cannot represent a superscript. So it drops the marker to the end of the candidate's line, exactly where the total belongs, and pushes the real total onto a line of its own:
-
-```{r raw-footnote, results='asis'}
-```
-
-```{r footnote-cost}
-```
-
-Taken at face value the winner of that seat received `r n(MARK)` votes. The repair rule is a judgment: a bare number alone on a line, directly under a candidate whose total is implausibly small, is that candidate's total. The repair records that it fired on 24 rows across five of the volumes. **Nothing in the aggregate would have shown it.** Twenty-four wrong districts out of `r n(nrow(ch))` move no average anywhere.
-
-**Some rows survive that cannot be trusted, and are marked rather than mended.** Louisiana runs every candidate on one November ballot, and holds a December runoff when nobody clears half the vote. The Clerk then prints the runoff totals for the two finalists beside the November totals of everyone eliminated. No rule makes those figures comparable to the other `r n(nrow(ch) - sum(ch$la_primary))` rows, so the parser does not invent one. It marks all `r n(sum(ch$la_primary))` Louisiana rows and leaves the numbers where they are.
-
-**Flagging a problem you cannot fix is a legitimate result.** Deleting the rows, or quietly averaging past them, is not.
-
-## Three words that have to be pinned down first
-
-Every number below rests on three pieces of vocabulary, and all three are computed from the same column of vote shares.
+Two other decisions matter. The source file arrives padded: 14,777 of its 30,005 rows carry no year and no data, and they are dropped before anything is counted. And the vocabulary is fixed before the counting starts, because thresholds are choices and choices move answers:
 
 ```{r defs}
 ```
 
-Only the first of those three is forced. **Thresholds are choices, and choices move answers.** Five points and twenty points are conventional in this literature, not derived from anything. An account reporting "X% of races were competitive" without saying what competitive means has told you nothing you can check.
+### The Clerk's typeset record
 
-## Seventy years of not much happening
+After 2014 the only source is the Clerk's volume, and it is a **document, not a dataset**. It is the one exception to this section's governing fact that no federal agency counts votes: official congressional returns, district by district, for the whole country, in one free publication. But it is issued as a PDF typeset for a person holding a book, and eleven of them, 2004 through 2024, had to be read by a program. Here is the top of Alabama's House results in the 2024 volume, as extracted:
+
+```{r raw-clerk, results='asis'}
+```
+
+Notice what is not in it. There is no column called `district`; a district begins where a line begins with a number and a full stop, and the lines beneath belong to it because they are indented. There is no party column; the party is spelled out after the comma in each candidate's name. The structure is a typesetting convention, so every property that makes the page readable is a place a parser can go wrong. Here is the same state after the parse:
+
+```{r clean-clerk}
+```
+
+Two reading hazards are worth meeting, because both produced wrong numbers before they were caught. The Clerk prints footnote references as superscripts, which the text extraction drops to the end of the line — exactly where the vote total belongs:
+
+```{r raw-footnote, results='asis'}
+```
+
+Read literally, that line says the winner received `r n(MARK)` votes rather than `r n(REAL)`. The row looked fine: real candidate, real district, plausible state total. The repair fired on 24 rows across five volumes, and nothing in any aggregate would have shown it. The second hazard ran in the worse direction: Florida keeps unopposed candidates off the ballot entirely, and the volumes print a mark where their vote total would go. Those districts were dropped at first, which undercounted uncontested races — the very thing this brief exists to measure.
+
+The parse can be trusted only because there is a second file. Over 2004–2014 the two sources overlap on 2,260 districts, and they agree to a median of 0.03 points. Every disagreement above a point was run down. Three were bugs in this parse, now fixed; in two districts (Nebraska's 3rd in 2004, Utah's 1st in 2006) the official document disagrees with Jacobson in two separate places. Neither file was right; each was necessary to find what was wrong with the other. One thing is flagged rather than fixed: Louisiana's November all-party ballot and December runoffs mix two elections into one printed row, so its rows carry a marker in `clerk_house.csv` and their shares are advisory.
+
+> **Before you read on, commit to two lines.** The file flags the eleven former
+> Confederate states, and the uncontested share will be computed separately for
+> the South and for everywhere else. Write down which direction each of the two
+> lines travels across the seventy years, and roughly where each starts.
+
+## What it says about democracy
 
 ```{r headline}
 ```
 
-`r pc(v(Y1,"pct_uncontested"))`% in `r Y1`, `r pc(v(Y2,"pct_uncontested"))`% in `r Y2`, and in between a series that goes nowhere in particular. It stands at `r pc(v(JY1,"pct_uncontested"))`% in `r JY1` and `r pc(v(JY2,"pct_uncontested"))`% two years later — a single-election swing wider than the whole seventy-year drift, in a country whose districts, parties and voters had barely moved in the interval.
+The national series goes nowhere in particular: `r pc(v(Y1,"pct_uncontested"))`% in `r Y1`, `r pc(v(Y2,"pct_uncontested"))`% in `r Y2`. It swings from `r pc(v(JY1,"pct_uncontested"))`% to `r pc(v(JY2,"pct_uncontested"))`% between `r JY1` and `r JY2` alone, a two-year move wider than the whole seventy-year drift. That is a deflating answer, and it should be a suspicious one, because an average of one number per election tells you something only if the thing being averaged is one thing.
 
-**That is a deflating answer, and it should be a suspicious one.** A national percentage is an average. An average of one number per election tells you something only if the thing being averaged is one thing.
-
-## Nobody declines to challenge for an open seat
-
-```{r inc}
-```
-
-**`r pc(100*iw/un)`% of uncontested races were won by a sitting member.**
-
-Seats do not go uncontested because they are new or obscure. They go uncontested because **somebody already holds them and the other party declined to field a candidate.**
-
-Non-competition is a decision taken in a party office months before the campaign begins, not a verdict returned by voters on election day. So the thing being counted is a decision. And decisions get made by different people in different places for different reasons.
-
-## Two countries, moving toward each other
-
-The file carries a flag marking the eleven former Confederate states. Compute the uncontested share separately inside and outside them.
-
-> **Before you read on, take the flat national trend seriously.** Uncontested
-> races ran at `r pc(v(Y1,"pct_uncontested"))`% in `r Y1` and at
-> `r pc(v(Y2,"pct_uncontested"))`% in `r Y2`, and that looks like nothing
-> happened. Write down what you expect the same share to look like computed
-> separately for the South and for everywhere else: which direction each of the
-> two lines travels across the seventy years, and roughly where each of them
-> starts. Then read the table.
+It is not one thing, in two ways. First, the races: `r pc(100*iw/un)`% of uncontested races were won by a sitting member. Seats do not go uncontested because they are new or obscure; they go uncontested because somebody already holds them and the other party declined to field a candidate. Non-competition is a decision taken in a party office months before election day, not a verdict returned by voters. Second, the regions:
 
 ```{r region}
 ```
 
-**In `r Y1` the South ran `r pc(v(Y1,"pct_uncontested_south"))`% of its House races unopposed. The rest of the country ran `r pc(v(Y1,"pct_uncontested_non_south"))`%.**
-
-Nearly two thirds against one in sixteen. For this question they were not the same country in `r Y1`. And they do not stay put.
-
-The South falls from `r pc(v(Y1,"pct_uncontested_south"))`% to `r pc(v(Y2,"pct_uncontested_south"))`%, as the Voting Rights Act and the eventual arrival of Republican candidates dismantle a one-party system. The rest of the country *rises*, from `r pc(v(Y1,"pct_uncontested_non_south"))`% to `r pc(v(Y2,"pct_uncontested_non_south"))`%.
-
-Almost nobody writes down two lines moving in opposite directions. The flat national series invites you to expect two flat lines, or one falling and one holding still. Not a country whose two halves start `r pc(v(Y1,"pct_uncontested_south") - v(Y1,"pct_uncontested_non_south"))` points apart and then close the gap from both ends at once.
-
-**Two countries converging, and the national average describes neither of them at any point along the way.** This is the averaging trap in its purest form. An average computed correctly from groups that are moving, faithfully reporting a middle position no part of the country occupied.
-
-## A challenger on the ballot is a low bar
-
-An opponent is the minimum a general election can offer, and clearing the minimum says nothing about the margin. Among the races that *were* contested, how close did they come?
-
-```{r comp}
+```{r unc-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-**Genuinely close races thinned out**, from `r pc(v(Y1,"pct_competitive"))`% to `r pc(v(Y2,"pct_competitive"))`%, and at the trough to `r pc(min(b$pct_competitive))`% in `r b$year[which.min(b$pct_competitive)]` — that is `r round(min(b$pct_competitive) / 100 * b$races[which.min(b$pct_competitive)])` genuinely close races out of `r b$races[which.min(b$pct_competitive)]`. Landslides moved the other way, peaking at `r pc(max(b$pct_landslide))`% in `r b$year[which.max(b$pct_landslide)]`.
+```{r unc-d3, results='asis', eval=knitr::is_html_output()}
+```
 
-So the count of uncontested seats understates the problem rather than overstating it. A race with a challenger who loses by twenty-five points is contested in the formal sense and settled in every other.
+**Figure 1. The share of House races with one candidate, nationally and by region, `r Y1`–`r Y2`.** Lines on a time axis, because the quantity is one share measured `r nrow(b)` times at even intervals and the finding is the shape: two lines travelling in opposite directions until they meet. In `r Y1` the South ran `r pc(v(Y1,"pct_uncontested_south"))`% of its House races unopposed against `r pc(v(Y1,"pct_uncontested_non_south"))`% everywhere else; by `r Y2` the two lines stand at `r pc(v(Y2,"pct_uncontested_south"))`% and `r pc(v(Y2,"pct_uncontested_non_south"))`%.
 
-But those are two thresholds cut out of a distribution, and a threshold discards everything about the shape it was cut from. Figure 1 puts the shape itself on the page: one curve per decade, built only from the races that **had** a challenger, so the uncontested seats are absent from these shapes entirely.
+The South falls as the Voting Rights Act and the eventual arrival of Republican candidates dismantle a one-party system. The rest of the country rises, drifting toward one-party seats of its own. **Two countries converging — and the flat national average describes neither of them at any point along the way.** It is an average computed correctly from groups that are moving, faithfully reporting a middle position no part of the country occupied.
+
+A challenger on the ballot is also a low bar, and the contested races have their own trend. Genuinely close races thinned from `r pc(v(Y1,"pct_competitive"))`% of races in `r Y1` to `r pc(v(Y2,"pct_competitive"))`% in `r Y2`, touching `r pc(min(b$pct_competitive))`% in `r b$year[which.min(b$pct_competitive)]`; landslides peaked at `r pc(max(b$pct_landslide))`% in `r b$year[which.max(b$pct_landslide)]`. Figure 2 shows the whole distribution those thresholds were cut from.
 
 ```{r margins-prep, include=FALSE}
 ```
@@ -188,101 +99,52 @@ But those are two thresholds cut out of a distribution, and a threshold discards
 ```{r margins-static, eval=!knitr::is_html_output(), fig.height=5.2}
 ```
 
-**Figure 1. The margin of victory in contested House races, by decade.** One curve per decade, drawn only from races that had a challenger, all scaled to the same height. The horizontal axis is the winner's distance from 50%. The green band is the five-point definition of competitive, and the dashed line the twenty-point definition of a landslide.
+**Figure 2. The margin of victory in contested House races, by decade.** One curve per decade, drawn only from races that had a challenger, all scaled to the same height. The green band is the five-point definition of competitive, and the dashed line the twenty-point definition of a landslide. The share of contested races inside five points fell from `r pc(D5FIRST, 0)`% in the `r DEC[1]` to `r pc(D5LAST, 0)`% in the `r DEC[length(DEC)]`. The gray figures at the right count each decade's races with no challenger at all, which appear in no curve.
 
-The share of contested races falling inside five points went from `r pc(D5FIRST, 0)`% in the `r DEC[1]` to `r pc(D5LAST, 0)`% in the `r DEC[length(DEC)]`. The middle contested margin rose from `r pc(median(co$margin[co$dec == DEC[1]]))` points to `r pc(median(co$margin[co$dec == DEC[length(DEC)]]))`. The gray figures at the right are the share of *all* races in that decade with no challenger at all, which appear nowhere in the curves.
+The exceptions in that figure are worth telling. The thinnest near-tie zone belongs to the `r DEC[which.min(P5)]`, at `r pc(min(P5), 0)`%, so the least competitive decade on this measure is not the most recent one. And the curves stay broad: every decade has races at every margin, which is exactly why a single cut point can be made to say almost anything.
 
-**The whole distribution moved right**, and the landslide tail thickened from `r pc(P20[1], 0)`% to `r pc(P20[length(P20)], 0)`% of contested races. But the shapes show two things a pair of thresholds cannot. **The move is not a slide in one direction.** The thinnest near-tie zone belongs to the `r DEC[which.min(P5)]` at `r pc(min(P5), 0)`%, and the fattest landslide tail to the `r DEC[which.max(P20)]` at `r pc(max(P20), 0)`%. So the least competitive decade on this measure is not the most recent one.
+So the uncontested count understates the problem rather than overstating it. A race with a challenger who loses by twenty-five points is contested in the formal sense and settled in every other. The voter's real chance of a choice that matters has narrowed on both measures at once.
 
-And **the curves stay broad**: in every decade there are races at every margin. That is exactly why a single cut point can be made to say almost anything, and why the vocabulary had to be fixed before the counting began.
+## What this brief cannot tell you
 
-## The other side of the ballot
+**It cannot say why competition thinned outside the South.** The file has no district boundaries, no fundraising, and no candidate quality, so gerrymandering, geographic sorting and party recruitment cannot be told apart inside it. How much is maps and how much is where people chose to live is a live dispute this table cannot settle.
 
-Everything so far describes what was printed on the ballot. The next measure describes what voters did with it.
+**It cannot say whether an uncontested seat is an unaccountable one.** In a safe seat the meaningful contest moves upstream into the primary, and primaries are real elections with real challengers. Whether they substitute adequately is disputed; nothing here measures them.
 
-A **split district** votes for one party's presidential candidate and the other party's House candidate. It is direct evidence that voters are evaluating the two offices separately — and it is the only measure here that needs data from outside the House election itself.
+**It cannot certify its own central marker.** Uncontested is inferred from a missing vote share, not read from a documented flag, and the whole brief stands on that inference. The thresholds for competitive and landslide are conventions; different cuts move the levels, though the trends survive them. And a two-party share ignores third parties, which matters most in exactly the years when third parties mattered most.
 
-```{r split-cov}
-```
+## What you should have learned
 
-**Read the second column before the first.** A presidential result *inside* a congressional district is not something any government publishes — it has to be calculated by allocating precinct returns to district boundaries. Nobody did that work for the 1940s, so the measure does not exist for the first `r sum(b$split_coverage == 0)` elections here, and it is only half complete for `r paste(b$year[b$split_coverage > 0 & b$split_coverage < 90], collapse = " and ")`.
+- In `r pc(UNALL)`% of `r n(nrow(d))` House district-elections since `r Y1`, about one in seven, the voter had no choice at all; `r pc(100*iw/un)`% of those races had a sitting member in them.
+- The national uncontested share is nearly flat, `r pc(v(Y1,"pct_uncontested"))`% to `r pc(v(Y2,"pct_uncontested"))`%, and it is an average of two regions moving in opposite directions, from `r pc(v(Y1,"pct_uncontested_south"))`% and `r pc(v(Y1,"pct_uncontested_non_south"))`% apart in `r Y1` to nearly level today.
+- Among races that were contested, the share within five points fell from `r pc(D5FIRST, 0)`% to `r pc(D5LAST, 0)`% by decade, so the formal presence of a challenger overstates the choice on offer.
+- The uncontested marker is encoded as a missing vote share; dropping missing values from this file deletes precisely the finding.
+- The post-2014 series is read out of the Clerk's typeset PDFs, and it is trustworthy only because 2,260 overlapping districts were checked against an independent file, catching bugs in both.
 
-Those years are blank above rather than zero, and any year below 90% coverage is withheld altogether. **This is the one series here that is not available for the whole period, and saying so is cheaper than a footnote nobody reads.**
+## Extensions
 
-```{r split}
-```
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-**From `r pc(max(sp$pct_split))`% at the peak down to `r pc(min(sp$pct_split))`%.** In `r sp$year[which.max(sp$pct_split)]`, more than half of all House districts voted for a president of one party and a representative of the other. By `r sp$year[which.min(sp$pct_split)]` it was roughly one district in `r round(100 / min(sp$pct_split))`.
-
-The peaks are where you would expect them: the landslide years, when a presidential candidate carried territory his party could not hold further down the ballot. The collapse afterwards is the same thing seen from the other side. **Voters who used to tell a president apart from a representative increasingly do not**, and the House vote has moved closer to a party-registration exercise.
-
-This is a different mechanism from everything above. The other three measures describe who appears on the ballot; this one describes how voters treat the ballot they are given. Nothing forces them to agree, and they agree anyway.
-
-## Four measures, one direction
-
-Four quantities, computed four different ways from two different sources, over `r Y2 - Y1` years. Figure 2 draws all of them on one set of axes, together with the two regional series the national uncontested line is made of.
-
-```{r lines-prep, include=FALSE}
-```
-
-```{r lines-static, eval=!knitr::is_html_output(), fig.height=4.8}
-```
-
-```{r d3-lines, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. Six series, `r Y2 - Y1` years, `r nrow(b)` general elections.** Six things. The share of House races uncontested nationally, the same for the South, and the same for the rest of the country. The share decided within five points, and the share decided by twenty or more. And the share of districts that voted for a president of one party and a representative of the other. The two uncontested lines start `r pc(v(Y1,"pct_uncontested_south") - v(Y1,"pct_uncontested_non_south"))` points apart and end `r pc(v(Y2,"pct_uncontested_south") - v(Y2,"pct_uncontested_non_south"))` points apart. Split districts cannot be computed for `r sum(is.na(b$pct_split))` elections and are drawn only where they exist.
-
-The converging pair is the shape to remember. Everything else on those axes drifts. Those two lines travel, in opposite directions, until they arrive at roughly the same place. The heavy black line between them is an average of two histories rather than a description of one.
-
-## What seventy years of ballots will support
-
-**American House elections did not become less competitive in a straight line, and did not become more competitive either.** One region's one-party system was dismantled. The rest of the country drifted toward acquiring one of its own. The national uncontested share is the sum of those two movements, dragged down by the larger. At no moment in `r Y2 - Y1` years does it describe either region.
-
-Non-competition is **an elite decision rather than a voter verdict.** `r pc(100*iw/un)`% of uncontested races had a sitting member in them. So in the overwhelming majority of cases, a party organisation looked at a seat, judged its own chances, and declined to put a name on the ballot.
-
-And the measures agree. Uncontested, competitive, landslide and split districts are four different things computed four different ways. One of them comes from a source outside the House election entirely. They tell the same story about the shrinking role of the general election.
-
-What none of it says is *why*. The file has no candidate quality, no fundraising, and no district boundaries, so redistricting, geographic sorting and party recruitment cannot be told apart inside it.
-
-## Whether a seat that cannot change hands is a failure
-
-**That it is a problem at all is genuinely contested**, and the objections are better than they first appear.
-
-The standard concern is Mayhew's: competition is the disciplining mechanism, and a representative who cannot lose is not being represented *through*. On that reading the series above describe a slow institutional failure.
-
-The first reply is the primary. In a safe seat the meaningful contest moves upstream, and a primary is a real election with real challengers who sometimes win. Whether it substitutes adequately is disputed, because primary electorates are smaller, older and more ideologically extreme than general electorates. But "uncontested general" and "unaccountable" are not the same claim.
-
-The second reply is about sorting rather than scheming. The uncontested share rising outside the South coincides with Americans sorting themselves geographically by politics. If Democrats increasingly live in cities and Republicans increasingly do not, uncompetitive districts follow from where people chose to live and no line-drawer has to do anything at all. **How much is gerrymandering and how much is geography is one of the live disputes in the field, and this file cannot settle it, because it contains no maps.**
-
-## What the file can testify to
-
-The strengths of this evidence are unglamorous and real. Seven decades coded consistently by one researcher is rarer and more valuable than it sounds. Uncontested races are captured *structurally*, through the absent vote share, rather than by anyone's judgment about whether a challenger was serious. And the four measures are independent enough of one another that their agreement is worth something.
-
-The weaknesses begin with the join. **Two sources are spliced here**: Jacobson through 2014, the Clerk of the House's official statistics after. They overlap for 2004–2014 and agree to a median of 0.03 points across 2,260 districts, and every disagreement above a point was run down individually. Three were bugs in this parse and are fixed.
-
-Of what remains, four things. Louisiana is not comparable at all and is marked, because an open primary plus December runoffs mix two elections into one row. Two 2006 Texas races turned on a write-in campaign and a court-ordered runoff. Five Connecticut districts in 2008 differ because Jacobson counts fusion ballot lines in New York and South Carolina but not in Connecticut, while this file counts them everywhere.
-
-And in **Nebraska's 3rd in 2004 and Utah's 1st in 2006 Jacobson is simply wrong.** The official document gives our figures in two separate places.
-
-The rest of the limits are limits of coverage and of definition. Split districts begin in `r S1` rather than `r Y1`, and cannot be computed at all for `r sum(is.na(b$pct_split))` elections. Presidential results by district are worked out by outside analysts and published by no government. `r n(sum(is.na(d$dv)))` rows carry no vote share by construction, so anyone dropping missing values deletes precisely the finding.
-
-The five-point and twenty-point cuts are conventions. Different thresholds move the levels, though the trends survive them.
-
-"South" is eleven states treated as one object for seventy years, which flattens Virginia into Mississippi. There are no districts, no money and no candidates in the file, so every plausible cause sits outside it. And a two-party share ignores third parties, which matters most in exactly the years when third parties mattered most.
-
-Three questions stay open, and none will be settled by a longer version of this table. Whether redistricting or geographic sorting is doing the work outside the South. Whether a primary substitutes for a general election, and for whom. And what happens after `r Y2`, which is a question this file will be able to answer in two years and cannot answer now.
+- `by_year.csv` carries `pct_uncontested_south` and `pct_uncontested_non_south`. Plot both. When do the two lines meet, and what happened around then?
+- `by_year.csv` also has `pct_competitive` and `pct_landslide` for every year. Follow them both. Which is the better one-line summary of what happened to House elections?
+- `races.csv` flags each race as `uncontested`. Pick a recent year, group by `state`, and list the states with the most. Is an uncontested seat a safe seat, or a party that gave up?
+- `clerk_house.csv` marks every Louisiana row with `la_primary`. Read a few of those rows and decide what you would publish for that state, and what you would be choosing to lose.
+- **Stretch.** `pres_by_cd.csv` gives the presidential result inside each district. Join it to `races.csv` for one year and count the districts that voted one way for president and the other way for the House.
+- **Stretch.** The Clerk will publish a 2026 volume after the next election. Fetch it, extend the series two years, and see whether the convergence in Figure 1 holds.
 
 ## Sources
 
 **Data**
 
-- Jacobson, G. C. House elections dataset, 1946–2014.
+- Jacobson, G. C. House elections dataset, 1946–2014. Circulated privately
+  among researchers; it has no public address, and obtaining it means asking.
 - Office of the Clerk, U.S. House of Representatives, *Statistics of the
   Presidential and Congressional Election*, 2004–2024.
-  <https://clerk.house.gov/Votes/ElectionStatistics>
+  <https://clerk.house.gov/Votes/ElectionStatistics>, with the pre-2016
+  volumes served by the Office of the Historian at
+  <https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>
 - The Downballot (formerly Daily Kos Elections), presidential election results
-  by congressional district.
+  by congressional district, which no government calculates.
   <https://www.the-downballot.com/p/the-downballots-calculations-of-presidential>
 
 **The data itself**
@@ -291,16 +153,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`by_year.csv`](data/derived/by_year.csv), [`clerk_house.csv`](data/derived/clerk_house.csv), [`pres_by_cd.csv`](data/derived/pres_by_cd.csv), [`races.csv`](data/derived/races.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `by_year.csv` splits uncontested races into `pct_uncontested_south` and `pct_uncontested_non_south`. Plot both. When do the two lines meet, and what happened around then?
-- `by_year.csv` has `pct_competitive` and `pct_landslide` for every year. Follow them. Which is the better summary of what happened to House elections?
-- `races.csv` flags each race as `uncontested`. Find a recent year and list the states with the most. Is an uncontested seat a safe seat, or a party that gave up?
-- `pres_by_cd.csv` gives the presidential result in each district. Join it to `races.csv` for one year and find the districts where the House and presidential winners differ.
 
 **Academic literature**
 

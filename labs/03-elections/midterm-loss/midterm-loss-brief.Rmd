@@ -16,159 +16,45 @@ dd_read_chunks("midterm-loss-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Knowing what an election will do is expensive. A survey of a thousand people costs real money and buys a few points of precision on one question in one state. A forecasting model costs a team. A campaign costs billions.
+Political scientists have frequently observed that the president's party loses seats in the midterm elections. The observation is repeated every second autumn, in classrooms and on television, usually as settled fact. It is a remarkable thing to claim. Knowing what an election will do is expensive: a survey costs real money, a forecasting model costs a team, a campaign costs billions. This sentence costs nothing, and it claims to know the direction of a national election years before anyone votes.
 
-Against all of that, one sentence:
+Is it true? And if it is true, what is a rule that good actually good for? A citizen who reads a midterm as a verdict on the president is reading a signal the rule already contained. And who governs is decided not by the direction of the change but by its size, about which the sentence says nothing. Both halves can be checked, because the House keeps count of itself.
 
-> **The president's party loses House seats at the midterm.**
+## The test
 
-That is the whole rule. No data collection, no model, no money. It has held for a century and a half. The question is what a rule that good is actually good for.
+Using data from US House elections, 1858–2024, obtained from official sources. The seat counts come from the Office of the Historian of the U.S. House of Representatives. Its page *Party Divisions of the House of Representatives, 1789 to Present* records how many seats each party held in every Congress (<https://history.house.gov/Institution/Party-Divisions/Party-Divisions/>). The House is the authority on its own composition in a way no outside compiler can be, and there is no rival file to check it against.
 
-## Direction is not what decides who governs
+This source also has the right unit, which is why it fits the question. The claim is about seats, and this table's row is a Congress with its seats by party. A roster of members would be the wrong instrument: rosters count people, and a 435-seat chamber can "have" 449 members once mid-term deaths and replacements are counted. [The roster chapter](../rosters-source/rosters-source-brief.html) is about that distinction, and about what Congress's records of itself can and cannot bear.
 
-If the direction of a national legislative election is knowable in advance from a sentence, then a large part of what the midterm "means" was fixed before the campaign. Commentary that reads a midterm as a verdict on the president is reading a signal that the base rate already contained.
+The test is two questions asked of one column. In how many of the midterms since 1858 did the president's party lose House seats? And when it lost, how large and how predictable was the loss?
 
-But there is a second reason, and it is the sharper one. **Control of the House is not decided by direction. It is decided by magnitude**, and by where the chamber happened to be sitting beforehand. A rule that predicts direction with near-certainty and magnitude with a spread of fifty seats is not a forecast of who governs.
+## The data
 
-## A pattern this clean does not identify its own cause
-
-Nobody disputes the pattern. The dispute is about the mechanism, and it has been running for sixty years without resolution.
-
-- **Surge and decline.** Campbell (1960) proposed that presidential elections
-  draw in peripheral voters who break toward the winner; at the midterm those
-  voters stay home and the coattails withdraw.
-- **Referendum.** Tufte (1975) modeled midterm outcomes as a function of
-  presidential approval and the economy — voters punishing or rewarding the
-  administration.
-- **The presidential penalty.** Erikson (1988) tested the first two against the
-  historical record, found both incompatible with it, and argued for a simple
-  penalty: the midterm electorate marks down the president's party for being the
-  party in power, whatever it has done.
-- **Balancing.** Bafumi, Erikson and Wlezien (2010) show that generic-ballot
-  preferences drift toward the out-party across the midterm year, consistent with
-  voters deliberately moderating policy.
-
-Four live accounts, all consistent with the same table of numbers. Which of them is right cannot be settled by looking harder at the table, and the rest of this chapter does not try. It asks the prior question: what the table says at all.
-
-## The House counting itself, on a web page
-
-The chamber's composition is not published by a statistical agency. It is published by the Office of the Historian of the U.S. House of Representatives. The page is called "Party Divisions of the House of Representatives, 1789 to Present," and it is institutional history rather than a statistical product. That is an unusual origin for a number this heavily used, and it is also the best one available. The House is the authority on how many of its own seats each party held, in a way no outside compiler can be. There is no rival file to check it against, and nothing here pretends otherwise.
-
-It arrives as a web page. Not a spreadsheet, not an API, not a download. It is an HTML table meant for a person to read, which the build script has to fetch and take apart. The site turns away requests that do not look like a browser, so a fetch has to announce itself as one. That is the small, ordinary indignity of getting public numbers out of a government website, and it is worth noticing that it was necessary. The table's column layout also changes across eras as the party system does, so the script re-reads the header row whenever it meets one instead of assuming the Democrats are always in the same place.
-
-Placed on the spectrum this book keeps returning to, the seat counts are as close to the source as anything in it: **made and published by the same body, and by the body being counted.** No researcher assembled them, no compiler reconciled them, nobody stands between the House and the number. But they were not *given*. They were **scraped**, off a page built for reading rather than for use, from a server that turns away anything not wearing a browser's name.
-
-And the column this chapter actually turns on was **typed in by hand**. The party of the sitting president is not in the source, and was entered as twenty date ranges.
-
-So the cost of getting this file is three things, none of them money. A disguise, to be let in at all. A repair, because the page's footnotes live inside the cells that hold the numbers. And one hand-keyed column with no upstream authority behind it, which is the only part of this chapter that could be wrong without anyone noticing.
-
-The file is appropriate here because the unit is exactly right. The question is about the president's party gaining or losing House seats. A table whose row is a Congress, and whose columns are seats by party, answers it directly, with no stand-in anywhere in the chain. What would have been better is a table recording the chamber *on the day after each election*, and that is not what this is. Party divisions are given for the start of each Congress, and members die, resign and switch, which is why the source is footnoted so heavily.
-
-Measuring change from one Congress's opening to the next is the standard convention, and it quietly credits the election with anything that happened in between.
-
-Two of the difficulties are about measurement rather than about the file, and both are decisions somebody had to make. The first is that the two major parties do not account for the whole chamber. In `r sum(h$seats - h$dem - h$rep != 0)` of these `r nrow(h)` elections some seats were held by neither, as many as `r max(h$seats - h$dem - h$rep)` of them in `r h$election_year[which.max(h$seats - h$dem - h$rep)]`. So "the president's party lost seats" is a statement about one column of a table that does not add to its own total.
-
-The second is larger, and it is disclosed here rather than buried: **the column naming the president's party is not in the source at all.** It was typed into the build script as a list of date ranges, from Buchanan to the present, and every claim in this chapter depends on it. Anyone can check it in a minute, and it is still the one column nobody downloaded.
-
-The cleaning has one repair worth knowing about, because it is the kind that would never announce itself. The Historian's table footnotes many rows, and the footnote marker sits *inside* the cell with the number. Strip the HTML tags and the digits run together, so a 435-seat chamber carrying footnote 5 reads as `4355`. The script repairs any seat count above 999 by keeping its first three digits. That is a rule rather than a fact, and a reader rebuilding this file would have to apply it or notice the damage.
-
-Everything else was subtraction. The series begins with the 36th Congress, on the judgment that Democratic-versus-Republican competition before that is not the same contest. The seat change for each election is the difference from the previous one, for whichever party held the White House at the time.
-
-## A web page is not a table
-
-The Historian's page is one long HTML table, and the row for the Congress that the 2018 midterm elected looks like this inside it. Only the indentation has been added; every character is as the server sends it.
-
-```
-<tr>
-  <td colspan="1" style="text-align: center;">
-    <a href="/Congressional-Overview/Profiles/116th/"
-       title="116th (2019-2021)">116th (2019-2021)</a></td>
-  <td colspan="1" style="text-align: center;">435<sup>5</sup></td>
-  <td colspan="1" style="text-align: center;">235</td>
-  <td colspan="1" style="text-align: center;">199</td>
-  <td colspan="1" style="text-align: center;">0</td>
-  <td colspan="1" style="text-align: center;">5/1</td>
-</tr>
-```
-
-To a person reading the page, that row says the chamber had 435 seats, that footnote 5 has something to say about it, and that the parties held 235 and 199. To a program, the seat cell contains `435<sup>5</sup>`. The ordinary way to turn a cell into a value is to throw away everything between angle brackets, and that turns it into this:
-
-| Congress | Seats | Democrats | Republicans | Other | Vacancies |
-|:---|---:|---:|---:|---:|:---|
-| 116th (2019-2021) | **4355** | 235 | 199 | 0 | 5/1 |
-
-**The chamber has just grown tenfold, and nothing anywhere has failed.** No error is raised, no cell is empty, the row parses, the type is right. It is a plausible-looking integer in an integer column, and it would travel all the way to a chart.
-
-The repair is one line of judgment: any seat count above 999 keeps its first three digits.
-
-```{r footnote-repair}
-```
-
-That rule is not a fact about the world. It is a bet on two of them: that the House will never seat a thousand members, and that the Historian's footnotes will not reach double digits. Both are true today. Neither is guaranteed, and the day either stops being true this file will go wrong quietly.
-
-Here is the row that comes out:
-
-```{r clean-midterm}
-```
-
-### What had to be decided along the way
-
-**Which column is which changes as you scroll.** The page is not one table with one header; it is a run of era-blocks, and a new header row appears whenever the party system changes. Early blocks label their columns *Pro-Administration* and *Anti-Administration*; later ones *Federalists* and *Democratic Republicans*, then *Adams* and *Jacksonians*, then *Democrats* and *Whigs*, and only after that *Democrats* and *Republicans*. Assume the Democrats are in the third column throughout, which is the obvious thing to assume, and the nineteenth century comes out as nonsense. The script instead re-reads the header every time it meets one and looks up the two columns by name.
-
-**Where the series starts is an argument, not a lookup.** It begins at the 36th Congress, because before that the two columns are not the two parties this chapter is about. `r nrow(h)` elections survive that cut; everything before it is dropped, on a judgment about what counts as the same contest rather than on anything in the file.
-
-**The president's party is not in the file.** Every claim in this chapter compares one party's seat count across two elections, and which party that is comes from a hand-typed list of date ranges. There is no column to join on and no source to check against — only the ordinary historical record, and a reader willing to spend a minute on it.
-
-**Change is measured between openings, not across an election.** A row is a Congress as it was constituted on its first day, so the difference between two rows silently includes anything that happened in the fourteen months between the election and the swearing-in. That is the standard convention, and it is the reason the source is footnoted as heavily as it is. The footnote that started all this trouble is itself a note about members who arrived or left.
-
-## One row is one House election
-
-Every number in this chapter comes out of one table, and one row of it looks like this.
+The table is `house_midterms.csv`: one row per House election, `r nrow(h)` rows from 1858 through 2024. Each row carries `election_year`, `congress`, and `seats`, the size of the chamber that year. `dem` and `rep` count the seats each party held. `pres_party` names the party holding the White House, `midterm` flags whether the presidency was on the ballot, and `pres_party_change` is the seat change for the president's party since the previous election. Here is the row the 2018 midterm produced:
 
 ```{r one-row}
 ```
 
-**`seats` is not a constant.** The chamber had `r h$seats[h$election_year == 1866]` seats in 1866 and `r h$seats[h$election_year == 2024]` today, and it has been as low as `r min(h$seats)` and as high as `r max(h$seats)`. That variation turns out to matter more than it looks like it should.
+The table was built by taking apart a web page. The Historian publishes the party divisions as one HTML table meant for a person to read, not as a download, so the build fetches the page and recovers the numbers from it. The server turns away requests that do not look like a browser, so the fetch announces itself as one. And the page's column headings change as the party system does; early blocks say *Adams* and *Jacksonians*. The build therefore re-reads the header each time it meets one, rather than assuming the Democrats hold a fixed column.
 
-A note on where the data came from. These counts come from the House's own party-division table, not from a roster of members. Rosters count *people*, and members who die or resign appear alongside their replacements, which is how a 435-seat chamber ends up "having" 449 members. **Seats and people are different units**, and choosing the wrong one is the kind of error that never announces itself.
+Three cleaning decisions are worth stating. The first is a repair. The page's footnote markers sit inside the cells that hold the numbers, so a 435-seat chamber carrying footnote 5 reads as 4355 once the HTML tags are stripped, and nothing anywhere fails. The rule applied is that any seat count above 999 keeps its first three digits.
 
-## Nine times in ten
+```{r footnote-repair}
+```
+
+The second is a starting line. The series begins with the election of 1858, the first fought between the two parties that still contest the House, and that is a judgment rather than a lookup. The third is an admission: `pres_party` is not in the source at all. It was typed into the build as a short list of date ranges from the historical record, and every claim below leans on that hand-made column. One convention rides along with all of this. Change is measured from the opening of one Congress to the opening of the next, which quietly credits each election with anything that happened in the months between.
+
+> **Before you read on, commit to two numbers.** The file holds `r nrow(m)`
+> midterm elections. In how many of them do you expect the president's party
+> lost House seats? And when it lost, how many seats — write down the range
+> you would bet the middle half of the outcomes falls inside.
+
+## What it says about democracy
 
 ```{r reliability}
 ```
 
-**`r nrow(m)` midterms since 1858, and the president's party lost seats in `r sum(m$pres_party_change < 0)` of them — `r pc(100 * mean(m$pres_party_change < 0), 0)`%.**
-
-Almost nothing in political science is this consistent, and it is worth stating plainly what it means: **the direction of a national election, nine times in ten, from a sentence you can say out loud.**
-
-## The midterms that went the other way
-
-Five midterms went the other way, and they are worth knowing.
-
-```{r exceptions}
-```
-
-The largest of them, 1866, is the one to be careful about. **1866 is not what it looks like:** Congress was refusing to seat delegations from the former Confederacy, so the chamber is not comparable to the one before it. Any pattern that includes it is partly measuring an argument about who counts as a state.
-
-The other tail:
-
-```{r worst}
-```
-
-## Trying to break it
-
-If 1866 is a bad case, drop it and everything before 1878 with it.
-
-```{r drop}
-```
-
-**Almost nothing moves.** That is informative rather than disappointing: one observation out of `r nrow(m)` cannot shift a mean far, and 1866 is a genuinely bad case on the merits *and* does not matter arithmetically. Those are two separate facts.
-
-The corollary is worth noticing. **If no single bad case can move the result, then no single good case is holding it up either.** Robustness cuts both ways.
-
-## Every midterm since 1866
-
-Robustness of that kind is easier to see than to state. Figure 1 puts every midterm on one axis.
+**The president's party lost seats in `r sum(m$pres_party_change < 0)` of `r nrow(m)` midterms — `r pc(100 * mean(m$pres_party_change < 0), 0)`%.** Almost nothing in the study of politics is that consistent. Figure 1 shows every case at once.
 
 ```{r hist-static, eval=!knitr::is_html_output(), fig.height=5.0}
 ```
@@ -176,25 +62,23 @@ Robustness of that kind is easier to see than to state. Figure 1 puts every midt
 ```{r hist-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Every midterm since 1866, by the seat change for the president's party.** One vertical line per election, colored by whether the president's party lost seats or gained them. The dotted line is the median, `r med` seats.
+**Figure 1. Every midterm since `r min(m$election_year)`, by the seat change for the president's party.** One vertical line per election, because the claim is about the direction of `r nrow(m)` separate events, and direction reads instantly as which side of zero a line falls. The dotted line is the median, `r med` seats. The chamber grew from `r min(h$seats)` seats to `r max(h$seats)` across this figure, so the buttons on the interactive version restate each change as a share of the chamber; in print the axis is raw seats.
 
-The vertical axis here is raw seats. Chamber size is not constant across this figure, running from `r min(h$seats)` to `r max(h$seats)`, and the same change is shown as a share of the chamber later in this chapter.
+With few exceptions, the observation holds. The exceptions get their story told, because each one is informative:
 
-> **Before you read on, write a number down.** The direction is right
-> `r pc(100 * mean(m$pres_party_change < 0), 0)`% of the time and the median loss
-> is `r abs(med)` seats. **How many of the `r nrow(m)` midterms fall within ten
-> seats either side of that median?** Commit to a count before you look.
+```{r exceptions}
+```
 
-## The sign is certain, the size is not
+**2002** is the modern one: President Bush's approval was extraordinarily high in the year after the September 11 attacks, and the districts had just been freshly redrawn after the 2000 census. **1998** came at the height of the impeachment proceedings against President Clinton, with a booming economy underneath them; the punishment landed on the punishers. **1934** was the depth of the Depression and the height of the New Deal, and voters gave Roosevelt's party more of the House rather than less. **1902** is partly arithmetic: the chamber itself grew by `r h$seats[h$election_year == 1902] - h$seats[h$election_year == 1900]` seats after the 1900 census, so both parties gained, though the Democrats gained more. And **1866** is not what it looks like. Congress was refusing to seat delegations from the former Confederacy, so the chamber is not comparable to the one before it, and the +37 partly measures an argument about who counts as a state.
+
+Because 1866 is a genuinely bad case, drop it — and everything before 1878 with it. The rule barely notices: the loss rate moves from `r pc(100 * mean(m$pres_party_change < 0), 0)`% to `r pc(100 * mean(a78$pres_party_change < 0), 0)`%, and the mean change from `r pc(mean(m$pres_party_change))` to `r pc(mean(a78$pres_party_change))` seats. The corollary cuts both ways: if no single bad case can move the result, no single good case is holding it up either.
+
+So the direction is close to a certainty. The size is not, and the size is what decides who writes the laws.
 
 ```{r spread}
 ```
 
-Most readers write down a comfortable majority. A rule that gets the direction right nine times in ten sounds like a rule with a center, and a distribution with a center should put most of its mass near the middle.
-
-**Only `r inner` of `r nrow(m)` midterms, or `r pc(100 * inner / nrow(m), 0)`%, land within ten seats of the median. The middle half of the distribution runs from a loss of `r abs(quantile(m$pres_party_change, .75))` seats to a loss of `r abs(quantile(m$pres_party_change, .25))`.**
-
-A forecast that says "you will lose between `r abs(quantile(m$pres_party_change, .75))` and `r abs(quantile(m$pres_party_change, .25))` seats, probably, and possibly `r abs(min(m$pres_party_change))`" is not much of a forecast. The rule is **nearly certain about the sign and close to uninformative about the size.**
+**Only `r inner` of `r nrow(m)` midterms, or `r pc(100 * inner / nrow(m), 0)`%, land within ten seats of the median.** The middle half of the outcomes runs from a loss of `r abs(q1)` seats to a loss of `r abs(q3)`. A forecast that says "you will lose between `r abs(q3)` and `r abs(q1)` seats, probably, and possibly `r abs(min(m$pres_party_change))`" is not much of a forecast.
 
 ```{r spread-hist-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -202,14 +86,12 @@ A forecast that says "you will lose between `r abs(quantile(m$pres_party_change,
 ```{r spread-hist-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. `r nrow(m)` midterms, in bins of ten seats.** The red line is the median, `r med` seats; the pink band is ten seats either side of it and contains `r inner` of the `r nrow(m)` midterms. The gray band is the middle half of the distribution, `r q1` to `r q3` seats. The full range runs from `r min(m$pres_party_change)` to +`r max(m$pres_party_change)`.
+**Figure 2. The same `r nrow(m)` midterms, in bins of ten seats.** The red line is the median, `r med` seats. The pink band is ten seats either side of it and holds `r inner` of the `r nrow(m)` midterms; the gray band is the middle half, `r q1` to `r q3` seats. A rule that gets the direction right nine times in ten sounds like a rule with a center, and this distribution barely has one.
 
-And the size is what matters:
+And the consequence that matters most is nearly a coin flip:
 
 ```{r majority}
 ```
-
-**The president's party entered `r held` midterms holding a House majority and lost it in `r lostm` of them — `r pc(100 * lostm / held, 0)`%.** The direction of the seat change is close to a certainty; the consequence that anyone cares about is close to a coin flip. Those two sentences describe the same `r nrow(m)` elections.
 
 ```{r fate-static, eval=!knitr::is_html_output(), fig.height=3.3}
 ```
@@ -217,83 +99,38 @@ And the size is what matters:
 ```{r fate-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. What happened to the majority.** One square per midterm, grouped by whether the president's party had a House majority going in and whether it still had one coming out. It held a majority entering `r held` of the `r nrow(m)` midterms and lost it in `r lostm` of those — `r pc(100 * lostm / held, 0)`%. The same elections that make the direction near-certain make the consequence close to a coin flip.
+**Figure 3. What happened to the majority.** One square per midterm, grouped by whether the president's party had a House majority going in and whether it kept it. It entered `r held` midterms holding a majority and lost it in `r lostm` — `r pc(100 * lostm / held, 0)`%. The same elections that make the direction near-certain make the outcome anyone cares about close to a toss-up.
 
-## Is the penalty shrinking? Per what?
+That is the finding, and it is worth saying in one breath. The most reliable regularity in American politics gets the direction of a national election right `r pc(100 * mean(m$pres_party_change < 0), 0)`% of the time, and tells you almost nothing about who ends up running the House.
 
-The obvious next question is whether the rule is weakening. Split the midterms into eras and take the mean.
+## What this brief cannot tell you
 
-```{r eras}
-```
+**It cannot tell you why the penalty happens.** Four accounts have competed for sixty years. Campbell's surge and decline says the presidential-year electorate stays home, and Tufte's referendum says voters punish the president over the economy. Erikson's penalty says the midterm electorate marks down whichever party holds the White House. And Bafumi, Erikson and Wlezien's balancing says voters deliberately moderate policy. All four fit this table of seat changes equally well, and nothing in the table separates them.
 
-Read the first column and the penalty looks halved: `r pc(era$pres_party_change[1])` in the nineteenth century against `r pc(era$pres_party_change[5])` since 2002.
+**It cannot turn a seat change into a vote change.** A seat swing depends on the district map as much as on the electorate, and there is no vote column here. Mayhew's vanishing marginals (fewer districts sitting near even, so a given swing moves fewer seats) is a live alternative reading of any trend in the penalty, and it cannot be tested in this file.
 
-**But the chamber grew.** It averaged `r pc(era$seats[1], 0)` seats in the first era and `r pc(era$seats[5], 0)` in the last. Losing forty seats out of three hundred is not the same event as losing forty out of 435, and the raw column compares them as though it were.
+**It cannot vouch for its one hand-made column.** `pres_party` was typed in from the historical record, and it is the most likely place in the file for a mistake to hide. Anyone can check it in a minute, and it is still the only column nobody downloaded.
 
-Normalizing does not rescue the "shrinking penalty" story — it **strengthens** it. The raw mean fell by `r pc(100 * (1 - era$pres_party_change[5] / era$pres_party_change[1]), 0)`% between the first era and the last; as a share of the chamber it fell by `r pc(100 * (1 - era$pct[5] / era$pct[1]), 0)`%. Both columns also show the same thing at the end: **the penalty falls through the twentieth century and rises again after 2002**, on either measure. "The penalty is shrinking" was never the right description.
+**And `r nrow(m)` cases is a small sample.** Any claim about a subgroup of midterms (an era, a president's second term) rests on a handful of elections, and moving one boundary can produce almost any story.
 
-Two warnings about that table. With `r nrow(m)` cases split five ways, some cells hold `r min(table(m$era))` elections, and almost any story can be produced by moving a boundary. And the individual cases reorder between units — 1862's loss of `r abs(m$pres_party_change[m$election_year == 1862])` seats is unremarkable in the first column and, out of a `r m$seats[m$election_year == 1862]`-seat chamber, `r pc(abs(m$pct[m$election_year == 1862]))`% of the House.
+## What you should have learned
 
-```{r rank-static, eval=!knitr::is_html_output(), fig.height=6.0}
-```
+- The president's party has lost House seats in `r sum(m$pres_party_change < 0)` of `r nrow(m)` midterms, or `r pc(100 * mean(m$pres_party_change < 0), 0)`%, and the median change is `r med` seats.
+- The exceptions have stories, not noise: 2002 (a president at peak approval after September 11, on freshly redrawn districts), 1998, 1934, 1902, and 1866, which measures Reconstruction rather than an electorate.
+- The rule is a direction, not a size: only `r inner` of `r nrow(m)` midterms land within ten seats of the median, and the middle half spans `r q1` to `r q3` seats.
+- The president's party held a House majority entering `r held` midterms and lost it in `r lostm` of them — `r pc(100 * lostm / held, 0)`%, roughly a coin flip on the outcome that decides who governs.
+- The seat counts are the House counting itself, scraped from one Historian's web page; the party of the president is the one column that had to be typed in by hand.
 
-```{r rank-d3, results='asis', eval=knitr::is_html_output()}
-```
+## Extensions
 
-**Figure 4. The same midterms, ranked two ways.** Each line joins one midterm's rank by raw seats lost to its rank by seats lost as a share of the chamber. Only `r sum(abs(m$shift) >= 5)` of `r nrow(m)` move more than four places when the unit changes, and they are `r paste(sort(movers), collapse = " and ")`. That is why the choice of unit looks harmless until it is not. The eras in the table above are built out of exactly this choice.
+None of these is answered above, and every one can be answered from the table the Sources section hands over.
 
-The habit worth taking from that figure is a question: **per what?** — asked before reading any trend, not after.
-
-## The six-year itch
-
-Folk wisdom says a party's second midterm in power is worse than its first.
-
-```{r itch}
-```
-
-**The itch points the right way and the evidence is weak.** The gap is about `r pc(abs(mean(later$pres_party_change) - mean(early$pres_party_change)), 0)` seats on `r nrow(later)` observations, which is well inside what chance produces with groups this small — a two-sample test gives p = `r pc(t.test(early$pres_party_change, later$pres_party_change)$p.value, 2)`. The honest statement is that the folk wisdom is not contradicted and is not confirmed.
-
-Note also that the definition did work here. "Second midterm" could mean the second midterm of one *president* or six years of one *party* holding the White House, and Truman, Johnson and Ford make those different. This uses party tenure. **The answer depends on a definition nobody states.**
-
-## Certainty about the sign, near-ignorance about the outcome
-
-The president's party has lost House seats in `r sum(m$pres_party_change < 0)` of `r nrow(m)` midterms since 1858; the median loss is `r abs(med)` seats; and dropping Reconstruction changes neither. That much is as solid as anything in the study of American elections.
-
-The sharper statement is the one that costs something. The rule is a direction, not a magnitude. Its interquartile range is `r abs(quantile(m$pres_party_change, .75))` to `r abs(quantile(m$pres_party_change, .25))` seats, and the president's party has lost its majority in `r pc(100 * lostm / held, 0)`% of the midterms where it had one to lose. **Certainty about the sign is compatible with near-ignorance about the outcome**, and the outcome is the part that decides who writes the laws.
-
-Two things the table will not deliver, no matter how it is arranged. It will not say why the penalty happens: the four accounts above fit these numbers equally well, and nothing in a column of seat changes separates them. And it will not support "the penalty is shrinking," because on both measures it stopped shrinking after 2002 — and with `r nrow(m)` cases divided into five eras, era claims of any kind are fragile.
-
-## The mechanisms are still competing
-
-**Erikson (1988) is the sharpest statement of the problem.** He tested withdrawn coattails, surge-and-decline and the referendum account against midterms since 1902 and found each incompatible with some feature of the record, proposing instead a flat penalty for holding the presidency. Bafumi, Erikson and Wlezien (2010) later showed that the drift toward the out-party happens *during* the midterm year and is visible in generic-ballot polling, which is evidence for deliberate balancing rather than mechanical turnout composition.
-
-One of these accounts is testable here, and it fails. Suppose the penalty were mostly **regression to the mean**: the drift back toward average that follows an unusually good result, with nothing causing it but the arithmetic. Then midterms following large presidential-year gains should be worse. Across the `r nrow(mp)` midterms where the file supplies a comparable preceding presidential-year change for the same party, the correlation is **`r pc(cor(mp$prior, mp$pres_party_change), 3)`**, essentially zero. That is a real result and a weak one. `r nrow(mp)` cases cannot rule much out, and the comparison depends on the party holding the White House across both elections.
-
-```{r regress-static, eval=!knitr::is_html_output(), fig.height=5.0}
-```
-
-```{r regress-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 5. The midterm against the presidential election before it.** One point per midterm for the `r nrow(mp)` cases where the same party held the White House across both elections, placed by the seat change two years earlier and the seat change at the midterm. If the penalty were regression to the mean after presidential coattails, the cloud would slope downward. The dashed least-squares line is nearly flat; the correlation is `r pc(cor(mp$prior, mp$pres_party_change), 3)`.
-
-**The nationalization argument runs the other way.** If congressional elections are increasingly votes about the president, as Hopkins (2018) and Abramowitz and Webster (2016) argue, the penalty should be getting *larger*, not smaller. The post-2002 rebound in the era table is the closest thing to a test here, and it is consistent with the nationalization claim while resting on `r sum(m$election_year >= 2002)` elections.
-
-**And there is a mechanical explanation for the long decline that has nothing to do with voters.** Mayhew (1974) documented the disappearance of marginal House seats: as fewer districts sit near even, a given national swing moves fewer of them. A shrinking penalty may be a fact about the *map* rather than about the electorate: a claim about how districts are drawn rather than about how anyone votes. Nothing in a table of seat totals can tell those two apart.
-
-## What a century and a half of seat counts can testify to
-
-The evidence behind all of this is a single consistent series: `r nrow(h)` House elections taken from the chamber's own party-division table, counted in the right unit. Seats, not members — a roster counts people, and members who die or resign appear alongside their replacements, which is how a 435-seat chamber ends up "having" 449 members. The series also records the size of the chamber in every year, which is what makes the "per what?" comparison possible at all; most published versions of this table do not carry it.
-
-Its limits are specific rather than general.
-
-One column, the party of the president at each election, is a hand-built lookup rather than something read out of a source. It is therefore the most likely place in the file for a mistake to be hiding. Seat change is not vote change. A seat swing depends on the map as much as on the electorate, and there is no vote column here at all, which is exactly why Mayhew's alternative cannot be tested.
-
-`r nrow(m)` cases is a small sample for any claim about a subgroup, and every subgroup claim above has been hedged for that reason. Starting in 1858 is a choice and not a discovery. Earlier Congresses sat under different party systems, and the source table's columns change names behind them. And the file contains nothing about the president, the economy, approval or the issues, so none of the four accounts of *why* the penalty exists can be tested against it.
-
-That leaves three questions genuinely open. Which mechanism produces the penalty is the oldest of them: sixty years of work, four live accounts, no resolution, and a table that fits all four. Whether the post-2002 rebound is real or is `r sum(m$election_year >= 2002)` elections of noise cannot be settled until more midterms happen. And whether the long decline was ever about voters at all rather than about districts needs district-level data this file does not have — Mayhew's vanishing marginals are a testable alternative, not a settled one.
-
-What can be said is the thing that was true on the first page and is more uncomfortable on the last. The most reliable regularity in American politics gets the direction of a national election right `r pc(100 * mean(m$pres_party_change < 0), 0)`% of the time and tells you almost nothing about who ends up running the House.
+- `house_midterms.csv` has `pres_party_change` for every election, with a `midterm` flag. Compute the loss rate for midterms and for presidential years separately. Is this a midterm penalty or an incumbent-party penalty?
+- Sort the midterms by `pres_party_change` and read the tails. How many of the worst ten losses came when the president's party also entered with a large majority — is some of the penalty just having more seats to lose?
+- `seats` changes across the series. Recompute each midterm change as a share of `seats` and re-rank the ten worst. Which elections move most when the unit changes?
+- Filter to rows where `pres_party_change` is positive and `midterm` is true, and read the history of each year you find. Do the exceptions share anything you could have known in advance?
+- **Stretch.** Gallup publishes presidential approval back to the 1940s. Put each postwar midterm's approval number beside its seat change and ask whether approval predicts the size of the loss, which this file cannot.
+- **Stretch.** The Senate's own site publishes its party divisions. Build the same table for the Senate, where only a third of the seats are on the ballot, and see whether the penalty survives the change of chamber.
 
 ## Sources
 
@@ -307,39 +144,23 @@ What can be said is the thing that was true on the first page and is more uncomf
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
+Every figure above is drawn from this table. It is plain CSV, it opens in a
+spreadsheet, and it is yours to take further.
 
 [`house_midterms.csv`](data/derived/house_midterms.csv)
 
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `house_midterms.csv` has `pres_party_change` for every election, with a `midterm` flag. Compare midterms against the rest. How reliable is the rule, counted honestly?
-- Find the midterms where the president's party gained seats. Read what happened in each of those years. Is there a pattern, or are they just exceptions?
-- The rule tells you direction, not size. Sort the midterms by `pres_party_change` and look at the spread. Would knowing the direction have helped you predict who controls the House?
-- `house_midterms.csv` records `seats` for each Congress, and the number changes. Find where the House grew or shrank, and work out what that does to a seat-change series.
-
 **Academic literature**
 
-- Abramowitz, A. I. and Webster, S. (2016). "The rise of negative partisanship
-  and the nationalization of U.S. elections in the 21st century." *Electoral
-  Studies* 41: 12–22.
 - Bafumi, J., Erikson, R. S. and Wlezien, C. (2010). "Balancing, Generic Polls
   and Midterm Congressional Elections." *Journal of Politics* 72(3): 705–719.
 - Campbell, A. (1960). "Surge and Decline: A Study of Electoral Change." *Public
   Opinion Quarterly* 24(3): 397–418.
 - Erikson, R. S. (1988). "The Puzzle of Midterm Loss." *Journal of Politics*
   50(4): 1011–1029.
-- Hopkins, D. J. (2018). *The Increasingly United States.* Chicago: University of
-  Chicago Press.
 - Mayhew, D. R. (1974). "Congressional Elections: The Case of the Vanishing
   Marginals." *Polity* 6(3): 295–317.
 - Tufte, E. R. (1975). "Determinants of the Outcomes of Midterm Congressional
   Elections." *American Political Science Review* 69(3): 812–826.
-
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

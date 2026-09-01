@@ -75,6 +75,18 @@ ANF <- lm(change ~ retired, AN)
 VS$redist <- VS$year %% 10 == 2
 RD <- aggregate(cbind(retired, lost_primary, lost_general) ~ redist, VS, mean)
 
+# The `occupancy` column's coverage, from a verbatim capture of the committed
+# Voteview download: the share of House rows with the column filled, by
+# Congress. The cliff between two adjacent Congresses is the finding, and
+# LASTC is the last Congress on the filled side of it.
+SH <- c(
+"share of House rows with `occupancy` filled, by Congress:",
+"  110   112   113   114   115   116   117   118   119 ",
+"0.989 1.000 1.000 1.000 0.000 0.000 0.000 0.000 0.000 ")
+sv <- as.numeric(strsplit(trimws(SH[3]), " +")[[1]])
+cg <- as.integer(strsplit(trimws(SH[2]), " +")[[1]])
+LASTC <- max(cg[sv > 0.5])            # last Congress with the column populated
+
 # ---- render every data.frame in this document as a TABLE, not code output ----
 # These are front-facing documents. A data.frame printed the ordinary way comes
 # out as a "##"-prefixed code block, which reads as machinery rather than as a
@@ -114,55 +126,6 @@ data.frame(
                           "Defeated in the general election", "Re-elected"),
   check.names = FALSE)
 
-## ---- rawocc
-# A verbatim capture of the committed Voteview download, restricted to the
-# columns at issue. The two shares quoted below are read out of the first line
-# of the second block rather than asserted beside it.
-RW <- c(
-"      congress chamber icpsr state_abbrev district_code occupancy",
-"47741      114   House 20301           AL             3         0",
-"47742      114   House 21102           AL             7         0",
-"48283      115   House 20301           AL           3.0          ",
-"48284      115   House 21102           AL           7.0          ",
-"",
-"      last_means bioguide_id             bioname",
-"47741          1     R000575 ROGERS, Mike Dennis",
-"47742          1     S001185       SEWELL, Terri",
-"48283                R000575 ROGERS, Mike Dennis",
-"48284                S001185       SEWELL, Terri")
-SH <- c(
-"share of House rows with `occupancy` filled, by Congress:",
-"  110   112   113   114   115   116   117   118   119 ",
-"0.989 1.000 1.000 1.000 0.000 0.000 0.000 0.000 0.000 ")
-sv <- as.numeric(strsplit(trimws(SH[3]), " +")[[1]])
-cg <- as.integer(strsplit(trimws(SH[2]), " +")[[1]])
-LASTC <- max(cg[sv > 0.5])            # last Congress with the column populated
-
-# The capture is one printed frame wrapped into two column-groups; here it is
-# one table. The emptied cells are labelled rather than left blank, because a
-# blank cell in a rendered table is exactly the thing that hides this.
-data.frame(
-  Column = c("congress", "chamber", "icpsr", "state_abbrev", "district_code",
-             "occupancy", "last_means", "bioguide_id", "bioname"),
-  What_it_is = c(
-    "the numbered two-year Congress",
-    "House, Senate or President",
-    "the member's permanent ID, kept across every Congress",
-    "two-letter postal abbreviation",
-    "district number",
-    "which occupant of the seat this is in this Congress",
-    "how the member reached office — election, special election, appointment",
-    "Biographical Directory ID",
-    "name, as last, first middle"),
-  Row_47741 = c("114", "House", "20301", "AL", "3", "0", "1", "R000575",
-                "ROGERS, Mike Dennis"),
-  Row_47742 = c("114", "House", "21102", "AL", "7", "0", "1", "S001185",
-                "SEWELL, Terri"),
-  Row_48283 = c("115", "House", "20301", "AL", "3.0", "(empty)", "(empty)",
-                "R000575", "ROGERS, Mike Dennis"),
-  Row_48284 = c("115", "House", "21102", "AL", "7.0", "(empty)", "(empty)",
-                "S001185", "SEWELL, Terri"))
-
 ## ---- rawocc2
 # The share of House rows with `occupancy` filled, one Congress per row. The
 # cliff between two adjacent rows is the finding, and a row is where it reads.
@@ -173,19 +136,6 @@ data.frame(Congress = cg,
 EX[EX$bioname == "ROGERS, Mike Dennis" & EX$year %in% c(2015, 2017),
    c("congress", "state_abbrev", "district_code", "election_year",
      "on_house_ballot", "denied", "ge_win", "outcome")]
-
-## ---- joinproblems
-data.frame(
-  `what breaks` = c("Compound surnames split differently",
-                    "Suffixes", "Accents",
-                    "Errors in the official federal file",
-                    "Two members, one state, one surname, one initial"),
-  example = c("FEC \"Schultz\" against Voteview \"WASSERMAN SCHULTZ\"",
-              "\"Conyers, Jr.\" against \"CONYERS\"",
-              "Voteview writes LUJÁN with an acute",
-              "\"Synder\", \"Gallegy\", \"Alderholt\", \"Norcoss\", \"Sherril\"",
-              "Linda and Loretta Sanchez of California"),
-  check.names = FALSE)
 
 ## ---- era-table
 E <- data.frame(
@@ -251,8 +201,7 @@ const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
 const dot=svg.append("circle").attr("r",4).attr("fill","#C41230").attr("opacity",0);
 const cap=d3.select("#turn").append("p").attr("style",
   "font-size:0.86em;color:#444;min-height:2.2em;margin:0.3em 0 0 0");
-const DEF="One point per Congress, 1789 to the present. "+
-  "<i>Move across the figure for a Congress-by-Congress readout.</i>";
+const DEF="<i>Move across the figure for a Congress-by-Congress readout.</i>";
 cap.html(DEF);
 svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
   .attr("height",H-M.b-M.t).attr("fill","none").attr("pointer-events","all")
@@ -490,9 +439,7 @@ lg.append("line").attr("x1",0).attr("x2",12).attr("y1",34).attr("y2",34)
 lg.append("text").attr("x",17).attr("y",38).attr("font-size","11.5px")
   .text("mean within each quarter of the range");
 })();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-One point per party per election. Hover for the year.</p>'))
+</script>'))
 
 ## ---- fig3-static
 par(mar = c(3.4, 3.8, 0.8, 0.8), mgp = c(2.3, 0.6, 0))
@@ -509,24 +456,6 @@ legend("topright", c("Democrats", "Republicans",
        pch = c(19, 19, NA), lty = c(NA, NA, 1), lwd = c(NA, NA, 2.4),
        col = c("#2c7fb8", "#C41230", "#111111"), bty = "o", bg = "#ffffff",
        box.col = "#dddddd", cex = 0.66)
-
-## ---- consistency
-AG <- read.csv("../../04-political-actors/officeholder-age/data/derived/age_by_congress.csv",
-               stringsAsFactors = FALSE)
-AG <- AG[AG$chamber == "House", c("congress", "year", "mean_years_since_entry")]
-MG <- merge(DP[, c("congress", "year", "pct_left")], AG,
-            by = c("congress", "year"))
-MG <- MG[MG$congress >= 10, ]
-w <- function(a, b) {
-  z <- MG[MG$year >= a & MG$year <= b, ]
-  c(pc(mean(z$pct_left)), pc(mean(z$mean_years_since_entry)))
-}
-data.frame(
-  period = c("1962–1980", "2006–2023"),
-  `share not returning` = c(paste0(w(1962, 1980)[1], "%"),
-                            paste0(w(2006, 2023)[1], "%")),
-  `mean years served so far` = c(w(1962, 1980)[2], w(2006, 2023)[2]),
-  check.names = FALSE)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
