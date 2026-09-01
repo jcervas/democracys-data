@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -23,20 +24,24 @@ r  <- function(x, v) d[[v]][d$race == x]
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",")
 
-# ---- the three totals the funnel figure is drawn from ------------------------
-# Computed once here, and the percentage labels are formatted once here too. The
-# HTML funnel used to compute "5.9% of stops" in JavaScript while the PDF one
-# computed it in R; the two agreed by luck, and a change of one stop in the
-# source would have been enough to make them disagree in the last digit. Both
-# renderers now print these strings.
+# ---- the totals the prose quotes --------------------------------------------
+# Computed once here so no sentence in the brief carries a typed number, and so
+# the two renderers of every figure below read the same values.
 ST <- sum(d$stops); SE <- sum(d$searched); FD <- sum(d$contraband_found)
-SE_PCT <- pc(100 * SE / ST, 1)
-FD_PCT <- pc(100 * FD / ST, 2)
-FBLU <- "#2c7fb8"; FRED <- "#C41230"; FGRY <- "#9a9a9a"
 
 # the horizontal line in the search-rate/hit-rate figure: one weighted mean,
 # used by both renderers rather than recomputed in each
 WM <- 100 * FD / SE
+
+# ---- does the ordering hold in every year? ----------------------------------
+# The by-year table exists to answer one question in the prose: is the hit-rate
+# gap the work of one or two unusual years? Counted here rather than drawn,
+# because the answer is a count and not a shape.
+.w <- y[y$race == "white", c("year", "hit_rate")]
+.b <- y[y$race == "black", c("year", "hit_rate")]
+.m <- merge(.w, .b, by = "year", suffixes = c("_white", "_black"))
+NYR <- nrow(.m)
+WHI <- sum(.m$hit_rate_white > .m$hit_rate_black)
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 # These are front-facing documents. A data.frame printed the ordinary way comes
@@ -97,106 +102,8 @@ data.frame(
                     "warning, citation, arrest"),
   check.names = FALSE)
 
-## ---- counts
-data.frame(
-  quantity = c("Stops in the file", "Years covered", "Stops that led to a search",
-               "Searches that found contraband", "Race categories recorded"),
-  value = c(n(ST), paste(min(y$year), "to", max(y$year)),
-            n(SE), n(FD), nrow(d)))
-
-## ---- rawstop
-# A capture of the first line of the download and of two data rows, with the
-# three location fields blanked. The counts quoted in the paragraphs below are
-# taken from this text at knit time, not asserted about it.
-RAW <- c(
-"raw_row_number,date,time,location,lat,lng,district,subject_age,subject_race,subject_sex,type,arrest_made,citation_issued,warning_issued,outcome,contraband_found,search_conducted,search_vehicle,search_basis,reason_for_stop,raw_search_vehicle_description,raw_result_of_contact_description",
-"869921,2014-08-01,00:01:00,[redacted],[redacted],[redacted],NA,NA,asian/pacific islander,female,vehicular,FALSE,FALSE,TRUE,warning,NA,FALSE,FALSE,NA,Mechanical or Non-Moving Violation (V.C.),No Search,Warning",
-"870048,2014-08-01,14:34:00,[redacted],[redacted],[redacted],NA,NA,white,male,vehicular,FALSE,TRUE,FALSE,citation,TRUE,TRUE,TRUE,other,Moving Violation,\"Search without Consent, Positive Result\",Citation")
-
-# Break a long line after a comma that is outside quotes -- the same rule a CSV
-# parser uses, so a quoted field is never torn in half.
-fold <- function(s, w = 72) {
-  ch <- strsplit(s, "", fixed = TRUE)[[1]]
-  brk <- which(ch == "," & !(cumsum(ch == "\"") %% 2 == 1))
-  out <- character(0); i <- 1L
-  while (i <= length(ch)) {
-    cand <- brk[brk >= i & brk < i + w]
-    j <- if (length(ch) - i + 1L <= w || !length(cand)) length(ch) else max(cand)
-    out <- c(out, paste(ch[i:j], collapse = "")); i <- j + 1L
-  }
-  out
-}
-NF <- 1L + sum(strsplit(RAW[1], "", fixed = TRUE)[[1]] == ",")
-
-# Twenty-two columns down the page, the two captured stops beside them. NA is
-# left exactly as the file writes it -- it is a string in this file, not a
-# missing value R has decided about.
-.p <- read.csv(text = paste(RAW, collapse = "\n"), stringsAsFactors = FALSE,
-               check.names = FALSE, colClasses = "character",
-               na.strings = character(0))
-# The Open Policing Project documents its standardised schema; the two `raw_`
-# columns are the exception, and are the department's own words carried through
-# untranslated, which is what the next paragraphs are about.
-.pol <- c(
-  raw_row_number = "the row's number in the department's own export",
-  date = "date of the stop", time = "time of the stop",
-  location = "where it happened — redacted here",
-  lat = "latitude — redacted here", lng = "longitude — redacted here",
-  district = "police district",
-  subject_age = "the driver's age", subject_race = "the driver's race, as standardised by the project",
-  subject_sex = "the driver's sex",
-  type = "vehicular or pedestrian",
-  arrest_made = "whether an arrest followed",
-  citation_issued = "whether a citation was issued",
-  warning_issued = "whether a warning was issued",
-  outcome = "the outcome, collapsed to one word",
-  contraband_found = "whether contraband was found",
-  search_conducted = "whether any search happened",
-  search_vehicle = "whether the vehicle was searched",
-  search_basis = "the stated legal basis for the search",
-  reason_for_stop = "why the stop was made",
-  raw_search_vehicle_description = "the department's own words for the search",
-  raw_result_of_contact_description = "the department's own words for the outcome")
-data.frame(Column_as_it_arrives = names(.p),
-           What_it_holds = unname(.pol[names(.p)]),
-           Stop_1 = unname(unlist(.p[1, ])),
-           Stop_2 = unname(unlist(.p[2, ])))
-
-## ---- translate
-# Parsed out of the capture above rather than typed here, so the mapping shown
-# is the mapping in those two rows.
-fields <- function(s) {
-  ch <- strsplit(s, "", fixed = TRUE)[[1]]
-  cut <- which(ch == "," & !(cumsum(ch == "\"") %% 2 == 1))
-  st <- c(1L, cut + 1L); en <- c(cut - 1L, length(ch))
-  gsub("^\"|\"$", "",
-       vapply(seq_along(st),
-              function(i) if (st[i] > en[i]) "" else
-                paste(ch[st[i]:en[i]], collapse = ""), character(1)))
-}
-h <- fields(RAW[1]); g <- function(r, k) fields(RAW[r])[match(k, h)]
-data.frame(
-  the_department_wrote = c(g(2, "raw_search_vehicle_description"),
-                           g(2, "raw_result_of_contact_description"),
-                           g(3, "raw_search_vehicle_description"),
-                           g(3, "raw_result_of_contact_description")),
-  the_release_records = c(
-    paste0("search_conducted = ", g(2, "search_conducted"),
-           ", contraband_found = ", g(2, "contraband_found")),
-    paste0("outcome = ", g(2, "outcome")),
-    paste0("search_conducted = ", g(3, "search_conducted"),
-           ", contraband_found = ", g(3, "contraband_found")),
-    paste0("outcome = ", g(3, "outcome"))),
-  check.names = FALSE)
-
 ## ---- cleanrace
 d[order(-d$stops), c("race", "stops", "searched", "contraband_found", "arrests")]
-
-## ---- stops-by-race
-o <- d[order(-d$stops), c("race", "stops", "share")]
-o$stops <- n(o$stops); o$share <- pc(as.numeric(gsub(",", "", o$share)), 1)
-names(o) <- c("race (officer-perceived)", "stops", "% of all stops")
-o
 
 ## ---- denominator
 data.frame(
@@ -207,13 +114,17 @@ data.frame(
 
 ## ---- bench-d3
 # ---------------------------------------------------------------------------
+# A designated showpiece, and the only hand-written D3 left in this brief. No
+# library type draws a panel of real denominators beside a marked-out empty one,
+# and the empty panel is the argument.
+#
 # Every ratio drawn here was computed in R, in setup, from acs_denominators.csv
 # and by_race.csv, and its printed label was formatted there too. Nothing in
 # this figure is recomputed in JavaScript.
 #
 # This chunk carries the ONE d3 <script src> for the document. A second copy
-# would silently double the payload; the later figures use the library loaded
-# here.
+# would silently double the payload; the dd_fig() scatter below rides on the
+# library loaded here and passes d3 = FALSE.
 # ---------------------------------------------------------------------------
 rows <- paste(sprintf('{"r":"%s","d":"%s","v":%.4f,"lab":"%s"}',
                       bench$race, bench$den, bench$ratio, bfmt(bench$ratio)),
@@ -331,100 +242,6 @@ o$search_rate <- pc(as.numeric(o$search_rate), 2)
 names(o) <- c("race", "stops", "searches", "% of stops searched")
 o
 
-## ---- funnel-d3
-# Counts and their percentage labels are formatted once, in R, and passed in as
-# strings; nothing here is divided in JavaScript.
-cat(sprintf('
-<div id="fun" style="margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const ST=%d,SE=%d,FD=%d;
-const LBL=["","%s","%s","%s"],PCT=["","","%s%% of stops","%s%% of stops"];
-const W=760,H=300,MID=132,FULL=150;
-const BLU="#2c7fb8",RED="#C41230",GRY="#9a9a9a";
-const svg=d3.select("#fun").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const T=(x,y,s,o)=>{const t=svg.append("text").attr("x",x).attr("y",y)
-  .attr("text-anchor",(o&&o.a)||"middle").attr("font-size",(o&&o.s)||"12px")
-  .attr("fill",(o&&o.c)||"#333");if(o&&o.b)t.attr("font-weight","600");return t.text(s);};
-const XS=[60,270,480,690], hh=[0,FULL,FULL*SE/ST,FULL*FD/ST];
-const BW=104;
-// the denominator that does not exist
-svg.append("rect").attr("x",XS[0]-BW/2).attr("y",MID-FULL/2-16).attr("width",BW)
-  .attr("height",FULL+32).attr("fill","#f4f4f4").attr("stroke",GRY)
-  .attr("stroke-width",1.6).attr("stroke-dasharray","6,4").attr("rx",3);
-// on-mark: both sit inside the pale #f4f4f4 box drawn just above.
-T(XS[0],MID-14,"everyone",{b:1,c:"#555"}).attr("class","on-mark");
-T(XS[0],MID+4,"on the road",{b:1,c:"#555"}).attr("class","on-mark");
-T(XS[0],MID+40,"?",{b:1,c:GRY,s:"30px"});
-T(XS[0],MID+FULL/2+34,"never counted",{c:GRY,s:"11px"});
-// the funnel
-for(let i=1;i<3;i++){
-  svg.append("path").attr("d",`M${XS[i]+BW/2},${MID-hh[i]/2}L${XS[i+1]-BW/2},${MID-hh[i+1]/2}`+
-    `L${XS[i+1]-BW/2},${MID+hh[i+1]/2}L${XS[i]+BW/2},${MID+hh[i]/2}Z`)
-    .attr("fill","#c9d9e6").attr("fill-opacity",0.7);}
-[1,2,3].forEach(i=>svg.append("rect").attr("x",XS[i]-BW/2)
-  .attr("y",MID-hh[i]/2).attr("width",BW).attr("height",Math.max(hh[i],1.2))
-  .attr("fill",i===3?RED:BLU).attr("fill-opacity",0.78));
-svg.append("defs").append("marker").attr("id","fm").attr("viewBox","0 0 10 10")
-  .attr("refX",9).attr("refY",5).attr("markerWidth",6).attr("markerHeight",6)
-  .attr("orient","auto").append("path").attr("d","M0,0L10,5L0,10Z").attr("fill","#555");
-svg.append("line").attr("x1",XS[0]+BW/2+8).attr("y1",MID).attr("x2",XS[1]-BW/2-8)
-  .attr("y2",MID).attr("stroke","#555").attr("stroke-width",1.8)
-  .attr("marker-end","url(#fm)");
-const LAB=["","STOPPED","SEARCHED","CONTRABAND FOUND"];
-[1,2,3].forEach(i=>{
-  T(XS[i],MID-FULL/2-30,LAB[i],{b:1,s:"11.5px",c:i===3?RED:BLU});
-  T(XS[i],MID-FULL/2-12,LBL[i],{b:1,s:"14px",c:"#222"});
-  if(i>1)T(XS[i],MID+FULL/2+22,PCT[i],{c:"#555",s:"11px"});});
-svg.append("line").attr("x1",XS[3]).attr("y1",MID+2).attr("x2",XS[3])
-  .attr("y2",MID-FULL/2-8).attr("stroke","#777").attr("stroke-width",0.8);
-})();
-</script>
-', ST, SE, FD, n(ST), n(SE), n(FD), SE_PCT, FD_PCT))
-
-## ---- funnel-static
-par(mar = rep(0.2, 4))
-plot(NA, xlim = c(0, 100), ylim = c(-8, 44), asp = NA, axes = FALSE, ann = FALSE)
-H <- 26; xs <- c(6, 34, 62, 90); mid <- 14
-h <- c(NA, H, H * SE/ST, H * FD/ST)          # true proportions
-# The last band is ~0.23 units tall. Earlier versions raised it to 0.25 so it
-# would show up, which quietly made the rarest step look 9% commoner than it is
-# while the HTML version drew it honestly. Both now draw the true height and
-# mark it with a leader line instead.
-rect(xs[1] - 5, mid - H/2 - 3, xs[1] + 9, mid + H/2 + 3, col = "#f4f4f4",
-     border = FGRY, lwd = 1.6, lty = 2)
-text(xs[1] + 2, mid + 5.5, "everyone", cex = 0.68, font = 2, col = "#555")
-text(xs[1] + 2, mid + 1.5, "on the road", cex = 0.68, font = 2, col = "#555")
-text(xs[1] + 2, mid - 4.5, "?", cex = 1.7, font = 2, col = FGRY)
-text(xs[1] + 2, mid - H/2 - 6.8, "never counted", cex = 0.58, col = FGRY)
-
-for (i in 2:3)
-  polygon(c(xs[i] + 9, xs[i+1] - 5, xs[i+1] - 5, xs[i] + 9),
-          c(mid + h[i]/2, mid + h[i+1]/2, mid - h[i+1]/2, mid - h[i]/2),
-          col = adjustcolor("#c9d9e6", 0.7), border = NA)
-for (i in 2:4) {
-  rect(xs[i] - 5, mid - h[i]/2, xs[i] + 9, mid + h[i]/2,
-       col = adjustcolor(if (i == 4) FRED else FBLU, 0.78), border = NA)
-}
-# the contraband band is genuinely too thin to see; point at it rather than
-# inflate it
-segments(xs[4] + 2, mid - h[4]/2 - 3.2, xs[4] + 2, mid - h[4]/2 - 0.4,
-         col = FRED, lwd = 0.8)
-arrows(xs[1] + 10, mid, xs[2] - 6, mid, length = 0.07, lwd = 1.6, col = "#555")
-
-LAB <- c("", "STOPPED", "SEARCHED", "CONTRABAND FOUND")
-CNTL <- c("", n(ST), n(SE), n(FD))
-PCTL <- c("", "", paste0(SE_PCT, "% of stops"), paste0(FD_PCT, "% of stops"))
-for (i in 2:4) {
-  text(xs[i] + 2, mid + H/2 + 8.5, LAB[i], cex = 0.6, font = 2,
-       col = if (i == 4) FRED else FBLU)
-  text(xs[i] + 2, mid + H/2 + 4.6, CNTL[i], cex = 0.68, font = 2, col = "#222")
-  if (i > 2) text(xs[i] + 2, mid - H/2 - 4.2, PCTL[i], cex = 0.58, col = "#555")
-}
-segments(xs[4] + 2, mid + 0.6, xs[4] + 2, mid + H/2 + 3.2, col = "#777", lwd = 0.7)
-
 ## ---- hit-rate
 o <- d[order(-d$search_rate), c("race", "searched", "contraband_found", "hit_rate")]
 o$searched <- n(o$searched); o$contraband_found <- n(o$contraband_found)
@@ -434,11 +251,12 @@ o
 
 ## ---- scatter-static
 # WM, the overall share of searches that found contraband, is computed once in
-# setup; the D3 version below is handed the same number rather than summing the
-# columns again.
+# setup; the dd_fig() version below is handed the same number rather than
+# summing the columns again. Point size is constant in both, so neither
+# renderer can imply a size encoding the other does not draw.
 par(mar = c(4.4, 4.6, 0.8, 1.4))
-plot(d$search_rate, d$hit_rate, pch = 19, col = "#C41230",
-     cex = sqrt(d$stops)/300, xlim = c(0, 18), ylim = c(0, 42), las = 1,
+plot(d$search_rate, d$hit_rate, pch = 19, col = "#C41230", cex = 1.1,
+     xlim = c(0, 18), ylim = c(0, 42), las = 1,
      xlab = "% of stops that led to a search",
      ylab = "% of searches that found contraband")
 text(d$search_rate, d$hit_rate, d$race, pos = 4, cex = 0.75)
@@ -447,159 +265,34 @@ abline(h = WM, lty = 3, col = "grey50")
 # to know what it means
 text(17.6, WM + 1.4, "equal thresholds would put every group on one horizontal line",
      adj = c(1, 0), cex = 0.62, col = "#777")
-text(0.2, 40.5, "circle area is the number of stops", adj = c(0, 0.5),
-     cex = 0.62, col = "#777")
 
 ## ---- d3-scatter
-rows <- paste(sprintf('{"r":"%s","s":%d,"sr":%.2f,"hr":%.1f,"n":%d,"h":%d}',
-                      d$race, d$stops, d$search_rate, d$hit_rate,
-                      d$searched, d$contraband_found), collapse = ",")
-cat(sprintf('
-<div id="pol" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const data=[%s],WM=%.4f;
-const W=760,H=440,M={t:20,r:24,b:48,l:56};
-const svg=d3.select("#pol").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,18]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,42]).range([H-M.b,M.t]);
-const rad=d3.scaleSqrt().domain([0,d3.max(data,d=>d.s)]).range([0,42]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`).call(d3.axisBottom(x).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("share of stops that led to a search");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("share of searches that found contraband");
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(WM)).attr("y2",y(WM))
-  .attr("stroke","#999").attr("stroke-dasharray","4,4");
-svg.append("text").attr("x",W-M.r-4).attr("y",y(WM)-6).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#777")
-  .text("equal thresholds would put every group on one horizontal line");
-const tip=d3.select("#pol").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("circle").data(data).join("circle")
-  .attr("cx",d=>x(d.sr)).attr("cy",d=>y(d.hr)).attr("r",d=>rad(d.s))
-  .attr("fill","#C41230").attr("fill-opacity",0.28)
-  .attr("stroke","#C41230").attr("stroke-width",1.8)
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html(
-      `<b>${d.r}</b><br>${d3.format(",")(d.s)} stops<br>`+
-      `searched ${d.sr}%% (${d3.format(",")(d.n)})<br>`+
-      `contraband in ${d.hr}%% of searches`)
-      .style("left",Math.min(e.offsetX+14,W-200)+"px").style("top",(e.offsetY-10)+"px");
-  }).on("mouseleave",()=>tip.style("opacity",0));
-svg.append("g").selectAll("text.lab").data(data).join("text").attr("class","lab")
-  .attr("x",d=>x(d.sr)).attr("y",d=>y(d.hr)-rad(d.s)-7).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#333").text(d=>d.r);
-})();
-</script>
+# The shared chart library draws this one: five points, two rates, one
+# reference line. d3 = FALSE because the showpiece above already loaded d3.
+sc <- d[, c("race", "stops", "searched", "contraband_found",
+            "search_rate", "hit_rate")]
+sc$lbl <- sc$race
+dd_fig("pol", "scatter", sc,
+  size = list(w = 760, h = 430),
+  x = list(field = "search_rate", label = "share of stops that led to a search",
+           domain = c(0, 18), fmt = "pct0"),
+  y = list(field = "hit_rate", label = "share of searches that found contraband",
+           domain = c(0, 42), fmt = "pct0"),
+  r = 6.5,
+  annotations = list(
+    list(type = "hline", y = WM),
+    list(type = "text", x = 17.6, y = WM + 1.4, anchor = "end",
+         text = "equal thresholds would put every group on this line")),
+  tip = dd_tip(c(stops = "stops", searched = "searches",
+                 search_rate = "% of stops searched",
+                 hit_rate = "% of searches finding contraband"),
+               fmt = c(stops = "comma", searched = "comma",
+                       search_rate = "pct2", hit_rate = "pct1"),
+               title = "race"),
+  d3 = FALSE)
+cat('
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Circle area is the number of stops. Hover for detail.</p>
-', rows, WM))
-
-## ---- trend-static
-ks <- c("white", "black", "hispanic", "asian/pacific islander", "other")
-cl <- c("#2c7fb8", "#C41230", "#e08214", "#4d9221", "#999999")
-plot(NA, xlim = range(y$year), ylim = c(0, 50), xlab = "", las = 1,
-     ylab = "% of searches finding contraband")
-for (i in seq_along(ks)) {
-  s <- y[y$race == ks[i], ]; s <- s[order(s$year), ]
-  lines(s$year, s$hit_rate, col = cl[i], lwd = 2.2)
-}
-legend("topright", ks, col = cl, lwd = 2.2, bty = "n", cex = 0.8)
-
-## ---- d3-trend
-ks <- c("white", "black", "hispanic", "asian/pacific islander", "other")
-cl <- c("#2c7fb8", "#C41230", "#e08214", "#4d9221", "#999999")
-ser <- paste(mapply(function(k, col) {
-  s <- y[y$race == k, ]; s <- s[order(s$year), ]
-  sprintf('{"k":"%s","c":"%s","v":[%s]}', k, col,
-          paste(sprintf('[%d,%.1f]', s$year, s$hit_rate), collapse = ","))
-}, ks, cl), collapse = ",")
-cat(sprintf('
-<div id="trend" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const S=[%s];
-const W=760,H=400,M={t:18,r:150,b:38,l:52};
-const svg=d3.select("#trend").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const yrs=S[0].v.map(p=>p[0]);
-const x=d3.scaleLinear().domain(d3.extent(yrs)).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,50]).range([H-M.b,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(10));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickFormat(d=>d+"%%").ticks(6));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",14)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("share of searches finding contraband");
-const ln=d3.line().x(p=>x(p[0])).y(p=>y(p[1]));
-const g=svg.append("g");
-S.forEach(s=>{
-  g.append("path").attr("d",ln(s.v)).attr("fill","none")
-    .attr("stroke",s.c).attr("stroke-width",2.4).attr("class","ser").attr("data-k",s.k);
-  const last=s.v[s.v.length-1];
-  svg.append("text").attr("x",W-M.r+8).attr("y",y(last[1])+4)
-    .attr("font-size","11.5px").attr("fill",s.c).text(s.k);
-});
-// vertical readout
-const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#bbb").attr("opacity",0);
-const dots=svg.append("g");
-const tip=d3.select("#trend").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","none").attr("pointer-events","all")
-  .on("mousemove",function(e){
-    const yr=Math.round(x.invert(d3.pointer(e,this)[0]+M.l));
-    if(yr<yrs[0]||yr>yrs[yrs.length-1])return;
-    rule.attr("x1",x(yr)).attr("x2",x(yr)).attr("opacity",1);
-    const rows=S.map(s=>({k:s.k,c:s.c,val:s.v.find(p=>p[0]===yr)[1]}))
-                .sort((a,b)=>b.val-a.val);
-    dots.selectAll("circle").data(rows).join("circle")
-      .attr("cx",x(yr)).attr("cy",r=>y(r.val)).attr("r",4).attr("fill",r=>r.c);
-    tip.style("opacity",1).html(`<b>${yr}</b><br>`+
-      rows.map(r=>`<span style="color:${r.c}">■</span> ${r.k}: ${r.val}%%`).join("<br>"))
-      .style("left",Math.min(x(yr)-M.l+18,W-260)+"px").style("top",(M.t+6)+"px");
-  })
-  .on("mouseleave",()=>{rule.attr("opacity",0);dots.selectAll("circle").remove();tip.style("opacity",0);});
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Move across the chart to read every group in a given year.</p>
-', ser))
-
-## ---- yearcheck
-w <- y[y$race == "white",   c("year", "hit_rate")]
-b <- y[y$race == "black",   c("year", "hit_rate")]
-m <- merge(w, b, by = "year", suffixes = c("_white", "_black"))
-m$white_higher <- ifelse(m$hit_rate_white > m$hit_rate_black, "yes", "no")
-m$hit_rate_white <- pc(m$hit_rate_white); m$hit_rate_black <- pc(m$hit_rate_black)
-names(m) <- c("year", "white hit rate (%)", "Black hit rate (%)", "white higher?")
-m
-
-## ---- on-mark-halo
-# A label lying across a saturated or mid-toned mark, where neither the
-# authored colour nor the lifted one reaches 3:1. Recolouring cannot fix a
-# label the same colour as the thing it labels, so it gets a halo instead:
-# paint-order draws a --paper outline behind the glyph. It is invisible where
-# the text sits on the page, so scoping by figure and fill is safe.
-# LIGHT PAGE ONLY: on the dark page the fill is lifted and already passes,
-# and a --paper stroke would sit dark behind a dark ink there, because the
-# checker scores the fill against the stroke it touches.
-# Sites found by _lib/check-contrast.js --light.
-cat('<style>
-@media (prefers-color-scheme: light) {
-#pol text[fill="#333" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
-</style>')
+Hover a point for that group\'s counts.</p>')
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
