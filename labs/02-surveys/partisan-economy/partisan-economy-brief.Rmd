@@ -16,22 +16,30 @@ dd_read_chunks("partisan-economy-code.R")
 ```{r setup, include=FALSE}
 ```
 
-There is one American economy. In any given year it grew or it shrank, and that is true no matter who you ask. A question about the economy is therefore not like a question about abortion or ideology, where people disagreeing *is* the measurement. It looks like a question with a fact sitting behind it.
+There is one American economy. In any given year it grew or it shrank, and that is true no matter who you ask. A question about the economy is therefore not like a question about abortion or ideology, where people disagreeing *is* the measurement. It looks like a question with a fact sitting behind it. So this brief asks the question that look invites: do Americans agree on how the economy is doing?
 
-The American National Election Studies has asked it in every study since `r FIRST`. In `r LAST`, `r p1(nat$dem_worse[nat$year == LAST])`% of Democrats said the national economy had got worse over the past year. Among Republicans it was `r p1(nat$rep_worse[nat$year == LAST])`%. That is a gap of `r pa(G24)` points, on a question about a country both groups live in.
+The American National Election Studies has asked it in every study since `r FIRST`. In `r LAST`, `r p1(nat$dem_worse[nat$year == LAST])`% of Democrats said the national economy had got worse over the past year. Among Republicans it was `r p1(nat$rep_worse[nat$year == LAST])`%. That is a gap of `r pa(G24)` points, on a question about a country both groups live in. Four years earlier the same question produced a gap of `r pa(G20)` points **the other way**.
 
-Four years earlier the same question produced a gap of `r pa(G20)` points **the other way**.
+## The test
 
-## Two questions from one interview
+The measure is the ANES's economic retrospection: did the nation's economy get better or worse over the past year. It sits in the Time Series Cumulative Data File, 1948–2024, obtained from the [American National Election Studies](https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/). The question has been asked in `r NYR` studies since `r FIRST`, in the same words. The [ANES chapter](../anes/anes-brief.html) introduces the cumulative file and what it costs to get; this brief pulls two of its questions out.
 
-This chapter uses the ANES cumulative file, which the [`anes`](../anes/anes-brief.html) chapter introduces and the [`party-id`](../party-id/party-id-brief.html) chapter takes apart. Two of its columns matter here, and they arrive in the same interview.
+This question looks like the exception to a rule that runs through this section. Most opinion measures are never graded — no election, no count, no official record ever arrives to score them, so the survey's method has to be the whole credential. Here a record exists: the national accounts say what the economy did, and the answers could in principle be marked against them. This brief never marks them, because its finding needs no outside record at all. What it needs is a series: the same words asked across five decades. That exists only because ANES kept asking them, study after study.
+
+The test is a subtraction with a prediction attached. For every study year, take the share of Democrats saying the economy got worse, subtract the share of Republicans saying so, and set the sign of the result against the party holding the White House. Then two follow-ups: split the same answers seven ways instead of two, and run the identical subtraction on a question about the respondent's own household.
+
+## The data
+
+Two columns arrive in the same interview, and the codebook gives them in these words.
 
 ```{r question, comment="", class.output="rawblock"}
 ```
 
-Read the two code lists again. The first question numbers *worse* as 5 and the second numbers it as 3. Nothing warns you. Treat the second column the way you treated the first and every worse answer silently disappears.
+Read the two code lists again. The first question numbers *worse* as 5 and the second numbers it as 3. Nothing warns you. Treat the second column the way you treated the first and every worse answer silently disappears — a mistake that would survive every visual inspection, because both columns look like small tidy integers.
 
-Party comes from `VCF0303`, the file's own three-way column. It takes the people who call themselves independent and then admit to leaning, and files them with the party they lean toward. That is a decision rather than a fact, and it is the decision the `party-id` chapter is about. It is the right one here, and the figure two sections down is part of the reason why.
+Party comes from `VCF0303`, the file's own three-way column. It takes the people who call themselves independent and then admit to leaning, and files them with the party they lean toward. That is a decision rather than a fact, and it is the decision the [party identification brief](../party-id/party-id-brief.html) is about. It is the right one here, and Figure 2 below is part of the reason why.
+
+Four tables are built from these columns. `national.csv` holds, for each study year, the share of Democrats, independents and Republicans saying the national economy got worse, the party of the president, the group sizes, and the `gap`. `personal.csv` holds the same arithmetic for the household question. `gradient.csv` breaks 2020 and 2024 out by the full seven-point party scale. `weighting.csv` recomputes every gap with the file's weight applied, because the main tables leave it off. To weight is to count some answers more than others, to make the sample look like the country.
 
 > **Before you read on, commit to a number.** In `r LAST` a Democratic
 > president was in office. Write down what you think the gap was between
@@ -39,9 +47,9 @@ Party comes from `VCF0303`, the file's own three-way column. It takes the people
 > and then write down what you think it was on whether **their own household
 > finances** had got worse. You will see both.
 
-## The sign follows the president
+## What it says about democracy
 
-Here is the subtraction for every study from `r FIRST` to `r LAST`: the share of Democrats who said worse, minus the share of Republicans, in percentage points. The bands behind the bars are the party of the president in office when the interviews were done.
+Here is the subtraction for every study from `r FIRST` to `r LAST`: the share of Democrats who said worse, minus the share of Republicans, in percentage points.
 
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -49,7 +57,7 @@ Here is the subtraction for every study from `r FIRST` to `r LAST`: the share of
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The partisan gap on the national economy, `r FIRST`–`r LAST`.** A bar above the line means Democrats were the more negative group; below it means Republicans were. Hovering gives the two shares the bar is built from, and how many people answered in each group.
+**Figure 1. The partisan gap on the national economy, `r FIRST`–`r LAST`.** Bars on a time axis, because the claim is about the *sign* of one number per year, and a bar makes a sign visible at a glance. The shaded bands behind the bars are the party of the president when the interviews were done. A bar above the line means Democrats were the more negative group; below it means Republicans were. Hovering gives the two shares each bar is built from, and how many people answered in each group.
 
 The bar points up in every Republican year and down in every Democratic year. That holds in `r ck$value[2]` studies, with no exception in `r NYR` election cycles and six changes of party in the White House.
 
@@ -58,9 +66,7 @@ The bar points up in every Republican year and down in every Democratic year. Th
 
 Notice that the levels move too, not just the gap. In 2020, `r p1(nat$dem_worse[nat$year == 2020])`% of Democrats said the economy had got worse. Four years later `r p1(nat$dem_worse[nat$year == LAST])`% did. The same group, the same question, an economy that had grown in both windows, and a `r pa(nat$dem_worse[nat$year == 2020] - nat$dem_worse[nat$year == LAST])`-point swing.
 
-## The staircase reverses
-
-Split the same question seven ways instead of three and you can see how orderly this is.
+Split the same question seven ways instead of three and you can see how orderly the reversal is.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -68,22 +74,15 @@ Split the same question seven ways instead of three and you can see how orderly 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same question, seven groups, two adjacent studies.** In HTML the buttons drop one year so the other can be read on its own. Hovering gives the count behind each point.
+**Figure 2. The same question, seven groups, two adjacent studies.** In HTML the buttons drop one year so the other can be read on its own; hovering gives the count behind each point.
 
 In 2020 the line runs downhill: strong Democrats were the most negative group at `r p1(SD20)`% and strong Republicans the least at `r p1(SR20)`%. In `r LAST` it runs uphill, from `r p1(SD24)`% among strong Democrats to `r p1(SR24)`% among strong Republicans. The order of the seven groups did not scramble. It turned over.
 
-Two details are worth stopping on. People who claimed no party at all sit near the middle in both years, which is what you would expect if partisanship is what moves the line. The leaners sit out near the partisans instead. Those are the people who said "independent" first and named a party only when pressed, and this is the same finding the `party-id` chapter reaches from vote choice, arrived at from a different column.
-
-## The objection, and the question that answers it
+Two details are worth stopping on. People who claimed no party at all sit near the middle in both years, which is what you would expect if partisanship is what moves the line. The leaners sit out near the partisans instead — the same finding the [party identification brief](../party-id/party-id-brief.html) reaches from vote choice, arrived at from a different column.
 
 There is a real objection to all of this. Democrats and Republicans are not the same people. They differ in income, age, region and industry, so they may be describing genuinely different economic experiences rather than reporting the same country differently.
 
-The file can answer that, because the same interview asks a second question: are **you** better or worse off financially than you were a year ago. Those two questions differ in a way that matters. The national economy has one true answer for everybody. Household finances have millions of true answers, and Democratic and Republican households really do differ.
-
-So the personal question should carry the bigger partisan gap. It does not.
-
-```{r pown-ink, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
+The file can answer that, because the same interview asks a second question: are **you** better or worse off financially than you were a year ago. The national economy has one true answer for everybody; household finances have millions of true answers, and Democratic and Republican households really do differ. So if the gap were composition, the personal question should carry the bigger one. It does not.
 
 ```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -96,46 +95,63 @@ So the personal question should carry the bigger partisan gap. It does not.
 ```{r tab2}
 ```
 
-The gap on the national economy is wider than the gap on people's own finances in `r ck$value[3]` studies. Both cross zero in the same years, so partisanship reaches the household question too. It just reaches it with about half the force.
+The gap on the national economy is wider than the gap on people's own finances in `r ck$value[3]` studies. Both cross zero in the same years, so partisanship reaches the household question too. It just reaches it with about half the force. That is the finding: the question with one true answer splits the parties further apart than the question with millions of them.
 
-That is the finding. The question with one true answer splits the parties further apart than the question with millions of them.
+The exceptions get their story, and it is one story. The two narrowest gaps in the series are `r ck$value[6]` — the recession of the early 1990s and the financial crisis. In `r EXC`, `r p1(CD)`% of Democrats and `r p1(CR)`% of Republicans said the economy had got worse, which leaves very little room for a gap. `r EXC` is also the one year in Figure 3 where the personal question splits the parties wider than the national one. Both facts have the same cause: when an economy is bad enough, almost everybody says so, and the national question runs out of room before partisanship does.
 
-## Where the gap closes
+## What this brief cannot tell you
 
-The two narrowest gaps in the series are `r ck$value[6]`. Those are the recession of the early 1990s and the financial crisis. In `r EXC`, `r p1(CD)`% of Democrats and `r p1(CR)`% of Republicans said the economy had got worse, which leaves very little room for a gap.
-
-`r EXC` is also the one year in Figure 3 where the personal question splits the parties wider than the national one. Both facts have the same cause. When an economy is bad enough, almost everybody says so, and the national question runs out of room before partisanship does.
-
-A bad enough economy is still visible through partisanship. That is a limit on the finding, and it is in the data rather than in a caveat someone added afterwards.
-
-> **A second prediction.** A news organisation wants to report "how Americans
-> feel about the economy" as a single number. **Name one thing that number
-> hides**, and say what you would have to publish beside it before the number
-> became honest.
-
-## What this chapter cannot tell you
-
-It cannot tell you which party is right. The chapter never compares these answers to what the economy actually did, so nothing here says that one side reads the country correctly and the other does not. Both groups move when the White House changes hands, and the figures show the distance between them rather than the distance from the truth.
+It cannot tell you which party is right. The brief never compares these answers to what the economy actually did, so nothing here says that one side reads the country correctly and the other does not. Both groups move when the White House changes hands, and the figures show the distance between them rather than the distance from the truth.
 
 It cannot tell you what people believe. A survey records what somebody said to an interviewer. Saying the economy is bad under the other party's president may be a sincere belief, a rough way of saying you dislike the president, or something closer to cheering for a team. Those are different things and this file cannot separate them.
 
 It cannot tell you that nothing real is in these answers. Partisans do differ in where they live and what they do for work, and a policy can genuinely help one group before another. The personal-finance comparison shows that composition is too small to account for the national gap. It does not show that composition is zero.
 
-Nothing here is weighted. `VCF0009z` is in the file and unused, so every percentage describes the people ANES interviewed rather than the country. Because that caveat is easy to write and hard to trust, every gap was also computed with the weight applied. No sign changes, and the largest difference to any year is `r ck$value[10]` points.
+Nothing in the main tables is weighted; `VCF0009z` sits in the file unused there. Because that caveat is easy to write and hard to trust, every gap was also recomputed with the weight applied. No sign changes, and the largest difference to any year is `r ck$value[10]` points.
 
 Finally, the president is not the only thing that changes when the White House changes party. Congress, the news, and the economy itself all move at the same time. The pattern in Figure 1 is as clean as survey evidence gets, and it is still a pattern in eighteen observations rather than an experiment.
 
+## What you should have learned
+
+- The sign of the partisan gap on the national economy has matched the party of the president in `r ck$value[2]` studies: the president's opponents are always the more negative group.
+- The gap is not small: `r pa(G24)` points in `r LAST`, and `r pa(G20)` points the other way in 2020, on a question about a country both groups live in.
+- The same interview's question about the respondent's own finances carries a smaller partisan gap in `r ck$value[3]` studies — the question with one true answer divides the parties more than the question with millions.
+- The exceptions are the worst economies: in `r EXC`, `r p1(CD)`% of Democrats and `r p1(CR)`% of Republicans said worse, and near-unanimity leaves no room for a gap.
+- Weighting rescues none of it: no gap changes sign, and the largest change to any year is `r ck$value[10]` points.
+
+## Extensions
+
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
+
+- `national.csv` has `ind_worse`, the independents' share saying worse, which no figure above draws. Follow it across the years. Does it track the president's opponents, the president's side, or neither?
+- `personal.csv` has its own `gap` for every year. Find the years where it comes closest to the national one, and ask what those years have in common.
+- `gradient.csv` breaks 2020 and 2024 out by the seven-point scale, with `respondents` behind each point. Compare the leaners against the weak partisans on `pct_worse`. Which do they resemble?
+- `weighting.csv` reports `gap_unweighted`, `gap_weighted` and the `difference`. Find the year weighting matters most, and check whether it is a thin-sample year in `national.csv`.
+
+Two stretch ideas point past the spreadsheet. The Bureau of Economic Analysis publishes annual GDP growth; line it up against `national.csv` and ask which predicts the answers better, the economy or the White House. And the University of Michigan's Surveys of Consumers publishes consumer sentiment by party — find a recent release and check whether its gap flips at the same inaugurations Figure 1's does.
+
 ## Sources
+
+**Data**
 
 - American National Election Studies. *ANES Time Series Cumulative Data File
   (1948–2024)*, version of 5 February 2026. Ann Arbor, MI and Palo Alto, CA:
   University of Michigan and Stanford University.
   <https://electionstudies.org/data-center/anes-time-series-cumulative-data-file/>
-  The file is requested rather than downloaded by a script, and is not
-  redistributed with this book. The [`anes`](../anes/anes-brief.html) chapter
+  The file is requested through a browser rather than fetched by a script, and
+  is not redistributed with this book; the [ANES chapter](../anes/anes-brief.html)
   describes what it costs to get.
 - ANES. *Time Series Cumulative Data File Codebook*, same release. The wording
   of `VCF0870` and `VCF0880`, and both code lists, are quoted from it.
+- **Build.** `data/build-data.R` reads the preserved copy of the file, builds
+  the four tables below, and asserts the values this brief quotes. The table
+  of assertions is printed here verbatim:
+
+```{r checks}
+```
+
+**Academic literature**
+
 - Bartels, Larry M. (2002). "Beyond the Running Tally: Partisan Bias in
   Political Perceptions." *Political Behavior* 24(2): 117–150.
 - Gerber, Alan S. and Gregory A. Huber (2010). "Partisanship, Political Control,
@@ -146,25 +162,9 @@ Finally, the president is not the only thing that changes when the White House c
   Political Science* 10(4): 519–578. On how much of a gap like this survives
   when respondents are paid for accuracy.
 
-Every number above is recomputed from the file, and checked against the values
-asserted in `checks.csv`. The table is printed here verbatim.
-
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`gradient.csv`](data/derived/gradient.csv), [`national.csv`](data/derived/national.csv), [`personal.csv`](data/derived/personal.csv), [`weighting.csv`](data/derived/weighting.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `national.csv` has `gap` for every year alongside which party held the White House. Line the two up. How reliably does the sign follow the president?
-- `personal.csv` asks people about their own finances rather than the country's. Compare its gaps against `national.csv`. Which question is measuring the economy, and which is measuring the partisanship?
-- `gradient.csv` breaks one year out by the full seven-point scale. Read `pct_worse` from one end to the other. Is it a steady slope or a cliff?
-- `weighting.csv` reports the gap with and without weights. Look at `difference`. Could weighting ever rescue an answer this partisan?
-
-```{r checks}
-```

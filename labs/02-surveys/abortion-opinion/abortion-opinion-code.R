@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -293,70 +294,37 @@ text(LAST, PG2, " party",    col = DEM, pos = 4, cex = 0.74, xpd = NA)
 par(op)
 
 ## ---- fig3-d3
+# ---------------------------------------------------------------------------
 # A gap is a difference, and a difference hides which side moved. The static
 # twin can only draw the two gap lines; hovering here also reports the four
 # component shares, so the reader can see that the party gap widened mostly
 # because Democrats moved, not because Republicans did.
-rows <- paste0('[', gp$year, ',', gp$party_gap, ',', gp$ideology_gap, ',',
-               gp$dem_always, ',', gp$rep_always, ',', gp$lib_always, ',',
-               gp$con_always, ']', collapse = ",")
-cat(paste0('
-<div id="abg" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const R=[', rows, '];
-const D=R.map(r=>({y:r[0],pg:r[1],ig:r[2],dem:r[3],rep:r[4],lib:r[5],con:r[6]}));
-const PC="', DEM, '", IC="', GLD, '";
-const W=770,H=400,M={t:16,r:96,b:40,l:56};
-const box=d3.select("#abg");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain(d3.extent(D,d=>d.y)).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([-5,d3.max(D,d=>Math.max(d.pg,d.ig))+6])
-  .range([H-M.b,M.t]);
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(0)).attr("y2",y(0))
-  .attr("stroke","#CBD3D8");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(8));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("transform","rotate(-90)")
-  .attr("x",-(M.t+(H-M.b))/2).attr("y",14).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#4E5A63")
-  .text("percentage-point gap");
-[["ig",IC,"ideology"],["pg",PC,"party"]].forEach(function(s){
-  const ln=d3.line().x(d=>x(d.y)).y(d=>y(d[s[0]]));
-  svg.append("path").attr("fill","none").attr("stroke",s[1])
-     .attr("stroke-width",2.6).attr("d",ln(D));
-  svg.selectAll("c"+s[0]).data(D).join("circle")
-     .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[s[0]])).attr("r",3).attr("fill",s[1]);
-  svg.append("text").attr("x",W-M.r+8).attr("y",y(D[D.length-1][s[0]])+4)
-     .attr("font-size","12px").attr("font-weight","600").attr("fill",s[1])
-     .text(s[2]);
-});
-const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#12181D").attr("stroke-dasharray","3 3").attr("opacity",0);
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","transparent")
-  .on("mousemove",function(e){
-    const px=d3.pointer(e,this)[0]+M.l;
-    const d=D.reduce((a,b)=>Math.abs(b.y-x.invert(px))<Math.abs(a.y-x.invert(px))?b:a);
-    rule.attr("x1",x(d.y)).attr("x2",x(d.y)).attr("opacity",0.55);
-    const r=box.node().getBoundingClientRect();
-    tip.style("opacity",1)
-       .style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-10)+"px")
-       .html("<b>"+d.y+"</b><br>"+
-         "<span style=\\"color:"+PC+"\\">&#9632;</span> party gap "+
-           d.pg.toFixed(1)+"<br>"+
-         "&nbsp;&nbsp;Dem "+d.dem.toFixed(1)+"% &middot; Rep "+d.rep.toFixed(1)+"%<br>"+
-         "<span style=\\"color:"+IC+"\\">&#9632;</span> ideology gap "+
-           d.ig.toFixed(1)+"<br>"+
-         "&nbsp;&nbsp;Lib "+d.lib.toFixed(1)+"% &middot; Con "+d.con.toFixed(1)+"%");
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);rule.attr("opacity",0);});
-})();
-</script>'))
+#
+# Drawn with the shared library (_lib/dd-charts.js). Figure 1 above is
+# hand-written and already loaded d3, so dd_fig() is told d3 = FALSE and
+# emits only the dd-charts tag; a second d3 copy would double the payload.
+# ---------------------------------------------------------------------------
+m <- gp[order(gp$year), ]
+dd_fig("abg", "line", m, d3 = FALSE,
+  size = list(w = 770, h = 400, m = list(t = 16, r = 96, b = 40, l = 56)),
+  x = list(field = "year", fmt = "d", ticks = 8),
+  y = list(field = "ideology_gap", label = "percentage-point gap",
+           domain = c(-5, max(m$ideology_gap, na.rm = TRUE) + 6),
+           fmt = "d", ticks = 6),
+  series = list(fields = list(
+    list(field = "ideology_gap", label = "ideology", class = "series-3"),
+    list(field = "party_gap",    label = "party",    class = "series-1"))),
+  points = TRUE, endLabels = TRUE,
+  annotations = list(list(type = "hline", y = 0, class = "zero",
+                          dash = FALSE)),
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+
+      "<span class=\'series-1-txt\'>&#9632;</span> party gap "+
+        d.party_gap.toFixed(1)+"<br>"+
+      "&nbsp;&nbsp;Dem "+d.dem_always.toFixed(1)+"% &middot; Rep "+
+        d.rep_always.toFixed(1)+"%<br>"+
+      "<span class=\'series-3-txt\'>&#9632;</span> ideology gap "+
+        d.ideology_gap.toFixed(1)+"<br>"+
+      "&nbsp;&nbsp;Lib "+d.lib_always.toFixed(1)+"% &middot; Con "+
+        d.con_always.toFixed(1)+"%";
+  }'))

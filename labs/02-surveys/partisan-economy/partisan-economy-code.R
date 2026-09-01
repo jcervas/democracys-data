@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -286,20 +287,6 @@ draw();
 })();
 </script>'))
 
-## ---- pown-ink
-# Figure 3 names each line in that line's own colour, so the reader can tie
-# the name to the curve without a legend. That link is the point and must not
-# be broken. But a colour that works for a 2.5px stroke is too dark for 11.5px
-# text on the dark page: #2B5C8A measures 2.64:1 against --paper there and
-# #A33B2A 2.83:1. Keep the hue, change only the weight, and only in the theme
-# that needs it. The strokes and dots are unchanged in both themes.
-cat('<style>
-@media (prefers-color-scheme: dark) {
-#pown text[fill="#2B5C8A" i] { fill:#7FB3D5; }
-#pown text[fill="#A33B2A" i] { fill:#D9765E; }
-}
-</style>')
-
 ## ---- fig3-static
 # Two subtractions on one axis. The national gap is the wider line everywhere
 # except 2008, and both cross zero in the same years.
@@ -323,77 +310,41 @@ text(LAST, m$gap_own[nrow(m)], " their own\n finances", col = DEM, pos = 4,
 par(op)
 
 ## ---- fig3-d3
-# Hovering reports both subtractions and which is wider, because "wider" is
-# the whole claim and it is easier to assert than to eyeball in the years
-# where the two lines run close together.
-rows <- paste0('[', both$year, ',', both$gap_nat, ',', both$gap_own, ']',
-               collapse = ",")
-cat(paste0('
-<div id="pown" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const R=[', rows, '].sort((a,b)=>a[0]-b[0]);
-const D=R.map(r=>({y:r[0],gn:r[1],go:r[2]}));
-const DEM="', DEM, '", REP="', REP, '";
-const W=770,H=400,M={t:16,r:132,b:38,l:64};
-const box=d3.select("#pown");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain(d3.extent(D,d=>d.y)).range([M.l,W-M.r]);
-const ym=d3.max(D,d=>Math.max(Math.abs(d.gn),Math.abs(d.go)))+6;
-const y=d3.scaleLinear().domain([-ym,ym]).range([H-M.b,M.t]);
-// This figure has no bands, so the zero line sits on bare paper in both
-// themes and currentColor is exactly right. A dark literal would disappear
-// against the dark page, and no check measures a line.
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",y(0)).attr("y2",y(0))
-  .attr("stroke","currentColor");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")).ticks(6));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).tickValues([-60,-40,-20,0,20,40,60]).tickFormat(d=>d+" pts"));
-svg.append("text").attr("transform","rotate(-90)")
-  .attr("x",-(M.t+(H-M.b))/2).attr("y",14).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#4E5A63")
-  .text("Democrats minus Republicans (pts)");
-[["gn",REP,["the national","economy"]],
- ["go",DEM,["their own","finances"]]].forEach(function(s){
-  svg.append("path").attr("fill","none").attr("stroke",s[1]).attr("stroke-width",2.5)
-     .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[s[0]]))(D));
-  svg.selectAll("q"+s[0]).data(D).join("circle")
-     .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[s[0]])).attr("r",2.8).attr("fill",s[1]);
-  const t=svg.append("text").attr("x",W-M.r+8)
-     .attr("y",y(D[D.length-1][s[0]])+4)
-     .attr("font-size","11.5px").attr("font-weight","600").attr("fill",s[1]);
-  s[2].forEach(function(ln,i){
-    t.append("tspan").attr("x",W-M.r+8).attr("dy",i===0?"0":"1.15em").text(ln);
-  });
-});
-const rule=svg.append("line").attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","currentColor").attr("stroke-dasharray","3 3").attr("opacity",0);
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
-  .attr("height",H-M.b-M.t).attr("fill","transparent")
-  .on("mousemove",function(e){
-    const yr=x.invert(d3.pointer(e,this)[0]+M.l);
-    const d=D.reduce((a,b)=>Math.abs(b.y-yr)<Math.abs(a.y-yr)?b:a);
-    rule.attr("x1",x(d.y)).attr("x2",x(d.y)).attr("opacity",0.55);
-    const r=box.node().getBoundingClientRect();
-    const wider=Math.abs(d.gn)>Math.abs(d.go)?"the national question":
-                                              "the personal one";
-    tip.style("opacity",1)
-       .style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-10)+"px")
-       .html("<b>"+d.y+"</b><br>"+
-         "<span style=\\"color:"+REP+"\\">&#9632;</span> national economy: "+
-           d.gn.toFixed(1)+" pts<br>"+
-         "<span style=\\"color:"+DEM+"\\">&#9632;</span> own finances: "+
-           d.go.toFixed(1)+" pts<br>wider on "+wider);
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);rule.attr("opacity",0);});
-})();
-</script>'))
+# ---------------------------------------------------------------------------
+# Two subtractions on one axis. Hovering reports both and says which is
+# wider, because "wider" is the whole claim and it is easier to assert than
+# to eyeball in the years where the two lines run close together.
+#
+# Drawn with the shared library (_lib/dd-charts.js). Figure 1 above is
+# hand-written and already loaded d3, so dd_fig() is told d3 = FALSE and
+# emits only the dd-charts tag; a second d3 copy would double the payload.
+# Colours are series classes, so the labels survive dark mode without the
+# per-figure CSS patch the hand-written version needed.
+# ---------------------------------------------------------------------------
+m <- both[order(both$year), ]
+ym <- max(abs(c(m$gap_nat, m$gap_own))) + 6
+dd_fig("pown", "line", m, d3 = FALSE,
+  size = list(w = 770, h = 400, m = list(t = 16, r = 132, b = 38, l = 64)),
+  x = list(field = "year", fmt = "d", ticks = 6),
+  y = list(field = "gap_nat", label = "Democrats minus Republicans (pts)",
+           domain = c(-ym, ym), fmt = "signed0", ticks = 6),
+  series = list(fields = list(
+    list(field = "gap_nat", label = "the national economy",
+         endLabel = c("the national", "economy"), class = "series-2"),
+    list(field = "gap_own", label = "their own finances",
+         endLabel = c("their own", "finances"), class = "series-1"))),
+  points = TRUE, endLabels = TRUE,
+  annotations = list(list(type = "hline", y = 0, class = "zero",
+                          dash = FALSE)),
+  tip = dd_js('function(d){
+    var wider = Math.abs(d.gap_nat) > Math.abs(d.gap_own) ?
+      "the national question" : "the personal one";
+    return "<b>"+d.year+"</b><br>"+
+      "<span class=\'series-2-txt\'>&#9632;</span> national economy: "+
+        d.gap_nat.toFixed(1)+" pts<br>"+
+      "<span class=\'series-1-txt\'>&#9632;</span> own finances: "+
+        d.gap_own.toFixed(1)+" pts<br>wider on "+wider;
+  }'))
 
 ## ---- tab2
 sel <- both[both$year %in% c(1984, 2004, 2008, 2016, 2020, LAST), ]
