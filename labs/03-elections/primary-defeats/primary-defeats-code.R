@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -70,57 +71,20 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- scope
-data.frame(
-  quantity = c("Elections covered", "Years",
-               "Incumbent candidacies in the FEC files",
-               "Of those, on a primary ballot",
-               "Of those, with at least one rival",
-               "Of those, denied renomination"),
-  value = c(nrow(BY), paste(Y1, "to", Y2), n(NINC), n(NRAN), n(NCON), NDEN))
-
-## ---- rawfec
-# A verbatim capture from ../retirements/data/raw/federalelections2014.xls,
-# the copy this corpus's build script downloaded and kept. Printed transposed --
-# one field per line -- because the sheet is 23 columns wide.
-# The sheet's own field names down the page, the two candidates beside them.
-# NA is what the workbook holds -- an absent cell, not a zero -- and the
-# chapter's inference is built on exactly those absences, so they are shown.
-data.frame(
-  Field_as_the_sheet_names_it = c(
-    "STATE ABBREVIATION", "D", "FEC ID#", "(I)", "CANDIDATE NAME (Last)",
-    "PARTY", "PRIMARY VOTES", "PRIMARY %", "GENERAL VOTES",
-    "GE WINNER INDICATOR"),
-  Column_1 = c("VA", "07 - FULL TERM", "H0VA07042", "(I)", "Cantor", "R",
-               "28912", "0.44468369810972513", "NA", "NA"),
-  Column_2 = c("VA", "07 - FULL TERM", "H4VA07143", "NA", "Brat", "R",
-               "36105", "0.55531630189027481", "148026", "W"))
-
 ## ---- cleaninc
 IN[IN$last == "Cantor", c("year", "stab", "dnum", "party", "unopposed",
                           "prim_votes", "rivals", "won_nom", "denied")]
-
-## ---- rule
-data.frame(
-  step = c("Did the member stand in a primary?",
-           "Did anyone stand against them?",
-           "Did they win the nomination?"),
-  `how it is decided` = c(
-    "A primary vote total, or the word \"Unopposed\"",
-    "Another candidate of the same party with a vote total",
-    "The FEC's own winner flag from 2020; before that, the runoff winner, or the leader of the primary"),
-  check.names = FALSE)
 
 ## ---- fig1-d3
 # ---------------------------------------------------------------------------
 # THE CASCADE. Five nested totals, pooled across ten elections, drawn as a
 # funnel because the argument is about survival at each stage rather than about
 # a trend. Widths are proportional to the counts and are computed in R; D3 only
-# draws the trapezoids.
+# draws the bands.
 #
 # This chunk carries the ONE d3 <script src> for the document. A second copy
 # would silently double the payload; the later figures use the library loaded
-# here.
+# here, and the dd_fig() figure below passes d3 = FALSE for the same reason.
 # ---------------------------------------------------------------------------
 ST <- data.frame(
   lab = c("held a House seat", "sought re-election to the House",
@@ -284,50 +248,39 @@ legend(0, 0.15, c("one incumbent with a primary rival",
 
 ## ---- fig3-d3
 # ---------------------------------------------------------------------------
-# THE LONG VIEW, from a source that is not the FEC. One column per election,
-# 1946 to 2024, from the Brookings series; the first election held on a new
-# districting map is drawn in the accent color. Columns rather than a line
-# because these are counts of a rare event, and a line between two of them
-# implies values that never existed.
+# THE LONG VIEW, from a source that is not the FEC, drawn with the shared
+# library (_lib/dd-charts.js). One column per election, 1946 to 2024, from
+# the Brookings series; the first election held on a new districting map is
+# drawn in the accent class. Columns rather than a line because these are
+# counts of a rare event, and a line between two of them implies values that
+# never existed. The hand-written Figure 1 already loaded d3 (d3 = FALSE);
+# the hook thins the year axis to decades, which forty band ticks need.
 # ---------------------------------------------------------------------------
-rows <- paste(sprintf('{"y":%d,"v":%d,"r":%d,"s":%d}', VS$year, VS$lost_primary,
-                      as.integer(VS$redist), VS$seeking), collapse = ",")
-cat(paste0('
-<div id="lng" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '];
-const W=760,H=310,M={t:20,r:14,b:42,l:46};
-const svg=d3.select("#lng").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleBand().domain(D.map(d=>d.y)).range([M.l,W-M.r]).padding(0.22);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.v)+2]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickValues(D.filter(d=>d.y%10===0).map(d=>d.y)));
-svg.append("g").attr("transform","translate("+M.l+",0)").call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",13).attr("text-anchor","middle").attr("font-size","11.5px")
-  .attr("fill","#444").text("House incumbents denied renomination");
-const tip=d3.select("#lng").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(d.y)).attr("y",d=>y(d.v)).attr("width",x.bandwidth())
-  .attr("height",d=>y(0)-y(d.v)).attr("fill",d=>d.r?"#C41230":"#9fb6c9")
-  .style("cursor","pointer")
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html("<b>"+d.y+"</b><br>"+d.v+" of "+d.s+
-      " seeking re-election"+(d.r?"<br><i>first election on a new map</i>":""))
-      .style("left",Math.min(e.offsetX+14,W-250)+"px").style("top",(e.offsetY-8)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-const lg=svg.append("g").attr("transform","translate("+(W-M.r-230)+","+(M.t)+")");
-[["#C41230","first election on a new districting map"],
- ["#9fb6c9","every other election"]].forEach((r,i)=>{
-  lg.append("rect").attr("y",i*16).attr("width",11).attr("height",11).attr("fill",r[0]);
-  lg.append("text").attr("x",16).attr("y",i*16+10).attr("font-size","11px").text(r[1]);
-});
-})();
-</script>'))
+V <- VS[, c("year", "lost_primary", "seeking")]
+V$map <- ifelse(VS$redist, "first election on a new districting map",
+                "every other election")
+dd_fig("lng", "bar", V,
+  size = list(w = 760, h = 310, m = list(t = 20, r = 14, b = 42, l = 46)),
+  x = list(field = "year"),
+  y = list(field = "lost_primary",
+           label = "House incumbents denied renomination", fmt = "d",
+           domain = c(0, max(VS$lost_primary) + 2)),
+  series = list(field = "map",
+                classes = list("first election on a new districting map" = "gop",
+                               "every other election" = "series-1")),
+  legend = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+d.lost_primary+" of "+d.seeking+
+      " seeking re-election"+(d.map.indexOf("new")>=0?
+      "<br><i>first election on a new map</i>":"");
+  }'),
+  hook = dd_js('function(fig){
+    fig.svg.selectAll(".axis text").filter(function(){
+      var t=+this.textContent.replace(/,/g,"");
+      return t>1900 && t%10!==0;
+    }).remove();
+  }'),
+  d3 = FALSE)
 
 ## ---- fig3-static
 par(mar = c(2.8, 3.6, 0.6, 0.6), mgp = c(2.3, 0.6, 0))
@@ -340,79 +293,3 @@ legend("topright", c("first election on a new districting map",
                      "every other election"),
        fill = c("#C41230", "#9fb6c9"), border = NA, bty = "n", cex = 0.66)
 
-## ---- fig4-d3
-# ---------------------------------------------------------------------------
-# THIS BUILD AGAINST TWO INDEPENDENT COUNTS. A scatter with a 45-degree line,
-# so a point off the diagonal is a disagreement and the reader can see how far.
-# Brookings and Giroux agree with each other exactly in every year here, so
-# they are drawn as one point per election with both labels.
-# ---------------------------------------------------------------------------
-rows <- paste(sprintf('{"y":%d,"a":%d,"b":%d,"g":%d}', CM$year, CM$fec_derived,
-                      CM$brookings, CM$giroux), collapse = ",")
-cat(paste0('
-<div id="cmp" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '];
-const W=760,H=360,M={t:18,r:18,b:42,l:52};
-const svg=d3.select("#cmp").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const mx=d3.max(D,d=>Math.max(d.a,d.b,d.g))+2;
-const x=d3.scaleLinear().domain([0,mx]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,mx]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")").call(d3.axisBottom(x).ticks(8));
-svg.append("g").attr("transform","translate("+M.l+",0)").call(d3.axisLeft(y).ticks(8));
-svg.append("line").attr("x1",x(0)).attr("y1",y(0)).attr("x2",x(mx)).attr("y2",y(mx))
-  .attr("stroke","#bbb").attr("stroke-dasharray","5,4");
-svg.append("text").attr("x",(W+M.l)/2).attr("y",H-6).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#444")
-  .text("counted by Brookings and by the Giroux tracker (identical in every year)");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",14).attr("text-anchor","middle").attr("font-size","11.5px")
-  .attr("fill","#444").text("derived here from the FEC workbooks");
-svg.selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.b)).attr("cy",d=>y(d.a)).attr("r",5.4)
-  .attr("fill",d=>d.a===d.b?"#2f6f5e":"#C41230").attr("fill-opacity",0.85);
-D.forEach(d=>{
-  svg.append("text").attr("x",x(d.b)+9).attr("y",y(d.a)+4).attr("font-size","11px")
-    .attr("fill",d.a===d.b?"#2f6f5e":"#C41230").text(d.y);
-});
-const lg=svg.append("g").attr("transform","translate("+(M.l+12)+","+(M.t+8)+")");
-[["#2f6f5e","the three counts agree exactly"],
- ["#C41230","one short, for a named reason"]].forEach((r,i)=>{
-  lg.append("circle").attr("cx",5).attr("cy",i*17).attr("r",5.4).attr("fill",r[0]);
-  lg.append("text").attr("x",16).attr("y",i*17+4).attr("font-size","11.5px").text(r[1]);
-});
-})();
-</script>'))
-
-## ---- fig4-static
-par(mar = c(3.4, 3.8, 0.6, 0.6), mgp = c(2.3, 0.6, 0))
-mx <- max(CM$fec_derived, CM$brookings) + 2
-plot(CM$brookings, CM$fec_derived, xlim = c(0, mx), ylim = c(0, mx), las = 1,
-     pch = 19, cex = 1.1,
-     col = ifelse(CM$fec_derived == CM$brookings, "#2f6f5e", "#C41230"),
-     xlab = "counted by Brookings and by the Giroux tracker",
-     ylab = "derived here from the FEC workbooks")
-abline(0, 1, col = "#bbbbbb", lty = 2)
-# Several elections land on exactly the same pair of counts, so their labels
-# would print on top of each other. Stack the duplicates instead.
-o  <- order(CM$brookings, CM$fec_derived)
-k  <- paste(CM$brookings, CM$fec_derived)[o]
-dy <- ave(seq_along(k), k, FUN = seq_along) - 1
-text(CM$brookings[o] + 0.25, CM$fec_derived[o] - dy * 0.62, CM$year[o],
-     adj = 0, cex = 0.6,
-     col = ifelse(CM$fec_derived[o] == CM$brookings[o], "#2f6f5e", "#C41230"))
-legend("topleft", c("the three counts agree exactly", "one short, for a named reason"),
-       pch = 19, col = c("#2f6f5e", "#C41230"), bty = "n", cex = 0.68)
-
-## ---- resid
-data.frame(
-  election = c(2006, 2014, 2020),
-  member = c("Joe Schwarz, Michigan 7th", "Vance McAllister, Louisiana 5th",
-             "Denver Riggleman, Virginia 5th"),
-  `why the FEC file cannot show it` = c(
-    "The incumbent marker is blank for every candidate in the district",
-    "Louisiana's blanket primary is recorded as a general election",
-    "Nominated at a party convention, so there is no primary to lose"),
-  check.names = FALSE)

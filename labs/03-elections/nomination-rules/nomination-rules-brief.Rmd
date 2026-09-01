@@ -1,7 +1,7 @@
 ---
-title: "The Rule That Picks the Nominee"
+title: "How Runoff Rules Pick House Nominees, 2004–2022"
 type: brief
-subtitle: "Ten elections, and a threshold you can find without reading a single statute"
+subtitle: "The rule that picks the nominee, found without reading a single statute"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -18,32 +18,40 @@ dd_read_chunks("nomination-rules-code.R")
 
 In March 2014, Ralph Hall came first in the Republican primary for Texas's fourth district. He had represented it for `r 2014 - 1980` years and was the oldest person ever to serve in the House. He took `r pc(RO$leader_share[RO$year == 2014 & RO$st == "TX" & RO$district == 4], 1)` percent, and the man in second took less.
 
-Two months later he was not the nominee. Texas requires a majority, so the top two went to a runoff, and John Ratcliffe won it.
+Two months later he was not the nominee. Texas requires a majority, so the top two went to a runoff, and John Ratcliffe won it. **Nothing about the votes changed. The rule finished the count differently.** Had Hall's district been in Pennsylvania, where a plurality wins, he would have been renominated on the night.
 
-**Nothing about the votes changed. The rule finished the count differently.** Had Hall's district been in Pennsylvania, where a plurality wins, he would have been renominated on the night.
+A nomination is usually described as a measurement of what a party's voters want. This brief asks how much of the answer is instead the rule that finishes the count. Where does that rule live, how often does it change the outcome, and how much of it can you work out without opening a statute book?
 
-This chapter is about that rule. Where it lives, how often it changes the answer, and how much of it you can work out without ever opening a statute book.
+## The test
 
-## What the federal record holds
+The data is the Federal Election Commission's *Federal Elections* series, the biennial compilations for `r Y1` through `r Y2`, obtained from the [Commission](https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/). For every federal candidate it reports the primary vote, the runoff vote and the general-election vote, assembled from the official counts of the state election officials. The ten workbooks are the same copies the [`retirements`](../retirements/retirements-brief.html) brief fetched and pinned; they are read here, not fetched again.
 
-The Federal Election Commission publishes a compilation after every election called *Federal Elections*. For every federal candidate it reports the primary vote, the runoff vote and the general-election vote, assembled from the official counts of the state election officials.
+This source fits the question because it is the only federal record that reports both rounds. Each state writes its own nominating rule into its own election code, and there is no federal table of the rules. What the Commission records is narrower and more useful: when a runoff happened, it reports the runoff votes. That turns out to be enough to recover the rule from its outcomes. This brief belongs to the cluster the [roster chapter](../rosters-source/rosters-source-brief.html) introduces — records about who ends up holding office, read here for the step where a party settles on one name.
 
-Ten of those editions sit in this book already, committed by the [`retirements`](../retirements/retirements-brief.html) chapter. This chapter reads them for something its siblings ignore: **every candidate, not just the incumbents.**
+The test: for every state, squeeze the threshold from both sides of its outcomes, and then count how often the second round reverses the first.
+
+## The data
+
+The build reads every House candidate row in the ten workbooks, `r ck("House candidate rows, 2004-2022")` of them, and keeps the `r ck("of those, on a Democratic or Republican line")` on a Democratic or Republican line. Sheets are found by pattern and columns by header text, because both are renamed between editions. Party labels are read in both the one-letter and three-letter forms the Commission has used; reading only one silently drops two entire elections.
 
 ```{r scope}
 ```
 
-A **contested primary** here is one state, one district, one party, one cycle, with at least two candidates who received a vote total. That is the nomination that was actually at stake.
+The rows are grouped into **contested primaries**: one state, one district, one party, one cycle, with at least two candidates who received a vote total. That is the nomination that was actually at stake. The `r ck("of those, in all-party (top-two) states, shares not comparable")` contests in California and Washington pool both parties onto one ballot, so a share there is not comparable to a party primary's, and they are set aside. Louisiana is dropped because in most of these years it holds no party primary at all.
 
-**The counting rule is not in this file.** Each state writes its own nominating rule into its own election code, and there is no federal table of them. What the Commission records is narrower and more useful: **when a runoff happened, it reports the runoff votes.**
+Four tables come out. `contests.csv` is one row per contested primary, with `leader_share` and a `runoff` flag. `runoffs.csv` keeps the `r NRUN` contests that went to a second round, with `leader_share` and `leader_won_runoff`. `brackets.csv` gives each runoff state the highest leader share that still produced a runoff, the lowest that did not, and the `bracket_width` between them. `by_year.csv` counts contests, runoffs and overturns by cycle.
 
-That turns out to be enough.
+> **Before you read on, write a number down.** Across `r Y1` to `r Y2` there
+> were `r NRUN` House primary runoffs. In each, the candidate who came first
+> in the primary faced the candidate who came second. **How many times did the
+> person who came second go on to win?** Commit to a count out of `r NRUN`
+> before you look at the figures.
 
-## Finding the rule without reading the law
+## What it says about democracy
 
 A runoff happens when the leading candidate falls short of some threshold. You do not know the threshold. But you can see, for every contest, what the leader took and whether a runoff followed.
 
-**So the outcomes squeeze the rule from both sides.** The highest leader share that still went to a runoff must sit **below** the threshold. The lowest share that did not go to a runoff must sit **above** it. The rule is somewhere in between.
+**So the outcomes squeeze the rule from both sides.** The highest leader share that still went to a runoff must sit *below* the threshold. The lowest share that did not must sit *above* it. The rule is somewhere in between.
 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -51,51 +59,23 @@ A runoff happens when the leading candidate falls short of some threshold. You d
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=3.3}
 ```
 
-**Figure 1. Where each state's runoff threshold has to be.** The left edge of each bar is the highest leader share that still produced a runoff. The right edge is the lowest share that did not. For a fixed rule, the threshold lies inside the bar.
+**Figure 1. Where each state's runoff threshold has to be.** One bar per state that held a House runoff, because the finding is an interval, not a trend. The left edge of each bar is the highest leader share that still produced a runoff, the right edge the lowest share that did not; for a fixed rule, the threshold lies inside the bar.
 
-`r ck("states whose runoff bracket closes")` of the `r ck("states that held at least one House runoff, 2004-2022")` states bracket cleanly, and every one of them brackets **half the vote**. The tightest is `r ck("tightest bracket around a state's threshold")`, which pins the rule to within `r pc(OK$bracket_width[1], 1)` of a percentage point.
+`r ck("states whose runoff bracket closes")` of the `r ck("states that held at least one House runoff, 2004-2022")` states bracket cleanly, and every one of them brackets half the vote. The tightest is `r ck("tightest bracket around a state's threshold")`, which pins the rule to within `r pc(OK$bracket_width[1], 1)` of a percentage point. Nobody looked up a statute to get that.
 
-**Nobody looked up a statute to get that.** It falls out of which contests went to a runoff and which did not.
-
-## Two brackets that run backwards
-
-Two states break the method, and how they break it is the useful part.
+Two states break the method, and they are the exceptions with a story.
 
 ```{r bad}
 ```
 
-**A bracket cannot run backwards if the rule is fixed.** A contest at `r pc(BAD$highest_share_still_runoff[BAD$state == "NC"], 1)` percent went to a runoff in North Carolina, and one at `r pc(BAD$lowest_share_no_runoff[BAD$state == "NC"], 1)` percent did not. No single threshold does both.
-
-So the rule was not fixed. Split North Carolina by cycle and it appears.
+**A bracket cannot run backwards if the rule is fixed.** A North Carolina contest at `r pc(BAD$highest_share_still_runoff[BAD$state == "NC"], 1)` percent went to a runoff, and one at `r pc(BAD$lowest_share_no_runoff[BAD$state == "NC"], 1)` percent did not. No single threshold does both. So the rule was not fixed. Split North Carolina by cycle and it appears:
 
 ```{r era}
 ```
 
-Compute the same bracket inside a single election and it closes again — at two different values.
+In `r NCE$year[which.min(NCE$w)]` the bracket closes at 40 percent, pinned to within `r pc(min(NCE$w, na.rm = TRUE), 1)` of a point by two contests in one year. In 2016 three contests fell under 40 percent, the lowest at `r pc(min(CT$leader_share[CT$st == "NC" & CT$year == 2016]), 1)` percent, and none triggered a second round — for that cycle there was effectively no threshold. Then it closes again, lower: a 2020 contest at `r pc(NC$highest_share_still_runoff[NC$state == "NC" & NC$year == 2020], 1)` percent went to a runoff, and by 2022 the rule sits somewhere around 30. **The threshold moved twice, and both moves are visible in nothing but outcomes.** Texas fails for a smaller reason: its bracket runs backwards by `r pc(abs(BAD$bracket_width[BAD$state == "TX"]), 1)` points because a second-place finisher just under half can decline the runoff rather than contest it.
 
-**In `r NCE$year[which.min(NCE$w)]` the rule is pinned to within `r pc(min(NCE$w, na.rm = TRUE), 1)` of a point.** A North Carolina contest at `r pc(NCE$highest_share_still_runoff[which.min(NCE$w)], 1)` percent went to a runoff and one at `r pc(NCE$lowest_share_no_runoff[which.min(NCE$w)], 1)` percent did not. The threshold sat at 40 percent, and two contests in one year prove it.
-
-**In 2016 nothing triggered a runoff at all.** Three contests fell under 40 percent, the lowest at `r pc(min(CT$leader_share[CT$st == "NC" & CT$year == 2016]), 1)` percent, and none produced a second round. No threshold explains that, because for that cycle there was effectively no threshold.
-
-**Then it closes again, lower.** In 2020 a contest at `r pc(NC$highest_share_still_runoff[NC$state == "NC" & NC$year == 2020], 1)` percent went to a runoff. In 2022 five contests fell under 40 percent and none did, the lowest at `r pc(NC$lowest_share_no_runoff[NC$state == "NC" & NC$year == 2022], 1)` percent. Taken together the rule now sits somewhere around 30.
-
-**So the threshold moved twice, and both moves are visible in nothing but outcomes.** The file does not say what the rule is, when it changed, or why. It says that whatever the rule was, it was not the same rule.
-
-**Texas fails for a smaller reason.** Its bracket runs backwards by `r pc(abs(BAD$bracket_width[BAD$state == "TX"]), 1)` points, on `r BAD$contests[BAD$state == "TX"]` contests. Every Texas contest with a leader under 40 percent went to a runoff. The two exceptions sit just under half, where a second-place finisher can decline the runoff rather than contest it.
-
-**The method finds the rule, and when it cannot, that is a finding too.** A bracket that will not close is a rule that moved.
-
-## How often does the rule change the answer
-
-A runoff only matters if it can produce a different nominee. Otherwise it is an expensive way to confirm what the first round said.
-
-The federal record answers this directly, because it reports both rounds.
-
-> **Before you read on, write a number down.** Across `r Y1` to `r Y2` there
-> were **`r NRUN` House primary runoffs**. In each, the candidate who came first
-> in the primary faced the candidate who came second. **How many times did the
-> person who came second go on to win?** Commit to a count out of `r NRUN`
-> before you look at Figure 2.
+How often does the second round matter? The record answers directly, because it reports both rounds.
 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -103,46 +83,45 @@ The federal record answers this directly, because it reports both rounds.
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=2.7}
 ```
 
-**Figure 2. Every House primary runoff from `r Y1` to `r Y2`, one tick per contest.** Each tick sits at the share the primary leader took. The upper row is runoffs the leader went on to win; the lower row is runoffs the leader lost.
+**Figure 2. Every House primary runoff from `r Y1` to `r Y2`, one tick per contest.** Each tick sits at the share the primary leader took; the upper row is runoffs the leader went on to win, the lower row runoffs the leader lost.
 
-**`r NOVER` of `r NRUN`.** The candidate who came second in the primary went on to win the nomination in more than a third of these contests.
+**`r NOVER` of `r NRUN`.** The candidate who came second in the primary went on to win the nomination in more than a third of these contests. Most readers guess a handful, because coming first sounds like an advantage that carries. It carries, and it is not decisive. The runoff is not a formality that ratifies the first round. It is a second election, and it frequently disagrees with the first.
 
-Most readers guess a handful, because coming first sounds like an advantage that carries. It does carry, and it is not decisive. Read the two rows together and the runoff is not a formality that ratifies the first round. **It is a second election, and it frequently disagrees with the first.**
-
-## The contests the rule never reached
-
-Most states do not hold runoffs. In those states a plurality wins, however small.
+Most states, though, hold no runoff at all: a plurality wins, however small.
 
 ```{r plurality}
 ```
 
-**`r ck("primaries settled outright whose winner took under half the vote")` nominations were settled outright by a candidate that most primary voters voted against.** Every one of those would have gone to a runoff in Georgia or Alabama.
+**`r ck("primaries settled outright whose winner took under half the vote")` nominations were settled outright by a candidate most primary voters voted against.** Every one of those would have gone to a runoff in Georgia or Alabama. What would have happened there is unknowable, but Figure 2 gives the only relevant guide: when contests like these do go to a second round, the first-round leader loses about a third of the time. The same distribution of votes yields one nominee under one state's rule and, often, a different nominee under another's. And the rule sits in fifty separate election codes, appears in no federal table, and changes when a legislature feels like changing it.
 
-What would have happened there is the thing this chapter cannot tell you. But Figure 2 gives the only relevant guide: when these contests do go to a second round, the first-round leader loses about a third of the time.
-
-## What this cannot tell you
+## What this brief cannot tell you
 
 **It cannot tell you who would have won a runoff that never happened.** That is the central question and it is unanswerable. A runoff is a different election with a different electorate, and the `r NOVER` overturns in Figure 2 are the nearest thing to an answer, not the answer.
 
-**It cannot give you the rules themselves.** Figure 1 brackets a threshold; it does not read a statute. Where a state held no runoff in twenty years, this file says nothing at all about its rule — including whether it has one.
+**It cannot give you the rules themselves.** Figure 1 brackets a threshold; it does not read a statute. Where a state held no runoff in twenty years, this file says nothing about its rule, including whether it has one. And a bracket is only as tight as the contests that happened. Georgia's is narrow because Georgia ran `r BR$runoffs[BR$state == "GA"]` runoffs across `r BR$contests[BR$state == "GA"]` contests; a state with two runoffs gets a wide bracket and no more knowledge than that.
 
-**A bracket is only as tight as the contests that happened.** Georgia's is narrow because Georgia ran `r BR$runoffs[BR$state == "GA"]` runoffs across `r BR$contests[BR$state == "GA"]` contests. A state with two runoffs gets a wide bracket and no more knowledge than that.
+**Turnout is missing, and it is not a detail.** These are shares of whoever voted, and a runoff electorate is usually smaller than a primary's. Two rounds can disagree because voters changed their minds or because different people showed up, and nothing here separates those.
 
-**The all-party states are set aside, not solved.** `r ck("of those, in all-party (top-two) states, shares not comparable")` contests in California and Washington pool both parties onto one ballot, so a party's share of the vote is not comparable to a party primary's. Louisiana is dropped entirely, because in most of these years it holds no party primary at all.
+**And a rule is not only a threshold.** Who may vote, when the primary is held, how a candidate qualifies, and whether the second-place finisher must request the runoff all vary by state. None of that is in this file.
 
-**Turnout is missing, and it is not a detail.** These are shares of whoever voted in a primary, and primary electorates are small. A runoff electorate is usually smaller still. Two rounds can disagree because voters changed their minds, or because different people showed up, and nothing here separates those.
+## What you should have learned
 
-**And a rule is not only a threshold.** Who may vote in a primary, when it is held, and how a candidate qualifies for the ballot all vary by state. So does whether the second-place finisher must request the runoff. None of that is in this file.
+- A nomination is a measurement plus a rule for finishing it, and the rule does real work: `r NOVER` of `r NRUN` House primary runoffs from `r Y1` to `r Y2` reversed the first round.
+- A state's runoff threshold can be recovered from outcomes alone: `r ck("states whose runoff bracket closes")` of `r ck("states that held at least one House runoff, 2004-2022")` runoff states bracket cleanly around half the vote, the tightest to within `r pc(OK$bracket_width[1], 1)` of a point.
+- A bracket that will not close is a finding too: North Carolina's threshold moved twice inside these ten elections, visibly, without the file ever stating a rule.
+- In plurality states, `r ck("primaries settled outright whose winner took under half the vote")` nominations were settled outright by a winner who took under half the vote — contests a majority-rule state would have sent to a second round.
+- The counting rule lives in fifty separate state codes and no federal table, which is why the practical way to find it was to look at what happened.
 
-## What the rule is doing
+## Extensions
 
-A nomination looks like a measurement of what a party's voters want. Figure 1 and Figure 2 together suggest it is something narrower: **a measurement, plus a rule for finishing it, and the rule is doing real work.**
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The same distribution of votes yields one nominee under a plurality and, about a third of the time, a different nominee under a majority requirement. Ralph Hall came first and went home. Mark Walker came second in North Carolina's sixth in 2014 and went to Congress.
+- `brackets.csv` finds each state's threshold by bracketing it. Sort by `bracket_width`. Which states can you pin down exactly, and which are still ambiguous?
+- `by_year.csv` counts contests and `overturned` runoffs by cycle. Work out how often the rule changes the answer, year by year. Is the overturn rate steady?
+- `runoffs.csv` has `leader_share` and `leader_won_runoff`. Find the leaders who lost. How far ahead were they after the first round?
+- `nonclosing_by_year.csv` holds the state-years where the bracket does not close. Read North Carolina's rows. At what cycle does the change become visible?
 
-None of this is hidden. Every rule was passed by a legislature, published in a statute book, and applied in the open. But it sits in fifty separate codes, it changes when a legislature feels like changing it, and it appears in no federal table. That is why the practical way to find it turned out to be looking at what happened.
-
-Two questions worth asking. If the rule decides a third of the close nominations, should a voter know which rule their state uses? And who benefits when it changes, given that North Carolina's legislature lowered its own threshold and the record shows it happening without announcing itself?
+Two stretch ideas point past the spreadsheet. Look up one runoff state's actual statute, Georgia's or Texas's, and check it against the bracket Figure 1 found. Then find the North Carolina session law that moved its threshold, and date it against the cycles above. And the same workbooks carry Senate races: rebuild the brackets from Senate contests and see whether they agree with the House ones.
 
 ## Sources
 
@@ -154,8 +133,10 @@ Two questions worth asking. If the rule decides a third of the close nominations
   — `r ck("House candidate rows, 2004-2022")` House candidate rows across
   `r nrow(BY)` elections. **The primary and runoff vote totals are the
   Commission's, compiled from the official canvasses of the state election
-  officials.** The ten workbooks are the same copies the `retirements` chapter
-  fetched and pinned; they are read here and not fetched again.
+  officials.** The ten workbooks are the same copies the
+  [`retirements`](../retirements/retirements-brief.html) brief fetched and
+  pinned; they are read here and not fetched again. The validation results are
+  reproduced in `checks.csv`.
 
 **The data itself**
 
@@ -163,21 +144,3 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`brackets.csv`](data/derived/brackets.csv), [`by_year.csv`](data/derived/by_year.csv), [`contests.csv`](data/derived/contests.csv), [`nonclosing_by_year.csv`](data/derived/nonclosing_by_year.csv), [`runoffs.csv`](data/derived/runoffs.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `brackets.csv` finds each state's runoff threshold by bracketing it: the highest share that still went to a runoff, and the lowest that did not. Look at `bracket_width`. Which states can you pin down exactly, and which are still ambiguous?
-- `by_year.csv` counts contests `overturned`, where the runoff produced a different winner than the first round. Work out how often the rule actually changes the answer.
-- `runoffs.csv` has `leader_share` and `leader_won_runoff`. Find the leaders who lost. How far ahead were they after the first round?
-- `nonclosing_by_year.csv` holds the state-years where the bracket does not close. Read one. What would you need to resolve it, and would reading the statute have been faster?
-
-**Related chapters in this book**
-
-[`primary-defeats`](../primary-defeats/primary-defeats-brief.html) counts how often sitting members are refused renomination, and documents the properties of these workbooks that decide how they have to be read. [`retirements`](../retirements/retirements-brief.html) fetched them. [`primary-positions`](../primary-positions/primary-positions-brief.html) reads what candidates in one of these cycles would say about fourteen issues. [`nomination-anchors`](../nomination-anchors/nomination-anchors-brief.html) reads a study of fifty-five nominations from the 2014 cycle, several of which appear in Figure 2 by name.
-
-**How the figures were made**
-
-Every number printed above is computed from the committed workbooks at the moment this document was rendered. Sheets are found by pattern and columns by header text, because both are renamed between editions. Party labels are read in both the one-letter and three-letter forms the Commission has used, since reading only one silently drops two entire elections. The validation results are reproduced in `checks.csv`.

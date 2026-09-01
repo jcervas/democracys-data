@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -157,54 +158,36 @@ legend("bottom", c("supports", "opposes", "unclear", "did not raise it"),
 
 ## ---- fig2-d3
 # ---------------------------------------------------------------------------
-# THE PER-CANDIDATE DISTRIBUTION. Columns rather than a smooth curve, because
-# the variable is a count from 0 to 14 and there is no value between 7 and 8.
+# THE PER-CANDIDATE DISTRIBUTION, drawn with the shared library
+# (_lib/dd-charts.js). Columns rather than a smooth curve, because the
+# variable is a count from 0 to 14 and there is no value between 7 and 8.
 # The two ends are called out in the figure itself: they are the shapes the
-# reader is least likely to have predicted.
-# ---------------------------------------------------------------------------
-rows <- paste(sprintf('{"k":%d,"v":%d}', BC$silent_on, BC$candidates), collapse = ",")
-cat(paste0('
-<div id="dst" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '],N=', NCAND, ',MED=', MED, ';
-const W=760,H=330,M={t:22,r:16,b:46,l:52};
-const svg=d3.select("#dst").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleBand().domain(D.map(d=>d.k)).range([M.l,W-M.r]).padding(0.18);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.v)*1.08]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")").call(d3.axisBottom(x));
-svg.append("g").attr("transform","translate("+M.l+",0)").call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(W+M.l)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","11.5px").attr("fill","#444")
-  .text("issues, of 14, the candidate said nothing about");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",14).attr("text-anchor","middle").attr("font-size","11.5px")
-  .attr("fill","#444").text("candidates");
-const tip=d3.select("#dst").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(d.k)).attr("y",d=>y(d.v)).attr("width",x.bandwidth())
-  .attr("height",d=>y(0)-y(d.v))
-  .attr("fill",d=>(d.k===0||d.k===14)?"#C41230":"#7fa3c4").style("cursor","pointer")
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html("<b>"+d.v+" candidates</b><br>silent on "+d.k+
-      " of 14 ("+(100*d.v/N).toFixed(1)+"% of the field)")
-      .style("left",Math.min(e.offsetX+14,W-250)+"px").style("top",(e.offsetY-8)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-const md=D.find(d=>d.k===MED);
-svg.append("text").attr("x",x(MED)+x.bandwidth()/2).attr("y",y(md.v)-7)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("font-weight","600")
-  .attr("fill","#333").text("median");
-[[0,"said something about all 14"],[14,"said nothing about any"]].forEach(([k,lab])=>{
-  const d=D.find(z=>z.k===k);
-  svg.append("text").attr("x",x(k)+x.bandwidth()/2).attr("y",y(d.v)-7)
-    .attr("text-anchor",k===0?"start":"end").attr("font-size","10.5px")
-    .attr("fill","#C41230").attr("font-weight","600").text(d.v+" "+lab);
-});
-})();
-</script>'))
+# reader is least likely to have predicted. The hand-written Figure 1 above
+# already loaded d3, so dd_fig() adds only the chart library (d3 = FALSE).
+B2 <- BC[, c("silent_on", "candidates")]
+B2$grp <- ifelse(B2$silent_on %in% c(0, 14), "end", "mid")
+dd_fig("dst", "bar", B2,
+  size = list(w = 760, h = 330, m = list(t = 24, r = 16, b = 46, l = 52)),
+  x = list(field = "silent_on"),
+  y = list(field = "candidates", label = "candidates", fmt = "d",
+           domain = c(0, max(BC$candidates) * 1.14)),
+  series = list(field = "grp",
+                classes = list(end = "gop", mid = "series-1")),
+  tip = dd_js(paste0('function(d){return "<b>"+d.candidates+
+    " candidates</b><br>silent on "+d.silent_on+" of 14 ("+
+    (100*d.candidates/', NCAND, ').toFixed(1)+"% of the field)";}')),
+  annotations = list(
+    list(type = "text", x = MED, y = BC$candidates[BC$silent_on == MED] + 14,
+         text = "median", anchor = "middle", weight = 600),
+    list(type = "text", x = 0, y = BC$candidates[BC$silent_on == 0] + 14,
+         text = paste(NONE, "said something about all 14"),
+         anchor = "start", class = "gop-txt", weight = 600, size = 10.5),
+    list(type = "text", x = 14, y = BC$candidates[BC$silent_on == 14] + 14,
+         text = paste(ALL14, "said nothing about any"),
+         anchor = "end", class = "gop-txt", weight = 600, size = 10.5),
+    list(type = "text", x = 380, y = 324, px = TRUE, anchor = "middle",
+         text = "issues, of 14, the candidate said nothing about")),
+  d3 = FALSE)
 
 ## ---- fig2-static
 par(mar = c(3.4, 3.8, 0.8, 0.8), mgp = c(2.3, 0.6, 0))
