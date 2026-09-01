@@ -71,13 +71,6 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 # the one and only copy of d3 in this document
 cat('<script src="../../_lib/d3.v7.min.js"></script>\n')
 
-## ---- clean-mm
-o <- d[order(-d$volume), ][1, c("p7", "p30", "outcome", "volume", "end_date")]
-o$volume <- cnt(o$volume)
-o$p7 <- p4(o$p7); o$p30 <- p4(o$p30)
-names(o) <- c("p7", "p30", "outcome", "volume", "end date")
-o
-
 ## ---- one-record
 o <- d[order(-d$volume), ][1, ]
 data.frame(
@@ -305,96 +298,6 @@ data.frame(
                  "Always say 0% (nothing will happen)"),
   brier = p4(c(brier, brier50, brierbr, mean((0 - d$outcome)^2))))
 
-## ---- brier-decomp
-obar  <- mean(d$outcome)
-unc   <- obar * (1 - obar)                       # uncertainty
-nb    <- as.vector(table(bands))
-res   <- sum(nb * (tab$happened - obar)^2) / nrow(d)   # resolution
-rel   <- sum(nb * (tab$priced - tab$happened)^2) / nrow(d)  # reliability
-bandB <- unc - res + rel                         # Brier of the banded forecast
-resid <- brier - bandB                           # within-band price detail
-wf <- data.frame(
-  lab = c("uncertainty\nin the questions", "minus resolution\n(daring)",
-          "plus reliability\n(miscalibration)", "plus within-band\nprice detail",
-          "= Brier score"),
-  val = c(unc, -res, rel, resid, NA),
-  col = c("#999999", "#4d9221", "#C41230", "#8856a7", "#2c7fb8"),
-  stringsAsFactors = FALSE)
-wf$start <- c(0, cumsum(wf$val[1:3]), 0)
-wf$end   <- c(cumsum(wf$val[1:4]), brier)
-wf$start[5] <- 0
-
-## ---- decomp-static
-par(mar = c(5.6, 4.6, 1.2, 1.6))
-plot(NA, xlim = c(0.4, nrow(wf) + 0.6), ylim = c(0, max(wf$end) * 1.12),
-     xaxt = "n", las = 1, bty = "n", xlab = "",
-     ylab = "contribution to the Brier score")
-abline(h = pretty(c(0, max(wf$end))), col = "grey94")
-rect(seq_len(nrow(wf)) - 0.32, wf$start, seq_len(nrow(wf)) + 0.32, wf$end,
-     col = wf$col, border = NA)
-segments(seq_len(nrow(wf) - 1) + 0.32, wf$end[-nrow(wf)],
-         seq_len(nrow(wf) - 1) + 0.68, wf$end[-nrow(wf)],
-         lty = 3, col = "grey50")
-text(seq_len(nrow(wf)), pmax(wf$start, wf$end) + max(wf$end) * 0.045,
-     p4(c(unc, -res, rel, resid, brier)), cex = 0.72)
-l12 <- strsplit(wf$lab, "\n")
-mtext(sapply(l12, `[`, 1), side = 1, at = seq_len(nrow(wf)), line = 0.7,
-      cex = 0.64)
-mtext(sapply(l12, function(z) if (length(z) > 1) z[2] else ""), side = 1,
-      at = seq_len(nrow(wf)), line = 1.7, cex = 0.64)
-
-## ---- decomp-d3
-l12  <- strsplit(wf$lab, "\n")
-rows <- paste(sprintf('{"l":"%s","l1":"%s","l2":"%s","v":%.5f,"s":%.5f,"e":%.5f,"c":"%s"}',
-                      gsub("\n", " ", wf$lab),
-                      sapply(l12, `[`, 1),
-                      sapply(l12, function(z) if (length(z) > 1) z[2] else ""),
-                      c(unc, -res, rel, resid, brier), wf$start, wf$end, wf$col),
-              collapse = ",")
-cat(sprintf('
-<div id="wf" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=380,M={t:20,r:24,b:74,l:66};
-const svg=d3.select("#wf").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleBand().domain(D.map(d=>d.l)).range([M.l,W-M.r]).padding(0.34);
-const y=d3.scaleLinear().domain([0,d3.max(D,d=>d.e)*1.12]).range([H-M.b,M.t]);
-svg.append("g").selectAll("text").data(D).join("text")
-  .attr("x",d=>x(d.l)+x.bandwidth()/2).attr("y",H-M.b)
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#444")
-  .call(g=>{
-    g.append("tspan").attr("x",d=>x(d.l)+x.bandwidth()/2).attr("dy","18").text(d=>d.l1);
-    g.append("tspan").attr("x",d=>x(d.l)+x.bandwidth()/2).attr("dy","14").text(d=>d.l2);
-  });
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("contribution to the Brier score");
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",d=>x(d.l)).attr("width",x.bandwidth())
-  .attr("y",d=>y(Math.max(d.s,d.e))).attr("height",d=>Math.abs(y(d.s)-y(d.e))+0.5)
-  .attr("fill",d=>d.c);
-svg.append("g").selectAll("line").data(D.slice(0,4)).join("line")
-  .attr("x1",d=>x(d.l)+x.bandwidth()).attr("x2",d=>x(d.l)+x.bandwidth()*1.36)
-  .attr("y1",d=>y(d.e)).attr("y2",d=>y(d.e))
-  .attr("stroke","#777").attr("stroke-dasharray","2,3");
-svg.append("g").selectAll("text.v").data(D).join("text")
-  .attr("x",d=>x(d.l)+x.bandwidth()/2).attr("y",d=>y(Math.max(d.s,d.e))-7)
-  .attr("text-anchor","middle").attr("font-size","11.5px").attr("fill","#333")
-  .text(d=>d3.format(".4f")(d.v));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Almost all of the market’s score comes from the first two bars: the
-questions carry %.4f of irreducible uncertainty and the market claws back
-%.4f of it by being willing to say something other than “%.0f%%”.
-Miscalibration — the red bar, everything the calibration table was about
-— costs only %.4f, which is smaller than the %.4f of arithmetic slop
-created by grouping the prices into bands at all.</p>
-', rows, unc, res, 100 * obar, rel, abs(resid)))
-
 ## ---- low-bands
 o <- data.frame(band = tab$band[1:3], n = tab$n[1:3],
                 priced = p3(tab$priced[1:3]), happened = p3(tab$happened[1:3]),
@@ -411,107 +314,6 @@ names(o) <- c("price band", "markets", "expected 'yes'", "observed 'yes'",
               "p", "")
 o
 
-## ---- cater-prep
-ct <- do.call(rbind, lapply(bt$band, function(lv) {
-  k  <- bands == lv
-  bo <- binom.test(sum(d$outcome[k]), sum(k))
-  data.frame(band = lv, n = sum(k), priced = mean(d$p7[k]),
-             happened = mean(d$outcome[k]),
-             lo = bo$conf.int[1], hi = bo$conf.int[2],
-             p = bt$p[bt$band == lv], stringsAsFactors = FALSE)
-}))
-ct$out <- ct$priced < ct$lo | ct$priced > ct$hi
-
-## ---- cater-static
-yy <- rev(seq_len(nrow(ct)))
-par(mar = c(4.2, 7.2, 1.4, 2.2))
-plot(NA, xlim = c(0, 1), ylim = c(0.5, nrow(ct) + 0.5), yaxt = "n", bty = "n",
-     las = 1, ylab = "", xlab = "share of the band that happened")
-abline(v = seq(0, 1, 0.1), col = "grey94")
-cl <- ifelse(ct$out, "#C41230", "#999999")
-segments(ct$lo, yy, ct$hi, yy, col = cl, lwd = 2)
-segments(c(ct$lo, ct$hi), rep(yy, 2) - 0.16, c(ct$lo, ct$hi),
-         rep(yy, 2) + 0.16, col = cl, lwd = 2)
-points(ct$happened, yy, pch = 19, col = cl, cex = 1.15)
-points(ct$priced, yy, pch = 23, bg = "white", col = "#2c7fb8", cex = 1.15,
-       lwd = 2)
-axis(2, at = yy, labels = paste0(ct$band, "  n=", ct$n), las = 1, tick = FALSE,
-     cex.axis = 0.74)
-legend("topright", c("what happened, with its 95% interval",
-                     "what the band was priced at"),
-       pch = c(19, 23), col = c("#999999", "#2c7fb8"), pt.bg = "white",
-       bty = "n", cex = 0.72)
-
-## ---- cater-d3
-rows <- paste(sprintf('{"b":"%s","n":%d,"p":%.4f,"h":%.4f,"lo":%.4f,"hi":%.4f,"pv":%.4f,"o":%d}',
-                      ct$band, ct$n, ct$priced, ct$happened, ct$lo, ct$hi,
-                      ct$p, as.integer(ct$out)), collapse = ",")
-cat(sprintf('
-<div id="cat" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=770,H=400,M={t:20,r:26,b:46,l:132};
-const box=d3.select("#cat");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,1]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.b)).range([M.t,H-M.b]).padding(0.34);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6,d3.format(".1f")));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickSize(0)).select(".domain").remove();
-svg.selectAll("g").selectAll("text").attr("font-size","11px");
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("share of the band that happened");
-const cy=d=>y(d.b)+y.bandwidth()/2, cl=d=>d.o?"#C41230":"#999999";
-const g=svg.append("g");
-g.selectAll("line.i").data(D).join("line")
-  .attr("x1",d=>x(d.lo)).attr("x2",d=>x(d.hi)).attr("y1",cy).attr("y2",cy)
-  .attr("stroke",cl).attr("stroke-width",2.2);
-[["lo"],["hi"]].forEach(k=>{
-  g.selectAll("line.c"+k[0]).data(D).join("line")
-    .attr("x1",d=>x(d[k[0]])).attr("x2",d=>x(d[k[0]]))
-    .attr("y1",d=>cy(d)-6).attr("y2",d=>cy(d)+6)
-    .attr("stroke",cl).attr("stroke-width",2.2);
-});
-g.selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.h)).attr("cy",cy).attr("r",5).attr("fill",cl);
-g.selectAll("path.p").data(D).join("path")
-  .attr("d",d3.symbol().type(d3.symbolDiamond).size(74))
-  .attr("transform",d=>`translate(${x(d.p)},${cy(d)})`)
-  .attr("fill","#fff").attr("stroke","#2c7fb8").attr("stroke-width",2);
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:11.5px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("rect").data(D).join("rect")
-  .attr("x",M.l).attr("y",d=>y(d.b)).attr("width",W-M.r-M.l)
-  .attr("height",y.bandwidth()).attr("fill","none").attr("pointer-events","all")
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html(`<b>${d.b}</b> \\u00b7 ${d.n} markets<br>`+
-      `priced ${d.p.toFixed(3)}<br>happened ${d.h.toFixed(3)} `+
-      `[${d.lo.toFixed(3)}, ${d.hi.toFixed(3)}]<br>p = ${d.pv.toFixed(3)}`)
-      .style("left",Math.min(e.offsetX+14,W-240)+"px").style("top",(e.offsetY-10)+"px");
-  }).on("mouseleave",()=>tip.style("opacity",0));
-const key=svg.append("g").attr("font-size","11px");
-key.append("circle").attr("cx",W-M.r-238).attr("cy",M.t+6).attr("r",5)
-  .attr("fill","#999999");
-key.append("text").attr("x",W-M.r-228).attr("y",M.t+10).attr("fill","#666")
-  .text("happened, with 95%% interval");
-key.append("path").attr("d",d3.symbol().type(d3.symbolDiamond).size(74))
-  .attr("transform",`translate(${W-M.r-238},${M.t+22})`)
-  .attr("fill","#fff").attr("stroke","#2c7fb8").attr("stroke-width",2);
-key.append("text").attr("x",W-M.r-228).attr("y",M.t+26).attr("fill","#2c7fb8")
-  .text("priced");
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-The price sits inside the interval for %d of the %d bands. The %d that misses is
-%s, and with %d bands tested at once that is the number a perfectly calibrated
-market would be expected to produce by chance.</p>
-', rows, sum(!ct$out), nrow(ct), sum(ct$out),
-   paste(ct$band[ct$out], collapse = ", "), nrow(ct)))
-
 ## ---- volume-split
 data.frame(
   markets = c("Above median volume", "Below median volume"),
@@ -521,13 +323,6 @@ data.frame(
   gap_points = sprintf("%+.1f", 100 * c(mean(mhi$outcome) - mean(mhi$p7),
                                         mean(mlo$outcome) - mean(mlo$p7))),
   check.names = FALSE)
-
-## ---- brier-vol
-data.frame(
-  markets = c("All, above median volume", "All, below median volume"),
-  n = c(sum(d$volume > dmed), sum(d$volume <= dmed)),
-  brier = p4(c(mean((d$p7[d$volume > dmed] - d$outcome[d$volume > dmed])^2),
-               mean((d$p7[d$volume <= dmed] - d$outcome[d$volume <= dmed])^2))))
 
 ## ---- vbell-prep
 vb <- data.frame(

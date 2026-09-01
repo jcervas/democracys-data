@@ -75,12 +75,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- clean-en
-o <- sen[sen$state == "GA", c("state", "senator_last", "party",
-                              "pres24_margin", "hostile_turf")]
-names(o) <- c("state", "incumbent", "party", "2024 margin", "hostile turf?")
-o
-
 ## ---- shape-en
 data.frame(
   stage = c("Members of Congress in the roster", "Senators",
@@ -209,70 +203,6 @@ data.frame(
             paste0(pc(median(sen$abs_margin)), " points"),
             sum(sen$abs_margin < 5)))
 
-## ---- sen-static
-s <- sen[order(sen$pres24_margin), ]
-par(mar = c(4.2, 4.5, 1, 1))
-plot(s$pres24_margin, seq_len(nrow(s)), pch = 19, cex = 1.1,
-     col = ifelse(s$party == "Republican", "#B2182B", "#2166AC"),
-     xlab = "2024 presidential margin in the state (Trump minus Harris)",
-     ylab = "", yaxt = "n", xlim = c(-50, 50))
-axis(2, at = seq_len(nrow(s)), labels = s$state, las = 1, cex.axis = 0.6)
-abline(v = 0, lty = 2)
-abline(v = c(-5, 5), lty = 3, col = "gray60")
-legend("topleft", c("Republican seat", "Democratic seat"), pch = 19,
-       col = c("#B2182B", "#2166AC"), bty = "n", cex = 0.75)
-
-## ---- sen-d3
-s <- sen[order(sen$pres24_margin), ]
-rows <- paste(sprintf('{"st":"%s","nm":"%s","p":"%s","m":%.2f,"h":%s}',
-                      s$state, s$senator_last, s$party, s$pres24_margin,
-                      tolower(as.character(s$hostile_turf))), collapse = ",")
-cat(sprintf('
-<div id="sen" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=760,H=560,M={t:26,r:24,b:44,l:44};
-const box=d3.select("#sen");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-50,50]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.st)).range([M.t,H-M.b]).padding(0.25);
-svg.append("rect").attr("x",x(-5)).attr("y",M.t).attr("width",x(5)-x(-5))
-  .attr("height",H-M.b-M.t).attr("fill","#888").attr("opacity",0.09);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(9).tickFormat(d=>(d>0?"+":"")+d));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickSize(0));
-svg.append("line").attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#666").attr("stroke-dasharray","4,4");
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("2024 presidential margin in the state (Trump minus Harris)");
-svg.append("text").attr("x",x(-5)-6).attr("y",M.t-10).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#2166AC").text("Harris states");
-svg.append("text").attr("x",x(5)+6).attr("y",M.t-10)
-  .attr("font-size","11px").attr("fill","#B2182B").text("Trump states");
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.m)).attr("cy",d=>y(d.st)+y.bandwidth()/2)
-  .attr("r",d=>d.h?7:5)
-  .attr("fill",d=>d.p==="Republican"?"#B2182B":"#2166AC")
-  .attr("stroke",d=>d.h?"#111":"none").attr("stroke-width",1.6)
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(
-      `<b>${d.st} — ${d.nm} (${d.p})</b><br>2024 margin ${(d.m>0?"+":"")+d.m}`+
-      (d.h?"<br><i>hostile turf</i>":""))
-      .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-10)+"px"); })
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Color is the party defending the seat; ringed points sit on hostile turf. The
-shaded band is five points either side of even.</p>
-', rows))
-
 ## ---- baseline
 data.frame(
   outcome = c("Seats the baseline gives Republicans",
@@ -384,92 +314,6 @@ o$dem_share <- pc(o$dem_share, 2)
 names(o) <- c("district", "Democratic % (president)", "presidential winner",
               "member elected", "member's party")
 o
-
-## ---- strip-static
-s  <- miss[order(miss$dem_share), ]
-up <- s$pres_party == "republican"
-par(mar = c(4.4, 0.4, 1.6, 0.4))
-plot(NA, xlim = c(43.5, 55), ylim = c(-1.1, nrow(s) * 0.5 + 1.2), yaxt = "n",
-     xlab = "Democratic share of the two-party presidential vote (%)", ylab = "",
-     bty = "n")
-segments(50, -0.9, 50, nrow(s) * 0.5 + 0.6, lty = 2, col = "#666666")
-rug(reh$dem_share[reh$as_expected], side = 1, ticksize = 0.03, col = "#CCCCCC")
-yy <- seq_len(nrow(s)) * 0.5 - 0.2
-points(s$dem_share, yy, pch = ifelse(up, 24, 25), cex = 1.05,
-       bg = ifelse(up, "#2c7fb8", "#C41230"),
-       col = ifelse(up, "#2c7fb8", "#C41230"))
-text(s$dem_share, yy, s$district, pos = ifelse(s$dem_share < 50, 2, 4),
-     cex = 0.62, col = "#333333")
-text(43.5, nrow(s) * 0.5 + 1.0, adj = 0, cex = 0.72, col = "#2c7fb8",
-     labels = paste0("up-triangle: Trump district, Democratic member (",
-                     sum(up), ")"))
-text(55, nrow(s) * 0.5 + 1.0, adj = 1, cex = 0.72, col = "#C41230",
-     labels = paste0("down-triangle: Harris district, Republican member (",
-                     sum(!up), ")"))
-text(49.9, -0.5, paste0("gray ticks below the axis: the ", sum(reh$as_expected),
-                        " districts the rule got right"),
-     cex = 0.68, col = "#777777")
-
-## ---- strip-d3
-s <- miss[order(miss$dem_share), ]
-rows <- paste(sprintf('{"d":"%s","v":%.2f,"pp":"%s","hp":"%s","mb":"%s","i":%d}',
-                      s$district, s$dem_share, s$pres_party, s$house_rep_party,
-                      s$house_rep, seq_len(nrow(s))), collapse = ",")
-ok <- paste(sprintf('%.2f', reh$dem_share[reh$as_expected]), collapse = ",")
-cat(paste0('
-<div id="st" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '], OK=[', ok, '];
-const W=760,H=380,M={t:34,r:24,b:46,l:24};
-const box=d3.select("#st");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([43.5,55]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,D.length+1]).range([H-M.b-16,M.t]);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(9).tickFormat(d=>d+"%"));
-svg.append("g").selectAll("line").data(OK).join("line")
-  .attr("x1",d=>x(d)).attr("x2",d=>x(d)).attr("y1",H-M.b).attr("y2",H-M.b-7)
-  .attr("stroke","#CCCCCC");
-svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",M.t-6).attr("y2",H-M.b)
-  .attr("stroke","#666").attr("stroke-dasharray","4,4");
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("Democratic share of the two-party presidential vote (%)");
-svg.append("text").attr("x",M.l).attr("y",16).attr("font-size","11px")
-  .attr("fill","#2c7fb8")
-  .text("\\u25B2 Trump district, Democratic member (', sum(miss$pres_party == "republican"), ')");
-svg.append("text").attr("x",W-M.r).attr("y",16).attr("text-anchor","end")
-  .attr("font-size","11px").attr("fill","#C41230")
-  .text("\\u25BC Harris district, Republican member (', sum(miss$pres_party != "republican"), ')");
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-const sym=d3.symbol().type(d3.symbolTriangle).size(95)();
-svg.append("g").selectAll("path").data(D).join("path")
-  .attr("d",sym)
-  .attr("transform",d=>`translate(${x(d.v)},${y(d.i)}) rotate(${d.pp==="republican"?0:180})`)
-  .attr("fill",d=>d.pp==="republican"?"#2c7fb8":"#C41230")
-  .on("mousemove",function(ev,d){
-    tip.style("opacity",1).html(
-      `<b>${d.d}</b>: ${d.v.toFixed(2)}% Democratic<br>`+
-      `presidential winner: ${d.pp}<br>member elected: ${d.mb} (${d.hp})`)
-      .style("left",Math.min(ev.offsetX+14,W-280)+"px").style("top",(ev.offsetY-10)+"px"); })
-  .on("mouseleave",()=>tip.style("opacity",0));
-svg.append("g").selectAll("text").data(D).join("text")
-  .attr("x",d=>x(d.v)+(d.v<50?-9:9)).attr("y",d=>y(d.i)+4)
-  .attr("text-anchor",d=>d.v<50?"end":"start")
-  .attr("font-size","10.5px").attr("fill","#333").attr("pointer-events","none")
-  .text(d=>d.d);
-svg.append("text").attr("x",(W+M.l-M.r)/2).attr("y",32).attr("text-anchor","middle")
-  .attr("font-size","11px").attr("fill","#777")
-  .text("gray ticks along the axis: the ', sum(reh$as_expected), ' districts the rule got right");
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Every district the rule missed, on the same axis as the ', sum(reh$as_expected), '
-it did not. Hover for the member elected.</p>
-'))
 
 ## ---- hist-static
 h <- hist(reh$dem_share, breaks = seq(0, 100, 2.5), plot = FALSE)
