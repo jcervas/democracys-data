@@ -1,7 +1,7 @@
 ---
 title: "Ideal Points from Supreme Court Agreement"
 type: brief
-subtitle: "Building an ideal-point score for the Supreme Court out of nothing but agreement"
+subtitle: "Nine justices, forty-five agreement rates, and a left–right line nobody put in"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -18,84 +18,54 @@ dd_read_chunks("scdb-code.R")
 
 > *"The most conservative Court since the 1930s."*
 
-Sentences like that are written constantly, and every one of them quietly requires a number. Nine people who never stand for election, answer no surveys and give no interviews about their views are nonetheless described in print by adjectives that nobody defines and everybody uses: *moderate*, *conservative*, *the swing vote*. Those adjectives decide how nominations are fought and how confirmation votes are cast.
+Sentences like that are written constantly, and every one of them quietly needs a number. Nine people who never stand for election, answer no surveys and give no interviews about their views are nonetheless described in print as *moderate*, *conservative*, *the swing vote*. Behind every one of those adjectives is a claim the reader has heard in a blunter form: that the Supreme Court is just politics in robes.
 
-The Supreme Court is the easiest place in American politics to put a number behind them. Nine people, every vote recorded, every case public, and a database that has counted all of it since `r min(bt$term)`. So the question this chapter asks is not where the justices sit, which everybody thinks they know. It is whether a number that places them can be built **without anybody supplying an opinion about ideology** — and, if one can, what exactly that number is made of.
+This brief asks what a record of votes can and cannot establish about that. It matters because the Court is the only branch that never has to explain itself in electoral terms, which makes the informal vocabulary unusually load-bearing. Those adjectives decide how nominations are fought and how confirmation votes are cast.
 
-It matters because the Court is the only branch that never has to explain itself in electoral terms, which makes the informal vocabulary unusually load-bearing. Putting a number behind it changes the argument. Segal and Cover (1989) derived justices' values from pre-confirmation newspaper editorials, that is, from *perceptions* recorded before any vote was cast, and found they predicted votes well. Martin and Quinn (2002) built the standard dynamic score directly from votes, allowing positions to move over time. Both turned a rhetorical claim into a measurable one, and both are now routine inputs to research on judicial behavior (Epstein, Landes and Posner, 2013).
+The Court is also the easiest place in American politics to put a number behind them. Nine people, every vote recorded, every case public. So the test is narrower than the slogan. Can a number that places the justices on a left–right line be built **without anybody supplying an opinion about ideology**, and if one can, what exactly is it made of?
 
-## The votes, not the scores
+## The test
 
-Everything here comes from the Supreme Court Database, held at Washington University in St. Louis: every justice's vote in every case the Court has decided since `r min(bt$term)`. It is taken from the justice-centered file organized by citation, 2024 release 01.
+Everything here comes from the [Supreme Court Database](http://scdb.wustl.edu/data.php), held at Washington University in St. Louis: every justice's vote in every case the Court has decided since `r min(bt$term)`. This brief reads the justice-centered file organized by citation, 2024 release 01. The agreement counts and the scaling use the `r min(bt$term[bt$term >= 2020])` to `r max(bt$term)` terms, the window with the current nine justices in it.
 
-It is unlike most of the sources in this book, because no statute required it and no organization produced it while doing something else. Harold Spaeth started it as a research project, the National Science Foundation paid for it, and academics have maintained it ever since. It exists because somebody decided the Court's behavior was worth writing down in a form that could be counted. The releases are numbered and archived, so naming one identifies exactly what was read, which is more than a versioned news graphic can offer. It is also, in 2026, served over `http` and not `https`, a small fact about maintenance that will eventually become a large one.
+The Court keeps the same kind of record Congress does, one flight up, and the [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) sets out what that kind of record permits. Every decision says how each named justice voted. Nobody self-reported it and nobody could opt out, because the vote is the act. Ideal-point scores are then manufactured from the pattern of agreement, exactly as they are for Congress, and a court of nine is small enough that the machinery can be checked by hand.
 
-Choosing this file rather than an easier one is most of the chapter's argument. Martin-Quinn scores are published, updated every term, and would answer *where does each justice sit* in a single download. They are not used, for two reasons.
+Choosing this file rather than an easier one is most of the brief's argument. Martin-Quinn scores are published, updated every term, and would answer *where does each justice sit* in a single download. They are not used here, for two reasons. The practical one is that their site sits behind a bot check and will not answer a script. The real one is that **a published score is the answer, and this brief is about how the answer gets made.**
 
-The practical one is that the site sits behind a bot check and will not answer a script. The real one is that **a published score is the answer, and this chapter is about how the answer gets made.** The database supplies the votes those scores are computed from, so the ordering recovered below can be checked, broken on purpose and argued with rather than accepted on authority. The data best suited to a question is not always the data closest to it.
+## The data
 
-The difficulty is that the most important column in the file is not an observation. `direction` records whether a decision came out in the conservative or the liberal direction. That is a coder's reading of a written opinion against a codebook, a rule specifying issue area by issue area which outcome counts as which. Where the codebook supplies no rule the field is left blank.
+The file's grain is one justice's vote in one case, and its most important column is not an observation. `direction` records whether a vote came out in the conservative or the liberal direction. That is a coder's reading of a written opinion against a codebook, a rule specifying issue area by issue area which outcome counts as which. In a criminal case a vote for the defendant is liberal, and in an economic case a vote for the government usually is. Where the codebook supplies no rule the field is left blank.
 
-That is not a defect anybody could repair. Nothing measures the ideological direction of a legal holding. Every number ever published about the Court's ideology rests on somebody having read the cases and decided.
+`direction` is not the exception in this file. Issue area, the constitutional provision at stake, which party prevailed, the reason the Court took the case: each is likewise a person's reading of a document, entered against a rule somebody wrote. **The Supreme Court publishes opinions. It publishes no data.** Everything countable about it was made countable by somebody outside it, decades after some of the cases were decided.
 
-What can be asked is whether the rule was applied the same way across `r nrow(bt)` terms of American legal history. That is a question about a codebook rather than about a Court.
+The cleaning is short and consequential. The release is downloaded whole and the chosen terms are kept. Every case whose `direction` is blank is dropped from the agreement counts, because "voted the same way" has no meaning when there is no direction to compare.
 
-`direction` is not the exception in this file. It is the rule, made visible. Issue area, the constitutional provision at stake, which party prevailed, the reason the Court took the case. Each of those is likewise a person's reading of a document, entered against a rule somebody wrote. **The Supreme Court publishes opinions. It publishes no data.**
-
-Everything countable about the Court was made countable by someone outside it, decades after some of the cases were decided. The resulting file arrives looking like a record of what happened. It is a record of what a coding team concluded had happened.
-
-That is the price of having a dataset at all here, and it is not avoidable. It is also entirely invisible from inside the CSV, where a judgment and an observation are both just a number in a column.
-
-The cleaning is short and consequential. The release is downloaded whole, and the terms from `r min(bt$term[bt$term >= 2020])` to `r max(bt$term)` are kept. Every case whose direction is blank is dropped from the agreement counts, because "voted the same way" has no meaning when there is no direction to compare.
-
-The build then writes the four small tables this chapter reads. One choice in that build does more work than the rest: for every pair of justices it records the number of cases as well as the number of agreements, rather than the percentage alone. That is why the pair who never sat together is visible in what follows instead of silently absent. Nothing was filled in at build time. The one fill in this chapter is made in the open, on the page, and undone again a few pages later.
-
-## Sixty-one columns, and nearly all of them are opinions
-
-That claim, that a judgment and an observation look the same inside a CSV, is worth seeing rather than taking on trust. Here is the header of the download, `SCDB_2024_01_justiceCentered_Citation.csv`, folded at its commas:
-
-```{r rawscdb}
-```
-
-`r NCOL_SCDB` columns. Read down them and sort each into two piles. Things that could be checked against the U.S. Reports by anyone with a library card, and things that exist because a person read an opinion and reached a conclusion. The first pile is small — `usCite`, `dateDecision`, `docket`, `majVotes`, `justiceName`. Nearly everything else is in the second: `certReason` (why the Court took the case), `issueArea`, `partyWinning`, `precedentAlteration`, `lcDispositionDirection`, `declarationUncon`, and the column this chapter turns on, `direction`.
-
-Here is one justice-vote, the finest grain the file has, printed one field per line:
-
-```{r rawscdb2}
-```
-
-**Every value in that row except the name and the date is an integer standing for a word.** `issueArea` `8` is *economic activity*. `direction` `1` is *conservative* and `2` is *liberal*, and which is which depends on the issue area, by a rule the codebook sets out case type by case type. In a criminal case a vote for the defendant is liberal; in an economic case a vote for the government usually is. `vote` `2` is not "two votes"; it is a code meaning the justice dissented from the opinion of the Court. `majority` `1` means the same thing again, in a different vocabulary.
-
-That last redundancy is the point. The file says the same fact three times in three encodings, and a reader who summed `vote` across a term, or averaged `issueArea`, would get a number with no referent whatever. **None of these columns is a quantity, and every one of them will do arithmetic if you ask.**
-
-Where the codebook has no rule, `direction` is blank rather than guessed. That is the honest choice, and it has a cost. Those cases cannot enter a pairwise agreement count, because "voted the same way" means nothing when there is no way to compare. The build drops them, and that is the only filtering it does.
-
-Here is the clean side — one row per pair of justices, over the `r min(bt$term[bt$term >= 2020])` to `r max(bt$term)` terms:
-
-```{r cleanag}
-```
-
-Two names, a count of cases they both voted in, and a count of times they agreed. That is all this chapter's central figure is built from, and **the unit of analysis has moved twice** to get here: from a justice-vote, to a case, to a *pair of justices*. Nothing in the source file is a pair. The pairs were built by taking every justice against every other, finding the cases in which both cast a directional vote, and counting matches. That is why the `cases` column had to be kept beside `agree`, rather than reduced to a percentage on the spot. A pair who never sat together would otherwise have arrived as a percentage of nothing, and disappeared.
-
-## Ten people, and everything the database knows about them
+The build then writes four small tables. `justices.csv` gives each justice a `cases` count, a `pct_conservative` and a `pct_in_majority`. `agreement.csv` has one row per *pair* of justices, with `a` and `b`, the number of shared `cases`, the number of times they `agree`, and the `pct`. `close_cases.csv` lists the one-vote decisions with the `majority_bloc` named. `by_term.csv` runs `pct_conservative` back to `r min(bt$term)`.
 
 ```{r justices}
 ```
 
-`r NJ` justices sat between the `r min(bt$term[bt$term >= 2020])` and `r max(bt$term)` terms. For each of them the file records how many cases they voted in, what share of their votes the database codes **conservative**, and how often they were in the **majority**.
+**The unit of analysis moved twice** to reach that pair table: from a justice-vote, to a case, to a pair of justices. Nothing in the source file is a pair. The pairs were built by taking every justice against every other, finding the cases in which both cast a directional vote, and counting the matches. Keeping `cases` beside `agree`, rather than reducing the two to a percentage on the spot, is the one build decision that does real work below.
 
-Two of them, `r nice(HOLE$a)` and `r nice(HOLE$b)`, have about half as many cases as everybody else. One retired during the window and the other replaced him. Nothing follows from that yet; it is worth noticing anyway.
+`r NJ` justices sat in this window, and `r NPAIR` pairs can be made from them. One of the `r NPAIR` is not a number. `r nice(HOLE$a)` and `r nice(HOLE$b)` never sat on a case together, because she replaced him, so their agreement rate is undefined rather than high or low. No amount of additional data will fix that, because the data that would fix it was never generated.
 
-## Who agrees with whom
+> **Before you read on, commit to a count.** The scaling below cannot take a
+> hole, so the missing pair gets filled with the mean agreement across every
+> other pair: an invented number sitting in the middle of the matrix the whole
+> ordering comes out of. Now take it away. Drop both justices and re-run the
+> scaling on the `r length(js2)` who overlap completely. **How many of those
+> `r length(js2)` end up somewhere other than where the filled version put
+> them?** Commit to a number, and to one more answer. Whichever way the
+> individual ranks fall, do the two blocs survive intact?
 
-The raw material for any ideal-point score is embarrassingly simple: **how often does each pair of people vote the same way?**
+## What it says about democracy
+
+The raw material for any ideal-point score is embarrassingly simple. How often does each pair of people vote the same way?
 
 ```{r agreement}
 ```
 
-**`r nice(ag$a[which.max(ag$pct)])` and `r nice(ag$b[which.max(ag$pct)])` agreed `r pc(max(ag$pct, na.rm = TRUE))`% of the time.** At the other end, `r nice(ag$a[which.min(ag$pct)])` and `r nice(ag$b[which.min(ag$pct)])` agreed `r pc(min(ag$pct, na.rm = TRUE))`%, barely better than a coin.
-
-That is the entire dataset: `r NPAIR` numbers, one per pair. **No ideology has been supplied to it.** Nobody has told this table who is liberal, what any of the cases were about, or even that the people involved are judges. Figure 1 draws all `r NPAIR` at once.
+**`r nice(ag$a[which.max(ag$pct)])` and `r nice(ag$b[which.max(ag$pct)])` agreed `r pc(max(ag$pct, na.rm = TRUE))`% of the time.** At the other end, `r nice(ag$a[which.min(ag$pct)])` and `r nice(ag$b[which.min(ag$pct)])` agreed `r pc(min(ag$pct, na.rm = TRUE))`%, barely better than a coin. That is the whole dataset: `r NPAIR` numbers, one per pair. **No ideology has been supplied to it.** Nobody has told this table who is liberal, what any of the cases were about, or even that the people in it are judges.
 
 ```{r heat-prep, include=FALSE}
 ```
@@ -106,157 +76,72 @@ That is the entire dataset: `r NPAIR` numbers, one per pair. **No ideology has b
 ```{r heat-static, eval=!knitr::is_html_output(), fig.height=4.3}
 ```
 
-**Figure 1. All `r NPAIR` agreement rates, in the order the file is in and in the order recovered from them.** Every cell is one pair of justices; the darker the cell, the more often the two voted the same way, on an absolute scale running from `r pc(100 * LO)`% to `r pc(100 * HI)`%. The red-outlined cell is a pair with no rate at all. The right-hand panel is the identical `r NPAIR` numbers with the rows and columns re-ordered by the scaling described below, which is not applied to the left-hand panel and changes nothing about the data.
+**Figure 1. All `r NPAIR` agreement rates, in the order the file is in and in the order recovered from them.** A matrix fits this question because there is no summary to plot yet: the data is every pair against every other pair, and the point is whether structure is already visible in it. Every cell is one pair, darker where the two voted the same way more often, on an absolute scale from `r pc(100 * LO)`% to `r pc(100 * HI)`%. The red-outlined cell is the pair with no rate at all. Re-sorting changes nothing about the numbers.
 
-Two things are already visible in that picture and neither was put there. **There is a block structure**, a set of justices who agree with each other far more than with anybody else, and **there is one cell with nothing in it.**
+Two things in that picture were not put there. **There is a block structure**, a set of justices who agree with each other far more than with anybody else. And **there is one cell with nothing in it.**
 
-## The score falls out
-
-Now the move that makes DW-NOMINATE, Martin-Quinn and every other ideal-point score work. Treat agreement as **closeness** and disagreement as **distance**. Then ask: if these `r NJ` people had to be arranged along a single line so that people who agree sit near each other, what line would that be?
+Now the move that makes every ideal-point score work. Treat agreement as closeness and disagreement as distance, then ask what single line would arrange these `r NJ` people so that people who agree sit near each other.
 
 ```{r scaling}
 ```
 
-Read the order. `r paste(nice(CONS), collapse = ", ")`, then a gap, then `r paste(nice(LIBS), collapse = ", ")`.
+Read the order. `r paste(nice(CONS), collapse = ", ")`, then a gap, then `r paste(nice(LIBS), collapse = ", ")`. That is the ideological ordering of the Roberts Court as any court reporter in America would give it, and **it came out of `r NPAIR` agreement rates and nothing else.**
 
-That is the ideological ordering of the Roberts Court as any court reporter in America would give it, and **it came out of `r NPAIR` agreement rates and nothing else.**
+One warning governs every number in that column. The method recovers distances, not coordinates. Multiply every position by −1 and every pairwise distance is unchanged, so the fit is unchanged. **The order and the spacing mean something; the direction does not.** That is equally true of Martin-Quinn, of NOMINATE, and of every ideal-point estimate anybody will ever quote at you.
 
-**One warning about that column of numbers, and it governs every figure below.** The method recovers *distances*, not coordinates. Multiply every position by -1 and every pairwise distance is unchanged, so the fit is unchanged. A scaling solution can be flipped, or in more than one dimension turned, at no cost whatever.
+Set the recovered position beside each justice's share of conservative votes, a column the scaling never touched, and the two line up almost exactly. The correlation is `r nm(abs(R))` in size, and its size is the finding. Its sign, by the paragraph above, is not. Nor is the line evenly filled: the `r length(CONS)` justices on one side span `r nm(SPAN)`, while the single step across the middle is `r nm(CHASM)`, larger than that entire bloc. This is two clusters with a chasm between them, not a spectrum.
 
-Which end comes out negative is a convention of the arithmetic, not a finding: **the order and the spacing mean something; the direction does not.** The same is true of Martin-Quinn, of NOMINATE, and of every ideal-point estimate anybody will ever quote at you. The orientation is always supplied by the analyst after the fact.
-
-The scaling was handed pairwise agreement rates and nothing else — no case subjects, no vote directions, no party of appointing president. Set its output beside each justice's share of conservative votes, a column it never touched, and the two line up almost exactly. The correlation is `r nm(R)`. Its size, `r nm(abs(R))`, is the finding; its sign, by the paragraph above, is not.
-
-That is what an ideal-point score *is*. A summary of who agrees with whom, which turns out to line up with something the culture already had a word for.
-
-```{r clusters}
-```
-
-And it is not a spectrum. The `r length(CONS)` justices on one side span `r nm(SPAN)`; **the single step across the middle is `r nm(CHASM)`, larger than that entire bloc.** This is not a line with people spread evenly along it. It is two clusters with a chasm between them.
-
-At this point the score looks like a measurement of nine people. There are `r NPAIR` agreement rates behind it, a recovered ordering that matches conventional wisdom without having been told it, and a correlation of `r nm(abs(R))` in magnitude with a variable the model never saw. It is worth pausing over how much of that would survive if one of the `r NPAIR` numbers turned out not to exist.
-
-## One of the forty-five is not a number
-
-```{r hole}
-```
-
-**`r nice(HOLE$a)` and `r nice(HOLE$b)` never sat on a case together.** She replaced him. Their agreement rate is not low and it is not high. It is **undefined**, and no amount of additional data will ever fix it, because the data that would fix it was never generated. That is the red-outlined cell in Figure 1.
-
-The scaling cannot take a hole, so it was given something instead.
-
-```{r fill}
-```
-
-**That fill is a modeling decision, made here, in one line of code.** It is about the most conservative guess available, since it assumes nothing whatever about whether the two would have agreed. It is still a guess, sitting in the middle of the matrix, carrying exactly the same weight in the arithmetic as the `r NPAIR - nrow(HOLE)` real observations around it.
-
-## Refusing to guess
-
-So refuse. Drop both justices entirely and re-run the scaling on the `r length(js2)` who overlap completely. No fill, no guess, no cell without data in it.
-
-> **Before you look at the table, say what it will show.** That fill is an
-> invented number sitting in the middle of the matrix the entire ordering came
-> out of. Take it away and how much of the ordering survives? Does it stand
-> exactly as it did? Does it come apart? Or something between — and if between,
-> how many of the `r length(js2)` justices end up somewhere other than where the
-> filled version put them? Commit to a count, and to one more answer: whichever
-> way the individual ranks fall, do the two blocs survive intact?
+Now the number you wrote down.
 
 ```{r refuse}
 ```
 
-**`r length(swap_txt)` adjacent pairs change places**: `r paste(swap_txt, collapse = "; and ")`. Nothing else moves at all.
+**`r length(swap_txt)` adjacent pairs change places**: `r paste(swap_txt, collapse = "; and ")`. Nothing else moves at all. Most readers commit to one of the two extremes, that removing an invented cell changes nothing, or that it brings the whole ordering down. Both are wrong, and `r length(swaps)` positions move out of `r length(js2)`, every one of them between neighbours.
 
-Most readers commit to one of the two extremes — that removing an invented cell changes nothing, or that it brings the whole ordering down. Both are wrong, and being wrong in either direction is what makes the actual answer worth having: `r length(swaps)` positions move out of `r length(js2)`, and every one of the moves is between neighbors.
-
-```{r d3-line, results='asis', eval=knitr::is_html_output()}
+```{r swap-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r line-static, eval=!knitr::is_html_output(), fig.height=3.2}
+```{r swap-static, eval=!knitr::is_html_output(), fig.height=4.0}
 ```
 
-**Figure 2. The same Court, scaled with the guess and without it.** Recovered positions for all `r NJ` justices with the undefined pair filled by the mean agreement rate, and for the `r length(js2)` justices whose pairs are all real. The blocs and the chasm are in the same places in both; `r length(swaps)` positions move, in `r length(swap_txt)` adjacent swaps. The direction of the axis is arbitrary in both panels and carries no meaning.
+**Figure 2. The same Court, scaled with the guess and without it.** A dumbbell fits this comparison because the question is asked of each person separately. One row per justice joins the position the filled scaling gave them to the position they get once the invented cell is removed. `r nice(HOLE$a)` and `r nice(HOLE$b)` are absent from the second run, because refusing to guess means dropping them. Each run sets its own scale, so read the order down the rows rather than the length of any one rule. The blocs and the chasm sit in the same places in both.
 
-This is the turn, and it cuts two ways at once.
+The result cuts two ways at once. **The recovered order is not a fact about the justices at fine resolution.** Adjacent positions moved because of a decision about a cell that contains no data. Anybody reporting which of `r swap_txt[1]` sits further out is reporting a fill choice as much as the Court's behaviour.
 
-**The recovered order is not a fact about the justices at fine resolution.** Adjacent positions moved because of a decision about a cell that contains no data. Anybody reporting which of `r swap_txt[1]` sits further out is reporting a fill choice as much as the Court's behavior.
+**And the blocs do not move.** The correlation with conservative voting comes out at `r nm(abs(R2))` in size on the `r length(js2)` justices with no guess in the matrix at all, slightly stronger than the `r nm(abs(R))` obtained with one. **The coarse structure is in the data. The fine structure is in the assumptions.**
 
-**And the blocs do not move.** Six on one side, the rest on the other, in both versions, with the chasm in the same place. The correlation with conservative voting comes out at `r nm(abs(R2))` in size, on `r length(js2)` justices with no guess in the matrix at all. That is slightly stronger than the `r nm(abs(R))` obtained with one. **The coarse structure is in the data. The fine structure is in the assumptions.**
+Published scores make dozens of choices of this kind. Martin-Quinn makes distributional assumptions and lets positions drift over time. NOMINATE fixes a scale and a functional form. The difference is not that this one has assumptions and those do not. It is that this one is visible, and reversible in a single line.
 
-Published scores make dozens of choices of this kind. Martin-Quinn makes distributional assumptions and lets positions drift over time; NOMINATE fixes a scale and a functional form. **The difference is not that this one has assumptions and those do not. It is that this one is visible, and reversible in a single line.**
+One last word the line does not mean. `r nice(jj$justice[which.max(jj$pct_in_majority)])` is in the majority `r pc(max(jj$pct_in_majority))`% of the time, and the lowest figure is `r nice(jj$justice[which.min(jj$pct_in_majority)])` at `r pc(min(jj$pct_in_majority))`%. The justices nearest the middle of the recovered line win most often and those at either end lose most often. **"Moderate" here is not a description of anybody's opinions.** It is a description of how often you are on the winning side, and it follows mechanically from where you sit.
 
-## The number that surprises people more
+## What this brief cannot tell you
 
-```{r majority}
-```
+**Agreement is not agreement about reasons.** Two justices can reach the same result from incompatible doctrines, and the reasons are most of what law professors argue about. Nothing in a vote count reaches them.
 
-**`r nice(jj$justice[which.max(jj$pct_in_majority)])` is in the majority `r pc(max(jj$pct_in_majority))`% of the time**, and the lowest figure is `r nice(jj$justice[which.min(jj$pct_in_majority)])` at `r pc(min(jj$pct_in_majority))`%.
+**The recovered dimension may not be ideology.** One dimension was chosen and found to fit well, which is not a discovery that judicial disagreement is one-dimensional. Something else that moves with ideology would fit just as well: deference to precedent, institutional caution, the identity of the litigants. Agreement rates cannot settle that.
 
-Set that beside the recovered line. The two justices nearest the middle of it win almost every case; the justices at either end lose most often. **"Moderate" here is not a description of anybody's opinions. It is a description of how often you are on the winning side**, and it is a mechanical consequence of where you sit.
+**"Conservative" is a coder's judgment**, applied case by case for `r nrow(bt)` years by people following a codebook. A case coded conservative in 1962 may have almost nothing in common with one coded conservative in 2022. That is not a reason to discard the series. It is a reason to say what it is.
 
-## Does the middle still win when it is close?
+The scaling is also **a snapshot**, in which nobody can move. It cannot show a justice drifting, which is precisely what Martin-Quinn was designed to capture. And the Court chooses its own docket, so the cases these rates are computed over were selected by the nine people being measured.
 
-```{r close}
-```
+## What you should have learned
 
-There were `r nrow(cc)` decisions in this window with a one-vote margin. The table shows the `r sum(FULL)` justices who sat for the whole run of them. The `r NJ - sum(FULL)` who sat for part of the window cannot be given a comparable denominator, meaning a comparable bottom number to divide by. That is the missing-cell problem from earlier, turning up somewhere else entirely.
+- A left–right ordering of the Supreme Court can be recovered from `r NPAIR - nrow(HOLE)` agreement rates that carry no information about ideology, cases or appointing presidents.
+- That ordering lines up with a column the method never saw, at a size of `r nm(abs(R))`, and the size is the finding while the sign of the axis is an arbitrary convention.
+- The Court is not a spectrum on this measure: the `r length(CONS)` justices on one side span `r nm(SPAN)`, and the single step across the middle is `r nm(CHASM)`.
+- One of the `r NPAIR` pairs never sat together, and the guess filled in for it moves `r length(swaps)` of `r length(js2)` positions. The blocs survive the refusal; the fine ranking does not.
+- Being in the majority `r pc(max(jj$pct_in_majority))`% of the time is a fact about where you sit on that line, not a fact about anybody's moderation.
 
-The answer is yes, and much less so. `r nice(jj$justice[which.max(jj$pct_in_majority)])` and `r nice(jj$justice[order(-jj$pct_in_majority)][2])` are still at the top, but at about `r pc(max(jj$close_pct, na.rm = TRUE), 0)`% rather than `r pc(max(jj$pct_in_majority), 0)`%. And the ordering below them scrambles.
+## Extensions
 
-```{r arch-prep, include=FALSE}
-```
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-```{r arch-d3, results='asis', eval=knitr::is_html_output()}
-```
+- `agreement.csv` gives every pair a `pct`. Sort it and mark the blocs by hand. Do they match the labels the newspapers use, and which pairs sit in neither?
+- `justices.csv` has `pct_conservative` and `pct_in_majority`. Plot one against the other. Is being on the winning side the same thing as being in the middle?
+- `close_cases.csv` lists the divided decisions with the `majority_bloc` named. Count how often each justice's name appears in that column. Who actually decides the close ones, and is it the same person the all-cases figure names?
+- `by_term.csv` runs `pct_conservative` back decades. Follow it. Does the Court move gradually, or in steps when its membership changes?
 
-```{r arch-static, eval=!knitr::is_html_output(), fig.height=3.9}
-```
-
-**Figure 3. How often each justice wins, against where the scaling puts them.** Share of the time in the majority across all cases (black) and across the `r nrow(cc)` one-vote cases alone (orange), plotted against recovered position. The black points form an arch: the closer to the middle of the line, the more often you are on the winning side, peaking at `r PEAK`. In orange the arch flattens by `r pc(DROP)` points at its peak and partly turns over. Hollow points are the `r NJ - sum(FULL)` justices who sat for only part of the window and have no comparable close-case denominator.
-
-**The `r pc(max(jj$pct_in_majority))`% figure is mostly a fact about unanimous and lopsided cases**, which are most cases. Restrict attention to the decisions that were actually contested and the Court looks a great deal less like a single pivotal justice deciding everything. The highest close-case rate is `r pc(DROP)` points below the highest all-case rate, and the order below the top two turns over. `r AR$lab[which.max(AR$close)]` and `r AR$lab[order(-AR$close)][2]` keep the lead. But `r paste(AR$lab[order(-AR$close)][3:4], collapse = " and ")`, at the far end of the line, are in the majority in more of the close cases than any of the `r sum(AR$close < min(AR$close[order(-AR$close)][3:4]), na.rm = TRUE)` justices between them and the middle.
-
-## Seventy-eight terms, and what they are made of
-
-The same database reaches back to `r min(bt$term)`, so the long series comes free with the file.
-
-```{r long}
-```
-
-```{r long-plot, fig.height=3.0}
-```
-
-**Figure 4. Share of decisions coded conservative, every term from `r min(bt$term)` to `r max(bt$term)`.** The gray line is the term-by-term figure and the red line a five-term moving average; the dotted rule is half. The series runs from a low of `r pc(min(bt$pct_conservative))`% in `r bt$term[which.min(bt$pct_conservative)]` to a high of `r pc(max(bt$pct_conservative))`% in `r bt$term[which.max(bt$pct_conservative)]`, and every point in it is a coder's judgment about the direction of a decision.
-
-Before believing any story in that line, notice exactly what is plotted. It is the share of decisions that the database's coders labeled conservative: a human judgment, applied case by case, for `r nrow(bt)` years, by people following a codebook. It is a good codebook, and a case coded conservative in 1962 may have almost nothing in common with one coded conservative in 2022.
-
-That is not a reason to discard the series. It is a reason to say what it is. **Every long-run measure in social science is somebody's coding decision repeated for decades**, and the ones worth using say so.
-
-## The argument about this
-
-**On circularity.** The strongest defense of what was done above is that the ordering was not put in. The scaling was given `r NPAIR - nrow(HOLE)` numbers and no labels, and the dimension it found happens to be the one the culture already names. That is a genuine finding about the structure of judicial voting. The strongest objection is that agreement and ideology may simply be the same phenomenon observed twice, in which case a correlation of `r nm(abs(R))` is a tautology with extra steps. Both positions are defensible, and neither is refutable from this table.
-
-**On what a score can be used for.** Martin and Quinn (2002) built the standard version precisely because a static score cannot show drift, which is the question people most want answered about long-serving justices. Segal and Cover (1989) went the other way and measured ideology *before* any votes existed, from newspaper editorials, so that votes could be predicted rather than summarized. **The three designs answer three different questions**, and treating them as competing estimates of one quantity is a category error.
-
-**On the majority rates.** The arch in Figure 3 looks like a finding about power, and the orange points show it is substantially a finding about which cases exist. Whether "the middle wins" is a claim about the Court or about its docket is not settled here — and the docket is chosen by the same nine people.
-
-**On whether "conservative" is constant.** The database codes each decision's direction case by case, following a codebook, for `r nrow(bt)` years. It is a human judgment repeated across an enormous span of American legal history, and Figure 4 is only as comparable across its two ends as that codebook is.
-
-**On agreement itself.** Two justices can reach the same result from incompatible doctrines. Agreement is not agreement about reasons, and the reasons are most of what law professors argue about.
-
-## What this evidence will bear
-
-The Supreme Court Database records every vote in every case since `r min(bt$term)`, coded consistently by a documented codebook and maintained as a versioned academic resource. The window scaled here is a complete census of the Court's decisions rather than a sample. And the method is transparent enough to be broken on purpose, which is what the second half of this chapter does to it.
-
-The limits bound different claims, and each has already appeared above in its proper place. **One cell has no data in it**, and the fill chosen for it moves `r length(swaps)` positions in the recovered order, so no fine ranking here is safe. **Two justices sat for part of the window**, so their statistics rest on different denominators from everybody else's, which is why they are hollow in Figure 3 and absent from the close-case table. **One dimension was chosen** and found to fit well, which is not the same as discovering that judicial disagreement is one-dimensional. **"Conservative" is a coder's judgment** applied for `r nrow(bt)` years, and **agreement is not agreement about reasons**.
-
-And the scaling is **a snapshot**, in which nobody can move. It cannot show a justice drifting, which is exactly what Martin-Quinn was designed to capture.
-
-Three questions stay genuinely open. The recovered dimension may be ideology, or it may be something else that moves with it: deference to precedent, institutional caution, the identity of the litigants. Agreement rates cannot settle that. Whether coding direction is stable across seventy-eight years is a question about the codebook rather than about the Court. And whether the Court's high agreement rates reflect consensus or docket selection is unanswerable here, because the justices choose which cases to hear, which makes the denominator endogenous to the thing being measured.
-
-What can be said is worth the trouble it took. A left–right ordering of the Supreme Court can be recovered from `r NPAIR - nrow(HOLE)` agreement rates that carry no information about ideology, cases or appointing presidents. It lines up with a column the method never saw, at a size of `r nm(abs(R))`. The blocs in it are in the data, and survive refusing to guess about the one pair who never met. The fine ordering is in the assumptions, and does not.
-
-**Every score has a fill.** Somewhere inside every published ideal-point estimate is a cell with no data in it and a decision about what to put there. The question to ask of any such number is not whether it made assumptions, because all of them do. It is **which ones, and what happens when you change them.**
+Two stretch ideas point past the spreadsheet. Martin-Quinn scores are published for every term since 1937; find the latest release and ask whether its ordering of the current Court matches the one recovered here. And Segal and Cover scored justices from editorials written *before* they cast a vote, so set those against the ordering here and ask which disagreements are the interesting ones.
 
 ## Sources
 
@@ -270,23 +155,6 @@ What can be said is worth the trouble it took. A left–right ordering of the Su
   database records no ideological direction are excluded, because "voted the
   same way" is undefined without a direction to compare.
 
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`agreement.csv`](data/derived/agreement.csv), [`by_term.csv`](data/derived/by_term.csv), [`close_cases.csv`](data/derived/close_cases.csv), [`justices.csv`](data/derived/justices.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `agreement.csv` gives every pair of justices a `pct` agreement. Sort it. Who agrees with whom, and do the blocs match the usual labels?
-- `justices.csv` has `pct_conservative` and `pct_in_majority`. Plot one against the other. Who is most often on the winning side, and is that the same as being in the middle?
-- `close_cases.csv` lists the divided decisions with the `majority_bloc` named. Count how often each justice appears. Who actually decides the close ones?
-- `by_term.csv` runs `pct_conservative` back decades. Follow it. Does the Court move gradually, or in steps when its membership changes?
-
 **Academic literature**
 
 - Martin, A. D. and Quinn, K. M. (2002). "Dynamic Ideal Point Estimation via
@@ -298,15 +166,16 @@ tables you just opened.
 - Epstein, L., Landes, W. M. and Posner, R. A. (2013). *The Behavior of Federal
   Judges: A Theoretical and Empirical Study of Rational Choice.* Harvard
   University Press.
-
-**Further reading**
-
 - Poole, K. T. and Rosenthal, H. (1997). *Congress: A Political-Economic History
-  of Roll Call Voting.* Oxford University Press. (The same scaling idea, applied
-  to legislatures.)
+  of Roll Call Voting.* Oxford University Press. The same scaling idea, applied
+  to a legislature.
 
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`agreement.csv`](data/derived/agreement.csv), [`by_term.csv`](data/derived/by_term.csv), [`close_cases.csv`](data/derived/close_cases.csv), [`justices.csv`](data/derived/justices.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

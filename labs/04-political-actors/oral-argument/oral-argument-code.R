@@ -8,18 +8,18 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
 options(scipen = 999)
 
-ar <- read.csv("data/derived/arguments.csv",     stringsAsFactors = FALSE)
-me <- read.csv("data/derived/measures.csv",      stringsAsFactors = FALSE)
-si <- read.csv("data/derived/silence.csv",       stringsAsFactors = FALSE)
-od <- read.csv("data/derived/order.csv",         stringsAsFactors = FALSE)
-sp <- read.csv("data/derived/speakers.csv",      stringsAsFactors = FALSE)
-ck <- read.csv("data/derived/checks.csv",        stringsAsFactors = FALSE)
-tot <- read.csv("data/derived/totals.csv",       stringsAsFactors = FALSE)
+ar  <- read.csv("data/derived/arguments.csv", stringsAsFactors = FALSE)
+me  <- read.csv("data/derived/measures.csv",  stringsAsFactors = FALSE)
+si  <- read.csv("data/derived/silence.csv",   stringsAsFactors = FALSE)
+od  <- read.csv("data/derived/order.csv",     stringsAsFactors = FALSE)
+ck  <- read.csv("data/derived/checks.csv",    stringsAsFactors = FALSE)
+tot <- read.csv("data/derived/totals.csv",    stringsAsFactors = FALSE)
 TOT <- function(k) tot$value[tot$quantity == k]
 
 NARG   <- nrow(ar)
@@ -31,12 +31,9 @@ NTURN  <- TOT("turns_read")     # before the two exclusions
 has <- ar[!is.na(ar$minutes), ]
 agg <- function(f) tapply(seq_len(nrow(has)), has$term, function(i) f(has[i, ]))
 bt <- data.frame(term = sort(unique(has$term)))
-bt$arguments   <- as.vector(agg(function(d) nrow(d)))
 bt$minutes     <- as.vector(agg(function(d) mean(d$minutes)))
 bt$jwords      <- as.vector(agg(function(d) mean(d$justice_words)))
 bt$jwords_min  <- as.vector(agg(function(d) sum(d$justice_words) / sum(d$minutes)))
-bt$jturns      <- as.vector(agg(function(d) mean(d$justice_turns)))
-bt$regime      <- as.vector(agg(function(d) names(sort(table(d$regime), TRUE))[1]))
 
 MIN0 <- bt$minutes[bt$term == T0]; MIN1 <- bt$minutes[bt$term == T1]
 WRD0 <- bt$jwords[bt$term == T0];  WRD1 <- bt$jwords[bt$term == T1]
@@ -79,8 +76,7 @@ TEL   <- od[od$regime == "telephone, seniority rounds", ]
 TELT  <- TEL$term
 HYB   <- od[od$regime == "in person, seniority round added", ]
 # 2019 is the term the rule landed in the middle of: argued in the courtroom
-# until March 2020 and by telephone in May, so it belongs to neither side and
-# gets its own row below.
+# until March 2020 and by telephone in May, so it belongs to neither side.
 SPLIT <- 2019
 PREO  <- od[od$regime == "in person, no rounds" & od$term < SPLIT, ]
 PREO_MAX <- max(PREO$pct_in_seniority_order)
@@ -95,15 +91,9 @@ TH_ON_PRE     <- sum(TH_PRE$arguments_on_bench)
 TH_2020 <- TH$pct_silent[TH$term == 2020]
 TH_TERMS_100 <- sum(TH_PRE$pct_silent == 100)
 
-sil_by_j <- tapply(si$arguments_silent, si$name, sum)
-NSIL <- sum(si$arguments_silent)
-TH_SHARE <- 100 * sil_by_j[["Clarence Thomas"]] / NSIL
-SIL2 <- sort(sil_by_j, decreasing = TRUE)[2]
-SIL2N <- names(sort(sil_by_j, decreasing = TRUE))[2]
-
 # --- what the published report says, for the comparison table ---------------
-# These four are READ OFF the Epstein-Posner report, not computed here. They are
-# the only numbers in this chapter that this book did not produce, and the table
+# These are READ OFF the Epstein-Posner report, not computed here. They are the
+# only numbers in this chapter that this book did not produce, and the table
 # that uses them labels every one.
 EP <- data.frame(
   quantity = c("Arguments in the 2005-2025 terms",
@@ -140,7 +130,7 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-RED <- "#C41230"; BLU <- "#2c7fb8"; ORA <- "#e08214"; GRY <- "#8A8F94"
+RED <- "#C41230"; BLU <- "#2c7fb8"; GRY <- "#8A8F94"
 
 # --- the exhibit ------------------------------------------------------------
 # Read out of raw/ on purpose. This chapter's claim is that the record is
@@ -184,14 +174,6 @@ data.frame(
             paste0(substr(EXTXT, 1, 92), "...")),
   stringsAsFactors = FALSE)
 
-## ---- drops
-data.frame(
-  kind = c("Gavelling in and out", "Handing off the floor", "Courtesy"),
-  example = c("\"We'll hear argument this morning in case 23-191...\"",
-              "\"Justice Sotomayor?\"",
-              "\"Thank you, counsel.\" / \"No questions.\""),
-  stringsAsFactors = FALSE)
-
 ## ---- measure-list
 data.frame(
   measure = MEAS,
@@ -206,9 +188,11 @@ data.frame(
 
 ## ---- bump-d3
 # ---------------------------------------------------------------------------
-# Nine justices, six measures, rank 1 at the top. Every line is one justice and
-# holds its identity across all six columns, which is the entire point: a
-# reader who follows one line watches the answer change under them.
+# A DESIGNATED SHOWPIECE. Nine justices, six measures, rank 1 at the top. Every
+# line is one justice and holds its identity across all six columns, which is
+# the entire point: a reader who follows one line watches the answer change
+# under them. The shared library has no bump type, and the raising interaction
+# is what makes nine overlapping lines readable at all.
 #
 # COLOUR. Nine series is one more than the number of categorical hues anybody
 # can tell apart, so no justice gets a hue. All lines are grey and hovering or
@@ -216,8 +200,8 @@ data.frame(
 # both ends, never by colour alone, and the table below the figure holds every
 # value the figure plots.
 #
-# This chunk carries the ONE d3 <script src> for the document; later figures
-# use the library it loads.
+# This chunk carries the ONE d3 <script src> for the document; the dd_fig()
+# figure below is emitted with d3 = FALSE for that reason.
 # ---------------------------------------------------------------------------
 rows <- paste0("{\"j\":\"", me$name, "\",\"m\":\"", me$measure,
                "\",\"v\":", me$value, ",\"r\":", me$rank, "}", collapse = ",")
@@ -349,190 +333,53 @@ o <- o[order(o[[2]]), ]
 o$justice <- short(o$justice)   # surnames, to match the labels in Figure 1
 o
 
-## ---- stable
-data.frame(
-  quantity = c(paste("Justices in the top 3 on all", NMEAS, "measures"),
-               paste("Justices ranked last on all", NMEAS, "measures"),
-               "Different justices who rank first on at least one measure",
-               "Widest swing by any one justice"),
-  value = c(paste(sub(",.*", "", TOP3), collapse = ", "),
-            paste(sub(",.*", "", LAST), collapse = ", "),
-            paste(length(FIRSTS), "of", NJ),
-            paste(MOVE, "places")),
-  stringsAsFactors = FALSE)
-
-## ---- longview-d3
-# ---------------------------------------------------------------------------
-# Two panels, one x axis. NOT two y axes on one plot: minutes and words-per-
-# minute have nothing to do with each other numerically, and drawing them on a
-# shared frame would invent a relationship. Stacking them keeps the comparison
-# honest -- the reader's eye travels down a shared term axis.
-# ---------------------------------------------------------------------------
-rows <- paste0("{\"t\":", bt$term, ",\"min\":", nm(bt$minutes, 2),
-               ",\"rate\":", nm(bt$jwords_min, 2),
-               ",\"reg\":\"", bt$regime, "\"}", collapse = ",")
-cat(paste0('
-<div id="lv" style="position:relative;margin:1.2em 0"></div>
-<!-- d3 v7 is loaded once, by the first figure above -->
-<script>
-(function(){
-const D=[', rows, '];
-const W=790,H=380,P={t:24,r:22,b:34,l:56},GAP=52;
-const ph=(H-P.t-P.b-GAP)/2;
-const svg=d3.select("#lv").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([', T0, ',', T1, ']).range([P.l,W-P.r]);
-const RED="', RED, '", BLU="', BLU, '";
-const TEL=', TELT, ';
-
-function panel(top,key,dom,color,title,fmt){
-  const y=d3.scaleLinear().domain(dom).range([top+ph,top]);
-  // the telephone rule, marked once per panel
-  svg.append("rect").attr("x",x(2019.5)).attr("y",top).attr("width",x(2020.5)-x(2019.5))
-     .attr("height",ph).attr("fill","#000").attr("opacity",0.05);
-  svg.append("g").attr("transform","translate("+P.l+",0)")
-     .call(d3.axisLeft(y).ticks(4).tickFormat(fmt)).call(g=>g.select(".domain").remove());
-  svg.append("g").attr("transform","translate(0,"+(top+ph)+")")
-     .call(d3.axisBottom(x).ticks(8).tickFormat(d3.format("d")));
-  svg.append("text").attr("x",P.l).attr("y",top-8).attr("font-size","12px")
-     .attr("fill","#444").text(title);
-  svg.append("path").datum(D).attr("fill","none").attr("stroke",color)
-     .attr("stroke-width",2)
-     .attr("d",d3.line().x(d=>x(d.t)).y(d=>y(d[key])));
-  svg.selectAll(null).data(D).join("circle").attr("cx",d=>x(d.t))
-     .attr("cy",d=>y(d[key])).attr("r",3.2).attr("fill",color)
-     .attr("stroke","#fff").attr("stroke-width",2);
-  return y;
-}
-const y1=panel(P.t,"min",[50,100],RED,"minutes an argument runs",d=>d);
-const y2=panel(P.t+ph+GAP,"rate",[50,75],BLU,
-               "words a minute, all nine justices together",d=>d);
-svg.append("text").attr("x",x(TEL)).attr("y",P.t-10).attr("text-anchor","middle")
-   .attr("font-size","11px").attr("fill","#666").text("telephone");
-
-const tip=d3.select("#lv").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("rect").attr("x",P.l).attr("y",P.t).attr("width",W-P.r-P.l)
-  .attr("height",H-P.t-P.b).attr("fill","transparent")
-  .on("mousemove",function(ev){
-    const t=Math.round(x.invert(ev.offsetX));
-    const d=D.find(q=>q.t===t); if(!d) return;
-    tip.style("opacity",1).html("<b>"+d.t+" term</b><br>"+d.min.toFixed(1)+
-      " minutes<br>"+d.rate.toFixed(1)+" words a minute<br>"+d.reg)
-      .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-4)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Hover for any term. The shaded band is the ', TELT, ' term, argued by telephone.</p>'))
-
-## ---- longview-static
-par(mfrow = c(2, 1), mar = c(2.6, 4.4, 2.0, 1.0))
-band <- function() rect(2019.5, -1e4, 2020.5, 1e4, col = "#00000010", border = NA)
-plot(bt$term, bt$minutes, type = "n", xlab = "", ylab = "minutes",
-     ylim = c(50, 100), las = 1, cex.axis = 0.8)
-band(); lines(bt$term, bt$minutes, col = RED, lwd = 2)
-points(bt$term, bt$minutes, pch = 19, col = RED, cex = 0.6)
-mtext("minutes an argument runs", 3, line = 0.4, cex = 0.75, adj = 0)
-plot(bt$term, bt$jwords_min, type = "n", xlab = "", ylab = "words a minute",
-     ylim = c(50, 75), las = 1, cex.axis = 0.8)
-band(); lines(bt$term, bt$jwords_min, col = BLU, lwd = 2)
-points(bt$term, bt$jwords_min, pch = 19, col = BLU, cex = 0.6)
-mtext("words a minute, all nine justices together", 3, line = 0.4, cex = 0.75,
-      adj = 0)
-par(mfrow = c(1, 1))
-
 ## ---- order-d3
 # ---------------------------------------------------------------------------
-# Two series, both percentages of arguments in a term, so one y axis is not
-# only allowed but required -- they are the same unit and the comparison
-# between them is the point. Palette: the book's red and blue, checked for
-# colourblind separation; each line is also directly labelled.
+# Two series, both a share of the arguments heard in a term, so one axis is not
+# only allowed but required: they are the same unit and the comparison between
+# them is the point. Drawn with the shared library; d3 = FALSE because the bump
+# figure above already loaded d3.
 # ---------------------------------------------------------------------------
 th <- si[si$justice == "clarence_thomas", c("term", "pct_silent")]
-m <- merge(od[, c("term", "pct_in_seniority_order", "regime")], th, all.x = TRUE)
-rows <- paste0("{\"t\":", m$term, ",\"o\":", nm(m$pct_in_seniority_order),
-               ",\"s\":", ifelse(is.na(m$pct_silent), "null", nm(m$pct_silent)),
-               ",\"reg\":\"", m$regime, "\"}", collapse = ",")
-cat(paste0('
-<div id="ord" style="position:relative;margin:1.2em 0"></div>
-<!-- d3 v7 is loaded once, by the first figure above -->
-<script>
-(function(){
-const D=[', rows, '];
-const W=790,H=340,P={t:56,r:40,b:40,l:48};
-const svg=d3.select("#ord").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([', T0, ',', T1, ']).range([P.l,W-P.r]);
-const y=d3.scaleLinear().domain([0,100]).range([H-P.b,P.t]);
-const BLU="', BLU, '", RED="', RED, '";
-svg.append("rect").attr("x",x(2019.5)).attr("y",P.t)
-   .attr("width",x(2020.5)-x(2019.5)).attr("height",H-P.b-P.t)
-   .attr("fill","#000").attr("opacity",0.05);
-svg.append("text").attr("x",x(2020)).attr("y",P.t-30).attr("text-anchor","middle")
-   .attr("font-size","11px").attr("fill","#666").text("argued by");
-svg.append("text").attr("x",x(2020)).attr("y",P.t-18).attr("text-anchor","middle")
-   .attr("font-size","11px").attr("fill","#666").text("telephone");
-svg.append("g").attr("transform","translate("+P.l+",0)")
-   .call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+"%"))
-   .call(g=>g.select(".domain").remove());
-svg.append("g").attr("transform","translate(0,"+(H-P.b)+")")
-   .call(d3.axisBottom(x).ticks(8).tickFormat(d3.format("d")));
-const S=[{k:"o",c:BLU,lab:"first questions came in seniority order"},
-         {k:"s",c:RED,lab:"Thomas asked nothing"}];
-S.forEach(function(s){
-  const d=D.filter(q=>q[s.k]!==null);
-  svg.append("path").datum(d).attr("fill","none").attr("stroke",s.c)
-     .attr("stroke-width",2)
-     .attr("d",d3.line().x(q=>x(q.t)).y(q=>y(q[s.k])));
-  svg.selectAll(null).data(d).join("circle").attr("cx",q=>x(q.t))
-     .attr("cy",q=>y(q[s.k])).attr("r",3.2).attr("fill",s.c)
-     .attr("stroke","#fff").attr("stroke-width",2);
-});
-// The legend sits in the middle-left, which is the one empty quarter of this
-// plot: the red line runs along the top there and the blue along the bottom.
-// Labelling the line ends instead put both names at 0% in the same term, on
-// top of each other.
-S.forEach(function(s,i){
-  const ly=y(56-i*9);
-  svg.append("line").attr("x1",x(2006)).attr("x2",x(2006)+22)
-     .attr("y1",ly).attr("y2",ly).attr("stroke",s.c).attr("stroke-width",2);
-  svg.append("circle").attr("cx",x(2006)+11).attr("cy",ly).attr("r",3.2)
-     .attr("fill",s.c).attr("stroke","#fff").attr("stroke-width",2);
-  svg.append("text").attr("x",x(2006)+30).attr("y",ly+4)
-     .attr("font-size","11.5px").attr("fill","#444").text(s.lab);
-});
-const tip=d3.select("#ord").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:6px 9px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("rect").attr("x",P.l).attr("y",P.t).attr("width",W-P.r-P.l)
-  .attr("height",H-P.b-P.t).attr("fill","transparent")
-  .on("mousemove",function(ev){
-    const t=Math.round(x.invert(ev.offsetX));
-    const d=D.find(q=>q.t===t); if(!d) return;
-    tip.style("opacity",1).html("<b>"+d.t+" term</b><br>"+d.o+
-      "% in seniority order<br>"+(d.s===null?"&mdash;":d.s+"% Thomas silent")+
-      "<br>"+d.reg)
-      .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-4)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Both lines are a share of that term\'s arguments, so they share one axis.</p>'))
+mo <- merge(od[, c("term", "pct_in_seniority_order", "regime")], th, all.x = TRUE)
+mo <- mo[order(mo$term), ]
+dd_fig("ordfig", "line", mo, height = 360, d3 = FALSE,
+  size = list(m = list(t = 44, r = 30, b = 42, l = 54)),
+  x = list(field = "term", fmt = "d", ticks = 8),
+  y = list(field = "pct_in_seniority_order",
+           label = "% of the term's arguments",
+           domain = c(0, 100), fmt = "pct0", ticks = 5),
+  series = list(fields = list(
+    list(field = "pct_in_seniority_order", class = "series-1",
+         label = "first questions came in seniority order"),
+    list(field = "pct_silent", class = "series-2",
+         label = "Thomas asked nothing"))),
+  points = TRUE, legend = TRUE,
+  annotations = list(
+    dd_annot_band(2019.5, 2020.5),
+    dd_annot_text(2020, 100, "argued by telephone", anchor = "middle",
+                  dy = -24)),
+  tip = dd_js('function(d){
+    return "<b>"+d.term+" term</b><br>"+
+      "<span class=\'series-1-txt\'>&#9632;</span> in seniority order: "+
+        d.pct_in_seniority_order.toFixed(1)+"%<br>"+
+      "<span class=\'series-2-txt\'>&#9632;</span> Thomas silent: "+
+        (d.pct_silent===null?"&mdash;":d.pct_silent.toFixed(1)+"%")+"<br>"+
+      d.regime;
+  }'))
 
 ## ---- order-static
 th <- si[si$justice == "clarence_thomas", c("term", "pct_silent")]
-m <- merge(od[, c("term", "pct_in_seniority_order")], th, all.x = TRUE)
+mo <- merge(od[, c("term", "pct_in_seniority_order")], th, all.x = TRUE)
 par(mar = c(3.0, 4.4, 2.4, 1.2))
 plot(NA, xlim = c(T0, T1), ylim = c(0, 100), las = 1, xlab = "",
      ylab = "% of the term's arguments", cex.axis = 0.8)
 rect(2019.5, -10, 2020.5, 110, col = "#00000010", border = NA)
 text(2020, 106, "telephone", cex = 0.6, col = "#666666", xpd = NA)
-lines(m$term, m$pct_in_seniority_order, col = BLU, lwd = 2)
-points(m$term, m$pct_in_seniority_order, pch = 19, col = BLU, cex = 0.6)
-lines(m$term, m$pct_silent, col = RED, lwd = 2)
-points(m$term, m$pct_silent, pch = 19, col = RED, cex = 0.6)
+lines(mo$term, mo$pct_in_seniority_order, col = BLU, lwd = 2)
+points(mo$term, mo$pct_in_seniority_order, pch = 19, col = BLU, cex = 0.6)
+lines(mo$term, mo$pct_silent, col = RED, lwd = 2)
+points(mo$term, mo$pct_silent, pch = 19, col = RED, cex = 0.6)
 # The legend goes in the middle-left, the one empty quarter of this plot. At
 # the right-hand end both lines sit at 0% and their labels landed on top of
 # each other.
@@ -540,42 +387,6 @@ legend(T0 + 0.6, 62, c("first questions came in seniority order",
                        "Thomas asked nothing"),
        col = c(BLU, RED), lwd = 2, pch = 19, pt.cex = 0.6, bty = "n",
        cex = 0.62, text.col = "#444444", y.intersp = 1.4)
-
-## ---- orderfacts
-data.frame(
-  terms = c(paste0(T0, " to ", SPLIT - 1), as.character(SPLIT),
-            "2020", paste0("2021 to ", T1)),
-  the_room = c("the courtroom, no rounds",
-               "the courtroom until March, the telephone in May",
-               "the telephone, seniority rounds",
-               "the courtroom, a seniority round at the end"),
-  in_seniority_order = c(
-    paste0(nm(PREO_MAX), "% at its highest, ", NZERO, " terms of ",
-           nrow(PREO), " at exactly zero"),
-    paste0(nm(ORD(SPLIT)), "%"),
-    paste0(nm(ORD(2020)), "%"),
-    paste0(nm(min(HYB$pct_in_seniority_order)), "% to ",
-           nm(max(HYB$pct_in_seniority_order)), "%")),
-  stringsAsFactors = FALSE)
-
-## ---- thomas
-data.frame(
-  quantity = c(paste0("Terms from ", T0,
-                      " to 2018 where he asked nothing in every argument"),
-               paste0("Arguments he sat for, ", T0, " to 2018"),
-               "Of those, the number in which he asked nothing",
-               "The 2020 term, argued by telephone",
-               paste0("Since 2020, arguments he sat for"),
-               "Of those, the number in which he asked nothing"),
-  value = c(paste(TH_TERMS_100, "of", nrow(TH_PRE)),
-            n(TH_ON_PRE),
-            paste0(n(TH_SILENT_PRE), " (", nm(100 * TH_SILENT_PRE / TH_ON_PRE), "%)"),
-            paste0(nm(TH_2020), "%"),
-            n(sum(TH_POST$arguments_on_bench)),
-            paste0(n(sum(TH_POST$arguments_silent)), " (",
-                   nm(100 * sum(TH_POST$arguments_silent) /
-                        sum(TH_POST$arguments_on_bench)), "%)")),
-  stringsAsFactors = FALSE)
 
 ## ---- epcompare
 names(EP) <- c("quantity", "Epstein and Posner report", "this build, from Oyez")
