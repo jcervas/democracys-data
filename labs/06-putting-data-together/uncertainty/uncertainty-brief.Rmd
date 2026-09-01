@@ -16,31 +16,45 @@ dd_read_chunks("uncertainty-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Almost every number in this book is an estimate, and almost none of them is printed with an interval. This chapter is about what the interval would have said. More usefully, it is about what the interval would not have said even when it is there.
+Every estimate you meet in public life is supposed to come with a margin of error: a number saying how far off the estimate could be and still be doing its job. A narrow margin reads as a settled number. This brief asks what a narrow margin is actually a fact about.
 
-It uses the one place in the book where an inferred quantity can be graded. Georgia records race on the voter registration form. So for `r n(NV)` registered voters in Houston County there are two things. A **guess**, from what a surname model works out from a name and a census block. And a **fact**, which is what the voter wrote down.
+It asks that in the one place in this book where an estimate can be graded against a recorded answer. Georgia writes race on the voter registration form, so for `r n(NV)` registered voters in Houston County there are two things on file. A **guess**, worked out from the voter's surname and the census block they live in. And the **answer**, which is what the voter wrote down.
 
-The [bisg-check chapter](../bisg-check/bisg-check-brief.html) asks whether the model works. This one asks how much of any single number describing it is noise.
+The guess is right for **`r p2(ACC)`%** of them, and the 95% interval around that share runs from `r p2(ALO)`% to `r p2(AHI)`%. That is less than a point wide, which makes it one of the most precisely measured numbers in this book. Whether it describes anybody is a separate question, and the interval has nothing to say about it.
 
-The headline is easy to state. The model gets **`r p2(ACC)`%** of these `r n(NV)` voters right, and the 95% interval around that is **[`r p2(ALO)`, `r p2(AHI)`]** — less than a point wide. It is one of the most precisely measured numbers in this book.
+## The test
 
-It is also close to meaningless, and the interval is no help at all in noticing that.
+The measurement joins three files. The first is a Houston County, Georgia voter registration extract, carrying the race each voter reported and the census block each one lives in. The second is the U.S. Census Bureau's *Frequently Occurring Surnames from the 2010 Census* (<https://www2.census.gov/topics/genealogy/2010surnames/names.zip>). The third is the 2020 Census redistricting count of who lives on each of the county's blocks. The extract and the block table are the committed tables of the [BISG check brief](../bisg-check/bisg-check-brief.html); the surname list is the [surnames brief](../surnames/surnames-brief.html)'s copy, read where it sits.
 
-## The estimate, and the arithmetic under it
+These are the right files because grading a guess requires a recorded answer, and almost no file in American politics has one. A handful of states, mostly ones once subject to federal supervision of their election law, put a race question on the registration form. That question is why the quantity a surname model is trying to produce is already written down here.
+
+Everything below rests on two joins holding. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the reading on what a join key is and how one fails. It also covers the repair for a key that will not line up: a crosswalk, a table that translates one set of identifiers into another.
+
+## The data
+
+The table under this brief was built by running the surname-and-block method from scratch on all `r n(NV)` voters. Each answer was then compared against the race that voter reported. The same method was scored again inside every group, and again inside every kind of neighbourhood.
+
+The join has two keys and both are strings of text. The **surname** joins a voter to the Census surname list, and it does not always land. `r p1(PMISS)`% of these voters, `r n(NMISS)` people, carry a name the Bureau does not publish, because fewer than a hundred Americans shared it. Those voters fall back to the national spread of surnames, which is a much weaker starting guess. The **fifteen-character census block identifier**, `GEOID20`, joins a voter to the block table. It arrived in the extract already filled in, matched from a street address by somebody else.
+
+One piece of cleaning decides what can be claimed. The source file marks records whose race was supplied by a model rather than by the voter, and every one of those was dropped before any of this ran. Scoring a method against its own output would produce an excellent number that means nothing.
+
+Four tables come out of that run. `by_group.csv` holds one row per racial group with `n_true`, `n_pred`, `recall` and its interval `rec_lo` and `rec_hi`, and `precision` with `pre_lo` and `pre_hi`. `by_decile.csv` holds the same recall in ten strata of neighbourhood, with `block_black_lo`, `block_black_hi`, `black_voters`, `recall`, `lo` and `hi`. `thresh.csv` sweeps the cutoff, carrying `t`, the four counts `tp`, `fp`, `fn` and `tn`, and the rates `tpr`, `fpr` and `prec`. `calib.csv` compares the probability the model announced against what actually happened, bin by bin.
+
+Four quantities do all the work below, and they answer different questions:
 
 ```{r varmap}
 ```
 
-The intervals here are Wilson intervals rather than the textbook $\hat p \pm 1.96\sqrt{\hat p(1-\hat p)/n}$. One of the groups below has a share near zero, and the textbook formula puts the lower end of its interval below zero. An interval that includes impossible values is a sign the approximation has been used outside its range.
+The intervals are Wilson intervals rather than the textbook estimate plus or minus two standard errors. One group below sits so close to zero that the textbook formula puts the bottom of its interval below zero. An interval containing impossible values is a sign the approximation has been pushed outside its range. The build writes the Wilson arithmetic out in full and checks it against a second calculation before using it.
 
-The build writes the Wilson arithmetic out and checks it before using it.
+> **Before you read on, commit to a number.** The model is `r p2(ACC)`%
+> accurate, give or take half a point. **Write down what you expect its
+> accuracy to be for the smallest group in the file** — American Indian and
+> Alaska Native voters, `r n(AIN)` of them. A number, and a range around it.
 
-> **Before you read on, commit to a view.** The model is `r p2(ACC)`% accurate,
-> give or take half a point. **Write down what you now expect its accuracy to be
-> for the smallest group in the file** — American Indian and Alaska Native
-> voters, `r n(AIN)` of them. A number and a range.
+## What it says about democracy
 
-## The same model, five groups
+Score the same model separately for each group and the pooled figure stops describing any of them.
 
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.0}
 ```
@@ -48,15 +62,13 @@ The build writes the Wilson arithmetic out and checks it before using it.
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The same model, scored separately for each group.** The bar is a 95% Wilson interval and the diamond is the estimate. The purple diamond at the bottom is the pooled figure, drawn the way forest plots draw one, so its width *is* its interval. The shaded band carries that interval up through the figure.
+**Figure 1. The same model, scored separately for each group.** A forest plot fits this question, because the question is whether one pooled number covers the rows underneath it. The bar is each group's 95% interval and the diamond is its estimate. The shaded band carries the pooled interval up through the figure, so you can see what falls inside it. Almost nothing does.
 
-Almost nothing is in the band. The model finds **`r p1(WR)`%** of white voters and **`r p1(BR)`%** of Black voters, For American Indian and Alaska Native voters it finds **`r p2(AIR)`%**. That is `r n(AIN)` people, of whom it identifies almost none, with an interval of [`r p2(AILO)`, `r p2(AIHI)`] that does not come close to the pooled figure. Its precision for that group is `r p1(AIP)`%: when the model does say American Indian, it is almost always wrong in both directions at once.
+The model finds **`r p1(WR)`%** of white voters and **`r p1(BR)`%** of Black voters. For American Indian and Alaska Native voters it finds **`r p2(AIR)`%**: `r n(AIN)` people, of whom it identifies almost none, with an interval of `r p2(AILO)`% to `r p2(AIHI)`% that never comes near the pooled figure. Its precision for that group is `r p1(AIP)`%, so on the rare occasion it does say American Indian, it is almost always wrong.
 
-Compare that with the number you wrote down. The pooled accuracy is not an average of these rows in any useful sense. **It is dominated by the largest group.** A reader given only `r p2(ACC)`% would have no way to discover a group the model cannot see at all.
+Compare those rows with the number you wrote down. The pooled `r p2(ACC)`% is not an average of them in any useful sense. It is dominated by the largest group, and a reader given only the pooled figure has no way to discover a group the model cannot see at all.
 
-## The interval is narrow and the estimate still moves
-
-The obvious objection is that the groups differ, so of course the numbers differ. So here is the same quantity, how often the model finds a Black voter, computed ten times on ten slices of the same population. Nothing changes except the neighbourhood.
+The obvious objection is that groups differ, so of course their numbers differ. So here is one quantity, how often the model finds a Black voter, computed ten times on ten slices of the same population. Nothing changes except the neighbourhood.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.6}
 ```
@@ -64,17 +76,15 @@ The obvious objection is that the groups differ, so of course the numbers differ
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same estimate, ten times, on ten strata of one county.** Rows are deciles of the census block's Black share, from the whitest blocks at the top to the Blackest at the bottom. The band and dashed line are the pooled figure for Black voters, `r p1(BR)`%.
+**Figure 2. The same estimate, ten times, on ten strata of one county.** Rows are tenths of the census block's Black share, from the whitest blocks at the top to the Blackest at the bottom. The band and the dashed line are the pooled figure for Black voters, `r p1(BR)`%.
 
-Read the diamonds down the page: **`r p1(DLO)`% to `r p1(DHI)`%**. The model finds nine in ten Black voters who live in a majority-Black block and one in twenty who live in a mostly-white one. Now read the bars: the widest interval in the figure is `r p1(NARROW)` points. **Every one of these estimates is precise, and they disagree with each other by seventy points.**
+Read the diamonds down the page and they run from **`r p1(DLO)`% to `r p1(DHI)`%**. The model finds nine in ten Black voters who live in a majority-Black block, and one in twenty who live in a mostly white one. Now read the bars. The widest interval anywhere in that figure is `r p1(NARROW)` points. Every one of these estimates is precise, and they disagree with each other by `r p1(DHI - DLO)` points.
 
-That is the thing a confidence interval does not cover. It answers *how much would this number move if I drew the sample again*, and the answer here is correctly "hardly at all". It says nothing whatever about whether the number generalises to a different neighbourhood, a different county or a different year — and that is almost always the question being asked of it. **A narrow interval on a pooled estimate is not evidence of a reliable estimate. It is evidence of a large sample.**
+That is the thing a confidence interval does not cover. It answers one question: how much would this number move if I drew the sample again? Here the honest answer is hardly at all. It says nothing about whether the number carries to a different neighbourhood, a different county or a different year, which is almost always what is being asked of it. **A narrow interval on a pooled estimate is evidence of a large sample, not of a reliable estimate.**
 
-Notice, too, what the model is actually doing. Its accuracy tracks the racial composition of the block almost exactly, which means most of its apparent skill is the geography, not the surname. It works because Georgia's blocks are segregated — the [overplotting chapter](../../01-census-bureau/overplotting/overplotting-brief.html) shows that structure directly, and this is what it looks like from the other side.
+Notice what the model is doing to earn its score. Its accuracy tracks the racial composition of the block almost exactly, which means most of its apparent skill is the geography rather than the name. It works because Georgia's blocks are segregated.
 
-## The threshold is a choice too
-
-Everything above used the model's own top guess. But the model does not produce a guess; it produces a probability, and turning a probability into a decision requires a cut nobody in the file chose.
+Everything so far used the model's own top guess. But the model does not produce a guess. It produces a probability, and turning a probability into a decision takes a cut that nobody in the file chose.
 
 ```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -82,47 +92,60 @@ Everything above used the model's own top guess. But the model does not produce 
 ```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. The same model at every possible cut.** Each point on the curve is one threshold; the panel on the right reports what that choice does to four counts of real people. The diagonal is what a coin would achieve, and the area under the curve is **`r p2(AUC)`** — a summary of the ranking that does not depend on any threshold at all.
+**Figure 3. The same model at every possible cut.** Each point on the curve is one threshold, and the panel beside it reports what that choice does to four counts of real people. The diagonal is what a coin would achieve. The area under the curve is `r p2(AUC)`, a summary of the ranking that depends on no threshold at all.
 
-Move the cut and watch the four numbers trade against each other. At the conventional half, the model finds `r p1(HTPR)`% of Black voters at the cost of calling `r p1(HFPR)`% of everyone else Black. No setting is correct, because the two errors are not the same kind of thing. One is a Black voter the analysis loses. The other is a white voter the analysis invents. Which is worse depends entirely on what the number will be used for.
+Move the cut and the four counts trade against each other. At the conventional half, the model finds `r p1(HTPR)`% of Black voters at the cost of calling `r p1(HFPR)`% of everyone else Black. No setting is correct, because the two errors are not the same kind of thing. One is a Black voter the analysis loses; the other is a white voter the analysis invents. Which matters more depends entirely on what the number is for.
 
-**The AUC is a property of the model. Every other number in this chapter is a property of a decision somebody made.**
+**The area under the curve is a property of the model. Every other number in this brief is a property of a decision somebody made,** and none of those decisions is recorded beside the estimate when it travels.
 
-> **A second prediction.** A voting-rights case needs an estimate of Black
-> turnout in a county with no self-reported race on file. **Would you rather
-> have a model with a higher AUC, or the county's block composition?** Say what
-> Figure 2 implies about your answer.
+## What this brief cannot tell you
 
-## What this chapter cannot tell you
+**One county, one state, one model.** Houston County, Georgia has `r n(NV)` scored voters and a particular racial geography. Figure 2 is, if anything, an argument that these numbers do not carry even between neighbourhoods of the same county.
 
-**One county, one state, one model.** Houston County, Georgia has `r n(NV)` scored voters and a particular racial geography. The [bisg-check chapter](../bisg-check/bisg-check-brief.html) makes the case that this is the right place to grade a surname model; it is not a claim that the numbers transfer. Figure 2 is, if anything, an argument that they do not transfer even between neighbourhoods.
+**The intervals assume the sample is the only source of error.** A Wilson interval describes sampling variation and nothing else. It does not cover the surname list being from a different decade than the voters, or self-reported race being a question people answer inconsistently, or a census block being a crude stand-in for a neighbourhood. Those errors are real, they are larger than the bars in Figure 1, and no interval computed from this data can see them.
 
-**`r p1(PMISS)`% of these voters have a surname the Census does not publish.** The Bureau lists a name only if at least a hundred people carry it, so rare names and every misspelling are absent. `r n(NMISS)` voters here fall back to the national spread of surnames, which is a far weaker starting guess. They are not a random `r p1(PMISS)`%: unusual names are unevenly distributed across groups, and the fallback pushes all of them toward the national average.
+**Recall is not accuracy, and most of what is shown here is recall.** A model that called every voter Black would find every Black voter and be useless. The American Indian and Alaska Native row is the case where both measures fail at once: recall `r p2(AIR)`%, precision `r p1(AIP)`%.
 
-**The intervals assume the sample is the only source of error.** A Wilson interval describes sampling variation and nothing else. It does not cover the surname list being from a different decade than the voters, or self-reported race being a category people answer inconsistently, or the block being a crude proxy for a neighbourhood. Those errors are real, they are larger than the bars in Figure 1, and no interval computed from these data can see them.
+## What you should have learned
 
-**Recall and precision are not accuracy and this chapter has mostly shown recall.** A model that called every voter Black would have perfect recall for Black voters and be useless. The precision figures are on the hover in Figure 1 for exactly that reason. The AIAN row is the case where both fail at once: recall `r p2(AIR)`%, precision `r p1(AIP)`%.
+- A 95% interval answers one question: how far the estimate would move if you drew the sample again. The pooled accuracy here is `r p2(ACC)`% with an interval of `r p2(ALO)`% to `r p2(AHI)`%, and that width is a fact about the sample size, not about whether the number generalises.
+- A pooled figure on an unbalanced problem mostly reports the balance. The same model that scores `r p2(ACC)`% overall finds `r p1(WR)`% of white voters and `r p2(AIR)`% of American Indian and Alaska Native voters.
+- The same estimate computed on ten neighbourhoods of one county runs from `r p1(DLO)`% to `r p1(DHI)`%, a spread of `r p1(DHI - DLO)` points, while the widest interval among them is `r p1(NARROW)` points wide.
+- Precision and recall answer opposite questions, and a group can fail both: American Indian and Alaska Native voters are found `r p2(AIR)`% of the time, and `r p1(AIP)`% of the people given that label actually are.
+- The cutoff that turns a probability into a label is a choice nobody records. At the conventional half this model finds `r p1(HTPR)`% of Black voters and wrongly labels `r p1(HFPR)`% of everyone else.
+
+## Extensions
+
+None of these is answered above, and every one can be answered by sorting or grouping the tables the Sources section hands over.
+
+- `by_group.csv` carries `recall` and `precision` with intervals for every group. Find the group where the two columns disagree most, and say what the model is doing to those people.
+- `by_decile.csv` scores one model across ten strata of block composition. Follow `recall` down the column and find where the pooled figure stops describing anybody.
+- `calib.csv` puts the model's announced probability (`mid`) beside what actually happened (`observed`), bin by bin. Sort by `mid` and decide whether the model is honest about its own confidence.
+- `thresh.csv` sweeps the cutoff and reports `tpr`, `fpr` and `prec` at each value of `t`. Pick the threshold you would defend in court, then say in one sentence what you traded away.
+
+Two stretch ideas point past the spreadsheet. North Carolina also records race on its registration form and publishes its voter file; score the same method there and see which of these numbers travel. And any survey estimate you read this week will carry a margin of error somewhere in its methods note — find one, and work out which of the errors listed above it covers.
 
 ## Sources
+
+**Data**
 
 - Elliott, Marc N., Peter A. Morrison, Allen Fremont, Daniel F. McCaffrey,
   Philip Pantoja and Nicole Lurie (2009). "Using the Census Bureau's surname
   list to improve estimates of race/ethnicity and associated disparities."
-  *Health Services and Outcomes Research Methodology* 9: 69–83. The method this
-  chapter scores.
+  *Health Services and Outcomes Research Methodology* 9: 69–83. The method
+  scored here.
 - Wilson, Edwin B. (1927). "Probable Inference, the Law of Succession, and
   Statistical Inference." *Journal of the American Statistical Association*
   22(158): 209–212. The interval used throughout.
-- Voter, block and surname inputs are the committed outputs of this corpus's
-  [bisg-check](../bisg-check/bisg-check-brief.html) and
-  [surnames](../../06-putting-data-together/surnames/surnames-brief.html) chapters, which document where
-  each came from. The model here is recomputed from them rather than reusing
-  either chapter's scores. The two published inputs underneath are the
-  Bureau's 2010 surname list
-  (<https://www2.census.gov/topics/genealogy/2010surnames/names.zip>) and the
-  2020 Census P.L. 94-171 redistricting file for Georgia
-  (<https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>).
-  The voter file is not published and is described in the bisg-check chapter.
+- U.S. Census Bureau, *Frequently Occurring Surnames from the 2010 Census.*
+  <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>
+- U.S. Census Bureau, 2020 Census P.L. 94-171 redistricting file for Georgia,
+  for the block counts.
+  <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
+- The voter registration extract is not published. It is the committed table of
+  the [BISG check brief](../bisg-check/bisg-check-brief.html), which documents
+  where it came from and what was removed from it. The model here is recomputed
+  from these files rather than copied from either brief's scores.
 
 **The data itself**
 
@@ -130,14 +153,3 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`by_decile.csv`](data/derived/by_decile.csv), [`by_group.csv`](data/derived/by_group.csv), [`calib.csv`](data/derived/calib.csv), [`thresh.csv`](data/derived/thresh.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `by_group.csv` has `recall` and `precision` with intervals for every group. Find the group where the two measures disagree most. What is the model doing to those people?
-- `by_decile.csv` scores the same model across deciles of block composition. Follow `recall`. Where does a tight overall interval stop describing anybody?
-- `calib.csv` compares predicted probabilities against what actually happened, bin by bin. Is the model honest about its own confidence?
-- `thresh.csv` sweeps the cutoff and reports `tpr`, `fpr` and `prec` at each. Pick the threshold you would use in court, and say what you are trading away.
-

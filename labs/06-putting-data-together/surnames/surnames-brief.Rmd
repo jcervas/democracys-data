@@ -16,127 +16,60 @@ dd_read_chunks("surnames-code.R")
 ```{r setup, include=FALSE}
 ```
 
-The United States Census Bureau publishes a table about surnames. For any surname held by at least a hundred Americans, it gives the proportion of the people carrying it who are white, Black, Asian, American Indian, Hispanic, or of two or more races. It is free. It requires no login. It has `r n(nrow(sn))` rows, and the first of them looks like this.
+The United States Census Bureau publishes a table about surnames. For any surname held by at least a hundred Americans, it gives the share of the people carrying it who are white, Black, Asian, American Indian, Hispanic, or of two or more races. It is free, it requires no login, and between them its rows account for `r n(pop_covered)` people.
+
+Multiply that table by a second public table, the racial make-up of the county somebody lives in, and out comes a probability that a named person belongs to a racial category. The procedure is called **Bayesian Improved Surname Geocoding**. Elliott and colleagues (2009) developed it for health research, Imai and Khanna (2016) brought it into political science, and it is now routine evidence in federal voting-rights and lending-discrimination cases. Courts use it to decide how many Black voters a district contains.
+
+Nothing in that description is a euphemism. Somebody's race is being inferred, without their knowledge, from their name and their address, by multiplying two spreadsheets published by their own government. So ask the plain question underneath. **Can a name tell you someone's race?**
+
+## The test
+
+Two federal tables answer it, because the method has exactly two ingredients and these are the published versions of both. The first is the Census Bureau's *Frequently Occurring Surnames* tabulation, in its 2010 edition (<https://www2.census.gov/topics/genealogy/2010surnames/names.zip>) and the 2020 edition that replaced it. The second is the Population Estimates Program's county file, vintage 2024: `r n(nrow(co))` counties in the same six categories.
+
+There is no third public table that would do better, and what would genuinely be better is not a table at all. The honest input is a record of what people say about themselves. No such record exists in a voter file, and the reason is not cost: American states decided not to ask. The [BISG check brief](../bisg-check/bisg-check-brief.html) works in one of the few counties where a state did.
+
+The two tables are joined through a person, which is where the assumptions stack up. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the reading on what a join key is and how one fails. It also covers the repair when two files carry different keys: a crosswalk, a table that translates one set of identifiers into another.
+
+## The data
+
+**Neither table was made for this.** The surname file sits under genealogy on the Bureau's servers, and its intended reader is somebody tracing a family. The county file is a different kind of number altogether: one is a count taken on a single day, the other a model carried forward a year at a time. The method multiplies them as though they were the same sort of object.
+
+One row of the surname file looks like this.
 
 ```{r one-row}
 ```
 
-`r pc(G("SMITH","pctwhite"))`% of the `r n(G("SMITH","count"))` Americans named Smith are white and `r pc(G("SMITH","pctblack"))`% are Black. The six shares are mutually exclusive and sum to 100, and between them the rows of this file account for `r n(sum(sn$count[ok]))` people.
+The columns are `name`, `rank`, `count`, and the six shares `pctwhite`, `pctblack`, `pctapi`, `pctaian`, `pct2prace` and `pcthispanic`, which are mutually exclusive and sum to 100. The county file carries `fips`, `county`, `state`, `pop` and the same six groups.
 
-Now multiply that table by a second public table: the racial make-up of the county somebody lives in. Out comes a probability that a named person belongs to a racial category. The procedure is called **Bayesian Improved Surname Geocoding**. It was developed for health research by **Elliott and colleagues (2009)**, and brought into political science by **Imai and Khanna (2016)**. It is now routinely accepted as evidence in federal voting-rights and lending-discrimination cases. Courts use it to decide how many Black voters a district contains.
+The join runs on two keys and neither is a person. The **surname**, upper-cased, matches somebody to a row of the name table; the **five-digit county code** matches them to a row of the county table. Nothing joins the two tables to each other. A person is what makes them meet, and the assumption that both lists describe the same population at the same moment is a third assumption on top of each file's own.
 
-Nothing in that description is a metaphor or a euphemism. Somebody's race is being inferred, without their knowledge, from their name and their address, by multiplying two spreadsheets published by their own government.
+Both tables needed cleaning, and one decision is the whole brief. In the 2010 file a cell too small to publish safely is written `(S)`. Read carelessly that is a zero; the build makes it a missing value instead, keeping the difference between *nobody* and *too few to say*. `r n(miss)` of the `r n(cells)` cells in the six percentage columns are withheld, `r pc(100 * miss / cells)`% of them, and dropping incomplete rows would throw away most American surnames.
 
-## Nobody is guessing for fun
-
-Voter files do not record race. In most states nobody is asked, and where they are asked, many decline.
-
-But the Voting Rights Act is about race. To argue in court that a districting plan weakens Black or Latino voting strength, somebody has to establish how many Black or Latino voters there are and how they voted. The records do not say.
-
-The alternative to this method is therefore not a better measurement. **The alternative is no measurement**, and with it no ability to detect the discrimination the law prohibits. Without an estimate of who the voters are, no §2 vote-dilution claim can be brought. And the Consumer Financial Protection Bureau, which set out its own version of the method in 2014, cannot find the lending patterns it is charged with policing.
-
-That is a trade, and it deserves to be stated as a trade rather than as a solution. The objection that this is racial profiling is a real question rather than a slogan. The serious answer is that the guess is about populations, and that it exists because the records which would answer honestly do not. Whether that answer holds depends on how well the method works, on whom, and on where its confidence actually comes from. That is a question about the table above, and it can be settled by looking at it.
-
-## Two tables, fourteen years apart, with a floor under one of them
-
-**Neither table was made for this.** The surname file is the Census Bureau's *Frequently Occurring Surnames from the 2010 Census*, and the Bureau publishes it under genealogy. Its intended reader is somebody tracing a family, not a court handing out a remedy.
-
-The county file is a different product of the same agency, and a different kind of number altogether. It is the Population Estimates Program's county release, `r n(nrow(co))` counties, vintage 2024. One is a count taken on a single day. The other is a model carried forward a year at a time from the last count. The method multiplies them together as though they were the same sort of object, and the multiplication is where every result in this chapter comes from.
-
-Acquiring them cost nothing worth reporting. Both sit on the Bureau's own servers as public archives. There is no key to obtain, no request to file, no page to scrape and nobody to ask. The whole job is two downloads and an unzip.
-
-That is worth one sentence precisely because it is not the usual shape of the problem in this book. Elsewhere the hard part comes before the file exists: the letters, the parsing, the rebuilding of a table no agency keeps. Here the file is free, and the trouble is entirely on the far side of it. It is in what happens when two tables built for unrelated purposes get multiplied together by somebody neither of them had in mind.
-
-**They are the appropriate files because the method has exactly two ingredients and these are the published versions of both.** There is no third public table that would do better. And the thing that would genuinely be better is not a table at all. The honest input is a record of what people say about themselves. No such record exists in a voter file, and the reason is not cost. It is that American states decided not to ask.
-
-There are real improvements available inside the method, and they are declined here on purpose. The standard software adds first names, age, sex and party registration. It also pushes the geography down from the county to the census block, which is a far sharper starting guess than a county average. That version is better in degree. It is the same thing in kind. And the arithmetic is easier to argue with when it is on the page rather than inside a function call.
-
-**The difficulties start with the calendar and end somewhere worse.** The surname table accounts for `r n(sum(sn$count[ok]))` people as they described themselves in 2010. The county table describes `r n(sum(co$pop))` people in 2024. Anyone born or arrived in between sits in the denominator of one file and is absent from the other. The denominator is the bottom number, the thing you divide by. And no column in either file tells you which mismatch is doing more work: the growth, or the floor on names.
-
-The floor is the sharper limit. The Bureau publishes no surname held by fewer than `r n(min(sn$count))` people. So Americans with the rarest names are not classified badly by this method. They are outside it entirely.
-
-Among the names that do appear, the Bureau withholds any single cell small enough to identify somebody. What that withholding does to the arithmetic is the subject of a later section. It is not a rounding matter.
-
-Underneath all of it sits the problem no version of this file can repair. A surname is not evidence about a person. The table reports what the people carrying a name told the census about themselves. That is a statement about a population. The method runs it backwards onto one individual, which is a direction the table was never built to travel.
-
-**Both files needed cleaning, and one of the decisions is the chapter.** In the raw surname file, a withheld cell is written `(S)`. Read carelessly that is a piece of text. Read conveniently it is a zero.
-
-The build turns it into a missing value instead. That keeps the difference between *nobody* and *too few to say*, right up until the arithmetic collapses it again.
-
-The county file arrives as separate male and female counts by age group, for several vintages. The build takes the July 2024 estimate for all ages and adds the sexes together. Then it collapses the Bureau's categories down to the six the surname file uses, folding Asian together with Native Hawaiian and Pacific Islander because the surname file folds them.
-
-Before writing anything, it checks that the six shares sum to one in every county. A reader rebuilding this would have to make the same category choices. They would find the surname file has already made most of them.
-
-## Two hundred thousand cells that say `(S)`
-
-Everything in this section is about the **2010** tabulation. It is the one that suppressed, and it has to be understood before the next section shows what replaced it — the numbers BISG runs on today come from 2020, and that file suppresses nothing.
-
-The 2010 file is the one source in this book that cannot be trusted to arrive. In August 2026 its address answered a request on the 12th, and again on the 14th, with a 247-byte page reading "Request Rejected". Then on the 16th, with nothing visibly changed, it answered with the real thirteen-megabyte archive. Everything else in the same directory, and the whole 2020 release, downloaded without trouble throughout. Any single attempt at this address measures a moment, not the file.
-
-**What follows is therefore a reconstruction of the format, not a capture of the file.** Every feature of it is taken from the code that reads the archive. Nothing is invented beyond what that proves:
-
-```{r rawsn}
-```
-
-Two things in that shape do all the damage. **The header is upper case**, and everything after it refers to these columns in lower case. So the build lowercases the names before doing anything else. It is a one-line repair, and without it every column lookup in this chapter fails at once.
-
-**And the suppressed cells are the string `(S)`.** Not a blank, not a zero, not `NA`: two characters and a pair of parentheses, sitting in a column of numbers. Read the file without saying so and every one of those columns arrives as text, every percentage becomes a character string, and nothing will average. Read it *carelessly*, forcing the column to numbers and letting the warning scroll past, and `(S)` becomes `NA` anyway. That is the right answer reached by the wrong route. The build names the marker explicitly, so the conversion is a decision rather than an accident.
-
-Here is what those two rows look like once the file is clean:
-
-```{r cleansn}
-```
-
-`(S)` has become `NA`, and **that is not a missing value in the ordinary sense.** The Bureau withheld those cells on purpose, because publishing them could identify people. If only a handful of the `r n(sn$count[sn$name == "VANG"])` people named VANG are recorded as American Indian, the exact number would give them away, so the percentage is withheld. The absence is a privacy decision, and it is itself information. It tells you the count was small.
-
-The scale of it is the thing to hold on to. Across `r n(nrow(sn))` surnames and six columns, `r n(sum(is.na(sn[, grp])))` cells are withheld. `r n(sum(!complete.cases(sn[, grp])))` surnames are missing at least one, which is most of the file. A method that dropped incomplete rows would throw away most American surnames and keep the common ones. Those are exactly the names that say least about anybody. **The chapter therefore treats `NA` as a value rather than as a defect**, and a later section is about what those quiet cells are hiding.
-
-## The same table from 2020, and the counts below zero
-
-Everything above is the 2010 tabulation, because that is the one BISG is built on. The Bureau has since published the same thing from the 2020 Census. It answers the withholding problem in a completely different way, and the answer is worth looking at, because it is stranger than the problem.
-
-The 2020 file does not suppress anything. Where 2010 gave rounded percentages and wrote `(S)` over the small cells, 2020 gives **counts of people** for all `r n(F20("rows_2020"))` surnames, and a share can be recovered from them exactly. Here is the top of it.
-
-```{r top2020}
-```
-
-Nothing is missing. That looks like the better file, and for most purposes it is — until you notice that the Bureau publishes this table **twice**, and that the two copies disagree.
-
-The 2020 Census was released through a disclosure-avoidance system that adds noise to every count before anybody sees it. Noise added to a small count can push it below zero. Rather than quietly trim those and say nothing, the Bureau ships the trimmed table and, beside it, the same table with the negatives left in. **In `r n(F20("rows_with_negative"))` of the `r n(F20("rows_2020"))` surnames, at least one cell records a negative number of people.** That is `r F20("pct_rows_with_negative")`% of the file.
+The 2020 edition answers the same problem in the opposite way. It suppresses nothing, and instead publishes every count with noise added to protect the people in it. Noise added to a small count can push it below zero, so the Bureau ships the trimmed table and, beside it, the same table with the negatives left in. `r n(F20("rows_with_negative"))` of the `r n(F20("rows_2020"))` surnames carry at least one:
 
 ```{r neg2020}
 ```
 
-Read the third and fourth columns together. The published file says that no American Indian or Alaska Native person is named CHEUNG. The other file, from the same office and the same release, says minus two.
+Read the third and fourth columns together. The published file says no American Indian or Alaska Native person is named CHEUNG; the other, same office and same release, says minus two. **Minus two people is not a mistake. It is what the protection costs, made visible.** The method is most confident about a name in proportion to how lopsided that name is, so it is most sure of itself exactly where the file is least able to support it.
 
-Neither is a measurement. **Minus two people is not a mistake. It is what the protection costs, made visible.** The count of AIAN people named CHEUNG is so small that publishing it truthfully could identify them. So the published number is the true number plus noise, and for a cell this small the noise is bigger than the thing being measured.
+On the county side the build takes the July 2024 estimate for all ages, adds the male and female counts, and collapses the Bureau's categories down to the surname file's six.
 
-The last thing the file does is the elegant part, and it is checked here rather than taken on faith. **The negative is never simply deleted.** Trim it to zero and the row would gain two people who do not exist, so the neighbouring cells give them up. Across `r n(F20("rows_total_unchanged"))` surnames, meaning every row where both files can be compared, the six categories still add to exactly the same number of people.
+***
 
-> **The 2010 file and the 2020 file are two answers to one question, and
-> neither answers it.** 2010 declines to tell you how many AIAN people are
-> named CHEUNG, and marks the refusal `(S)` —
-> `r n(F20("suppressed_cells_2010"))` times. 2020 tells you, and the answer is
-> fiction. What no version of this table can give you is a small cell you can
-> trust, which is exactly the cell a rare surname depends on.
+> **Before you read on, write a ratio down.**
+>
+> Of the `r n(nrow(big))` surnames held by more than a thousand people, some
+> number are more than 90% white and some number are more than 90% Black.
+> **For every surname that is more than 90% Black, how many do you think are
+> more than 90% white?** Four to one? Ten to one? Fifty to one?
+>
+> One ratio, on paper, before your eye reaches the figures below.
 
-That matters downstream. BISG is confident about a name in proportion to how lopsided its racial composition is, and the most lopsided names are the rarest ones — the ones whose cells are smallest and therefore noisiest. The method is most sure of itself exactly where the file is least able to support it.
+***
 
-## For some names it is nearly decisive
+## What it says about democracy
 
-```{r decisive}
-```
-
-**`r pc(G("NGUYEN","pctapi"))`% of Nguyens are Asian or Pacific Islander. `r pc(G("GARCIA","pcthispanic"))`% of Garcias are Hispanic.** For names like these the surname alone very nearly answers the question.
-
-## For others it is a coin flip
-
-```{r ambiguous}
-```
-
-**Williams is `r pc(G("WILLIAMS","pctwhite"))`% white and `r pc(G("WILLIAMS","pctblack"))`% Black.** It is not an obscure case: it is the `r G("WILLIAMS","rank")`rd most common surname in the country, held by `r n(G("WILLIAMS","count"))` people. Smith and Johnson are ranks `r G("SMITH","rank")` and `r G("JOHNSON","rank")`.
-
-Those three are not exceptions. Put the thousand most common surnames in the country on one picture — the share of their bearers who are white against the share who are Black.
+Start with the thousand most common surnames, on the two shares that between them account for nearly all of their bearers.
 
 ```{r kilo-static, eval=!knitr::is_html_output(), fig.height=4.9}
 ```
@@ -144,61 +77,16 @@ Those three are not exceptions. Put the thousand most common surnames in the cou
 ```{r kilo-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The thousand most common surnames in America, on the two shares that between them account for nearly all of their bearers.** Each circle is one surname, sized by how many people hold it. Together they cover `r pc(k1_share)`% of everyone in the file. Nothing sits far from the diagonal, because for a common American name white and Black bearers exhaust almost the whole total. The right-hand wall is crowded and the top of the picture is empty.
+**Figure 1. The thousand most common surnames in America, by the share of their bearers who are white and the share who are Black.** A scatter fits this question, because the question is whether the two shares trade off against each other. Each circle is one surname, sized by how many people hold it, and the diagonal is where a name with only white and Black bearers would have to sit. Together these names cover `r pc(k1_share)`% of everyone in the file. The right-hand wall is crowded and the top is empty: `r k1_w90` of the thousand are more than 90% white and `r k1_b90` are more than 90% Black, the highest point being `r k1_maxb$name` at `r pc(k1_maxb$pctblack)`%.
 
-`r k1_w90` of the thousand are more than 90% white, and `r k1_b90` are more than 90% Black. The single highest point on the chart is `r k1_maxb$name`, at `r pc(k1_maxb$pctblack)`%.
+Three of those crowded middle points are the commonest names in America:
 
-That emptiness at the top is the first sign of something, and it is easy to dismiss as an artifact of looking at only a thousand names. Before pursuing it, there is a prior question: how much of the country does a surname fail on at all?
-
-```{r scale}
+```{r ambiguous}
 ```
 
-Those three rows are the ends of a distribution. Here is the whole of it: every person the file covers, sorted into a bin by the strongest claim their surname can make about them.
+**Williams is `r pc(G("WILLIAMS","pctwhite"))`% white and `r pc(G("WILLIAMS","pctblack"))`% Black**, and it is the `r G("WILLIAMS","rank")`rd most common surname in America, held by `r n(G("WILLIAMS","count"))` people. Smith and Johnson are ranks `r G("SMITH","rank")` and `r G("JOHNSON","rank")`. For names like these the surname settles nothing, and that is not rare: for `r pc(p_useless)`% of the people this file covers, no group reaches 60%.
 
-```{r topdist-static, eval=!knitr::is_html_output(), fig.height=4.2}
-```
-
-```{r topdist-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. Every American the file covers, sorted by the strongest claim their surname can make about them.** Bars are five percentage points wide and count people rather than names. For `r pc(p_decisive)`% of the population, some group reaches more than 90% and the name nearly settles the question. For `r n(n_useless)` people, about one in `r round(100/p_useless)`, no group reaches even 60% and the name settles nothing at all. The rest sit in the wide middle, where a surname narrows the answer without settling it. `r pc(100 - p_decisive)`% of the population is to the left of the 90% line.
-
-That is the shape of the whole method. It is excellent for Nguyen and useless for Williams, which raises the question of who ends up on the useless side.
-
-## The side of the picture that is empty
-
-Rare names are noisy, so restrict to surnames held by more than a thousand people; `r n(nrow(big))` qualify. Black Americans are about `r pc(100*natl[["black"]])`% of the country and white Americans about `r pc(100*natl[["white"]])`%. If distinctive surnames were distributed in anything like proportion to population, one would expect perhaps four or five strongly white names for every strongly Black one.
-
-Before the count, the shape. For each of the six categories, here is where the `r n(nrow(big))` qualifying surnames actually sit — the whole distribution of "what share of this name's bearers are in this group," one ridge per group.
-
-```{r ridge-static, eval=!knitr::is_html_output(), fig.height=5.0}
-```
-
-```{r ridge-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 3. Where each group's surname shares actually sit.** One ridge per category, over the `r n(nrow(big))` surnames held by more than a thousand people. Horizontal position is the share of a name's holders who fall in that category. Each ridge is scaled to its own height, so what matters is where the bulk lies rather than how tall the curve is. The dashed line is 90%.
-
-**The white ridge is the only one with much weight on the right-hand side.** The Black ridge has a middle value of `r pc(dens[["Black"]]$med)`% and effectively nothing beyond the dashed line. The American Indian and two-or-more ridges are pressed against the left wall entirely.
-
-Counting past that line makes the asymmetry exact.
-
-***
-
-> **Before you read the count, write a ratio down.**
->
-> Of the `r n(nrow(big))` surnames held by more than a thousand people, some
-> number are more than 90% white and some number are more than 90% Black.
-> **For every surname that is more than 90% Black, how many do you think are
-> more than 90% white?** Four to one? Ten to one? Fifty to one?
->
-> One ratio, on paper, before your eye reaches the table. The gap between what
-> you wrote and what is there is the finding.
-
-***
-
-```{r asym}
-```
+Now count past the 90% line, on every surname held by more than a thousand people.
 
 ```{r asym-prep, include=FALSE}
 ```
@@ -209,70 +97,22 @@ Counting past that line makes the asymmetry exact.
 ```{r asym-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. How many surnames are more than 90% one group.** Surnames held by more than a thousand people. The axis is logarithmic, so equal distances are equal *multiples* rather than equal counts. That is why these are dots to be read by position, not bars to be read by length.
+**Figure 2. How many surnames are more than 90% one group.** The axis is logarithmic, so equal distances are equal *multiples* rather than equal counts, which is why these are dots to be read by position and not bars to be read by length.
 
-`r n(n90[["white"]])` surnames are more than 90% white. `r n(n90[["Black"]])` are more than 90% Black. That is a ratio of about `r alab`, for a group that is roughly `r pc(100*natl[["black"]], 0)`% of the country rather than one-hundredth of it. The "`r names(av)[azero][1]`" category is a true zero. That cannot be placed on a logarithmic axis at all, so it is marked with an open circle at the left edge.
+`r n(n90[["white"]])` surnames are more than 90% white. `r n(n90[["Black"]])` are more than 90% Black. That is a ratio of about `r alab`, for a group that is roughly `r pc(100*natl[["black"]], 0)`% of the country rather than one-hundredth of it. Compare it with the ratio you wrote down. Four or five to one is the reasonable expectation, and it is wrong by more than an order of magnitude. **The group the Voting Rights Act was written to protect is the group whose surnames carry the least information.**
 
-Four or five to one is the reasonable expectation, and it is close to what most readers write down. It was not merely too low. It was off by more than an order of magnitude, and in a direction that matters: **the group the Voting Rights Act was written to protect is the group whose surnames carry the least information.**
+That is not a quirk of the data and not a flaw in the Bureau's processing. It is history sitting in a spreadsheet. Enslaved people were given, or took, the surnames of enslavers, and after emancipation those names stayed. Black and white Americans have shared a common stock of surnames for a hundred and sixty years. The exceptions show the mechanism from the other side. Washington is the most identifiably Black common surname in America, `r pc(G("WASHINGTON","pctblack"))`% of the `r n(G("WASHINGTON","count"))` people who carry it, because freed people took the names of presidents associated with liberty.
 
-This is not a quirk of the data and it is not a flaw in the Census Bureau's processing. **It is history sitting in a spreadsheet.** Enslaved people were given, or took, the surnames of enslavers, and after emancipation those names stayed. Black and white Americans have shared a common stock of surnames for a hundred and sixty years, so a surname carries almost no signal about which of the two a person belongs to.
-
-The exceptions show the mechanism from the other side:
-
-```{r presidents}
-```
-
-**Washington is the most identifiably Black common surname in America** — `r pc(G("WASHINGTON","pctblack"))`% of the `r n(G("WASHINGTON","count"))` people who carry it. Jefferson is `r pc(G("JEFFERSON","pctblack"))`%. Lincoln is `r pc(G("LINCOLN","pctblack"))`%.
-
-Nobody organized that. After emancipation many freed people took the names of presidents associated with liberty, the adoption was uneven, and the pattern is still legible in a file published in 2010.
-
-The names that *are* strongly Black are mostly recent:
-
-```{r blackest}
-```
-
-West African and East African names, held by immigrants and their children. The signal exists for recent arrival and is absent for the descendants of slavery — which is the population the Voting Rights Act was written for.
-
-## What the address adds
-
-```{r counties}
-```
-
-The second ingredient: every county, in the same six categories.
-
-Bayes' rule combines them. We want $P(\text{race} \mid \text{surname}, \text{county})$; we have $P(\text{race} \mid \text{surname})$ from the surname file and $P(\text{race} \mid \text{county})$ from the county file:
+So what carries the inference for everybody else? The address. Bayes' rule combines the two tables in one line: the probability that a person of surname $s$ in county $g$ belongs to group $r$ is
 
 $$P(r \mid s, g) \;\propto\; \frac{P(r \mid s)\,P(r \mid g)}{P(r)}$$
 
-Dividing by the national share $P(r)$ prevents double-counting the fact that some groups are large everywhere. That is the entire model — one line of arithmetic.
-
-***
-
-> **Answer this before you run the arithmetic.**
->
-> Smith is the commonest surname in the United States and it is
-> `r pc(G("SMITH","pctwhite"))`% white by name alone — not a coin flip, a clear
-> answer. Now put a Smith in the Bronx. **Does the model still call that person
-> white, yes or no? If not, which group does it pick instead, and with what
-> share?**
->
-> A yes or a no, a group, and a number. Then read the table.
-
-***
+Dividing by the national share $P(r)$ stops the arithmetic double-counting the fact that some groups are large everywhere. That national share is the base rate, and it does more work than anything else here. Watch what it does to the commonest name in the country:
 
 ```{r flip}
 ```
 
-The answer is no, and most readers do not expect it to be no. **Smith is `r pc(G("SMITH","pctwhite"))`% white nationally. A Smith in the Bronx is `r pc(bisg("SMITH","36005")[["black"]])`% Black.** The name did not change. What changed is that we stopped ignoring where the person lives.
-
-Lee runs the other way: `r pc(G("LEE","pctapi"))`% Asian by name alone, it resolves to `r pc(bisg("LEE","42003")[["white"]])`% white in Allegheny County and `r pc(bisg("LEE","15003")[["api"]])`% Asian in Honolulu. **The same three letters support opposite conclusions.**
-
-## Which ingredient is doing the work
-
-Take the Bronx and watch how much each name's strongest guess moves when geography is added.
-
-```{r gains}
-```
+**Smith is `r pc(G("SMITH","pctwhite"))`% white nationally. A Smith in the Bronx is `r pc(bisg("SMITH","36005")[["black"]])`% Black.** The name did not change; the arithmetic stopped ignoring where the person lives. Lee runs the other way, resolving to `r pc(bisg("LEE","42003")[["white"]])`% white in Allegheny County and `r pc(bisg("LEE","15003")[["api"]])`% Asian in Honolulu. Three letters, opposite conclusions.
 
 ```{r gains-static, eval=!knitr::is_html_output(), fig.height=3.8}
 ```
@@ -280,91 +120,55 @@ Take the Bronx and watch how much each name's strongest guess moves when geograp
 ```{r gains-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 5. How much six surnames move when one county is added.** Each rod is one surname. The hollow end is the strongest claim the name alone will support. The solid end is the strongest claim it supports once the person is placed in the Bronx.
+**Figure 3. How much six surnames move when one county is added.** Each rod is one surname: the hollow end is the strongest claim the name alone will support, the solid end is the strongest claim it supports once the person is placed in the Bronx.
 
-`r rownames(gd)[1]` barely moves. `r rownames(gd)[nrow(gd)]` moves `r sprintf("%+.1f", gd[nrow(gd), "change"])` points. Williams gains `r sprintf("%+.1f", gains["WILLIAMS","change"])` points and Nguyen gains `r sprintf("%+.1f", gains["NGUYEN","change"])`. That is the same fact from both ends. The geography contributes almost everything where the name contributes almost nothing, and almost nothing where the name is already sharp.
+`r rownames(gd)[1]` barely moves. `r rownames(gd)[nrow(gd)]` moves `r sprintf("%+.1f", gd[nrow(gd), "change"])` points. That is Bayes' rule behaving correctly, because a sharp starting guess is hard to move and a flat one is easy. But follow the consequence. The names that need help are the *common* ones: Smith, Johnson and Williams are three of the five most frequent surnames in America. Nguyen and Garcia are precise, and describe a much smaller share of it.
 
-That is Bayes' rule behaving correctly — a sharp prior is hard to move, a flat one is easy. But follow the consequence. The names that need help are the *common* ones: Smith, Johnson and Williams are three of the five most frequent surnames in the country. Nguyen and Garcia are precise and describe a much smaller share of Americans.
+**So for most Americans this is substantially a method for inferring race from an address.** Told only the name, you would learn almost nothing; told only the county, you would learn most of what the model produces. The consequence is worth saying rather than implying. **The method is accurate because American neighbourhoods are segregated.** It works well in the Bronx precisely to the extent that the Bronx is not integrated, so the estimate borrows its precision from the condition the Voting Rights Act exists to address.
 
-**So for most Americans, BISG is substantially a method for inferring race from address.** Told only the name, you would learn almost nothing. Told only the county, you would learn most of what the model produces.
+## What this brief cannot tell you
 
-And that has an uncomfortable consequence, which is worth saying rather than implying. **The method is accurate because American neighbourhoods are segregated.** It works well in the Bronx precisely to the extent that the Bronx is not integrated. The estimate borrows its precision from the condition the Voting Rights Act exists to address.
+**Nothing here has been checked against a known answer.** Every number above describes what the method *does*, not how often it is right, and those are different questions. The [BISG check brief](../bisg-check/bisg-check-brief.html) is the test; this one is the anatomy.
 
-## Where the file goes quiet
+**Nor can any of it be said about an individual.** The output is a statement about a population: of all the Smiths in the Bronx, roughly `r pc(bisg("SMITH","36005")[["black"]])`% are Black. Every use of the method takes a number true on average and attaches it to somebody in particular.
 
-```{r suppression}
-```
+**The two tables describe different years.** The surname list is a count from a census; the county file is a model carried forward to 2024. Anyone born or arrived in between sits in one file and not the other, and no column in either says how much that costs.
 
-The Bureau suppresses any cell small enough to risk identifying somebody. Those appear as missing, and in the arithmetic above they contribute zero — which quietly assumes the true value is zero when what we actually know is *small and unknown*.
+**And a name absent from the file cannot be scored at all.** The Bureau publishes no surname held by fewer than `r n(min(sn$count))` people, so Americans with the rarest names are not classified badly by this method. They are outside it. County is also coarse: the standard software works down to the census block, where the inference leans even harder on segregation.
 
-```{r supp-by-size}
-```
+## What you should have learned
 
-```{r supp-static, eval=!knitr::is_html_output(), fig.height=3.6}
-```
+- The whole method is one line of arithmetic: what a name implies, times what a county implies, divided by the national share of each group.
+- The name carries almost nothing for most Americans. `r k1_b90` of the thousand commonest surnames are more than 90% Black, and for `r pc(p_useless)`% of the people this file covers no group reaches 60%.
+- Of the `r n(nrow(big))` surnames held by more than a thousand people, `r n(n90[["white"]])` are more than 90% white and `r n(n90[["Black"]])` more than 90% Black, a ratio of about `r alab` for a group that is `r pc(100*natl[["black"]], 0)`% of the country.
+- Geography supplies what the name cannot. Smith is `r pc(G("SMITH","pctwhite"))`% white nationally and `r pc(bisg("SMITH","36005")[["black"]])`% Black in the Bronx, and the name that gains most from one county gains `r sprintf("%+.1f", gd[nrow(gd), "change"])` points.
+- Neither edition of the file can give you a small cell you can trust: 2010 withholds `r n(miss)` cells outright, and 2020 publishes noised counts that go negative in `r n(F20("rows_with_negative"))` of `r n(F20("rows_2020"))` surnames.
 
-```{r supp-d3, results='asis', eval=knitr::is_html_output()}
-```
+## Extensions
 
-**Figure 6. How often the Black share is withheld, by how many people hold the name.** Dot area is the number of names in the bucket, and the two fullest buckets are the two rarest. Suppression peaks at `r pc(max(as.numeric(supp)))`% among names held by `r levels(sn10$bucket)[which.max(as.numeric(supp))]` people and collapses to `r pc(as.numeric(supp)[length(supp)])`% among names held by more than five thousand. For surnames held by fewer than two hundred people the Black share is withheld `r pc(rare_black)`% of the time, and `r pc(100*mean(sn$count < 1000))`% of all names in the file are held by fewer than a thousand people.
+None of these is answered above, and every one can be answered by sorting or grouping the tables the Sources section hands over.
 
-Suppression is applied by a neutral rule — small cells are hidden. It does not *land* neutrally. Recent immigrants, small national-origin groups and Native American families are disproportionately the holders of rare surnames, so a rule that is neutral in form is unequal in effect. And because a suppressed cell enters the arithmetic as a zero, the method does not merely lose information about those people. It quietly asserts something false about them: that nobody holding the name belongs to the group whose share was too small to publish.
+- `census_surnames.csv` and `census_surnames_2010.csv` hold the same names fourteen years apart. Join them on `name` and find the surnames whose `pctblack` moved most. Is that people changing, or the table changing?
+- `surnames_2020_negatives.csv` shows cells published as zero that are negative in the research copy. Pick a row and explain what a negative count of people is.
+- `county_race.csv` gives each county's racial shares. Take a surname from `census_surnames.csv`, apply the arithmetic above to one county, then find a county where the answer is very different.
+- `census_surnames.csv` covers only names held by enough people to publish. Sort by `count` and work out roughly how many Americans have a name too rare to appear.
 
-## The argument this method is having
-
-**The method is validated and the validation is narrow.** Elliott and colleagues (2009) introduced the combination of surname and location for health research. They reported agreement with self-reported race far higher than either ingredient alone. Imai and Khanna (2016) extended it to voter files, added first names and party registration, and released the software most people now use. The published performance is real.
-
-**The published performance is also reported as one overall figure.** On a problem this lopsided, an overall figure mostly reports the lopsidedness rather than the method. That is the strongest available criticism. It is not that BISG is unreliable. It is that its reliability varies in a patterned way: by group, by how rare the name is, and by how segregated the place is. And that variation is almost never reported next to the estimate.
-
-**Refinements exist and do not change the kind of thing it is.** Imai, Olivella and Rosenman (2022) have since built a fuller version. It handles the Census file's own problems and adds further name lists, improving accuracy for exactly the groups the simple method handles worst. It is better in degree. It is still a probability about a person assembled from facts about populations.
-
-**And the alternative is not neutrality.** Some states do collect race on registration; coverage is partial, non-response is high and non-random, and most states collect nothing. Abolishing the estimate does not produce a world in which race is irrelevant to voting. It produces a world in which racial vote dilution cannot be proven.
-
-## What a name can testify to
-
-The strengths of this evidence are worth stating first. Both files are authoritative federal products covering the entire country. The surname file covers nearly every American name: all of them held by 100 or more people. And unusually for a racial classification, it reports proportions rather than a label. So the uncertainty is visible in the numbers themselves, instead of being hidden inside a category. A file that simply called Williams a "Black surname" would have concealed the very ambiguity this chapter is about.
-
-What it cannot support begins with its own vintage. The surname file is from 2010 and the county file from 2024, and the method multiplies them together as though they described the same country. `r pc(100 * miss / cells)`% of the cells in the surname file are withheld, and treating a withheld cell as zero is a modeling decision the data does not endorse and which falls hardest on rare names. County is in any case a coarse geography: the method as practiced uses census blocks, where the geographic signal is far stronger — and where, correspondingly, the inference leans even harder on segregation. Six categories flatten everyone who is both Hispanic and Black, or two races and Hispanic. And a name absent from the file cannot be scored at all, which is not a defect distributed evenly across groups.
-
-The deepest limitation is not any of those. **Nothing here has been checked against a known answer.** Every number in this chapter describes what the method *does*, not how often it is right, and the two are different questions. What can be said about correctness comes from the structure rather than from a test. Of surnames held by more than a thousand people, `r n(n90[["white"]])` are more than 90% white and `r n(n90[["Black"]])` are more than 90% Black. So for the group §2 exists to protect, the surname says almost nothing and the county does the work.
-
-Nor can any of this be said about an individual. The output is a statement about a population: *of all the Smiths in the Bronx, roughly `r pc(bisg("SMITH","36005")[["black"]])`% are Black*. Every use of the method takes a number that is true on average and attaches it to somebody in particular.
-
-Three questions are left genuinely open.
-
-The first is what a court should be told. Not that the method is unreliable, which it is not. Rather, that its precision varies with how rare the name is and how segregated the place is. Any estimate offered as evidence ought to carry that variation group by group, rather than one headline accuracy figure. The second is whether accuracy borrowed from segregation is acceptable evidence in a case about segregation. That question is not technical and has no technical answer.
-
-The third is whether states should simply collect race on registration. That would remove the need to guess. It would also create a government list of citizens by race. Both of those consequences are real, and choosing between them is not a statistical decision.
-
-What remains is the shape of the thing. A federal table lists what a name implies about the person carrying it. For most of the country that implication is weak. It is weakest precisely for the descendants of the people the Voting Rights Act was written to protect, because their ancestors were given the names of the people who owned them. The method compensates by asking where they live, and it succeeds to the exact degree that the answer to that question is still predictable. The estimate is accurate because the country is segregated, and it is used to prove that the country is segregated.
+Two stretch ideas point past the spreadsheet. The `wru` package implements the real version, with first names, age, sex and geography down to the census block. Run it on one name, and see how much of the extra sharpness comes from the finer geography. And the Consumer Financial Protection Bureau published its own version of this method in 2014 for lending cases; read what it says about error rates against what the tables above imply.
 
 ## Sources
 
 **Data**
 
-- U.S. Census Bureau, *Frequently Occurring Surnames from the 2010 Census.*
+- U.S. Census Bureau, *Frequently Occurring Surnames from the 2010 Census* —
+  every surname held by 100 or more people, with the racial composition of its
+  bearers, and cells too small to publish safely suppressed.
   <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>
-  Every surname held by 100 or more people, with the racial composition of
-  bearers; cells small enough to risk identifying an individual are suppressed.
-- U.S. Census Bureau, Population Estimates Program, county characteristics file
-  for 2024, collapsed to the same six categories.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`census_surnames.csv`](data/derived/census_surnames.csv), [`census_surnames_2010.csv`](data/derived/census_surnames_2010.csv), [`county_race.csv`](data/derived/county_race.csv), [`surnames_2020_facts.csv`](data/derived/surnames_2020_facts.csv), [`surnames_2020_negatives.csv`](data/derived/surnames_2020_negatives.csv), [`surnames_2020_top100.csv`](data/derived/surnames_2020_top100.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `census_surnames.csv` and `census_surnames_2010.csv` hold the same names fourteen years apart. Join them and find the names whose racial shares moved the most. Is that people changing, or the table changing?
-- `surnames_2020_negatives.csv` shows published zeroes that are negative in the research copy. Pick one. Explain what a negative count of people is, and why anyone would publish it.
-- `county_race.csv` gives each county's racial shares. Take one surname from the name table, apply it to a county with the arithmetic the chapter describes, and see what probability comes out. Then find a county where it comes out very differently.
-- `census_surnames.csv` covers only names held by enough people to publish. Work out roughly how many Americans have a name too rare to appear at all, and say what happens to them when this method is used.
+- U.S. Census Bureau, *Frequently Occurring Surnames from the 2020 Census*,
+  published twice: once trimmed, once with the negatives left in.
+  <https://www.census.gov/topics/population/genealogy/data/2020_surnames.html>
+- U.S. Census Bureau, Population Estimates Program, county characteristics
+  file for 2024, collapsed to the same six categories.
+  <https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/counties/asrh/>
 
 **Literature**
 
@@ -375,15 +179,16 @@ tables you just opened.
 - Imai, K. and Khanna, K. (2016). "Improving Ecological Inference by Predicting
   Individual Ethnicity from Voter Registration Records." *Political Analysis*
   24(2): 263–272.
-- Imai, K., Olivella, S. and Rosenman, E. T. R. (2022). "Addressing Census Data
-  Problems in Race Imputation via Fully Bayesian Improved Surname Geocoding and
-  Name Supplements." *Science Advances* 8(49): eadc9824.
 - Consumer Financial Protection Bureau (2014). *Using Publicly Available
-  Information to Proxy for Unidentified Race and Ethnicity: A Methodology and
-  Assessment.*
+  Information to Proxy for Unidentified Race and Ethnicity.*
 - *Thornburg v. Gingles*, 478 U.S. 30 (1986).
 
-**A note on what was not used.** The `wru` package implements this method properly, with first names, age, sex, party registration and geography down to the census block. The county-level core is built by hand here so the arithmetic is visible rather than hidden in a function call, and so that nothing requires a package or an API key. The real thing is better in degree, not in kind.
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`census_surnames.csv`](data/derived/census_surnames.csv), [`census_surnames_2010.csv`](data/derived/census_surnames_2010.csv), [`county_race.csv`](data/derived/county_race.csv), [`surnames_2020_negatives.csv`](data/derived/surnames_2020_negatives.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```
