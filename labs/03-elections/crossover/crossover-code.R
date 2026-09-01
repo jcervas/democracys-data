@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -16,8 +17,6 @@ options(scipen = 999)
 cty <- read.csv("data/derived/counties.csv", stringsAsFactors = FALSE,
                 colClasses = c(county_fips = "character"))
 sen <- read.csv("data/derived/senate.csv",  stringsAsFactors = FALSE)
-hse <- read.csv("data/derived/house.csv",   stringsAsFactors = FALSE)
-stt <- read.csv("data/derived/states.csv",  stringsAsFactors = FALSE)
 trd <- read.csv("data/derived/split_trend.csv", stringsAsFactors = FALSE)
 fx  <- read.csv("data/derived/facts.csv",   stringsAsFactors = FALSE)
 
@@ -47,25 +46,6 @@ CROSS <- fn("n_crossover")
 CROSSS <- fn("n_crossover_strict")
 HCROSS <- fn("h_crossover")
 NHOUSE <- fn("n_house")
-
-# Figure 3 stacks one dot per district into one-point bins. The positions are
-# computed once, here, so the base-R figure and the HTML one draw the same
-# picture rather than two arrangements of the same numbers.
-#
-# Republican share on the horizontal axis, as in every other figure here. The
-# file arrives with the Democratic share because that is what The Downballot
-# publishes; flipping it once, at the top, is cheaper than asking a reader to
-# read one figure backwards.
-hse$bin <- floor(hse$rep_pres)
-hse <- hse[order(hse$bin, hse$house_winner != "D", -hse$rep_pres), ]
-hse$row <- ave(hse$bin, hse$bin, FUN = seq_along)
-HMAX <- max(hse$row)
-
-# Figure 4 is the House against the presidential vote in the same district, the
-# same picture Figure 2 draws for the Senate. It has fewer points than Figure 3
-# because a district where nobody ran against the incumbent has a winner and no
-# share to compare.
-hsc <- hse[!is.na(hse$rep_house), ]
 
 # Figure 2 is drawn in order of the presidential vote, which is what the label
 # placement below alternates along.
@@ -133,7 +113,7 @@ axis(1, at = seq(0, 100, 25), cex.axis = 0.8, lwd = 0, lwd.ticks = 1)
 axis(2, at = seq(0, 100, 25), las = 1, cex.axis = 0.8, lwd = 0, lwd.ticks = 1)
 mtext("Republican share of the two-party vote, 2020", 1, line = 2.4, cex = 0.86)
 mtext("the same share in 2024", 2, line = 2.9, cex = 0.86)
-# The two off-diagonal boxes, drawn here and in the two figures that follow. A
+# The two off-diagonal boxes, drawn here and in the figure that follows. A
 # county that backed different parties in the two elections can only land in
 # one of them, and only one of the two boxes turns out to be occupied.
 rect(0, 50, 50, 100, col = "#F2F4F5", border = NA)
@@ -161,7 +141,8 @@ par(op)
 # correlation. The second is a demonstration, not the argument -- the number it
 # produces is computed in build-data.R and printed in the prose either way.
 #
-# This chunk carries the ONE d3 <script src> for the document.
+# This chunk carries the ONE d3 <script src> for the document; the dd_fig()
+# trend figure below rides on it with d3 = FALSE.
 # ---------------------------------------------------------------------------
 d <- cty[order(cty$total_votes_24), ]
 PT <- paste(sprintf('[%.1f,%.1f,%d,"%s","%s"]',
@@ -170,14 +151,14 @@ PT <- paste(sprintf('[%.1f,%.1f,%d,"%s","%s"]',
             collapse = ",")
 cat(sprintf('
 <style>
-/* The quadrant patches in Figures 1, 2 and 4. Painted at full opacity in a
+/* The quadrant patches in Figures 1 and 2. Painted at full opacity in a
    colour that already IS the composite, rather than as ink at 5.5%% over the
    page. The two render identically; only this one tells the truth about what
    is on the pixel, which matters because a contrast checker reads `fill` and
    cannot see through fill-opacity. */
-#sc .quad, #sen .quad, #hsc .quad { fill: #E3E5E6; }
+#sc .quad, #sen .quad { fill: #E3E5E6; }
 @media (prefers-color-scheme: dark) {
-  #sc .quad, #sen .quad, #hsc .quad { fill: #1C2024; }
+  #sc .quad, #sen .quad { fill: #1C2024; }
 }
 </style>
 <div id="sc" class="wind-fig" style="position:relative;margin:1em 0"></div>
@@ -218,7 +199,7 @@ svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-8)
 const dots=svg.append("g").selectAll("circle").data(P).join("circle")
   .attr("cx",d=>x(d[0])).attr("cy",d=>y(d[1])).attr("r",2)
   .attr("class",d=>d[1]>50?"gop-fill":"dem-fill").attr("fill-opacity",0.34);
-/* The counties that changed sides, ringed as in the two figures that follow.
+/* The counties that changed sides, ringed as in the figure that follows.
    They move with the cloud when the button is pressed, and what happens then is
    worth watching: a uniform shift pours hundreds more counties into the box
    that is already occupied and leaves the empty one empty. The boxes measure a
@@ -504,195 +485,7 @@ data.frame(
   President = ifelse(z$pres_winner == "D", "Harris", "Trump"),
   Margin = paste0(p1(z$margin), " pts"))
 
-## ---- fig3-static
-op <- par(mar = c(4.0, 1.0, 2.4, 1.0), mgp = c(2.4, 0.6, 0))
-plot(NA, xlim = c(0, 100), ylim = c(0, HMAX + 2), axes = FALSE,
-     xlab = "", ylab = "")
-axis(1, at = seq(0, 100, 10), cex.axis = 0.78, lwd = 0, lwd.ticks = 1)
-mtext("Republican share of the two-party presidential vote inside the district",
-      1, line = 2.4, cex = 0.84)
-abline(v = 50, col = RULE, lwd = 0.9)
-points(hse$bin + 0.5, hse$row, pch = 19, cex = 0.5,
-       col = ifelse(hse$house_winner == "R", RED, BLU))
-cr <- hse[hse$crossover, ]
-points(cr$bin + 0.5, cr$row, pch = 1, cex = 1.15, col = "#12181D", lwd = 0.8)
-mtext("Each dot is one House district, coloured by the party that won the seat",
-      3, line = 1.0, cex = 0.8, adj = 0)
-mtext("circled: the district voted one way for president and the other for the House",
-      3, line = 0.0, cex = 0.72, adj = 0, col = MUTE)
-text(12, HMAX + 1, "Harris carried these districts", cex = 0.66, col = MUTE,
-     adj = 0)
-text(88, HMAX + 1, "Trump carried these", cex = 0.66, col = MUTE, adj = 1)
-par(op)
-
-## ---- fig3-d3
-# The same stack the base-R twin draws, from the same precomputed bin and row.
-HD <- paste(sprintf('[%d,%d,"%s","%s","%s",%s,%.1f,"%s"]',
-                    hse$bin, hse$row, hse$abbrev, hse$house_winner,
-                    gsub('"', "", hse$winner), tolower(hse$crossover),
-                    hse$rep_pres, hse$district),
-            collapse = ",")
-cat(sprintf('
-<div id="hs" class="wind-fig" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], HMAX=%d;
-const W=760,H=380,M={t:44,r:16,b:48,l:16};
-const box=d3.select("#hs");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,HMAX+2]).range([H-M.b,M.t]);
-svg.append("text").attr("x",8).attr("y",16).attr("font-size","13px")
-  .attr("font-weight","600").attr("class","ttl")
-  .text("Each dot is one House district, coloured by the party that won the seat");
-svg.append("text").attr("x",8).attr("y",32).attr("font-size","11.5px")
-  .attr("class","sub")
-  .text("circled: the district voted one way for president and the other for the House");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).ticks(10));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-8)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("class","lbl")
-  .text("Republican share of the two-party presidential vote inside the district");
-svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",y(0))
-  .attr("y2",y(HMAX+2)).attr("class","rule");
-const g=svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d[0]+0.5)).attr("cy",d=>y(d[1])).attr("r",3.1)
-  .attr("class",d=>d[3]==="R"?"gop-fill":"dem-fill");
-svg.append("g").selectAll("circle").data(D.filter(d=>d[5])).join("circle")
-  .attr("cx",d=>x(d[0]+0.5)).attr("cy",d=>y(d[1])).attr("r",5.4)
-  .attr("fill","none").attr("class","ttl-stroke").attr("stroke-width",1.1);
-const tip=box.append("div").attr("class","windtip")
-  .attr("style","position:absolute;pointer-events:none;opacity:0;background:var(--card,#fff);border:1px solid #CBD3D8;border-radius:3px;padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-g.on("mousemove",function(e,d){
-    const r=box.node().getBoundingClientRect();
-    tip.style("opacity",1).style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-8)+"px")
-       .html("<b>"+d[2]+"-"+String(d[7]).padStart(2,"0")+"</b><br>"+d[4]
-         +" ("+d[3]+")<br>the district was "+d[6].toFixed(1)
-         +"%% Republican for president");
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);});
-})();
-</script>', HD, HMAX))
-
-## ---- fig4h-static
-op <- par(mar = c(4.0, 4.4, 2.8, 1.2), mgp = c(2.6, 0.7, 0))
-LO <- 10; HI <- 90
-plot(NA, xlim = c(LO, HI), ylim = c(LO, HI), axes = FALSE, xlab = "", ylab = "")
-axis(1, at = seq(LO, HI, 20), cex.axis = 0.8, lwd = 0, lwd.ticks = 1)
-axis(2, at = seq(LO, HI, 20), las = 1, cex.axis = 0.8, lwd = 0, lwd.ticks = 1)
-mtext("Republican share of the presidential vote inside the district", 1,
-      line = 2.4, cex = 0.86)
-mtext("the same share in the House contest", 2, line = 2.9, cex = 0.86)
-rect(LO, 50, 50, HI, col = "#F2F4F5", border = NA)
-rect(50, LO, HI, 50, col = "#F2F4F5", border = NA)
-abline(h = 50, v = 50, col = RULE, lwd = 0.8)
-abline(0, 1, col = MUTE, lty = 2, lwd = 1)
-points(hsc$rep_pres, hsc$rep_house, pch = 19, cex = 0.62,
-       col = adjustcolor(ifelse(hsc$house_winner == "R", RED, BLU), 0.62))
-# The sixteen the chapter is about, ringed as in Figure 3 so the two figures
-# name the same thing the same way.
-cr <- hsc[hsc$crossover, ]
-points(cr$rep_pres, cr$rep_house, pch = 1, cex = 1.5, col = "#12181D",
-       lwd = 0.9)
-text(LO + 0.8, HI - 0.8, "Republican member,\nHarris district", cex = 0.62,
-     col = MUTE, adj = c(0, 1))
-text(HI - 0.8, LO + 3.4, "Democratic member,\nTrump district", cex = 0.62,
-     col = MUTE, adj = c(1, 0))
-mtext("Every House contest with two major-party candidates, against the presidential vote in the same district",
-      3, line = 1.4, cex = 0.72, adj = 0)
-mtext("ringed: the district voted one way for president and the other for the House",
-      3, line = 0.5, cex = 0.66, adj = 0, col = MUTE)
-par(op)
-
-## ---- fig4h-d3
-# The House twin of Figure 2, and deliberately the same picture: presidential
-# vote across, House vote up, the dashed diagonal for a candidate running level
-# with the ticket, the two shaded boxes for the districts that split. No labels
-# -- there are four hundred of these -- so the sixteen are ringed and the rest
-# are named on hover.
-HS <- paste(sprintf('[%.2f,%.2f,"%s-%02d","%s","%s",%.2f,%s]',
-                    hsc$rep_pres, hsc$rep_house, hsc$abbrev, hsc$district,
-                    hsc$house_winner, gsub('"', "", hsc$winner),
-                    hsc$ran_ahead, tolower(hsc$crossover)), collapse = ",")
-cat(sprintf('
-<div id="hsc" class="wind-fig" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const LO=10,HI=90,W=760,H=520,M={t:52,r:20,b:48,l:52};
-const box=d3.select("#hsc");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([LO,HI]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([LO,HI]).range([H-M.b,M.t]);
-svg.append("text").attr("x",8).attr("y",18).attr("font-size","13px")
-  .attr("font-weight","600").attr("class","ttl")
-  .text("Every House contest with two major-party candidates, against the presidential vote beside it");
-svg.append("text").attr("x",8).attr("y",34).attr("font-size","11.5px")
-  .attr("class","sub")
-  .text("ringed: the district voted one way for president and the other for the House");
-[[LO,50,50,HI],[50,LO,HI,50]].forEach(function(q){
-  svg.append("rect").attr("x",x(q[0])).attr("y",y(q[3]))
-     .attr("width",x(q[2])-x(q[0])).attr("height",y(q[1])-y(q[3]))
-     .attr("class","quad").attr("stroke","none");});
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-   .call(d3.axisBottom(x).ticks(5));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-   .call(d3.axisLeft(y).ticks(5));
-svg.append("line").attr("x1",x(LO)).attr("x2",x(HI)).attr("y1",y(50))
-   .attr("y2",y(50)).attr("class","rule");
-svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",y(LO))
-   .attr("y2",y(HI)).attr("class","rule");
-svg.append("line").attr("x1",x(LO)).attr("x2",x(HI)).attr("y1",y(LO))
-   .attr("y2",y(HI)).attr("stroke","#76838C").attr("stroke-dasharray","4 3");
-svg.append("text").attr("transform","rotate(-90)")
-   .attr("x",-(M.t+(H-M.b))/2).attr("y",14).attr("text-anchor","middle")
-   .attr("font-size","12px").attr("class","lbl")
-   .text("the same share in the House contest");
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-8)
-   .attr("text-anchor","middle").attr("font-size","12px").attr("class","lbl")
-   .text("Republican share of the presidential vote inside the district");
-svg.append("text").attr("x",x(LO)+8).attr("y",y(HI)+16).attr("font-size","11px")
-   .attr("class","foot").text("Republican member, Harris district");
-svg.append("text").attr("x",x(HI)-8).attr("y",y(LO)-10).attr("text-anchor","end")
-   .attr("font-size","11px").attr("class","foot")
-   .text("Democratic member, Trump district");
-const pt=svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d[0])).attr("cy",d=>y(d[1])).attr("r",3.1)
-  .attr("class",d=>d[3]==="R"?"gop-fill":"dem-fill").attr("fill-opacity",0.62);
-svg.append("g").selectAll("circle").data(D.filter(d=>d[6])).join("circle")
-  .attr("cx",d=>x(d[0])).attr("cy",d=>y(d[1])).attr("r",5.6)
-  .attr("fill","none").attr("class","ttl-stroke").attr("stroke-width",1.1);
-const tip=box.append("div").attr("class","windtip")
-  .attr("style","position:absolute;pointer-events:none;opacity:0;background:var(--card,#fff);border:1px solid #CBD3D8;border-radius:3px;padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-pt.on("mousemove",function(e,d){
-    const r=box.node().getBoundingClientRect();
-    const dir=d[5]>=0?"ahead of":"behind";
-    tip.style("opacity",1).style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-8)+"px")
-       .html("<b>"+d[2]+"</b><br>"+d[4]+" ("+d[3]+")<br>the district was "
-         +d[0].toFixed(1)+"%% Republican for president<br>the Republican House "
-         +"candidate ran "+Math.abs(d[5]).toFixed(1)+" points "+dir+" that"
-         +(d[6]?"<br><b>the district voted the other way for president</b>":""));
-  })
-  .on("mouseleave",function(){tip.style("opacity",0);});
-})();
-</script>', HS))
-
-## ---- crossover-table
-z <- hsc[hsc$crossover, ]
-z <- z[order(-z$rep_pres), ]
-data.frame(
-  District = paste0(z$abbrev, "-", sprintf("%02d", z$district)),
-  Member = z$winner,
-  Won_as = z$house_winner,
-  President_R = paste0(p1(z$rep_pres), "%"),
-  House_R = paste0(p1(z$rep_house), "%"),
-  Gap = sg(z$ran_ahead))
-
-## ---- fig4-static
+## ---- trend-static
 op <- par(mar = c(3.6, 4.4, 2.0, 1.6), mgp = c(2.6, 0.7, 0))
 plot(trd$year, trd$pct_split, type = "o", pch = 19, cex = 0.7, lwd = 2,
      col = "#1C4C5C", axes = FALSE, xlab = "", ylab = "",
@@ -709,3 +502,24 @@ lt <- trd[nrow(trd), ]
 text(lt$year, lt$pct_split + 8.5, paste0(lt$year, ": ", p1(lt$pct_split), "%"),
      cex = 0.7, col = MUTE, adj = 1)
 par(op)
+
+## ---- trend-d3
+# Drawn with the shared library (_lib/dd-charts.js): a plain line with points
+# and a per-election tooltip needs nothing hand-written. d3 itself was already
+# emitted by the county figure above, so only dd-charts.js is added here.
+dd_fig("trend", "line", trd[, c("year", "pct_split")],
+  size = list(w = 770, h = 360, m = list(t = 16, r = 24, b = 40, l = 52)),
+  x = list(field = "year", fmt = "d", ticks = 9),
+  y = list(field = "pct_split", label = "% of contested districts",
+           domain = c(0, 48), fmt = "pct0", ticks = 6),
+  series = list(fields = list(
+    list(field = "pct_split", label = "split districts", class = "series-1"))),
+  points = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+d.pct_split.toFixed(1)+
+      "% of contested districts<br>split their vote";
+  }'),
+  d3 = FALSE)
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Move across the chart for each election\'s share.</p>')

@@ -1,7 +1,7 @@
 ---
 title: "Presidential Returns Across 150 Years"
 type: brief
-subtitle: "A century and a half of presidential returns, and a statistic that returns to where it started without meaning the same thing"
+subtitle: "Forty-one elections in one file, and the question of whether the country was always divided this evenly"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,222 +16,64 @@ dd_read_chunks("historical-campaigns-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A voter in Alabama who went to the polls in November 1948 intending to vote for Harry Truman found that she could not. There was no Democratic slate on the ballot; the state party had replaced it with the Dixiecrats. Sixteen years later she found the same thing again, when Alabama Democrats withheld the national ticket rather than pledge their electors to Lyndon Johnson. In the file of presidential returns those two elections appear as blanks, and a blank is a strange way to record the disappearance of a major party from a ballot.
+Every presidential election now ends the same way: on a knife edge. The 2024 winner led the two-party vote by `r pc(mg(2024))` points, and commentary treats that as the permanent condition of American politics — a country locked at fifty-fifty. Has presidential politics always been this close?
 
-Campaigns are the mechanism by which citizens are addressed. Where a state is not contested, nobody is addressed: no persuasion, no organizing, no reason for a candidate to learn what the place wants. **Uncontestedness is not a neutral condition. It is a withdrawal of political attention**, and it settles on particular places for long stretches.
+The answer matters to more than trivia. A close election is one where a campaign has to ask people for their votes, and a foregone one is an election where nobody asks. Whether the country has always sat near an even split, and whether close national elections have always meant close states, decides who gets courted and who gets ignored. Both questions can be answered from the returns.
 
-Most accounts of how American campaigning changed between 1864 and 2024 are accounts of technique — party machines giving way to candidate organizations, conventions to primaries, newspapers to television to whatever this is. What follows is the other half of that story. Campaigns did not transform in a vacuum. They transformed on **a map that was itself transforming**, and for most of the period a third of the country was not contested at all.
+## The test
 
-One row of the file is **one state in one presidential election**.
+The data is state-level returns for all `r length(unique(p$year))` presidential elections from `r min(p$year)` to `r max(p$year)`, with the national popular vote alongside them, obtained from *PresElectionResults*, [an R data package Jason Timm publishes on GitHub](https://github.com/jaytimm/PresElectionResults). No federal source exists, because the United States has never had a national election authority. The package compiles Wikipedia's per-election articles, which rest on Dave Leip's *Atlas of U.S. Presidential Elections* and, beneath that, the official state canvasses.
 
-```{r one-row}
+This source fits the question because a claim about eras needs a series that is consistent across eras. Consistency is exactly what a compiler supplies and what fifty-one separate state archives do not. The cost is that a compilation inherits the reliability of its weakest link without marking which link that was. A row for Louisiana in 1872 and a row for Michigan in 2020 are formatted identically, and they are not the same kind of object. What a certified return can bear, and what no return can, is the subject of [this cluster's chapter on election returns](../returns-source/returns-source-brief.html).
+
+## The data
+
+One row of the state file is one state in one presidential election. The national file carries one row per candidate per election. The columns, by name:
+
+| File | Column | What it holds |
+|:---|:---|:---|
+| `pres_states_1864_2024.csv` | `year`, `state_abbrev` | the election and the state |
+| | `democrat`, `republican`, `other` | each side's share of the vote, as a percentage |
+| | `winner`, `party_win` | who carried the state, and their party |
+| `pres_national.csv` | `candidate`, `party` | one line per national candidate |
+| | `pop_votes`, `pop_per` | their popular vote, and its share |
+| | `ec_votes`, `ec_total` | their electoral votes, and that year's total |
+
+The cleaning was small and worth knowing. The build checks the expected row count of `r format(nrow(p), big.mark = ",")` and the column names before trusting anything, keeps the columns above, sorts, and writes the files. It repairs nothing: where a share is missing it stays missing. Two rows show why that restraint matters.
+
+```{r sample-rows}
 ```
 
-`democrat` and `republican` are percentages of the total vote. Note the `winner` column, and note that in 1948 it says **Strom Thurmond** while the Democratic column says `r pc(sv("MS", 1948, "democrat"))`. Both are true: the Democratic ticket took most of the Democrat-versus-Republican vote and neither of them carried the state, because the Dixiecrat did. Hold on to that; it comes back shortly.
+The 1864 row is ordinary. In the 1948 row Alabama's Democratic share is `NA`: not zero, not small, but absent. The state party had replaced the national ticket with the Dixiecrats, so no Democratic slate was on the ballot. Filling that blank with zero would record that no Alabamian wanted to vote for Harry Truman, which is untrue. Deleting the row would erase an election in which the party system was breaking. The file's `r nrow(absent)` rows like it, where a major party had no ballot line, are recoverable only because the blank was left alone.
 
-## Four hands between the courthouse and this table
+Coverage changes too. The file holds `r sum(p$year == min(p$year))` states in 1864, because eleven were in armed rebellion, and nothing in the file says so — it just has fewer rows. Every comparison across time is therefore a comparison between different sets of states. Finally, these are shares rather than vote counts. The margin used below is the winner's share of the **two-party vote**, meaning their percentage of the votes cast for the two major parties. It is computed on this page rather than baked into the file.
 
-The `r length(unique(p$year))` elections here come from *PresElectionResults*, an R data package Jason Timm publishes on GitHub. Its state series is compiled from Wikipedia's per-election articles, which rest in turn on Dave Leip's *Atlas of U.S. Presidential Elections* and on the official state canvasses. Read that chain backwards and notice what is missing from it. There is no federal source.
+> **Before you look at any figure, write down two numbers.** In 1960, how many
+> of the fifty states finished within five points of an even split? And in
+> 2024, out of fifty-one? Commit to both before you read on.
 
-The United States has never had a national election authority, so no agency holds a record of how the country voted in 1876. The canvass belongs to the state that conducted it. Every layer above the canvass is a private compilation, made by somebody who decided it was worth making. The campaign-finance chapters begin with a statute compelling disclosure. This one begins with a hobby that became indispensable.
+## What it says about democracy
 
-On the spectrum this book keeps returning to, that puts these numbers about as far from *made and published by the same body* as anything here gets. They were **assembled and cleaned by compilers from primary records**, and not by one set of hands but by four in a row. Each made decisions, and none wrote them into the file.
+Start with the country as a whole. Figure 1 draws the winner's national two-party margin in every election since 1864. It is one line on a time axis because the claim under test is a claim about eras, and an era is a stretch of that line.
 
-By the time a row reaches the table, somebody has already made several decisions. Which canvass to believe where two disagree, how to treat a fusion ticket, and what to do with a state whose returns were disputed. Those decisions are baked into the number, and there is no column recording them.
-
-Getting the file was almost free: one `download.file()` against a public GitHub address, no key, no account, no request form. **The cost is entirely on the other side of that ease.** There is no authority to appeal to when a figure looks wrong, because the authority is fifty-one nineteenth-century state archives that nobody has re-checked. The most modern link in the chain is a `master` branch that can change without notice or a version number. And the file's uniform formatting actively conceals how differently its rows were made. Committing the output here freezes the version being argued about, which is the only part of that any reader downstream can fix.
-
-That is also why the file is the right one. A question about how the map changed across a century and a half can only be answered by a series that is consistent across a century and a half. Consistency is precisely what a compiler supplies, and what fifty-one separate archives do not. Better evidence would be the canvasses themselves, county by county, with turnout attached. For the full period nobody has assembled that, and the reason is not secrecy but expense.
-
-The cost of a compilation is that it inherits the reliability of its weakest link and does not mark which link that was. A row for Louisiana in 1872 and a row for Michigan in 2020 are formatted identically, and are not the same kind of object at all.
-
-Nor does the file carry votes. These are shares, so there is no national total in it and no turnout. The only national figure this chapter can build is an unweighted average across states, which is said out loud wherever it is used. And beneath all of that sits the problem the arithmetic cannot reach. A vote share presumes an electorate, and who was permitted to be part of the electorate is the thing that changed most over these years.
-
-The cleaning was small and worth knowing. What is downloaded is an `.rda` from the package's `master` branch. That is a branch and not a tagged release, which makes the most modern link in the chain the least stable one. The build then checks the expected row count and column names before it trusts anything, keeps seven columns, sorts by year and state, and writes the file.
-
-Crucially it leaves `NA` as `NA` instead of turning a missing party into a zero, which is the only reason the `r nrow(absent)` absent-ballot rows are recoverable at all. The two-party share that most of this chapter runs on is not in the file. It is computed in this document, on the page, so that the choice stays visible at the point where it is made.
-
-## What comes down the wire
-
-The source is not a CSV and not an API. It is an `.rda`, a compressed R object, sitting in a public repository. Fetched by address and loaded into memory, it turns out to be a table of `r nrow(p)` rows and seven columns, in this order:
-
-| Position | Column | What it holds |
-|---:|:---|:---|
-| 1 | year | the presidential election year |
-| 2 | state_abbrev | the state's two-letter code |
-| 3 | winner | who carried the state |
-| 4 | party_win | that winner's party |
-| 5 | democrat | the Democratic share of the vote, as a percentage |
-| 6 | other | the share going to everyone else |
-| 7 | republican | the Republican share |
-
-Two rows of it, as they arrive:
-
-| year | state_abbrev | winner | party_win | democrat | other | republican |
-|---:|:---|:---|:---|---:|---:|---:|
-| 1864 | CA | Abraham Lincoln | republican | 41.40 | NA | 58.60 |
-| 1948 | AL | Strom Thurmond | other | NA | 79.75 | 19.04 |
-
-The 1864 row is unremarkable and the 1948 row is the whole chapter. **Alabama's Democratic share is `NA`.** Not zero, not small — absent. A reader who opened this file, saw the empty cells and dropped those rows as damaged would have deleted the elections in which a major party was not on the ballot at all. Those are precisely the elections where the party system was breaking. And a reader who did the opposite and filled the blanks with zero would have recorded that no Alabamian wanted to vote for Harry Truman, which is a different claim entirely and an untrue one.
-
-Here is what the same two rows look like afterwards:
-
-```{r clean-hist}
+```{r natl-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-Almost nothing happened, and that is the point worth drawing out. The columns were reordered so the two major parties sit together, and the rows were sorted. The row count and the column names were checked against what the script expected, and then the file was written out. **The `NA` was left alone.** That single restraint is what makes the `r nrow(absent)` ballot-absence rows recoverable later in this chapter; every other treatment of them destroys the finding.
-
-### What was decided, and what was refused
-
-**The missing values were not repaired.** Neither the `r nrow(absent)` rows where a party had no ballot line nor the `r format(sum(is.na(p$other)), big.mark = ",")` rows with no third-party figure were filled in. In a file of percentages the temptation to make rows add to 100 is strong and every way of doing it invents something.
-
-**The two-party share is not in the source.** It is computed in this document rather than in the build script, on purpose. That way the choice to ignore everybody outside the two major parties is made where a reader can see it, rather than baked into a column called `d2` that arrives looking like a fact.
-
-**The row count is asserted before the data is used.** The script checks for `r nrow(p)` rows and the seven expected column names and stops if either is wrong. That is the only defense available against a source that is a moving branch rather than a released version: it cannot tell you the numbers changed, but it will tell you the shape did.
-
-**Nothing marks which rows are trustworthy.** A row for Louisiana in 1872 and a row for Michigan in 2020 are formatted identically, carry the same number of decimal places, and are not the same kind of object. The file has no column for that and this chapter cannot add one.
-
-## An absence nobody annotated
-
-```{r coverage}
+```{r natl-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-`r sum(p$year == min(p$year))` states in 1864, `r sum(p$year == max(p$year))` now. That is not a data problem; it is the country growing. But it means **every comparison across time is a comparison between different sets of states**, and we will have to keep saying so.
+**Figure 1. The winner's margin of the national two-party vote, `r min(nm$year)`–`r max(nm$year)`.** Each point is one election; the shaded band marks a margin under five points. Hover for the year and the candidate who led. The line spends the middle of the twentieth century far above the band and the last three decades inside or near it.
 
-There were thirty-six states in the Union in 1864. This file has `r sum(p$year == 1864)`\. **Eleven states are missing because they were in armed rebellion, and the file does not say so. It just has fewer rows.** That is the first thing to understand about historical data: absence is never annotated.
+The current era is real. The margin has been under five points in `r N5_SINCE00` of the `r sum(nm$year >= 2000)` elections since 2000, and no candidate has won the two-party vote by ten points since `r LAST_BLOWOUT`. That is `r RUN_NOW` consecutive elections without a double-digit winner, the longest such run in the record; the previous record was `r RUN_PREV`.
 
-## A choice with a cost
+It is also historically unusual, and the file says exactly how unusual. Between 1904 and 1984 the average margin was `r pc(MEANMID)` points; since 1988 it has been `r pc(MEANNOW)`. The blowouts cluster into eras: the 1920s, when Harding and then Coolidge won by `r pc(mg(1920))` and `r pc(mg(1924))` points, Roosevelt's `r pc(mg(1936))` in 1936, and the landslides of 1964, 1972 and 1984, each above `r floor(min(mg(c(1964, 1972, 1984))))` points. For most of the twentieth century, a presidential election was not close.
 
-`r format(sum(is.na(p$other)), big.mark = ",")` of `r format(nrow(p), big.mark = ",")` rows carry no third-party number at all, so the two major-party percentages do not add to 100 and the gap is not meaningful. The standard fix is to ignore everyone else and work in **two-party share**: Democratic votes as a percentage of the Democratic-plus-Republican vote.
+There is one true exception, and it deserves its story. From 1876 to 1896, `r GILD5` straight elections came in under five points, inside a run of `r RUN_PREV` without a double-digit winner. That was the Gilded Age, and 1880 was decided by `r pc(mg(1880), 1)` points of the two-party vote. Sustained near-tie politics has happened before, exactly once. A second caution: the two-party margin can mislead where a third candidate mattered. In 1912 it reads `r pc(mg(1912))` points, yet Wilson took only `r nat$pop_per[nat$year == 1912 & nat$candidate == "Woodrow Wilson"]`% of all votes cast, because the margin ignores Roosevelt's Progressives entirely.
 
-This is a real choice with a real cost. In 1912, 1968 and 1992, the years of Roosevelt, Wallace and Perot, a two-party share hides most of what happened. In Mississippi in 1948 it produces the collision in the row above, where a party holds most of the two-party vote and loses the state anyway.
-
-There is a second kind of missingness, and it is not a gap in the data:
-
-```{r absent}
-```
-
-`r nrow(absent)` rows have no Democratic or no Republican share, and each records a state where a major party **had no line on the ballot**. In 1912 the Progressives kept Taft off California's ballot. **In 1948 and again in 1964 there was no Democratic slate in Alabama** — replaced by the Dixiecrats in 1948, and withheld in 1964 when Alabama Democrats refused to pledge to Johnson. A voter who wanted to vote for Harry Truman, or for Lyndon Johnson, could not.
-
-The ballot is not a neutral instrument.
-
-## The longest-running fact in American politics
-
-Define the eleven states of the Confederacy, which is a choice and one worth watching being made, then average the Democratic two-party share inside and outside. Figure 1 is the result, for every election in the file.
-
-```{r south-static, eval=!knitr::is_html_output(), fig.height=4.6}
-```
-
-```{r south-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 1. The Democratic two-party share, South and rest of the country, `r min(p$year)` to `r max(p$year)`.** Each line is the unweighted average across states, one for the eleven states of the Confederacy and one for everywhere else. The Southern line sits above the other for eighty years, crosses it in `r first_neg(g11)`, and stays below from `r perm_neg(g11)` onward.
-
-```{r gaps}
-```
-
-For eighty years the Southern line sits far above the other one. **The gap peaks at `r pc(max(g11$gap, na.rm = TRUE))` points in `r g11$year[which.max(g11$gap)]`**, and is still `r pc(gv(g11, 1948))` in 1948. It **goes negative for the first time in `r first_neg(g11)`**: the year the Civil Rights Act passed, Johnson won a national landslide, and Goldwater carried the Deep South.
-
-It does not vanish overnight. Carter, a Georgian, pulls it back positive in 1976 (`r pc(gv(g11, 1976))`) and 1980 (`r pc(gv(g11, 1980))`). **From `r perm_neg(g11)` onward it is negative in every single election**, reaching `r pc(gv(g11, 2024))` in 2024. The sign has flipped and stayed flipped.
-
-## Move the definition and see what survives
-
-Eleven states was a choice, and a finding that depends on a choice is worth testing against a different one. Here is the same comparison with the eleven plus the border states that permitted slavery and did not secede.
-
-```{r robust}
-```
-
-The table takes seven years. Figure 2 takes all of them.
-
-```{r robust-static, eval=!knitr::is_html_output(), fig.height=4.3}
-```
-
-```{r robust-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. The same gap, under two definitions of the South.** The Southern minus non-Southern difference in Democratic two-party share, computed once for the eleven Confederate states and once for those eleven plus six border states. The wider definition dilutes the peak from `r pc(max(g11$gap, na.rm = TRUE))` points to `r pc(max(g17$gap, na.rm = TRUE))`, and leaves the crossing year and the year of the permanent flip exactly where they were.
-
-**The magnitudes shrink; the story does not move.** Adding the border states cuts the `r g11$year[which.max(g11$gap)]` peak from `r pc(max(g11$gap, na.rm = TRUE))` to `r pc(max(g17$gap, na.rm = TRUE))` and the 1964 trough from `r pc(gv(g11, 1964))` to `r pc(gv(g17, 1964))`. But the first negative year is **`r first_neg(g17)` either way** and the permanent flip is **`r perm_neg(g17)` either way**.
-
-That is a robustness check the finding passed, and the dilution is itself evidence: the border states were always less Democratic than the Deep South, so adding them pulls both extremes toward the middle. The effect is concentrated where the theory says it should be.
-
-## A label that cannot be right
-
-While we are here, look at who this file says won states in 1960.
-
-```{r truman}
-```
-
-**Harry Truman was not a candidate in 1960.** He had left office eight years earlier.
-
-What happened is more interesting than a typo. Alabama and Mississippi ran slates of **unpledged electors** — Democrats who appeared on the ballot promising *not* to support the national ticket, hoping a close election would let the South bargain over civil rights. Mississippi's slate won outright. Whoever compiled this file needed a name for it and reached for a Democrat.
-
-Notice that this did **not** corrupt the numbers we have been using. The vote shares are fine; only the label is wrong. **Bad data is rarely uniformly bad, which is exactly what makes it dangerous.**
-
-## How far apart are the states?
-
-If every state voted alike, the spread between them would be zero. Standard deviation of the two-party share across states, election by election:
-
-```{r spread}
-```
-
-The spread was enormous in the era of the Solid South. It bottoms out at **`r pc(min(sp$sd), 2)` in `r sp$year[which.min(sp$sd)]`**, when the states never agreed more. Then it climbs again, roughly doubling to `r pc(sp$sd[sp$year == 2024], 2)` by 2024.
-
-A standard deviation is one number standing in for a whole shape. Figure 3 shows the shapes themselves: every state, in the widest year, the narrowest year, and now.
-
-```{r shapes-static, eval=!knitr::is_html_output(), fig.height=3.9}
-```
-
-```{r shapes-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 3. Every state's Democratic two-party share, in three elections.** The year the states were furthest apart, the year they were closest, and 2024. The spread of `r sd_hi` and the spread of 2024 are of comparable width; the distributions are not comparable objects.
-
-The obvious reading is that the country has returned to something like its old level of division: `r pc(sp$sd[sp$year == 2024], 1)` today against `r pc(max(sp$sd), 1)` at the `r sd_hi` peak, more than half the way back.
-
-## The same number, two different countries
-
-The spread is one number, but it is made of parts. Some of the variation between states is variation **between regions**, and some is variation **within** them. Split the total sum of squares in each year into the part explained by the South-versus-rest division and the part that is not.
-
-> **Before you read the table, put two numbers down.** In `r sd_hi`, with the
-> Solid South intact, what percentage of all the state-to-state variation was
-> simply the South differing from everyone else? And what is that percentage in
-> 2024? If the country has genuinely gone partway back to where it was — the
-> reading the standard deviations invite — then the second number ought to be a
-> solid fraction of the first. Write both down, and be specific: a percentage
-> each, not "high" and "lower".
-
-```{r decomp}
-```
-
-**In `r vd$year[which.max(vd$pct_between)]`, `r pc(max(vd$pct_between))`% of all state-to-state variation in presidential voting was the South differing from everyone else. In 2024 the figure is `r pc(vb(2024))`%.**
-
-That is the answer to the prediction, and it is decisive. The first number is usually guessed too low and the second far too high. `r sd_hi` comes in at `r pc(vb(sd_hi))`%. Most readers put 2024 somewhere in the thirties or forties, on the reasonable-sounding logic that a spread half the way back should be half a regional story. It is `r pc(vb(2024))`%.
-
-The 1924 spread was one region voting unlike the rest of the country. The 2024 spread is `r pc(100 - vb(2024))`% variation *within* regions: states differing from their neighbors, everywhere, along lines that no regional label captures. It is the sorting usually called polarization, and it is a different object with a similar standard deviation.
-
-Figure 4 tracks that split across every election in the file.
-
-```{r decomp-static, eval=!knitr::is_html_output(), fig.height=4.4}
-```
-
-```{r decomp-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. How much of the spread between states is one region differing from the rest.** The share of the total state-to-state variance in Democratic two-party share attributable to the South-versus-everywhere-else division, in each election. It peaks at `r pc(max(vd$pct_between))`% in `r vd$year[which.max(vd$pct_between)]` and stands at `r pc(vb(2024))`% in 2024. The spread that remains is variation between neighbors rather than between regions.
-
-**A number going up does not tell you why.**
-
-## The vanishing battleground
-
-Then there is the fact that matters most for how campaigns behave. Count the states within five points of an even split.
+So the country's elections are as close as they have ever been. Are its states? Count the states decided within five points of even.
 
 ```{r close}
 ```
-
-**`r cv(1960,"close")` competitive states in 1960; `r cv(2024,"close")` in 2024** — out of more states than existed in 1960. As a share it falls from `r pc(cv(1960,"pct"))`% to `r pc(cv(2024,"pct"))`%.
-
-Figure 5 puts that count on the same axes as the elections it came from.
 
 ```{r battle-static, eval=!knitr::is_html_output(), fig.height=4.5}
 ```
@@ -239,79 +81,57 @@ Figure 5 puts that count on the same axes as the elections it came from.
 ```{r battle-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 5. The share of states decided within five points, election by election.** Filled points mark the `r sum(ncl$even)` elections in which the average state sat within three points of an even split, so that the national result cannot be blamed for an empty battleground. Among those elections, `r pc(ev_pre)`% of states were competitive before 2000 and `r pc(ev_post)`% since.
+**Figure 2. The share of states decided within five points, election by election.** Filled points mark the `r sum(ncl$even)` elections in which the average state sat within three points of an even split, so that a landslide cannot be blamed for an empty battleground. Among those close elections, `r pc(ev_pre)`% of states were competitive before 2000 and `r pc(ev_post)`% since.
 
-Most of the sawtooth is the national result: a landslide leaves nothing close anywhere, and the four emptiest elections in the series (`r paste(sort(ncl$year[order(ncl$pct)][1:4]), collapse = ", ")`) are all blowouts. The filled points strip that explanation out. They are the `r sum(ncl$even)` elections in which the average state sat within three points of an even split — and among those, `r pc(ev_pre)`% of states were competitive before 2000 against `r pc(ev_post)`% since. **The battleground shrank in elections that were themselves as close as they had ever been.**
+Here the two eras of national closeness come apart. In 1960, `r cv(1960, "close")` of `r cv(1960, "n")` states were within five points of even. In 2024 it was `r cv(2024, "close")` of `r cv(2024, "n")`. Most of the sawtooth in Figure 2 is the national result, because a landslide leaves nothing close anywhere. The filled points strip that explanation out: they hold the national margin fixed, and the battleground still shrinks. **The modern near-tie era is unusual twice over: the country has never been this close for this long, and it has never been this close with so few close states.**
 
-A campaign in 1960 had to think about most of the country. A campaign in 2024 can think about a dozen states and safely ignore the rest. **Nothing about consultants or television explains as much about modern campaign behavior as this does.**
+The old form of that condition had a name. For roughly eighty years after Reconstruction, the Democratic share of the two-party vote in the eleven Confederate states ran far above the rest of the country, peaking `r pc(max(g11$gap, na.rm = TRUE))` points higher in `r g11$year[which.max(g11$gap)]`. A third of the country was conceded in advance, and the returns record the concession as ordinary arithmetic. That gap first turned negative in `r first_neg(g11)` and has stayed negative in every election since `r perm_neg(g11)`. The concession did not end; it moved, lost its regional name, and by 2024 covered a larger share of the states than it did in 1960.
 
-## What a century and a half of returns will support
+## What this brief cannot tell you
 
-The Southern realignment happened, it is datable to 1964 with a permanent flip by `r perm_neg(g11)`, and it survives changing the definition of "the South" from eleven states to seventeen.
+**Shares are not votes.** The state file carries no vote counts and no turnout, so a five-point margin in Wyoming and a five-point margin in California are the same number here and nothing like the same event. The only national figures the state file supports are unweighted averages across states, which is why Figure 1 is built from the national file instead.
 
-Sharper than that: the rise in state-to-state spread since 1960 is not a return to the old division. The regional component of that spread fell from `r pc(max(vd$pct_between))`% to `r pc(vb(2024))`%, so the same statistic now measures a different country. **A trend line is not a mechanism.**
+**A margin measures the electorate that was allowed to exist.** Post-1877 Southern returns are accurate counts of elections conducted under systematic disenfranchisement. The numbers are real; what they measure is not what a 2024 return measures, and no arithmetic on this file can correct for it.
 
-What these returns cannot say is *why* the South changed. They date the change; they cannot attribute it, and the attribution is exactly what is contested. Nor can they say that a 1900 Mississippi return measures what a 2024 Mississippi return measures. Post-1877 Southern totals are accurate counts of elections conducted under systematic disenfranchisement: the number is real, and what it measures is not what it appears to measure.
+**The two-party margin hides third parties.** 1912, 1968 and 1992 all look tamer here than they were, and 1912 looks like a blowout that never happened.
 
-## Why the South changed, and what a state average can settle
+**The file cannot say why margins narrowed.** It dates the eras; it cannot explain them. Candidate explanations, from party sorting to nationalized media to the end of the Solid South, need evidence below the level of a state total, and this file has nothing below a state.
 
-**The realignment's timing is agreed; its cause is not**, and the dispute is one of the longest-running in American political science. On one side, Carmines and Stimson (1989) argue that racial policy realigned the parties from the top down, beginning with elite positioning in the early 1960s. Kuziemko and Washington (2018) revisited the question with individual survey records. They found that defection among racially conservative white Southerners accounts for essentially the whole decline in Democratic support between 1958 and 1980, with no role for income growth. On the other, a competing tradition emphasizes Southern economic development, the growth of a suburban middle class, and in-migration from outside the region.
+## What you should have learned
 
-Kuziemko and Washington is the strongest recent evidence on the racial side, and it is strong precisely because it goes below the aggregate. The two lines in Figure 1 are consistent with almost any of these stories, and only individual-level data can separate them. That is a general fact about aggregate returns rather than a fact about this file.
+- The winner's national two-party margin has been under five points in `r N5_SINCE00` of the `r sum(nm$year >= 2000)` elections since 2000, and no winner has reached ten points in `r RUN_NOW` straight elections — the longest run in the record.
+- Sustained near-tie politics has one precedent: `r GILD5` straight sub-five-point elections from 1876 to 1896, including 1880's `r pc(mg(1880), 1)`-point margin.
+- Between those eras, blowouts were the norm: the average margin from 1904 to 1984 was `r pc(MEANMID)` points, against `r pc(MEANNOW)` since 1988.
+- Close countries no longer mean close states: `r cv(1960, "close")` of `r cv(1960, "n")` states sat within five points of even in 1960, against `r cv(2024, "close")` of `r cv(2024, "n")` in 2024.
+- A blank is data: the `r nrow(absent)` rows where a major party had no ballot line survive only because the build left `NA` as `NA` instead of writing zero.
 
-**A second dispute is about whether "the South" is a unit at all.** V. O. Key's *Southern Politics in State and Nation* (1949) is still the founding text. It insisted on state-by-state analysis precisely because a regional average conceals enormous variation. Figure 2 shows the average holds up; it does not show the average is meaningful. Mississippi and Virginia have not moved together for fifty years.
+## Extensions
 
-**A third is about polarization.** The rise in spread is routinely reported as evidence that the country is coming apart. Figure 4 shows that the spread is real and that its regional component is not, which means the sorting is happening at some other level — county, neighborhood, household. That claim cannot be tested with state-level data, and this file has nothing smaller than a state.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-## What the returns can testify to
+- `pres_national.csv` carries `pop_per` and `ec_votes` side by side. Find the elections where a modest popular-vote share became an electoral-vote landslide. Which eras produce the biggest gaps between the two columns?
+- `pres_states_1864_2024.csv` has an `other` column that is often missing rather than zero. Count the years where it is missing everywhere. What is the difference between a third party getting no votes and nobody recording them?
+- Pick one state in `pres_states_1864_2024.csv` and follow its `democrat` column from 1864 to 2024. When did it last change the side it favored, and how does that year compare with its neighbors?
+- `pres_national.csv` has an `ec_total` column that changes across the series. Find every year it changes and say what has to happen in the country for that number to move.
 
-The strengths are those of a long consistent series: `r length(unique(p$year))` elections in one format, the same two columns meaning the same thing throughout. The file is also honest about its own gaps. The `r nrow(absent)` rows where a party was absent from a ballot are `NA` rather than zero, which is more than most sources manage. It is the reason the Alabama ballots of 1948 and 1964 are visible at all.
-
-The weaknesses run in the other direction. The set of states changes, from `r sum(p$year == 1864)` to `r sum(p$year == 2024)`, so early years are noisier than they look and every comparison across time is a comparison between different sets of states. Two-party share hides third parties, and 1912, 1968 and 1992 all look tamer here than they were. Shares are not votes: a five-point margin in Wyoming and a five-point margin in California are the same number, and nothing like the same event.
-
-Labels can be wrong while numbers are right, as 1960 demonstrates. Nineteenth-century totals rest on state records of varying quality, and post-1877 Southern totals rest on an electorate constructed by exclusion. And there is no turnout, no demographics, and nothing below the level of a state.
-
-Three questions stay open. Why the South realigned, and how much of it was racial policy against economic change, which is not answerable from aggregates of any kind. What level the modern sorting operates at, which Figure 4 rules out being regional without saying what it is. And why the battleground shrank in elections that themselves stayed close, which Figure 5 establishes without explaining.
-
-The voter in Alabama who could not vote for Truman was living in the extreme case of a general condition. For eighty years an entire region was conceded in advance, and the returns record that concession as ordinary arithmetic. The concession has since moved: it is no longer regional, it no longer has a name, and by 2024 it covered a larger share of the states than it did in 1960.
+Two stretch ideas point past the spreadsheet. Dave Leip's *Atlas* publishes county returns for modern elections; pull one battleground state's counties for 2024 and check whether a close state is close everywhere or an average of blowouts. And when the 2028 returns are certified, the package will grow by one election — refetch it and see whether the streak in Figure 1 extends.
 
 ## Sources
 
 **Data**
 
 - Jason Timm, *PresElectionResults*
-  (<https://github.com/jaytimm/PresElectionResults>), state series compiled from
-  per-election sources resting ultimately on Dave Leip's *Atlas of U.S.
-  Presidential Elections* and the official state canvasses.
+  (<https://github.com/jaytimm/PresElectionResults>), state series and national
+  popular and electoral vote, compiled from per-election sources resting
+  ultimately on Dave Leip's *Atlas of U.S. Presidential Elections* and the
+  official state canvasses.
 
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`pres_states_1864_2024.csv`](data/derived/pres_states_1864_2024.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `pres_states_1864_2024.csv` has an `other` column that is often missing rather than zero. Count the missing years. What is the difference between a third party getting no votes and nobody recording them?
-- Follow one state from the beginning of the series to the end. Write down every point where the party labels stop meaning what they meant before.
-- Compute the national two-party share for the earliest and latest years. They are close. Explain to somebody why that sameness is not evidence of stability.
-- Find the states missing from the early years. What has to be true about a state before it appears in a table of presidential returns?
-
-**Academic literature**
-
-- Carmines, E. G. and Stimson, J. A. (1989). *Issue Evolution: Race and the
-  Transformation of American Politics.* Princeton: Princeton University Press.
-- Key, V. O. Jr. (1949). *Southern Politics in State and Nation.* New York:
-  Alfred A. Knopf.
-- Kuziemko, I. and Washington, E. (2018). "Why Did the Democrats Lose the South?
-  Bringing New Data to an Old Debate." *American Economic Review* 108(10):
-  2830–2867.
-
-
+[`pres_states_1864_2024.csv`](data/derived/pres_states_1864_2024.csv), [`pres_national.csv`](data/derived/pres_national.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```
