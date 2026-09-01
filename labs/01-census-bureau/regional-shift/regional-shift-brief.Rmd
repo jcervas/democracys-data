@@ -1,5 +1,5 @@
 ---
-title: "Regional Population Shift and House Seats"
+title: "Regional Population Shift and House Seats, 1960–2020"
 type: brief
 subtitle: "Nobody proposed it, nobody voted on it, and no single decade announced it"
 author: "Democracy's Data"
@@ -36,7 +36,7 @@ The download is a single CSV of about a hundred kilobytes with one row per geogr
 
 Three cleaning decisions matter. Every population arrives as a quoted string with commas in it, like `"4,951,560"`, which the obvious read turns into a missing value for every number over 999; the build strips the separators first. Puerto Rico is typed `State` and sits *outside* the national total. The District of Columbia is typed `State`, sits *inside* the total, and has no seat, so it belongs in every population figure below and in none of the seat figures.
 
-`states.csv` carries, for each state and year: `pop`, `reps`, `repchg` (the Bureau's own change-this-decade column, carried through untouched), `region` and `division` from the Bureau's published hierarchy, and four rival definitions of the South (`south_census`, `south_confed`, `sunbelt`, `border_south`), side by side rather than resolved. `regions.csv` carries each region's `share` of population and `seat_share`. `seatchange.csv` reduces the window to one row per state: `reps_1960`, `reps_2020`, `change`. Here is one state, twice, six decades apart.
+`states.csv` carries, for each state and year: `pop`, `reps`, `repchg` (the Bureau's own change-this-decade column, carried through untouched), and `region` and `division` from the Bureau's published hierarchy. It also carries four rival definitions of the South (`south_census`, `south_confed`, `sunbelt`, `border_south`), side by side rather than resolved. `regions.csv` carries each region's `share` of population and `seat_share`. `seatchange.csv` reduces the window to one row per state: `reps_1960`, `reps_2020`, `change`. Here is one state, twice, six decades apart.
 
 ```{r one-record}
 ```
@@ -73,7 +73,7 @@ The state that carried the cost is the one that had the most to lose. **New York
 ```{r bars-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The `r nrow(moved)` states whose delegation changed size between `r Y1` and `r Y2`.** One signed bar per state fits the question because the question is who gained and who paid: bars right of the zero line took seats, bars left of it gave them up, and color is Census region. Four states take most of the gains: Florida `r sprintf("+%d", sc$change[sc$name == "Florida"])`, Texas `r sprintf("+%d", sc$change[sc$name == "Texas"])`, California `r sprintf("+%d", sc$change[sc$name == "California"])` and Arizona `r sprintf("+%d", sc$change[sc$name == "Arizona"])`. Four take most of the losses: New York `r n(sc$change[sc$name == "New York"])`, Pennsylvania `r n(sc$change[sc$name == "Pennsylvania"])`, Ohio `r n(sc$change[sc$name == "Ohio"])` and Illinois `r n(sc$change[sc$name == "Illinois"])`.
+**Figure 1. The `r nrow(moved)` states whose delegation changed size between `r Y1` and `r Y2`.** One signed bar per state fits the question, because the question is who gained and who paid. Bars right of the zero line took seats, bars left of it gave them up, and color is Census region. Four states take most of the gains: Florida `r sprintf("+%d", sc$change[sc$name == "Florida"])`, Texas `r sprintf("+%d", sc$change[sc$name == "Texas"])`, California `r sprintf("+%d", sc$change[sc$name == "California"])` and Arizona `r sprintf("+%d", sc$change[sc$name == "Arizona"])`. Four take most of the losses: New York `r n(sc$change[sc$name == "New York"])`, Pennsylvania `r n(sc$change[sc$name == "Pennsylvania"])`, Ohio `r n(sc$change[sc$name == "Ohio"])` and Illinois `r n(sc$change[sc$name == "Illinois"])`.
 
 **Both lists are geographically pure, and nobody arranged that.** The gainers are Southern and Western, the losers Northeastern and Midwestern, and no step in the procedure that produced them knows what a region is. The formula sees fifty population counts.
 
@@ -89,7 +89,9 @@ The electoral-vote table is arithmetic about states, not a claim about parties: 
 
 ### A ratchet, not a slosh
 
-There is an obvious objection. Seats bounce, and a state that gains three in one decade and returns three in the next has moved nothing in the end. If that is the story, `r n(gross)` is churn rather than direction. The file answers cleanly. Sum the per-decade columns, counting every seat any state gained at any reapportionment: `r n(sumdec)`. The sixty-year total is `r n(gross)`. The two can only differ by a state that gains a seat and later hands it back, so the gap is a count of reversals, and it is `r n(sum(GAPS))`.
+There is an obvious objection. Seats bounce, and a state that gains three in one decade and returns three in the next has moved nothing in the end. If that is the story, `r n(gross)` is churn rather than direction. The file answers cleanly.
+
+Sum the per-decade columns, counting every seat any state gained at any reapportionment: `r n(sumdec)`. The sixty-year total is `r n(gross)`. The two can only differ by a state that gains a seat and later hands it back, so the gap is a count of reversals, and it is `r n(sum(GAPS))`.
 
 ```{r reversals}
 ```
@@ -126,7 +128,7 @@ The most common objection to a regional finding is that the region is a choice, 
 
 **This file cannot say why anybody moved.** It has population and seats and nothing else: no births, no migration, no incomes, no housing costs, no party labels. It cannot distinguish a family arriving in Phoenix from Michigan from a family arriving from abroad, or either from Arizona families simply being larger.
 
-Nor can it certify the counts. The populations are printed as exact whole numbers, and the Supreme Court's 1999 sampling decision makes them exact as a matter of law, while the Bureau's own published coverage estimates say they are not exact in fact. The margins here are large enough that coverage error does not threaten them, since `r n(abs(ny$change))` seats is not an error bar.
+Nor can it certify the counts. The populations are printed as exact whole numbers, and the Supreme Court's 1999 sampling decision makes them exact as a matter of law. The Bureau's own published coverage estimates say they are not exact in fact. The margins here are large enough that coverage error does not threaten them, since `r n(abs(ny$change))` seats is not an error bar.
 
 And the file is coarse. Twelve observations, one per decade, so anything that happened between two censuses is invisible; four regions for fifty states, with the South the most contested of them. Testing three definitions of the South measures how much the finding depends on that choice. It does not make the category natural.
 
