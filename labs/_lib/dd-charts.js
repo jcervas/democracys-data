@@ -3,8 +3,22 @@
 // Every brief used to hand-write its D3: the same 760px frame, the same
 // scales, the same tooltip div, four hundred times. This file is that
 // boilerplate written once. A chapter cat()s a <div class="dd-fig"> and a
-// one-call <script>DD.fig("#id", {...})</script>, and the config carries only
+// one-call <script>DD.fig("#id", {...})<\/script>, and the config carries only
 // what is particular to the figure: the data, the fields, the labels.
+//
+// THAT BACKSLASH IS LOAD-BEARING, and so is every other <\/ in this file.
+// The briefs are rendered self-contained: pandoc reads this file off disk and
+// writes it into the page. It inlines the source verbatim -- the way it does
+// d3.v7.min.js -- only when the source contains no literal "<\/script"; find
+// one and it falls back to writing the whole library into a
+// src="data:text/javascript,..." attribute instead. That fallback still runs
+// in a browser, but it is worse in three ways: it near-doubles the payload
+// (percent-encoding), it hides the library from every grep and DOM-text check
+// the corpus runs (the page then looks as though DD were missing), and a
+// data: URL is the first thing any Content-Security-Policy blocks. Writing
+// the sequence as <\/ inside a string or a comment means the same thing to
+// JavaScript and keeps pandoc on the inline path. _lib/check-figures.py reads
+// the renders and says so if a literal one comes back.
 //
 // Plain D3 v7, no build step. Load order does not matter relative to this
 // file's own definition -- d3 is only touched when DD.fig() runs -- but both
@@ -107,7 +121,7 @@
   function tipHtml(spec, d) {
     if (typeof spec === "function") return spec(d);
     var out = [];
-    if (spec.title) out.push("<b>" + d[spec.title] + "</b>");
+    if (spec.title) out.push("<b>" + d[spec.title] + "<\/b>");
     (spec.fields || []).forEach(function (f) {
       var field = f[0], label = f[1] || field, fmt = DD.fmtByName(f[2]);
       var v = d[field];
@@ -307,10 +321,10 @@
           var rows = series.map(function (s) {
             var v = d[s.field];
             return v === null || v === undefined ? null :
-              "<span class=\"" + s.cls.replace(/(-fill)?$/, "-txt") + "\">■</span> " +
+              "<span class=\"" + s.cls.replace(/(-fill)?$/, "-txt") + "\">■<\/span> " +
               s.label + ": " + DD.fmtByName((cfg.y && cfg.y.fmt) || "f1")(v);
           }).filter(Boolean);
-          html = "<b>" + xfmt(d[cfg.x.field]) + "</b><br>" + rows.join("<br>");
+          html = "<b>" + xfmt(d[cfg.x.field]) + "<\/b><br>" + rows.join("<br>");
         }
         tip.show(html, e);
       })

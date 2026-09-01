@@ -26,6 +26,19 @@
    .dd-fallback to cover that. A chapter that draws with d3 and has no fallback
    in its render is a chapter that will arrive with holes.
 
+3. THE CHART LIBRARY EMBEDDED AS A data: URL RATHER THAN AS SOURCE.
+
+   dd_libs() writes two <script src> tags, and pandoc replaces each with the
+   file's own text -- unless that file contains a literal end-script tag, in
+   which case pandoc cannot write it between script tags and falls back to
+   src="data:text/javascript,<the whole file, percent-encoded>". The page
+   still works in a browser, so nothing about the fallback is visible: what
+   changes is that the library near-doubles in size, disappears from every
+   grep and DOM-text check (the render then looks as though DD were missing,
+   which is how this was first reported), and becomes the first thing any
+   Content-Security-Policy blocks. dd-charts.js therefore writes every such
+   sequence as <\\/, and this check is what notices if one comes back.
+
 Run from labs/:  python3 _lib/check-figures.py
 """
 import collections
@@ -42,6 +55,11 @@ DIV_ID = re.compile(r'<div id="([A-Za-z][\w-]*)"')
 # comment. Either form means the page draws itself.
 DRAWS = re.compile(r"d3js\.org|d3\.select\(")
 FALLBACK = 'class="dd-fallback"'
+# pandoc's fallback embedding, and the tail of dd-charts.js as pandoc leaves it
+# when the inline path is taken. A page that calls DD.fig() wants the second.
+DATA_URL_SCRIPT = re.compile(r'<script[^>]*\bsrc="data:text/javascript')
+CALLS_DD = re.compile(r'\bDD\.fig\(')
+DD_INLINE = "window.DD = DD"
 
 
 def main():
@@ -50,7 +68,7 @@ def main():
         print("no rendered briefs found — nothing to check")
         return 0
 
-    dupes, holes, checked = [], [], 0
+    dupes, holes, encoded, checked = [], [], [], 0
     for path in briefs:
         try:
             html = open(path, encoding="utf-8", errors="replace").read()
@@ -66,6 +84,10 @@ def main():
 
         if DRAWS.search(html) and FALLBACK not in html:
             holes.append(rel)
+
+        if CALLS_DD.search(html) and DD_INLINE not in html:
+            hit = DATA_URL_SCRIPT.search(html)
+            encoded.append((rel, "as a data: URL" if hit else "not at all"))
 
     print("1. the same figure emitted more than once")
     if dupes:
@@ -88,8 +110,19 @@ def main():
         print("   clean")
 
     print()
+    print("3. the chart library not written into the page as source")
+    if encoded:
+        for rel, how in encoded:
+            print("   %-58s %s" % (rel, how))
+        print("   pandoc took the data: URL path. Re-render these; if one "
+              "comes back, _lib/dd-charts.js has picked up a literal "
+              "end-script tag again -- write the sequence as <\\/")
+    else:
+        print("   clean")
+
+    print()
     print("%d rendered briefs checked" % checked)
-    return 1 if (dupes or holes) else 0
+    return 1 if (dupes or holes or encoded) else 0
 
 
 if __name__ == "__main__":
