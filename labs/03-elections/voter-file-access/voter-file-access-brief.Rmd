@@ -1,7 +1,7 @@
 ---
-title: "Public by Law, and You Still Cannot Have It"
+title: "Who Can Actually Get a State Voter File"
 type: brief
-subtitle: "Fifty-one jurisdictions, one downloadable voter file, and the only instrument in this book that cannot be handed to you"
+subtitle: "Public by law, and you still cannot have it: fifty-one official pages, one downloadable statewide list"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 3
@@ -16,134 +16,128 @@ dd_read_chunks("voter-file-access-code.R")
 ```{r setup, include=FALSE}
 ```
 
-This book has now gone and got three kinds of data, and each was hard in a different way.
+Every state's voter registration list is a public record. That is the law in all fifty states and the District of Columbia, and it is repeated so often that it sounds like an instruction: go and download it. This brief asks the question the sentence skips. Each jurisdiction publishes an official page telling you how to get its list. If you went to all fifty-one of those pages on one day, at how many could you actually get the file?
 
-The [census](../../01-census-bureau/census-access/census-access-brief.html) gives you too much: three open routes, and more than a dozen published figures for a single county's population, no two of them answering quite the same question. [Election returns](../county-returns/county-returns-brief.html) have no door at all — no federal agency counts votes, so you assemble fifty-one publications yourself.
+## The test
 
-The voter file is the third kind, and it is the one the other two do not prepare you for. **The list is public by law in every state.** There is no argument about that. And you still, mostly, cannot have it.
+The addresses come from the National Conference of State Legislatures, which keeps a fifty-state survey of who may obtain a voter list, what it contains, and what it may be used for. For each jurisdiction the survey carries a link labelled *"&lt;State&gt; Access/Purchase List"*, pointing at that state's own election-agency page. Those **`r FV("n_states")` links are the addresses tested here.**
 
-## Where the addresses come from
+On **`r FV("scan_date")`** every one of them was opened, one after another, and what happened at each was written down. Did it answer at all? What did the page turn out to be? Did it offer the file for download?
 
-The National Conference of State Legislatures keeps a fifty-state survey of who may obtain a voter list, what it contains, what is confidential and what it may be used for. For each jurisdiction it also carries a link labelled *"&lt;State&gt; Access/Purchase List"*, pointing at that state's own page.
+This is the right test because availability is the one question about voter files that reading the law cannot answer. What the file itself is, and the ballot-handling job its columns do, is the subject of the [voter-file chapter](../voter-files-source/voter-files-source-brief.html); this brief measures only the door. One division of labour holds throughout. **The legal facts in this brief are NCSL's**, and are cited to NCSL. **The retrievability facts are measured here**, and can be re-measured by anyone.
 
-Those **`r FV("n_states")` links are the addresses used here.** On **`r FV("scan_date")`** all `r FV("n_states")` of those pages were opened, one after another. What happened at each was written down: whether it answered at all, what it turned out to be, how big it was, and whether it offered the file for download.
+## The data
 
-The division of labour matters and holds throughout. **The legal facts in this chapter are NCSL's**, and are cited to NCSL. **The retrievability facts are measured here**, and can be re-measured by anyone.
+The scan produced five small tables, and every number below is computed from them. `funnel.csv` narrows the `r FV("n_states")` jurisdictions stage by stage, in `stage` and `states`. `link_rot.csv` names each address that failed, with the `outcome` it produced. `page_shape.csv` counts what the answering pages actually are, in `reading` and `states`. `claimed_downloads.csv` follows every link that claims to be a data file, recording `what_the_link_is`, `is_the_voter_list` and `bytes`. Behind them all sits `scan.csv`, one row per jurisdiction: the HTTP status, the size, and whether the page shows a login, an application or a fee.
+
+One more table was not scanned but compiled. `price.csv` lays the two published price lists for a statewide file side by side: the U.S. Election Assistance Commission's, in `eac_price_usd`, and Ballotpedia's July 2026 table, in `bp_price` and `bp_price_usd`. Ballotpedia's column is kept as the prose it prints, because for `r FV("bp_not_a_number")` jurisdictions the price is a rule rather than a single amount: per record, per staff hour, by subscription. Flattening a rule into a dollar figure would invent the figure.
+
+Two cleaning decisions matter. Nothing was retried or repaired: a page that refused an automated request on the day is recorded as refusing, because that refusal is a finding rather than a nuisance. And the results are frozen at the scan date. A brief whose numbers changed every time it was rebuilt would be reporting the weather, not a measurement.
 
 > **Before you read on, commit to a number.** Every state's registration list is
 > a public record. Fifty-one jurisdictions each publish a page telling you how
 > to get theirs. **On how many of those pages can you actually download the
 > file?** Write the number down.
 
-## The funnel
+## What it says about democracy
 
-```{r funnelfig, fig.cap="What happened at fifty-one addresses on one day."}
+```{r funnelfig}
 ```
+
+**Figure 1. What happened at fifty-one addresses on one day.** A funnel fits this question because the answer narrows in stages: every jurisdiction, then the pages that answered, then the pages linking any file, then the file that really is the voter list. The finding is how few survive each cut.
 
 ```{r funnel}
 ```
 
-**`r FV("n_ok")` of `r FV("n_states")` answered.** `r FV("n_blocked")` refused a script outright with HTTP 403 — the page exists and a person with a browser can read it, but an automated request is turned away. And `r FV("n_rot")` did not resolve at all:
+**`r FV("n_ok")` of `r FV("n_states")` addresses answered.** `r FV("n_blocked")` refused an automated request outright with HTTP 403: the page exists, and a person with a browser can probably read it, but a script is turned away. And `r FV("n_rot")` did not resolve at all:
 
 ```{r rot}
 ```
 
-That is **`r pc(FV("rot_pct"), 1)`% of the survey's own links** dead or unreachable on the day they were tried. The survey is careful work; the pages underneath it move.
+That is `r pc(FV("rot_pct"), 1)`% of the survey's own links dead or unreachable on the day they were tried. The survey is careful work; the pages underneath it move.
 
-## Asking is the normal case
-
-Of the `r FV("n_ok")` addresses that answered, here is what they are:
+Of the `r FV("n_ok")` pages that answered, here is what they are:
 
 ```{r shape}
 ```
 
-**`r FV("n_app")` of `r FV("n_ok")` present an application or a request form**, `r FV("n_fee")` mention a fee or a purchase, `r FV("n_login")` want you to log in, and `r FV("n_pdf")` are a PDF to print and post. This is the ordinary condition of the American voter file: not secret, not published — **applied for.**
+**Asking is the normal case.** `r FV("n_app")` of the `r FV("n_ok")` answering pages present an application or a request form, `r FV("n_fee")` mention a fee or a purchase, `r FV("n_login")` want a login, and `r FV("n_pdf")` are a PDF to print and post. This is the ordinary condition of the American voter file: not secret, not published — applied for.
 
-## Three links, and what is behind them
-
-Only `r FV("n_linked")` of the answering pages link a data file of any kind. A hyperlink ending in `.txt` is a fact about HTML, so all three were opened:
+Only `r FV("n_linked")` of the answering pages link a data file of any kind, and a link ending in `.txt` is a fact about HTML, so all three were opened:
 
 ```{r claims}
 ```
 
-**Two of the three are not the voter file.** Virginia's is a directory of candidates and committees. Maine's has one row per absentee ballot, carrying request type, issue date, return date and status. That is a genuine and interesting file, and it is not a registration list.
+Two of the three are not the voter list. Virginia's is a directory of candidates and committees. Maine's carries one row per absentee ballot — a real and interesting file, posted openly, and not what the page was asked for. A scan that only counted whether a link existed would have scored both as successes.
 
-So the answer to the question above is **`r FV("n_true_download")`.** One jurisdiction of fifty-one puts its statewide voter list at an address a script can fetch: **North Carolina**, `r n(FV("nc_mb"))` MB, no login, no form, no fee. It is the file the [vote-targeting chapter](../vote-targeting/vote-targeting-brief.html) is built on, and now you know why that chapter is about North Carolina.
+So the answer to the question above is **`r FV("n_true_download")`**. One jurisdiction of fifty-one puts its statewide voter list at an address anyone can fetch: **North Carolina**, `r n(FV("nc_mb"))` MB, no login, no form, no fee. That gap between *public* and *obtainable* is not a paperwork curiosity. It decides who can check claims about the electorate. Campaigns and vendors, who pay and wait, can; a citizen or a student mostly cannot. Much of what nobody knows about American elections lives in that gap.
 
-## The file nobody asked about
-
-Maine's is worth a paragraph of its own, because it is the opposite failure.
-
-Nothing here was looking for absentee records. The scan asked every state for its *registration list*. Maine's page answered with **`r n(FV("me_bytes"))` bytes** of person-level absentee data: one row per ballot, carrying a voter record number, a party, a municipality, and the date the ballot came back. It is posted openly, requires nothing of the person downloading it, and is not what the page was asked for.
-
-The lesson is not that Maine did something wrong; the state publishes what its law tells it to publish. It is that **"what is available" and "what you went looking for" are different questions**, and a scan that only counted whether a link existed would have scored Maine as a success.
-
-## What it costs, and why nobody can tell you exactly
-
-**The price of a statewide voter file runs from nothing to tens of thousands of dollars, and the two published tables of it disagree.** `r FV("n_fee")` of the pages above mention a fee, and nothing measured here says how much. Two compilations do name them, for all fifty-one jurisdictions: the U.S. Election Assistance Commission, and Ballotpedia as of July 2026. Read side by side they are a lesson in what a price is.
+What asking costs is its own measurement problem, because the two published price tables disagree:
 
 ```{r price-spread}
 ```
 
-**They agree on `r FV("n_same")` jurisdictions and differ on `r FV("n_differ")` of the `r FV("n_comparable")` where both print one plain number.** Some of those differences are a few dollars. Others are not.
+They agree on `r FV("n_same")` jurisdictions and differ on `r FV("n_differ")` of the `r FV("n_comparable")` where both print one plain number. Some differences are a few dollars. Others are not:
 
 ```{r price-gaps}
 ```
 
-`r FV("eac_max_state")` is the extreme case, and it matters more than the others because it is the number everybody quotes. The federal document opens by saying the price of a statewide voter file ranges from `$0` to `$`r n(FV("eac_max"))``, and that upper figure is `r FV("eac_max_state")`'s. The 2026 compilation prices the same list at `$`r n(PCMP$bp_price_usd[PCMP$state == FV("eac_max_state")])``.
-
-**The federal table prints no date anywhere on it.** Eleven pages, a stable government address, no year. The file itself records one: it was created on `r format(as.Date(FV("eac_made")), "%d %B %Y")`, which the chapter can say only because the date is in the document's own properties rather than on any page a reader sees. A price list with no date on it does not look stale, and this one is six years old.
-
-**And a price is often not a price.** For `r FV("bp_not_a_number")` jurisdictions the 2026 table cannot give a single amount, because the state does not charge one.
+`r FV("eac_max_state")` matters most, because its `$`r n(FV("eac_max"))`` is the number everybody quotes as the top of the national range. The 2026 compilation prices the same list at `$`r n(PCMP$bp_price_usd[PCMP$state == FV("eac_max_state")])``. The federal table prints no date anywhere on it; the file's own properties record that it was made in `r format(as.Date(FV("eac_made")), "%B %Y")`, which makes it six years old and not visibly stale. And for `r FV("bp_not_a_number")` jurisdictions a price is not a price at all:
 
 ```{r price-prose}
 ```
 
-Each of those is a rule rather than a figure, and the federal table has one number for every one of them. Arizona and Texas charge by the record. Michigan charges for staff time, Tennessee prices paper and digital differently, and two states sell a subscription rather than a file. Flatten any of that into a dollar amount and you have made the amount up.
+One row of these tables the scan can settle itself. The EAC prices North Carolina at nothing and the 2026 table at `$`r n(price$bp_price_usd[price$state == "North Carolina"])``. The scan went and got the file: `r n(FV("nc_mb"))` MB, nothing signed, nothing paid. On that one jurisdiction the measurement beats both compilations, which is the whole argument for making one.
 
-**One row of these tables this chapter can settle itself.** The EAC prices North Carolina at nothing and the 2026 table at `$`r n(price$bp_price_usd[price$state == "North Carolina"])``. The scan above went and got the file: `r n(FV("nc_mb"))` MB, no login, no form, nothing paid. On that one jurisdiction the measurement beats both compilations, which is the whole argument for making one.
+## What this brief cannot tell you
 
-## What this book had to do
+**It prices nothing itself.** The two tables above are other people's counting, reproduced and compared. Nothing here was paid and no state was asked what it charges, which is why the `r FV("n_differ")` disagreements are reported rather than resolved.
 
-This chapter cannot end with instructions, because this book did not follow any.
+**It is not a legal summary.** Who may request a list, what a state redacts, and what uses are permitted are NCSL's subject and are cited to NCSL, not restated on this brief's authority.
 
-Four chapters in this book use a voter file: [voter-files](../voter-files/voter-files-brief.html), [false-matches](../false-matches/false-matches-brief.html), [bisg-check](../../06-putting-data-together/bisg-check/bisg-check-brief.html) and [rpv](../../06-putting-data-together/rpv/rpv-brief.html). It is a Georgia county extract that arrived as working data in a redistricting case. It was not downloaded. It could not have been: Georgia is one of the `r FV("n_ok")` that answers with a form.
+**It is one day.** The scan is dated `r FV("scan_date")`, and `r pc(FV("rot_pct"), 1)`% of the links were already broken when it ran, which tells you how fast this surface moves. Re-running it and reading what changed would itself be a finding.
 
-Two consequences, and both are stated here rather than hidden:
+**And a 403 is not a refusal of access.** Ten states turned away an automated request. A person with a browser may well be able to read those pages and follow the process on them. What is measured here is what a script meets — the honest scope of a scan, not a claim about what a determined citizen can do.
 
-**Those four chapters do not rebuild anywhere but on the machine that made them.** Their scripts read an absolute path into a private working directory. Every other chapter in this book fetches its own data or reads a committed capture; these four cannot, because the file is a list of named people and is not ours to redistribute. The ANES chapters have the same shape for a gentler reason. That survey asks people to take the file from ANES, and those chapters say so in the same way.
+## What you should have learned
 
-**This is the only instrument in the book that cannot be handed to a reader.** Everything else here is public, free and re-fetchable: the census files, the returns, the FEC filings, the roll calls. The voter file is public too, in the strict legal sense that made it obtainable in litigation. It is the one where that word does not mean you can have it.
+- A voter file is public by law in all `r FV("n_states")` jurisdictions and downloadable in `r FV("n_true_download")`: North Carolina, `r n(FV("nc_mb"))` MB, no login, no form, no fee.
+- Asking is the normal case: `r FV("n_app")` of the `r FV("n_ok")` answering pages present an application or request form, and `r FV("n_fee")` mention a fee.
+- `r FV("n_rot")` of the survey's `r FV("n_states")` links — `r pc(FV("rot_pct"), 1)`% — were dead or unreachable on the day of the scan.
+- Of `r FV("n_linked")` pages linking any data file, only `r FV("n_true_download")` link the voter list; a link that exists is not evidence of what is behind it.
+- The two published price tables disagree on `r FV("n_differ")` of the `r FV("n_comparable")` jurisdictions where both give one plain number, and the federal one carries no date.
 
-## What this chapter cannot tell you
+## Extensions
 
-**It does not price anything itself.** The two tables above are other people's counting, reproduced and compared. Nothing here was paid, and no state was asked what it charges. The amounts sit in statutes, fee schedules and request forms. Two careful compilations went to those sources and came back with different answers for `r FV("n_differ")` jurisdictions, which is the honest reading of the section above.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-**It is not a legal summary.** Who may request a list, what a state redacts, and what uses are permitted are NCSL's subject and are cited to NCSL. Restating a statute is exactly the kind of claim this book asks you not to take on trust, and it is not taken on trust here.
+- `funnel.csv` narrows fifty-one jurisdictions stage by stage in `stage` and `states`. Read it top to bottom. At which stage does the public's access actually disappear?
+- `page_shape.csv` counts, in `reading` and `states`, how many official pages present a form rather than a file. What is the difference, for a citizen, between public and available?
+- `link_rot.csv` records each failed address in `outcome`. Count the kinds of failure. What does each kind say about how these pages are maintained?
+- `claimed_downloads.csv` marks each linked file in `is_the_voter_list`, with its `bytes`. Work out what someone studying all fifty states would have to do instead of downloading.
+- `price.csv` puts two price tables side by side. Sort by the gap between `eac_price_usd` and `bp_price_usd`. Which jurisdictions would you check yourself before quoting either number?
+- `price.csv` also marks, in `bp_price_is_one_number`, the jurisdictions whose charge is a rule rather than an amount, spelled out in `bp_price`. What would you have to decide before putting those rows in a column of dollars?
 
-**It is one day.** The scan is dated `r FV("scan_date")`, and `r pc(FV("rot_pct"), 1)`% of the links were already broken when it ran, which tells you how fast this surface moves. The results are frozen for that reason: a chapter whose numbers change every time somebody knits it is reporting the weather, not a measurement. Re-running the scan and reading what changed would itself be a finding.
-
-**And a 403 is not a refusal of access.** Ten states turned away an automated request. A person with a browser may well be able to read those pages and follow the process on them. What is measured here is what a *script* meets, which is the honest scope of a scan and not a claim about what a citizen can do.
+Two stretch ideas point past the spreadsheet. Open your own state's page, at the address recorded for it in `scan.csv`, and note what a person with a browser meets that a script did not. That is one row of the measurement, re-run. And fetch North Carolina's file yourself, then compare its size against the `bytes` recorded here to see whether the list has grown.
 
 ## Sources
 
+**Data**
+
 - National Conference of State Legislatures. *Access To and Use Of Voter
-  Registration Lists.* The fifty-state survey, its five narrative columns, and
+  Registration Lists.* The fifty-state survey, its narrative columns, and
   the per-jurisdiction "Access/Purchase List" links used as the scan's
   addresses.
   <https://www.ncsl.org/elections-and-campaigns/access-to-and-use-of-voter-registration-lists>
 - The `r FV("n_states")` state and District election-agency pages that survey
   links to, each requested on `r FV("scan_date")`. Every address, status,
-  content type and byte count is recorded per jurisdiction alongside this
-  chapter.
+  content type and byte count is recorded per jurisdiction in `scan.csv`.
 - U.S. Election Assistance Commission. *Availability of State Voter File and
-  Confidential Information.* Eleven pages, captured 29 August 2026. The price
-  and availability table used above is its page 2. **The document prints no
-  date**; the `r format(as.Date(FV("eac_made")), "%B %Y")` given for it above
-  is the creation date recorded in the file's own properties. Its own source
-  line reads "National Conference of State Legislatures, United States
-  Elections Project, State Election Officials", so it is a compilation of
-  compilations rather than a federal collection.
+  Confidential Information.* Eleven pages, captured 29 August 2026. **The
+  document prints no date**; the `r format(as.Date(FV("eac_made")), "%B %Y")`
+  given above is the creation date in the file's own properties. Its source
+  line names NCSL and others, so it is a compilation of compilations rather
+  than a federal collection.
   <https://www.eac.gov/sites/default/files/voters/Available_Voter_File_Information.pdf>
 - Ballotpedia. *Availability of state voter files*, the version dated July
   2026, captured 29 August 2026. Fifty-one jurisdictions with a price column
@@ -165,19 +159,7 @@ Two consequences, and both are stated here rather than hidden:
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`claimed_downloads.csv`](data/derived/claimed_downloads.csv), [`funnel.csv`](data/derived/funnel.csv), [`link_rot.csv`](data/derived/link_rot.csv), [`page_shape.csv`](data/derived/page_shape.csv), [`price.csv`](data/derived/price.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `funnel.csv` narrows fifty-one jurisdictions down stage by stage. Read it top to bottom. At which stage does the public's access actually disappear?
-- `page_shape.csv` counts how many official pages present a form rather than a file. What is the difference, for a citizen, between public and available?
-- `link_rot.csv` records what happened at each address. Count the dead ones. What does that say about how these files are maintained?
-- `claimed_downloads.csv` lists the links that really do hand you a file, with `bytes`. Only a few states do this. Work out what someone studying all fifty would have to do instead.
-- `price.csv` puts two published price tables side by side. Sort by the gap between `eac_price_usd` and `bp_price_usd`. Which jurisdictions would you have to go and check yourself before quoting either number?
-- `price.csv` marks the jurisdictions whose price is not a single amount in `bp_price_is_one_number`, and `bp_price` says what they charge instead. Read those rows. What would a researcher have to decide before putting any one of them in a column of dollars?
+[`claimed_downloads.csv`](data/derived/claimed_downloads.csv), [`funnel.csv`](data/derived/funnel.csv), [`link_rot.csv`](data/derived/link_rot.csv), [`page_shape.csv`](data/derived/page_shape.csv), [`price.csv`](data/derived/price.csv), [`scan.csv`](data/derived/scan.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

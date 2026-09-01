@@ -71,18 +71,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- clean-gotv
-o <- g[, c("tactic", "unit", "contacts_per_vote", "cost_per_vote", "effective",
-           "cost_per_contact")]
-names(o) <- c("tactic", "one contact is", "contacts per vote", "cost per vote",
-              "effective", "cost per contact")
-o
-
-## ---- one-record
-o <- e[e$tactic %in% c(CAN, VOL), c("tactic", "contacts_per_vote", "cost_per_vote")]
-names(o) <- c("tactic", "contacts per additional vote", "cost per additional vote")
-o
-
 ## ---- whole-file
 o <- g[, c("tactic", "contacts_per_vote", "cost_per_vote", "reliability",
            "effective")]
@@ -119,25 +107,6 @@ data.frame(
   `contacts per vote` = c(r$contacts_per_vote, rx$contacts_per_vote),
   `cost per vote` = c(d(r$cost_per_vote), d(rx$cost_per_vote)),
   check.names = FALSE)
-
-## ---- derived
-o <- ec[, c("tactic", "contacts_per_vote", "cost_per_vote", "cost_per_contact")]
-o$check <- round(o$cost_per_vote / o$contacts_per_vote, 2)
-names(o) <- c("tactic", "contacts per vote", "cost per vote",
-              "cost per contact", "cost per vote / contacts per vote")
-o
-
-## ---- ranks
-o <- data.frame(tactic = ec$tactic,
-                rank_by_effectiveness = rank(ec$contacts_per_vote),
-                rank_by_cost = rank(ec$cost_per_vote))
-o
-
-## ---- cpc
-o <- ec[order(ec$contacts_per_vote), c("tactic", "contacts_per_vote", "cost_per_contact")]
-o$cost_per_contact <- d2(o$cost_per_contact)
-names(o) <- c("tactic", "contacts per vote", "cost per contact")
-o
 
 ## ---- slope-prep
 RK <- data.frame(
@@ -266,26 +235,6 @@ o <- o[order(-votes_all_in), ]
 names(o) <- c("if you spent the whole budget on...", "additional votes")
 o
 
-## ---- targets
-tg <- c(10000, 30000, 100000)
-data.frame(
-  `additional votes wanted` = n(tg),
-  `at the cheapest rate` = d(tg * min(e$cost_per_vote)),
-  `by canvassing` = d(tg * cpv(CAN)),
-  check.names = FALSE)
-
-## ---- constrained
-# The crossover is computed, not chosen, so the rows either side of it have to be
-# too -- hard-coding a top row stopped working the moment the contact rate came
-# from the book instead of from us.
-hrs <- sort(c(1000, 2000, 4000, round(crossover), round(crossover * 1.3)))
-data.frame(
-  `volunteer hours available` = n(hrs),
-  `votes from volunteers` = n(floor(hrs * CALLS / cnt(VOL))),
-  `total votes, budget spent` = n(sapply(hrs, mix)),
-  `binding constraint` = ifelse(hrs < crossover, "volunteers", "money"),
-  check.names = FALSE)
-
 ## ---- cross-prep
 # The horizontal axis has to reach past the crossover or the vertical line marking
 # it lands off the chart. Derived from crossover for the same reason as above.
@@ -379,112 +328,6 @@ text(2600, V0 * 0.86, "votes bought by canvassing", col = "white", cex = 0.76,
 mtext(paste0("Assumes ", CALLS, " completed conversations an hour and the whole ",
              d(BUDGET), " spent either way."), side = 1, line = 3.4, cex = 0.68,
       col = "#555555")
-
-## ---- wage
-ws <- c(0, 10, 15, 25)
-data.frame(
-  `volunteer time valued at` = paste0(d(ws), "/hour"),
-  `volunteer phones, cost per vote` = d2(vol_at(ws)),
-  `canvassing, cost per vote` = d2(rep(cpv(CAN), length(ws))),
-  `cheaper option` = ifelse(vol_at(ws) < cpv(CAN), "volunteer phones", "canvassing"),
-  check.names = FALSE)
-
-## ---- d3-budget
-# contacts_per_vote is only read back for the volunteer-phone row, where the wage
-# adjustment applies. Election festivals have none (they are measured per
-# precinct), and a bare NA here would emit invalid JSON, so it goes out as 0.
-rows <- paste(sprintf('{"t":"%s","c":%d,"n":%d}',
-                      e$tactic, e$cost_per_vote,
-                      ifelse(is.na(e$contacts_per_vote), 0, e$contacts_per_vote)),
-              collapse = ",")
-cat(sprintf('
-<div id="gv" style="position:relative;margin:1em 0">
- <div style="margin-bottom:8px;font:12px inherit">
-  <label>Budget: <b><span id="bl">$250,000</span></b>&nbsp;
-   <input id="bs" type="range" min="25000" max="2000000" step="25000" value="250000" style="vertical-align:middle;width:230px"></label>
-  &nbsp;&nbsp;
-  <label><input id="wc" type="checkbox"> value volunteer time at $15/hour</label>
- </div>
-</div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const T=[%s], CALLS=%d;
-const W=760,H=330,M={t:12,r:70,b:34,l:230};
-const svg=d3.select("#gv").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().range([M.l,W-M.r]);
-const y=d3.scaleBand().range([M.t,H-M.b]).padding(0.2);
-const gx=svg.append("g").attr("transform",`translate(0,${H-M.b})`);
-const gy=svg.append("g").attr("transform",`translate(${M.l},0)`);
-const bars=svg.append("g"), labs=svg.append("g");
-const fmt=d3.format(",");
-function draw(){
-  const B=+d3.select("#bs").property("value");
-  const wage=d3.select("#wc").property("checked")?15:0;
-  d3.select("#bl").text("$"+fmt(B));
-  const D=T.map(r=>{
-    const cost=r.t.indexOf("volunteer")>=0 ? r.c + r.n*wage/CALLS : r.c;
-    return {k:r.t, v:Math.floor(B/cost), cost:cost};
-  }).sort((a,b)=>b.v-a.v);
-  x.domain([0,d3.max(D,q=>q.v)*1.1]); y.domain(D.map(q=>q.k));
-  gx.transition().duration(400).call(d3.axisBottom(x).ticks(6).tickFormat(fmt));
-  gy.transition().duration(400).call(d3.axisLeft(y).tickSize(0))
-    .selectAll("text").attr("font-size","11px");
-  bars.selectAll("rect").data(D,q=>q.k).join(
-    en=>en.append("rect").attr("x",M.l).attr("rx",2).attr("y",q=>y(q.k)).attr("width",0),
-    u=>u, ex=>ex.remove())
-   .transition().duration(500)
-    .attr("y",q=>y(q.k)).attr("height",y.bandwidth())
-    .attr("width",q=>x(q.v)-M.l)
-    .attr("fill",q=>q.k.indexOf("volunteer")>=0?"#C41230":"#2c7fb8");
-  labs.selectAll("text").data(D,q=>q.k).join(
-    en=>en.append("text").attr("font-size","11px").attr("fill","#555"),
-    u=>u, ex=>ex.remove())
-   .transition().duration(500)
-    .attr("x",q=>x(q.v)+6).attr("y",q=>y(q.k)+y.bandwidth()/2+4)
-    .text(q=>fmt(q.v)+" votes  ($"+q.cost.toFixed(0)+"/vote)");
-}
-draw();
-d3.select("#bs").on("input",draw);
-d3.select("#wc").on("change",draw);
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Move the budget; the ranking does not change, only the scale. Tick the box to
-count volunteer labor as a cost, and watch the top two swap.</p>
-', rows, CALLS))
-
-## ---- static-bars
-v0 <- floor(BUDGET / e$cost_per_vote)
-v1 <- floor(BUDGET / ifelse(e$tactic == VOL, vol_at(15), e$cost_per_vote))
-o  <- order(v0)
-par(mar = c(4, 12, 1, 2))
-bp <- barplot(rbind(v0[o], v1[o]), beside = TRUE, horiz = TRUE,
-              names.arg = rep("", length(o)), col = c("#2c7fb8", "#C41230"),
-              border = NA, xlab = paste("additional votes bought with", d(BUDGET)))
-axis(2, at = colMeans(bp), labels = sub("commercial telemarketer", "commercial",
-     e$tactic[o]), las = 1, cex.axis = 0.72, tick = FALSE)
-legend("bottomright", c("volunteer time free", "volunteer time at $15/hour"),
-       fill = c("#2c7fb8", "#C41230"), border = NA, bty = "n", cex = 0.75)
-
-## ---- provenance
-data.frame(
-  question = c("Who collected it?", "Who was required to report anything?",
-               "How many experiments are behind a row?",
-               "Which ones, run where, in what years?",
-               "What is the uncertainty on a number?",
-               "What decided whether an experiment counted?"),
-  `in the summary table` = c(
-    "Two researchers, from the experimental literature", "Nobody",
-    "Not recorded", "Not recorded", "Not recorded", "Not recorded"),
-  `in the appendices` = c(
-    "same", "same",
-    "Recorded: 59, 130, 40",
-    "Recorded, study by study",
-    "Recorded: SE on each, CI on each pooled estimate",
-    "Recorded: two stated exclusion rules"),
-  check.names = FALSE)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt"), tone = "frozen"))

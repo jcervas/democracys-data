@@ -121,18 +121,6 @@ SCP     <- SC[SC$pairs > 0, ]
 SMALL_N <- as.numeric(fx("rate_small_n"))
 SMALL_R <- as.numeric(fx("rate_small"))
 
-## ---- shape-fm
-data.frame(
-  stage = c("The 21 county extracts", "One key per record",
-            "Distinct keys", "Keys held by more than one registrant",
-            "What ships in data/keys.csv"),
-  rows = c(nn(NJN), nn(NJN), nn(kv(CCK, "keys")), nn(kv(CCK, "dup_keys")),
-           nn(nrow(KY))),
-  a_row_is = c("one registration, 28 columns",
-               "one registration, six columns and a key",
-               "one name-and-birth-date, however many people hold it",
-               "one collision", "one matching rule, with its collision counts"))
-
 ## ---- birthday-d3
 # ---------------------------------------------------------------------------
 # THE EXACT CURVE, not the exponential approximation. Probabilities are
@@ -284,17 +272,6 @@ text(dE$n + 2.5, 100 * dE$p + 7,
      adj = 0, cex = 0.62, col = "#444444")
 text(XMAX - 1, 53, "even odds", adj = 1, cex = 0.6, col = "#666666")
 
-## ---- pairs-table
-# 366 is in the table because it is the only row where the probability is
-# genuinely 1. Every row above it is printed as ">99.9%" rather than "100.0%"
-# when it rounds that way, which is the point of including it.
-np <- c(10, 20, 23, 50, 100, 366)
-data.frame(
-  people = nn(np),
-  pairs  = nn(choose(np, 2)),
-  `chance of a shared birthday` = bpct(np),
-  check.names = FALSE)
-
 ## ---- cck-table
 data.frame(
   quantity = c("Registration records", "Distinct first+last+DOB keys",
@@ -372,84 +349,6 @@ for (i in seq_len(nrow(o))) {
 }
 mtext("red: the key Crosscheck actually used", side = 3, line = 0.2,
       adj = 0, cex = 0.6, col = "#C41230")
-
-## ---- xc-table
-data.frame(
-  quantity = CC$quantity,
-  value = nn(CC$value))
-
-## ---- scaling-d3
-# Real subsamples of the real file, not a model: draw n records at random,
-# count the collisions that actually occur, repeat. Zero-collision draws are
-# kept in the data but the log axis starts above them.
-s <- SC[SC$pairs > 0, ]
-rows <- paste(sprintf('{"n":%d,"r":%.3f,"p":%.0f,"ns":"%s","rs":"%s","psx":"%s"}',
-                      s$n, s$per100k, s$pairs, nn(s$n), pc(s$per100k, 1),
-                      nn(round(s$pairs))), collapse = ",")
-cat(sprintf('
-<div id="scal" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], SMALLN=%d;
-const W=760,H=360,M={t:26,r:24,b:46,l:60};
-const svg=d3.select("#scal").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLog().domain([1e5,8e6]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,52]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).ticks(5,"~s"));
-svg.append("g").attr("transform","translate("+M.l+",0)").call(d3.axisLeft(y));
-svg.append("text").attr("x",(W+M.l)/2).attr("y",H-8).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("records in the pool being searched (log scale)");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",15).attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("false matches per 100,000 records");
-svg.append("path").datum(D).attr("fill","none").attr("stroke","#C41230")
-  .attr("stroke-width",2.4).attr("d",d3.line().x(d=>x(d.n)).y(d=>y(d.r)));
-const tip=d3.select("#scal").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.n)).attr("cy",d=>y(d.r)).attr("r",5).attr("fill","#C41230")
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html("<b>"+d.ns+" records</b><br>"+d.psx+
-      " colliding pairs<br>"+d.rs+" per 100,000")
-      .style("left",Math.min(d3.pointer(e,this.parentNode)[0]+14,W-220)+"px")
-      .style("top",(d3.pointer(e,this.parentNode)[1]-6)+"px");
-  }).on("mouseleave",()=>tip.style("opacity",0));
-const a=D.find(d=>d.n===SMALLN), b=D[D.length-1];
-svg.append("text").attr("x",x(b.n)).attr("y",y(b.r)-14).attr("text-anchor","end")
-  .attr("font-size","11.5px").attr("font-weight","600")
-  .text("whole state: "+b.rs+" per 100,000");
-svg.append("circle").attr("cx",x(a.n)).attr("cy",y(a.r)).attr("r",5.5)
-  .attr("fill","none").attr("stroke","#111").attr("stroke-width",1.6);
-svg.append("text").attr("x",x(a.n)+10).attr("y",y(a.r)-9).attr("font-size","11.5px")
-  .attr("fill","#444").text("one large county: "+a.rs+" per 100,000");
-})();
-</script>', rows, SMALL_N))
-
-## ---- scaling-static
-s <- SC[SC$pairs > 0, ]
-par(mar = c(4.0, 4.6, 1.0, 1.2), mgp = c(2.6, 0.7, 0))
-plot(log10(s$n), s$per100k, type = "o", pch = 19, col = "#C41230", lwd = 2.2,
-     cex = 0.9, axes = FALSE, ylim = c(0, 52),
-     xlab = "records in the pool being searched (log scale)",
-     ylab = "false matches per 100,000 records")
-at <- c(1e5, 3e5, 1e6, 3e6, 1e7)
-axis(1, at = log10(at), labels = c("100k", "300k", "1M", "3M", "10M"),
-     cex.axis = 0.75, tcl = -0.25)
-axis(2, las = 1, cex.axis = 0.75, tcl = -0.25)
-box(bty = "l")
-b <- s[nrow(s), ]; a <- s[s$n == SMALL_N, ]
-text(log10(b$n), b$per100k - 3.6, sprintf("whole state: %s per 100,000", pc(b$per100k)),
-     adj = 1, cex = 0.66, font = 2)
-points(log10(a$n), a$per100k, pch = 1, cex = 1.8, lwd = 1.4)
-# Anchored to the right of the text and set well above the marker, so the
-# label clears the curve rising to its right.
-text(log10(a$n) - 0.04, a$per100k + 7.5,
-     sprintf("one large county:\n%s per 100,000", pc(a$per100k)),
-     adj = 1, cex = 0.66, col = "#444444")
 
 ## ---- calendar-d3
 # A year is a cycle, so it is drawn as one: 366 spokes, one per calendar date,
@@ -535,130 +434,6 @@ text(0.08, rr[1] + 0.07, sprintf("1 January: %s", nn(MD$n[1])), adj = 0,
      cex = 0.7, font = 2, col = "#C41230")
 text(0, 0.03, "dashed ring =", cex = 0.62, col = "#666666")
 text(0, -0.06, "an even spread", cex = 0.62, col = "#666666")
-
-## ---- years-d3
-# A needle plot on a log axis, because the quantity to be shown spans from one
-# record to well over a hundred thousand and the interesting features live at
-# both ends. The smooth is a loess through the plausible range only: the null
-# for an electorate's birth years is an age structure, not a flat line, so a
-# departure only counts as an anomaly if it departs from a smooth curve.
-YB <- read.csv("data/derived/birthyears.csv", stringsAsFactors = FALSE)
-fit <- loess(log10(n) ~ year, YB[YB$year >= 1930 & YB$year <= 2005, ], span = 0.4)
-YB$sm <- NA
-ok <- YB$year >= 1930 & YB$year <= 2005
-YB$sm[ok] <- predict(fit, YB$year[ok])
-rows <- paste(sprintf('{"y":%d,"n":%d,"ns":"%s","s":%s}', YB$year, YB$n, nn(YB$n),
-                      ifelse(is.na(YB$sm), "null", sprintf("%.4f", YB$sm))),
-              collapse = ",")
-cat(sprintf('
-<div id="yrs" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], SENTN=%d, SENTY=%d;
-const W=760,H=340,M={t:52,r:18,b:42,l:56};
-const svg=d3.select("#yrs").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([1899,2010]).range([M.l,W-M.r]);
-const y=d3.scaleLog().domain([1,200000]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickFormat(d3.format("d")));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).ticks(5,"~s"));
-svg.append("text").attr("x",(W+M.l)/2).attr("y",H-6).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("birth year on the registration record");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2)
-  .attr("y",14).attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("registrants (log scale)");
-const tip=d3.select("#yrs").append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;"+
- "border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.selectAll("line.n").data(D).join("line").attr("class","n")
-  .attr("x1",d=>x(d.y)).attr("x2",d=>x(d.y)).attr("y1",y(1)).attr("y2",d=>y(Math.max(d.n,1)))
-  .attr("stroke","#4a6785").attr("stroke-width",3.4)
-  .on("mousemove",function(e,d){
-    tip.style("opacity",1).html("<b>"+d.y+"</b><br>"+d.ns+" registrants<br>age "+(2026-d.y))
-      .style("left",Math.min(d3.pointer(e,svg.node())[0]+14,W-190)+"px")
-      .style("top",(d3.pointer(e,svg.node())[1]-6)+"px");
-  }).on("mouseleave",()=>tip.style("opacity",0));
-svg.append("path").datum(D.filter(d=>d.s!==null)).attr("fill","none")
-  .attr("stroke","#C41230").attr("stroke-width",2).attr("stroke-dasharray","5,3")
-  .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(Math.pow(10,d.s))));
-// The placeholder sits off the left of this axis; say so rather than
-// rescaling the whole figure around one bar.
-const ax=M.l+6;
-svg.append("line").attr("x1",ax).attr("x2",ax).attr("y1",y(1)).attr("y2",M.t-6)
-  .attr("stroke","#C41230").attr("stroke-width",3.4);
-svg.append("text").attr("x",ax+8).attr("y",M.t-24).attr("font-size","11.5px")
-  .attr("font-weight","700").attr("fill","#C41230")
-  .text("year "+SENTY+": "+SENTN.toLocaleString()+" records");
-svg.append("text").attr("x",ax+8).attr("y",M.t-10).attr("font-size","11px")
-  .attr("fill","#666").text("off the left of this axis");
-svg.append("text").attr("x",W-M.r).attr("y",M.t-24).attr("text-anchor","end")
-  .attr("font-size","11.5px").attr("fill","#C41230")
-  .text("dashed: a smooth age structure");
-})();
-</script>', rows, as.integer(fx("sent_n")), as.integer(fx("sent_year"))))
-
-## ---- years-static
-YB <- read.csv("data/derived/birthyears.csv", stringsAsFactors = FALSE)
-ok <- YB$year >= 1930 & YB$year <= 2005
-fit <- loess(log10(n) ~ year, YB[ok, ], span = 0.4)
-par(mar = c(3.9, 4.6, 2.6, 1.0), mgp = c(2.5, 0.7, 0))
-plot(NA, xlim = c(1899, 2010), ylim = log10(c(1, 200000)), axes = FALSE,
-     xlab = "birth year on the registration record",
-     ylab = "registrants (log scale)")
-axis(1, at = seq(1900, 2010, 20), cex.axis = 0.78, tcl = -0.25)
-axis(2, at = 0:5, labels = c("1", "10", "100", "1k", "10k", "100k"),
-     las = 1, cex.axis = 0.78, tcl = -0.25)
-box(bty = "l")
-segments(YB$year, 0, YB$year, log10(pmax(YB$n, 1)), col = "#4a6785", lwd = 2.2)
-lines(YB$year[ok], predict(fit, YB$year[ok]), col = "#C41230", lwd = 2, lty = 2)
-segments(1899.5, 0, 1899.5, log10(150000), col = "#C41230", lwd = 2.6)
-text(1903, log10(150000), sprintf("year %s: %s records, off the left of this axis",
-     fx("sent_year"), nn(fx("sent_n"))), adj = 0, cex = 0.62, font = 2, col = "#C41230")
-text(2008, log10(150000), "dashed: a smooth age structure", adj = 1, cex = 0.62,
-     col = "#C41230")
-
-## ---- sentinel-table
-data.frame(
-  quantity = c("Records carrying the placeholder date",
-               "...as a share of the file",
-               "Colliding pairs inside that group",
-               "...as a share of all colliding pairs statewide",
-               "Colliding pairs in 20 same-sized draws of real dates (mean)",
-               "...the worst of those 20 draws"),
-  value = c(nn(fx("sent_n")), paste0(fx("sent_pct_records"), "%"),
-            nn(fx("sent_pairs")), paste0(fx("sent_pct_pairs"), "%"),
-            fx("real_draw_mean"), fx("real_draw_max")))
-
-## ---- fom-table
-data.frame(
-  file = c("New Jersey registration records, this chapter",
-           "National 2012 vote records, Goel et al.",
-           "If dates of birth were spread evenly"),
-  `first-of-the-month share` = c(pct100(fx("fom_pct"), 2),
-                                 paste0(fx("natl_fom_pct"), "%"),
-                                 pct100(fx("fom_expected_pct"), 2)),
-  check.names = FALSE)
-
-## ---- goel-table
-# EVERY ROW NAMES ITS OWN DENOMINATOR. The rows below are not all fractions of
-# the same thing -- rows 2-5 are subsets of the Iowa pairings, row 6 is a
-# national rate per voter -- and a reader scanning the column would otherwise
-# reasonably read the last row as "one in 4,000 of the flagged pairs", which is
-# a different and much smaller claim than the one the authors make. Asking
-# "out of what?" is the whole subject of this chapter.
-data.frame(
-  finding = c(
-    "Iowa pairings Crosscheck flagged, SSN4 known for both records",
-    "of those Iowa pairings, the share that really were one person",
-    "of those confirmed duplicates, the number used to vote twice in 2012",
-    "of those Iowa pairings, pairs where both voted and the SSN4 matched",
-    "of those Iowa pairings, pairs where both voted and the SSN4 differed",
-    "double voters per voter nationally in 2012, all US voters as the base"),
-  value = c(fx("cc_known_total"), paste0(fx("cc_true_dup_share"), "%"),
-            fx("cc_dup_voted_twice"), fx("t1_both_same_ssn"),
-            fx("t1_both_diff_ssn"), fx("dbl_rate")))
 
 ## ---- on-mark
 # Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for

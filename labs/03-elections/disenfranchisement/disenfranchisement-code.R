@@ -62,13 +62,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- source
-data.frame(
-  item = c("Who compiles it", "Published as", "Unit", "Coverage",
-           "Machine-readable version"),
-  value = c("The Sentencing Project", "A PDF research report", "State",
-            "All 50 states", "None"))
-
 ## ---- validate
 st$parts <- st$prison + st$parole + st$probation + st$jail + st$post_sentence
 st$diff  <- st$parts - st$total
@@ -79,68 +72,6 @@ data.frame(
   result = c("prison + parole + probation + jail + post-sentence = total",
              sum(st$diff == 0), sum(abs(st$diff) == 1),
              sum(abs(st$diff) > 1), n(max(abs(st$diff)))))
-
-## ---- lo-raw-left
-RAW <- readLines("data/raw/lockedout-2024-table2.txt", warn = FALSE)
-# The converter marks the page break: the caption line begins with a form-feed
-# character. It is stripped for display here and nowhere else.
-RAW[1] <- sub("^\f", "", RAW[1])
-pickrow <- function(nm) RAW[which(substr(RAW, 1, 18) ==
-                    formatC(nm, width = -18))][1]
-HDR <- RAW[1:4]
-ROWS <- unlist(lapply(c("Alabama", "California", "Maine", "Texas",
-                        "Tennessee"), pickrow))
-TOTL <- RAW[length(RAW)]
-BLK  <- c(HDR, ROWS, TOTL)
-stopifnot(!any(is.na(BLK)))
-
-# how many cells in the five category columns are empty, and how many of those
-# are the post-sentence column -- counted on the captured lines, not asserted
-.body <- RAW[nchar(RAW) > 20 & substr(RAW, 1, 1) != " " &
-             !grepl("^\\s*(Table 2|State|Total)", RAW)]
-.cc <- list(c(18, 28), c(28, 40), c(40, 52), c(52, 63), c(63, 76))
-NBLANK   <- sum(vapply(.body, function(r)
-  sum(!nzchar(trimws(vapply(.cc, function(k)
-    substr(r, k[1] + 1, k[2]), character(1))))), integer(1)))
-NBLANKPS <- sum(!nzchar(trimws(substr(.body, 64, 76))))
-stopifnot(length(.body) == nrow(st))
-cat("```\n", paste(substr(BLK, 1, 63), collapse = "\n"), "\n```\n", sep = "")
-
-## ---- lo-raw-right
-cat("```\n", paste(substr(BLK, 64, max(nchar(BLK))), collapse = "\n"),
-    "\n```\n", sep = "")
-
-## ---- lo-clean
-o <- st[st$state %in% c("Alabama", "California", "Maine", "Texas",
-                        "Tennessee"), ]
-o <- o[order(match(o$state, c("Alabama", "California", "Maine", "Texas",
-                              "Tennessee"))),
-       c("state", "prison", "parole", "probation", "jail", "post_sentence",
-         "total", "pct")]
-for (k in setdiff(names(o), c("state", "pct"))) o[[k]] <- n(o[[k]])
-names(o) <- c("state", "prison", "parole", "probation", "jail",
-              "post-sentence", "total", "% disf.")
-rownames(o) <- NULL
-o
-
-## ---- lo-boundary
-cutat <- function(k) {
-  body <- RAW[nchar(RAW) > 20 & substr(RAW, 1, 1) != " " &
-              !grepl("^\\s*(Table 2|State|Total)", RAW)]
-  cols <- list(c(18, k), c(k, 40), c(40, 52), c(52, 63), c(63, 76), c(76, 91))
-  num <- function(s) { s <- gsub(",", "", trimws(s))
-                       if (!nzchar(s)) 0 else suppressWarnings(as.numeric(s)) }
-  v <- t(vapply(body, function(r)
-    vapply(cols, function(cc) num(substr(r, cc[1] + 1, cc[2])), numeric(1)),
-    numeric(6)))
-  # <= 1, not < 1: seven states are off by a single person in the report's own
-  # arithmetic, which is rounding, not a parse failure. See the check above.
-  ok <- !is.na(rowSums(v)) & abs(rowSums(v[, 1:5]) - v[, 6]) <= 1
-  data.frame(`prison ends at character` = k,
-             `states whose categories add to their total` = sum(ok),
-             `states that do not` = sum(!ok), check.names = FALSE)
-}
-rbind(cutat(28), cutat(30))
 
 ## ---- one-record
 o <- st[st$state %in% c("Florida", "Tennessee", "Pennsylvania"),
@@ -264,69 +195,6 @@ p$post_sentence <- n(p$post_sentence); p$total <- n(p$total)
 names(p) <- c("state", "post-sentence", "state total", "% of state's total")
 p
 
-## ---- psbar-static
-par(mar = c(4.6, 7.4, 0.8, 0.6))
-mx <- rbind(ps$post_sentence, ps$rest) / 1000
-bp <- barplot(mx[, nrow(ps):1], horiz = TRUE, names.arg = rev(ps$state),
-              las = 1, cex.names = 0.76, border = NA, xlim = c(0, 1250),
-              col = c(CCOL[["Post-sentence"]], "#D9D9D9"), xlab = "")
-text(colSums(mx)[nrow(ps):1], bp,
-     paste0(rev(pc(ps$share, 0)), "% post-sentence"), pos = 4, cex = 0.66,
-     col = CCOL[["Post-sentence"]])
-legend("right", bty = "n", cex = 0.68, pch = 15,
-       col = c(CCOL[["Post-sentence"]], "#D9D9D9"),
-       legend = c("sentence complete", "still serving a sentence"))
-mtext("people who cannot vote, in thousands", side = 1, line = 2.4, cex = 0.8)
-mtext(paste0("The ", nrow(ps), " states that have a post-sentence category at ",
-             "all. Between them they hold ", pc(PSCOV, 0), "% of it; the other ",
-             sum(st$post_sentence == 0), " states have none."),
-      side = 1, line = 3.5, cex = 0.62, col = "#666666")
-
-## ---- psbar-d3
-rows <- paste(sprintf('{"s":"%s","a":%d,"b":%d,"p":"%s","t":"%s","q":"%s"}',
-                      ps$state, round(ps$post_sentence), round(ps$rest),
-                      pc(ps$share, 0), n(ps$total), n(ps$post_sentence)),
-              collapse = ",")
-cat(paste0('
-<div id="psb" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[', rows, '];
-const W=760,H=380,M={t:14,r:150,b:46,l:110};
-const svg=d3.select("#psb").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,d3.max(D,d=>d.a+d.b)*1.02]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.s)).range([M.t,H-M.b]).padding(0.22);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(v=>(v/1000)+"k"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).tickSize(0))
-  .selectAll("text").attr("font-size","11.5px");
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444").text("people who cannot vote");
-const cap=d3.select("#psb").append("p")
-  .attr("style","font-size:0.85em;color:#555;min-height:2.6em;margin-top:0.3em");
-const DEF="<b>Hover a bar.</b> Red is people whose sentence is over.";
-const g=svg.append("g").selectAll("g").data(D).join("g")
-  .style("cursor","pointer")
-  .on("mousemove",(e,d)=>cap.html("<b>"+d.s+"</b>: "+d.t+" disenfranchised, of whom "+
-    d.q+" ("+d.p+"%) have completed their sentence."))
-  .on("mouseleave",()=>cap.html(DEF));
-g.append("rect").attr("x",x(0)).attr("y",d=>y(d.s)).attr("height",y.bandwidth())
-  .attr("fill","', CCOL[["Post-sentence"]], '").attr("width",0)
-  .transition().duration(700).attr("width",d=>x(d.a)-x(0));
-g.append("rect").attr("x",d=>x(d.a)).attr("y",d=>y(d.s)).attr("height",y.bandwidth())
-  .attr("fill","#D9D9D9").attr("width",0)
-  .transition().delay(700).duration(400).attr("width",d=>x(d.b)-x(0));
-g.append("text").attr("x",d=>x(d.a+d.b)+8).attr("y",d=>y(d.s)+y.bandwidth()/2+4)
-  .attr("font-size","11px").attr("fill","', CCOL[["Post-sentence"]],
-  '").attr("opacity",0).text(d=>d.p+"% post-sentence")
-  .transition().delay(1100).duration(300).attr("opacity",1);
-cap.html(DEF);
-})();
-</script>
-'))
-
 ## ---- extremes
 o <- rbind(head(st[order(-st$pct), c("state", "total", "pct")], 6),
            head(st[order(st$pct),  c("state", "total", "pct")], 4))
@@ -407,21 +275,6 @@ const lg=svg.append("g").attr("transform",`translate(16,${H-34})`);
 One tile per state, laid out roughly geographically. Hover for counts and the
 post-sentence figure.</p>
 ', rows))
-
-## ---- final
-data.frame(
-  finding = c("Disenfranchised Americans",
-              "Share of adult citizens",
-              "Share not incarcerated",
-              "Share who have completed their sentence",
-              "States accounting for the entire post-sentence category",
-              "Highest state rate", "States disenfranchising nobody"),
-  value = c(n(na$total), paste0(pc(na$pct,1), "%"),
-            paste0(pc(100*NOTINC/na$total,1), "%"),
-            paste0(pc(100*na$post_sentence/na$total,1), "%"),
-            sum(st$post_sentence > 0),
-            paste0(TOP, ", ", pc(max(st$pct)), "%"),
-            paste(ZERO, collapse = " and ")))
 
 ## ---- denom
 data.frame(

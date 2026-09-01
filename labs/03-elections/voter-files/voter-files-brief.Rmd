@@ -1,7 +1,7 @@
 ---
 title: "Reading a State Voter Registration File"
 type: brief
-subtitle: "A county's registration file, the codes that decide which ballot you are handed, and the three elections it has already forgotten"
+subtitle: "One county's file, the codes that decide which ballot you are handed, and the elections it has already forgotten"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 2
@@ -16,143 +16,48 @@ dd_read_chunks("voter-files-code.R")
 ```{r setup, include=FALSE}
 ```
 
-```{r regstates}
-```
+Register to vote and you become a row in a government file. Every campaign that knocks on your door found you in it, every turnout model is built on it, and most published claims about who votes come out of it. The file is also, in Georgia, a public record that the state sells to anyone who orders it. So the claim is worth turning into a question and answering from the file itself: **what does the state actually know about you as a voter, and what is that knowledge for?**
 
-**`r REG_YES` of the `r REG_ALL` states and the District of Columbia will not let you vote unless you registered first.** The exception is North Dakota, which abolished voter registration in 1951 and has never brought it back.
+## The test
 
-Nearly unanimous is not the same as inevitable. Registering is not voting. It is a separate act, done weeks earlier, at a different place, on different paper, and the file this chapter reads is the record of that separate act rather than of anybody voting.
+The test is to read one county's registration file whole, rather than trusting anyone's summary of one. The file is Houston County, Georgia's: **`r n(VOTERS)` registered voters**, one row each, in the copy the county keeps for its own daily work. Beside it sit the state's separate records of who voted in the 2020, 2022 and 2024 general elections, matched to the registration rows. Both are public records, and this copy arrived as working material in a 2026 county redistricting matter, which is the ordinary route for a file of this kind.
 
-## Nobody had to register until somebody decided they did
+A registration file is the right instrument for this question because it is the machinery itself, not a report about it. The [voter-file chapter](../voter-files-source/voter-files-source-brief.html) gives the source its biography: a list kept under federal law so a poll worker can hand each person the correct ballot. Georgia's version has one property that matters beyond the state. It records each voter's **race**, which almost no other state does, so turnout by race can be computed from government records instead of estimated from a survey.
 
-**Keyssar (2009)** traces where the requirement came from, and the answer is that it is younger than the country. Before the 1870s most states kept no list of who could vote. You turned up at the polls on the day and settled your eligibility there, with papers or with witnesses. Massachusetts began registering voters in 1801 and a few states followed before 1850, but registration stayed uncommon until after the Civil War, and most proposals for it were voted down as unnecessary and partisan.
+## The data
 
-Between the 1870s and the First World War most states adopted it, cities first. The reason given was fraud. In a city an official could not know every voter by sight, so registering in advance gave the state time to build a list, check papers and question witnesses before election day.
+The county's extract carries `r NCOL` columns per person. The state's vote-history records arrived separately and were matched to it on the registration number, and that matching needed one repair worth knowing about. Registration numbers are stored as text, with leading zeros, and the two systems write them differently. Read the column as a number and `00002779` becomes `2779`, which matches nothing; the build converts both sides deliberately and drops the duplicate rows the history files carry. Get either step wrong and voters silently vanish from every join.
 
-**The principle was simple and the details were not.** How many days before the election did you have to register? What hours was the office open? Did you register in the county, the district or the precinct? What documents did you have to bring, and how often did you have to do it all again?
-
-Every one of those answers changed who ended up on the list, and every one was fought over.
-
-New Jersey's Geran Act of 1911 shows how far that could go, and Keyssar uses it as the limiting case. It required personal registration in every city over 5,000 people and gave prospective voters four days to do it. A man had to name his parents, his spouse and his landlord, and describe the dwelling he lived in. Registration also had to be renewed whenever a voter moved **or failed to vote**. Hold on to that last clause. A chapter that ends on a 2018 Supreme Court case about being removed for not voting is describing a rule that is more than a century old.
-
-The effects were not subtle. After Pittsburgh's registration commission went to work in 1907, the number of men registered there fell from 95,580 to 45,819 (Keyssar 2009). Between 1910 and 1920 only 60 to 70 per cent of eligible voters were registered in Philadelphia, Chicago and Boston. His summary is that registration laws did reduce fraudulent voting, and also kept probably millions of eligible voters away from the polls. Scholars he cites attribute a third or more of the national decline in turnout over that period to registration alone.
-
-Congress went the other way in 1993. The National Voter Registration Act, the "motor voter" law, obliged states to offer registration at motor vehicle bureaus and public assistance agencies. **It worked, and it did not.** Nine million people were added to the rolls in under two years, and Keyssar records that the new registrants were disproportionately young, Black and Democratic. Turnout in 1996 was still lower than in any presidential election since 1924.
-
-## Registration closes, and not on one date
-
-**No state has one registration deadline.** NPR keeps a dated list of them, and for the general election of 3 November 2026 it publishes deadlines for `r NDL` of the `r NALL` states, territories and the District of Columbia it covers. Most of them have three rather than one: a date for registering online, a date for registering by mail, and a date for turning up in person. In `r NDISAGREE` of the `r NMULTI` places that offer more than one way in, those dates do not agree.
-
-```{r deadlines}
-```
-
-**In person, the books close anywhere from `r DEARLY` days before the election to the morning of it.** `r NEDAY` jurisdictions will register you in person on election day itself. The longest lead is `r DEARLY` days, in `r DEARLYJ`. Keyssar's question about how many days a state gives you is still answered differently in every one of them.
-
-**The mail deadline is two rules wearing one label.** In `r NPOST` jurisdictions the date is a postmark: get the envelope stamped by then and you are in time. In `r NRECV` it is a delivery date, and the form has to be in the office by close of business. Two places can print the same day and be asking different things of you. Subtracting one date from another will never show it.
-
-```{r deadlines-mail}
-```
-
-**An empty cell is not a late deadline.** `r NOONLINE` of these `r NDL` jurisdictions offer no online registration at all, and `r NOMAIL` accept no registration by mail. There is no date to record because there is no door. Fill those cells in with the state's other deadline and you have invented a service the state does not provide.
-
-**Count the same-day states two ways and you get two answers.** `r NEDAY` jurisdictions show an in-person deadline of election day. `r NNOTE` carry a separate note saying voters may register at the polls. Those are not the same list: North Carolina's note covers only its early-voting period, and Montana and Vermont take registrations on the day without calling it same-day registration. Neither count is wrong, and a table with one column headed "same-day registration" has picked one of them without saying so.
-
-**Two rows are blank, for opposite reasons.** North Dakota registers nobody, and NPR's page for it says as much in its own words: it is the only state where registration is not required. Puerto Rico holds no territory-wide election in 2026, so it has nothing to close. A reader who reads both blanks as "no deadline, register whenever you like" has one of them exactly backwards.
-
-## Which is why the denominator is a choice
-
-Here is a sentence everyone has read:
-
-> *"Turnout among registered Black voters was up six points."*
-
-Turnout is a fraction, and that sentence has quietly picked its **denominator** — the bottom number, the thing you are dividing by. Divide by registered voters and you are measuring something different from what you measure by dividing by everyone old enough and eligible to vote. The registered are the people who already cleared the hurdle this chapter's first section is about, and after 1911 or 1993 that hurdle sat in a different place.
-
-Neither denominator is wrong. But one of them is a count of people the state has processed, and it moves when the state changes how it processes them. This chapter is about that file, and about the four ways it will mislead anyone who treats it as a list of the electorate.
-
-One row is one registered person: a name, a birth year, a home address, a race, a gender, the date they registered, the date they last voted. Then comes a long run of codes, one for each body that will ever put a name on their ballot. Congressional district, state senate, state house, judicial, county commission, school board, city council, municipal school board, water board, fire district, two kinds of precinct, land lot, land district.
-
-The voter file for Houston County, Georgia has `r n(VOTERS)` people in it. Almost everything below is a count over all of them: the shape of the file rather than anybody in it. There is one deliberate exception. **Five real voters are printed further down, names included, exactly as the state publishes them.** Georgia's list is a public record, and a reader who has never seen a row of one does not really know what this chapter is about.
-
-## An exhibit, not a dataset
-
-Where the file comes from explains most of how it behaves. Georgia keeps one registration list for the whole state. It is a working system that clerks use every day, not a dataset anybody sets out to publish. Counties pull copies out of it when somebody asks. This is Houston County's copy, and it arrived by itself. The state's records of who voted in the `r sub(" general", "", els[1])`, `r sub(" general", "", els[2])` and `r sub(" general", "", els[3])` general elections are a separate public record, requested separately and matched to it.
-
-Anyone can ask for a copy. Georgia law requires the state to hand these records over, and that is the only reason outsiders ever see one. This copy arrived as working material in a redistricting case that is still running. That is the ordinary route. Voter files are used as court exhibits and campaign lists far more often than as research data.
-
-This is the county's own copy rather than a cleaned-up commercial one, and that is the point. Companies sell voter files with the problems already tidied away: the statuses squared up, the missing party affiliations filled in by a model, the people in one household matched to each other. Every one of those repairs is somebody's judgment call, and this chapter wants to look at them rather than take them on trust. What is here is the file as the county keeps it, still shaped by what that office needed it to do.
-
-It is also one of the very few American records that gives a race for each person, by name, for reasons taken up in a moment. That is what makes it possible to work out turnout by race from government records instead of from a survey.
-
-The hard part is what the file is, not anything wrong inside it. **It is a photograph of a system that is still running, and the system keeps no past tense.** Nobody saved a copy of the list as it stood on any election day. So a turnout rate for a past election has to be built by matching today's voters against old records of who turned out. Anyone who has since moved away, died or been taken off the list drops out of the top of the fraction.
-
-`r n(sum(lost$voters_no_longer_in_file))` voters drop out this way across the three elections here. Nobody can clean that up. It is what a current list is.
-
-Two more limits are worth naming now. The file holds only people the state has registered, so it says nothing at all about people who could register and have not. And race is a box each person ticked on a form, from a fixed list. One of the choices is `UNKNOWN`, ticked by `r n(to$in_file_2026[to$race == "UNKNOWN"])` people here. Another, `ALASKAN NATIVE`, is ticked by `r n(to$in_file_2026[to$race == "ALASKAN NATIVE"])`, too few for any rate worked out on it to mean anything.
-
-Almost all the processing was throwing things away, plus one repair that matters. The county file and the three voting records are read together. What comes out is the `r NCOL`-row list of columns, a few small tables, and five whole records. **Nothing here is anonymised.** The names printed later are the names in the file, because Georgia's list is a public record and this book does not redact public records.
-
-The repair is the number the two files are matched on. Registration numbers are stored as text, and the two systems do not write them the same way, so the same voter turns up with and without leading zeros and with stray spaces. The script turns each number into a whole number before matching, and drops duplicate rows from the voting records, which otherwise list some voters twice for one election. Get either step wrong and the decay this chapter measures grows, for reasons that have nothing to do with anybody leaving Houston County.
-
-## The first five rows are a lie about the file
-
-Everyone opens a new file the same way: read it in, look at the top. On this file that habit produces a confident wrong answer, and the column it gets wrong is one this chapter is built on.
-
-The file arrives sorted **newest registrant first**. Nothing says so. The consequence is that the first rows are not a sample of Houston County. They are the people who registered most recently. So the columns that fill in only after somebody has voted are empty at the top of the file and filled in further down.
-
-```{r headscan}
-```
-
-**`Last Party Voted` is blank in every one of the first five rows and in `r sub("\\.0$", "", hd$value[hd$measure == "Last Party Voted blank, first 50 rows (%)"])`% of the first fifty — and in `r hd$value[hd$measure == "Last Party Voted blank, whole file (%)"]`% of the county.** A student who ran `head()` and moved on would conclude the column was empty. It is populated for more than two-thirds of the file, and a later section of this chapter spends several pages on what it contains.
-
-The same trap is in two other columns:
-
-```{r headscan2}
-```
-
-Read the top of the file and every registration is from 2025 and every registration number is a fifteen-million-something. Read the file and the registrations run back to `r sub(" to .*", "", hd$value[hd$measure == "Registration year, whole file"])` and the numbers start at `r sub(" to .*", "", hd$value[hd$measure == "Registration number, whole file"])` — **with four leading zeros that only survive if the column is read as text.** The number in the file is correct; it is the *reading* that destroys it. Ask R for that column without saying so and `00002779` becomes `2779`, which matches nothing in the vote-history files and silently shrinks every join in this chapter.
-
-Below are five random registered voters, rather than the first five in the file. They are real people in Houston County, out of `r n(VOTERS)`, printed exactly as the state publishes them — the list is a public record, and this is what a row of one looks like.
+Almost everything below is a count over all `r n(VOTERS)` rows. There is one deliberate exception: five real registrants, drawn at random and printed exactly as the state publishes them. **Nothing is anonymised**, because Georgia's list is a public record and a reader who has never seen a row of one does not really know what this brief is about.
 
 ```{r peek}
 ```
 
-The file also carries, for each of them, a registration number, a street address, a mailing address, and the eighteen district assignments that decide which ballot they get.
+The file also carries, for each of them, a registration number, a street address, a mailing address, and the district codes that decide which ballot they get. Count the party column carefully. Exactly one of the five has a party ballot on record; one reads `NON-PARTISAN`, which is a value and not a party; three are blank. A reader who counts the non-empty cells as partisans is already wrong, and a later section says why.
 
-Count the party column carefully, because it is the chapter's central trap in miniature. **Exactly one of the five has a party ballot on record.** One more reads `NON-PARTISAN`, which is a value in that column and is not a party — it means a primary ballot with no partisan contests on it. The other three are blank. So a reader who counts non-empty cells finds two partisans here and is already wrong, in the same direction as everyone who reads this column as party registration. Georgia has none, and the section below is about that.
-
-The registrations span three decades, 1996 to 2025 — again unlike the top of the file, which is all 2025. And every registration date carries `00:00:00.000` after it: a time component the system stores and never sets, which is how a date arrives when it was typed into a field built for a timestamp.
-
-Five rows show you what a record *is*. They cannot tell you what the file *does*. Reasoning about the file from five of its rows is how this chapter once came to claim a congressional district that does not exist in this county.
-
-So here are the same columns, described over all `r n(VOTERS)` rows at once rather than over five sampled registrants. For each one: what R stores the column as if you do not intervene, what the column actually holds, how many distinct values it takes, and how often it is blank.
-
-```{r scan}
-```
-
-`Congressional District` is stored as a number and is not one. This county holds exactly two of them, `002` and `008`, and **district 8 is not four times district 2**. No average of that column means anything, but R will compute one without complaint, and it will drop the leading zeros on the way.
-
-`Birth Year` is a number you may subtract and must not add up. `Registration Date` is text, and text sorts as text: it happens to sort correctly here only because the state wrote it year-first. That is luck, not design, and the same column in a file written `03/01/2024` would sort every March before every April of every year.
-
-None of that is visible from the values. It is visible only by asking what each column is *for*. That is the question the rest of this chapter is about, and the next figure asks it of all `r NCOL` columns at once.
-
-## What the list decides
-
-Every state maintains a list of everyone registered to vote. **It is a public record.** Every campaign works from it to decide who to knock on. Every turnout model is built on it. Most published claims about who votes come out of it.
-
-**Nothing in American elections works without a list, and no other document decides so much with so little scrutiny.** Whether you are handed a ballot at all depends on whether a clerk finds you in it. Which ballot you are handed depends on the stack of district codes attached to your row. Whether a campaign ever contacts you depends on how your row scores in somebody's model.
-
-The list is also how people are removed. **List maintenance** is the official name for taking people off it, and it is where the right to vote is quietly rationed. Nobody is told they have been made inactive, and the trigger is usually a piece of mail rather than anything a voter did.
-
-And this file is one of the very few places where American government records race on an individual basis. Georgia does, because Section 5 of the Voting Rights Act required covered jurisdictions to show that changes did not harm minority voters, and that cannot be shown without knowing who the voters are. The coverage formula fell in *Shelby County v. Holder* (2013). The data collection remained. **That is why turnout by race can be worked out here from state records rather than from a survey.**
-
-So the question worth asking of the file is narrow and answerable: what is actually in it, and what was it built to do?
+Grouped by what each column is for, the `r NCOL` columns look like this:
 
 ```{r schema-shape}
 ```
 
-`r NCOL` columns per person, and the largest group is not the one anybody would guess.
+And two lists are worth holding side by side before any counting starts:
 
-Here is the record itself: every column the file keeps about one person, drawn in the order the file keeps them.
+```{r absent}
+```
+
+The secret ballot does real work here. The state can know *that* you voted and never *whom* you chose. Everything the file supports, from targeting to turnout models to this brief itself, lives inside that boundary.
+
+> **Before you read on, put a number to it.** Of the people who actually cast a
+> ballot in this county in November 2020, what share are missing from the 2026
+> file altogether — dead, moved away, or struck off? Commit to a percentage
+> before you read on. Then commit to a second answer: would you expect the
+> people who vanished to have voted at about the same rate as the people who
+> stayed? A table below settles the first question. Nothing in this file will
+> ever settle the second.
+
+## What it says about democracy
+
+Here is the record itself: every column the file keeps about one person, drawn in the order the file stores them.
 
 ```{r strip-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -160,255 +65,127 @@ Here is the record itself: every column the file keeps about one person, drawn i
 ```{r strip-static, eval=!knitr::is_html_output(), fig.height=5.9}
 ```
 
-**Figure 1. One voter's record, every column, in the order the file stores them.** Each cell is a column, colored by what it is for. The purple block is the ballot-routing run: `r NBALLOT` of the `r NCOL` columns, `r BSHARE`% of the whole record, sitting together unbroken from column `r BFIRST` to column `r BLAST`. Nothing about a person's identity, history or address occupies anything like that much of the row.
+**Figure 1. One voter's record, every column, in the order the file stores them.** A field strip fits this question because the finding is about the record's own anatomy: each cell is a column, colored by the job it does. The purple block is the ballot-routing run — `r NBALLOT` of the `r NCOL` columns, `r BSHARE`% of the whole record, unbroken from column `r BFIRST` to column `r BLAST`.
 
-Those `r NBALLOT` columns are congressional, state senate, state house, judicial, county commission, school board, city council, municipal school board, water board and fire district. Then two kinds of precinct, a "Combo" field that bundles the whole stack into a single code, and land lot and land district.
+That is not a description of an electorate. **It is a routing table.** Congressional district, state senate, state house, judicial, school board, water board, fire district: the columns exist so a poll worker can hand one specific person one specific piece of paper. Nobody designed this file to answer a research question. Everything researchers take from it, from who registered when to who turned out to who lives where, is a by-product of that clerical job.
 
-That is not a description of an electorate. **It is a routing table.** Its purpose is to let a poll worker hand one specific person one specific piece of paper. Everything researchers want from it is a by-product of that clerical need: who registered when, who turned out, who lives where.
-
-The consequence runs through everything below: **nobody designed this file to answer anybody's research question, and no part of it is obliged to.**
-
-```{r absent}
-```
-
-The secret ballot is doing real work here. A campaign can know **that** you voted; it can never know **whom** you chose. Everything later in this book exists to bridge that gap: turnout models, racially polarized voting analysis, the whole guessing industry. It exists because the gap is permanent.
-
-## A column called party, which is not party
-
-```{r party}
-```
-
-The column is labeled **"Last Party Voted."** It is the field people misread most often, and journalists quote it as party registration.
-
-**Georgia has no party registration.** You cannot register as a Democrat there. What this column records is the last party *primary ballot* you happened to request — which is why **`r n(sum(rp[, "no primary ballot on record"]))` people have nothing in it at all** and another `r n(sum(rp[, "NON-PARTISAN"]))` are marked non-partisan.
+The column that looks most like politics proves the point. It is labeled `Last Party Voted`, and journalists quote it as party registration. **Georgia has no party registration.** The column records only which party's *primary ballot* you last requested, and most rows have nothing in it:
 
 ```{r party-share}
 ```
 
-Give every race group a column as wide as the group is large, and split each column by what the party field says about the people in it.
-
-```{r mosaic-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r mosaic-static, eval=!knitr::is_html_output(), fig.height=5.2}
-```
-
-**Figure 2. What the column labeled "Last Party Voted" actually holds, by race group.** Each column is a race group, drawn as wide as that group's share of the `r n(MCOV)` registrants covered here; each is split by what the party field says about the people in it. The two gray blocks, marked non-partisan and blank, are `r pc(MNOS)`% of them. The colors are arbitrary because the column is not party registration and has no party colors to use.
-
-**`r pc(NOSIG)`% of this file carries no party signal at all.** Anyone who tells you how many registered Democrats there are in Georgia is using another state's data or making it up.
-
-## The three in ten who left a trace
+**`r pc(NOSIG)`% of this file carries no party signal at all.** Anyone who tells you how many registered Democrats there are in Georgia is using another state's data or making it up. Among the minority who did take a partisan primary ballot, the record is strong precisely because it is administrative — these are ballots people actually asked for, not answers to an interviewer:
 
 ```{r ratios}
 ```
 
-Among voters who ever took a partisan primary ballot in this county, Black voters broke Democratic over Republican by **`r pc(rp$DEMOCRAT[rp$race=="BLACK"]/rp$REPUBLICAN[rp$race=="BLACK"], 0)` to one**; white voters broke Republican by **`r pc(rp$REPUBLICAN[rp$race=="WHITE"]/rp$DEMOCRAT[rp$race=="WHITE"], 1)` to one**.
+Black voters in this county broke Democratic over Republican by `r pc(rp$DEMOCRAT[rp$race=="BLACK"]/rp$REPUBLICAN[rp$race=="BLACK"], 0)` to one; white voters broke Republican by `r pc(rp$REPUBLICAN[rp$race=="WHITE"]/rp$DEMOCRAT[rp$race=="WHITE"], 1)` to one. It describes only the most engaged three in ten, and it is still a kind of evidence no survey can match.
 
-Two things are true of that table at once. It is a **strong** finding, because it comes from state records rather than from a survey: these are the ballots people actually asked for, not what they told an interviewer. And it describes only the three in ten who ever took a party primary ballot, who are the most engaged voters in the file by definition.
-
-## Who counts as registered
+Who counts as registered is itself a decision the file records:
 
 ```{r status}
 ```
 
-**`r n(INACTIVE)` people on this list are marked INACTIVE**, and the file records why. "NCOA" is the Postal Service's National Change of Address database. "CROSS STATE" means another state reported registering them. "RETURNED MAIL" means a letter came back.
-
-**None of those people did anything.** Every reason in that column is an event in a mail system, not an act by a voter.
-
-Whether that is hygiene or disenfranchisement is a live legal fight, and both sides are describing this column. The National Voter Registration Act requires states to keep lists current and forbids removing people *for* not voting. Ohio's practice was upheld in *Husted v. A. Philip Randolph Institute* (2018), five to four. That practice is to treat a missed election as evidence of having moved, send a confirmation notice, and remove the voter if it goes unanswered. The majority's answer to the prohibition was that the removal is for failing to answer the notice rather than for failing to vote, so the clause is not triggered. Put as a data question it is this: **is a returned envelope evidence about a person, or evidence about the postal system?**
+**`r n(INACTIVE)` people on this list are marked INACTIVE, and none of them did anything.** Every reason in that column is an event in a mail system: a returned letter, a change-of-address match, another state's report. The National Voter Registration Act forbids removing people *for* not voting. Ohio treats a missed election as grounds to send a confirmation letter, and *Husted v. A. Philip Randolph Institute* (2018) upheld that practice five to four. Put as a data question: is a returned envelope evidence about a person, or about the postal system?
 
 ```{r denominator}
 ```
 
-**This one flag decides whether "registered voters" in this county means `r n(VOTERS)` or `r n(ACTIVE)`** — a gap of `r pc(100 * INACTIVE / VOTERS)`%. Every turnout rate anyone ever reads depends on which one somebody used, and almost none of them say.
+This one flag decides whether "registered voters" here means `r n(VOTERS)` or `r n(ACTIVE)` — a gap of `r pc(100 * INACTIVE / VOTERS)`%. Every turnout rate is a fraction, and this is its **denominator**, the bottom number you divide by. Which of the two counts a publication used is almost never stated.
 
-## The number the file is used to produce
-
-Take how many people of each race are recorded as voting in November 2024, and divide by how many are in the file.
+Now the number the file is most often used to produce. Take how many people of each race are recorded as voting in November 2024, and divide by how many are in the file:
 
 ```{r turnout}
 ```
 
-**White `r pc(big$rate24[big$race=="WHITE"])`%, Black `r pc(big$rate24[big$race=="BLACK"])`%, Asian/Pacific Islander `r pc(big$rate24[big$race=="ASIAN/PACIFIC ISLANDER"])`%, Hispanic/Latino `r pc(big$rate24[big$race=="HISPANIC/LATINO"])`%** — a `r pc(max(big$rate24) - min(big$rate24))`-point spread between the top and the bottom of that table.
-
-That is a publishable finding. It is the kind of sentence that opens news stories and appears in expert reports. It is also the sentence this chapter started from.
-
-Look again at what went into it. Every rate in that table has a 2024 numerator and a 2026 denominator — a top number from one year and a bottom number from another. For that to be harmless, the people in the file now would have to be the people who were in it then.
-
-> **Before you read on, put a number to it.** Of the people who actually cast a
-> ballot in this county in November 2020, what share are missing from the 2026
-> file altogether — dead, moved away, or struck off? Commit to a percentage
-> before you turn the page. Then commit to a second answer: would you expect the
-> people who vanished to have voted at about the same rate as the people who
-> stayed? The table below settles the first question. Nothing in this file will
-> ever settle the second.
-
-## The file has no memory
+White `r pc(big$rate24[big$race=="WHITE"])`%, Black `r pc(big$rate24[big$race=="BLACK"])`%, a spread of `r pc(max(big$rate24) - min(big$rate24))` points top to bottom. That is a publishable finding, and it has a defect the file itself can measure. Every rate in the table has a **numerator**, the top number of the fraction, taken from 2024 — and a denominator from 2026. Match the state's own record of who voted against the current file and here is what those years apart cost:
 
 ```{r lost}
 ```
 
-Match the current file against the state's own record of who actually voted and this is what comes back. **`r n(decay$gone[1])` people voted in the 2020 general election and are not in the 2026 file at all** — `r pc(decay$pct_gone[1])`% of everyone who voted in this county that November. Most readers guess something in the low single digits, reasoning that a list loses people at about the rate people die. It is roughly one voter in `r round(100 / decay$pct_gone[1])`, in six years.
-
-They died, moved away, or were removed. **A voter file is a photograph of a system that is still running, not an archive.** It describes *now*. The further back you reach with it, the more people have quietly left your denominator. They left for reasons that are tied to almost everything anyone wants to measure: moving, age, how long they have lived somewhere, income.
-
-```{r d3-decay, results='asis', eval=knitr::is_html_output()}
+```{r decay-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r decay-static, eval=!knitr::is_html_output(), fig.height=3.6}
+```{r decay-static, eval=!knitr::is_html_output(), fig.height=3.2}
 ```
 
-**Figure 3. The finding, and the reason it is wrong, computed from the same file.** On the left, 2024 turnout by race as the file reports it, running from `r pc(max(big$rate24))`% down to `r pc(min(big$rate24))`%. On the right, the share of each election's recorded voters who are no longer in the file at all: `r pc(decay$pct_gone[1])`% of the 2020 electorate, `r pc(decay$pct_gone[2])`% of 2022's, and `r pc(decay$pct_gone[3])`% of 2024's, in under two years. The left panel is a rate whose numerator comes from an election and whose denominator comes from today. The right panel is the distance between them.
+**Figure 2. The share of each election's actual voters who are no longer in the 2026 file.** Three bars, one per election, because the finding is a single rate read against time. The further back the election, the more of its voters have left the file that would be used to study it; hover a bar for the counts behind it.
 
-## Wrong in one direction, not at random
+**`r n(decay$gone[1])` people voted in the 2020 general election and are not in the 2026 file at all** — `r pc(decay$pct_gone[1])`% of everyone who voted here that November, roughly one voter in `r round(100 / decay$pct_gone[1])`, in six years. They died, moved away, or were removed. Even 2024's electorate has lost `r pc(decay$pct_gone[3])`% in under two years. A voter file is a photograph of a system that is still running, not an archive; the list has no past tense, and nothing in it warns you.
 
-```{r wrongness}
-```
+The loss is not a random sample, either. Leaving a county is what movers do, and movers are younger, poorer and likelier to rent than the people who stay. So a turnout rate computed backward from a current file is not just noisy. It is wrong in a direction nobody can measure from inside the file, because the people who would settle it are exactly the ones who are gone.
 
-`r pc(decay$pct_gone[3])`% of 2024's voters have already gone in under two years. Nothing tells you whether the people who left were more or less likely to vote than the people who stayed, or whether they left at the same rate from every group. The loss is **not** a random sample. Leaving is what movers do, and movers are younger, poorer, and likelier to rent.
+## What this brief cannot tell you
 
-**The list also moves in both directions, and not at a steady rate.** New registrations arrive all year, in a rush before each deadline. Removals do not work like that. A voter is marked inactive first, waits out the period the law requires, and is struck only when the state next runs a maintenance pass. So the distance between this copy and the November 2024 list is not simply age. Some of it is the timing of the last purge, which is a decision of the office rather than a fact about voters.
+**It cannot say how anyone voted.** The history file records that you voted, never your choices; the secret ballot makes that permanent, and every model that claims to know is guessing across the gap.
 
-**The right denominator is the file as it stood in November 2024, and this is not that file.** Most states overwrite: the list is a live system, and last year's version is not kept anywhere in it. The repair has to be arranged before the fact. Ask a state for a copy in the weeks around an election and you have the denominator for that election forever; ask afterwards and no request can produce it. That is why serious work on past elections uses archival snapshots, bought from vendors who took the copy at the time.
+**It cannot produce a correct turnout rate for any past election.** The denominator that rate needs is the file as it stood on that election day, and most states overwrite it. Nor can it say whether the `r pc(decay$pct_gone[1])`% who vanished voted like the people who stayed — the question that decides whether any backward-looking rate is close.
 
-**What a copy costs depends entirely on which state you ask.** Two published price lists cover all fifty-one jurisdictions, and both run from nothing to five figures. They also disagree about `r PRICE_DIFFER` of the `r PRICE_COMPARABLE` jurisdictions where each gives a single plain amount, so neither is a quotable fact on its own. Georgia is `r PRICE_GA_EAC` on the older list and `r PRICE_GA_BP` on the newer one. The two tables are laid side by side in [`price.csv`](../voter-file-access/data/derived/price.csv).
+**It cannot say whether list maintenance is neutral.** The reasons recorded are postal events, postal reliability is not evenly distributed, and no column here measures who the process reaches hardest.
 
-## Three arguments, one of which has no data answer
+**And it is one county in one state.** The shape travels; the columns do not. Most states record no race at all, about half record a party registration Georgia lacks, and the commercial files campaigns actually use carry hundreds of modeled columns nobody outside the vendor can inspect.
 
-Everyone agrees lists must be maintained; people die and move. The dispute is over what counts as evidence that a particular person has gone, and the `r n(INACTIVE)` inactive records above are that dispute sitting in a column. The reasons recorded there are postal events, and postal events track residential mobility, which tracks income and tenure. **Whoever is hardest to reach by mail is the person the process removes.** *Husted* upheld the practice over a dissent arguing it punishes non-voting, which the National Voter Registration Act forbids, and neither opinion turned on a number that this file could supply.
+## What you should have learned
 
-The second argument is about how good government records are in the first place, and here the news is better than expected. Ansolabehere and Hersh (2012) matched survey respondents to commercial voter files. They found that self-reported turnout is badly inflated, while the file's own vote-history record is comparatively reliable. That is a strong result *for* records over surveys.
+- A voter file is a routing table: `r NBALLOT` of this file's `r NCOL` columns exist to hand one person the right ballot, `r BSHARE`% of the whole record.
+- The column that looks like party is not party: `r pc(NOSIG)`% of the file carries no party signal, because Georgia registers nobody by party and records only the last primary ballot requested.
+- "Registered voters" is a choice: `r n(VOTERS)` with inactives, `r n(ACTIVE)` without, a `r pc(100 * INACTIVE / VOTERS)`% gap in every rate's denominator, and the inactive flag records mail events rather than anything a voter did.
+- The file has no memory: `r n(decay$gone[1])` of 2020's actual voters — `r pc(decay$pct_gone[1])`% — are already gone from the 2026 file, and the loss is not random.
+- Georgia records race at registration, which is why turnout by race — a `r pc(max(big$rate24) - min(big$rate24))`-point spread in 2024 — can be computed here from records rather than surveys.
 
-But the same authors are clear that the demographic and modeled fields vary enormously in quality between states. The lesson is not "trust the file"; it is **trust the columns the file needs in order to work, and be careful with the ones it does not.** Vote history is a column the file needs. A modeled ethnicity score is not.
+## Extensions
 
-The third argument is about values, and no amount of this data settles it. Your name is on a list like this, the list is public, and vendors buy it, add hundreds of modeled columns, and sell the result. Eitan Hersh's *Hacking the Electorate* (2015) is the book-length version of the finding that **campaigns see you as whatever your state happens to record**. What a state records differs from state to state, for reasons that have nothing to do with campaigns.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The transparency case is that a public electorate can be audited by anyone. The privacy case is that nobody agreed to a permanent commercial file about them, built around whether they vote. That argument is not settled, and this chapter does not settle it. Note only that it is an argument about what *others* may do with a public list, not about whether the list is public. It is.
+- `status.csv` breaks registrations into `status` and `reason`. Work out what share of the file is not active. Who is in a voter file but cannot vote from it without further paperwork?
+- `lost.csv` counts, in `voters_no_longer_in_file`, the voters of each election who have left. Work out what that does to anyone computing a 2020 turnout rate from the current file.
+- `columns.csv` says how each column is `stored` and how many `distinct` values it takes. Find a column stored as a number that is not a quantity. What breaks if software averages it?
+- `turnout.csv` gives each race group `in_file_2026` and its recorded voters in `2020 general`, `2022 general` and `2024 general`. Compute the three rates per group. Which gaps persist across all three elections?
+- `race_party.csv` counts each group's `DEMOCRAT`, `REPUBLICAN`, `NON-PARTISAN` and blank rows. What share of each group left any partisan trace at all?
 
-## What the routing table will bear
-
-The strengths are genuine and unusual. This is a count of everyone rather than a sample: every registered person, not an estimate. Whether somebody voted is recorded by the state rather than reported by the voter, which avoids the exaggeration that ruins survey turnout estimates. And in Georgia the file carries race, so turnout by race can be worked out from records instead of from a survey. Very few states allow that.
-
-The weaknesses are equally specific. `r pc(NOSIG)`% of the file carries no party signal, because the column that looks like party identification records only which primary ballot somebody last requested, and Georgia collects nothing else. How many people count as registered is unclear by `r pc(100 * INACTIVE / VOTERS)`%, depending on whether inactive registrants are included, and publications rarely say which they used. The file forgets, non-randomly: `r pc(decay$pct_gone[1])`% of the 2020 electorate is already gone, and the people who leave are movers, who are younger, poorer and likelier to rent than the people who stay. Race is one box, self-reported at registration, possibly decades ago.
-
-This is one county in one state. The shape carries over to other states and the columns do not, since most states record no race at all and about half record a party registration Georgia does not. And this is the *public* file; the commercial versions campaigns actually use carry hundreds of modeled columns that no one outside the vendor can inspect.
-
-What can be said, then, is that a voter file is a routing table. `r NBALLOT` of `r NCOL` columns exist so that a clerk can hand one person one piece of paper, and every research use of the file is scavenging. The column that looks like party is not party.
-
-And the file forgets. `r n(decay$gone[1])` people voted in November 2020 and are simply not there now, erased from every backward-looking calculation anyone will ever run on it.
-
-What cannot be said is how anyone voted; that is what the secret ballot is for. Nor a correct turnout rate for any past election computed from a current file. Nor whether the missing `r pc(decay$pct_gone[1])`% voted at the same rate as the survivors. That is the whole ballgame for backward-looking turnout work, and it cannot be answered from a file that has already lost them. Nor whether list maintenance is neutral, since the reasons are postal and postal reliability is not evenly distributed. Nor whether any of this should be public at all, or how many people a registration deadline turned away: a deadline is a rule, and the people it stopped are recorded nowhere.
-
-The finding that travels furthest is not about voters. A live operational system optimizes for its own job, overwrites what it no longer needs, and owes history nothing. Everything anyone knows about who votes in America is scraped off the side of a clerical process that was built to hand out ballots and has no reason to remember last time.
+Two stretch ideas point past the spreadsheet. Georgia sells its statewide list to anyone; the order page is in the sources — price one, and compare what your own state would charge and require. And North Carolina posts its statewide file free, so download it and check which of this brief's columns exist there, which do not, and what question each state has made unanswerable.
 
 ## Sources
 
 **Data**
 
-- The Houston County, Georgia voter registration file. It is a public record
-  in Georgia, and this copy arrived as working material in a 2026 county
+- The Houston County, Georgia voter registration file. A public record in
+  Georgia; this copy arrived as working material in a 2026 county
   redistricting matter. Almost everything printed here is a count over the
-  whole file. **Five whole records are also kept and printed, names included
-  and nothing replaced**, because the list is a public record and this book
-  does not redact public records. Georgia sells the list to anyone who orders
-  it, and that is where a reader would start.
+  whole file. **Five whole records are also printed, names included and
+  nothing replaced**, because the list is a public record and this book does
+  not redact public records. Georgia sells the list to anyone who orders it,
+  and that is where a reader would start.
   <https://sos.ga.gov/page/order-voter-registration-lists-and-files>
 - The state's records of who voted in the 2020, 2022 and 2024 general
   elections. **These did not come with the registration file.** They are a
-  separate public record, requested separately and matched to it on the
-  registration number. That matching is somebody's work rather than the
-  state's, which is why the repair described above matters: number the two
-  files differently and the decay this chapter measures grows for reasons
-  that have nothing to do with anybody leaving Houston County. Georgia
-  publishes voter history files of its own, and that is where a reader would
-  start.
+  separate public record, requested separately and matched on the
+  registration number — the repair described above, which is why numbering
+  the two files differently would inflate the decay this brief measures.
+  Georgia publishes voter history files of its own.
   <https://mvp.sos.ga.gov/s/voter-history-files>
-- Whether each state requires registration at all: keyed in, not fetched.
-  North Dakota abolished voter registration in 1951 and is the only state
-  without it. This is a snapshot of state law rather than a live tracker of
-  it, and a state that changed its rule would not show up here. The
-  deadlines below were gathered separately and independently, and they agree:
-  North Dakota is the one state of the fifty-six with no registration
-  deadline to publish, and its page says why.
-- What a statewide voter list costs, for all fifty-one jurisdictions, from
-  two published compilations read side by side: the U.S. Election Assistance
-  Commission's *Availability of State Voter File and Confidential
-  Information*, whose page prints no date and whose file records October
-  2020, and Ballotpedia's *Availability of state voter files*, dated July
-  2026. Both were captured 29 August 2026. They disagree about
-  `r PRICE_DIFFER` jurisdictions, which is why both are quoted above and
-  neither alone.
-  <https://www.eac.gov/sites/default/files/voters/Available_Voter_File_Information.pdf>
-  <https://ballotpedia.org/Availability_of_state_voter_files>
-- Registration deadlines for the 3 November 2026 general election, by
-  jurisdiction and by whether you register online, by mail or in person. NPR,
-  "How to register to vote in the 2026 elections," last revised 14 July 2026,
-  captured 29 August 2026.
-  <https://apps.npr.org/voter-registration-2026-mail/>
-  This is a newsroom's compilation rather than a government record. There is
-  no federal register of registration deadlines, and state law sits in fifty
-  separate codes, so a dated hand-kept tracker is what exists. It carries a
-  revision date, which is the thing the keyed-in table above does not. Court
-  orders move these dates during a cycle, so the capture date matters as much
-  as the deadline. Each jurisdiction's page is kept whole, including the
-  footnotes this table does not model: an earlier deadline for registering at
-  the motor vehicle office in Guam, separate online and county-office dates in
-  Nebraska, weekend opening in South Carolina.
 
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`columns.csv`](data/derived/columns.csv), [`deadlines.csv`](data/derived/deadlines.csv), [`price.csv`](../voter-file-access/data/derived/price.csv), [`headscan.csv`](data/derived/headscan.csv), [`lost.csv`](data/derived/lost.csv), [`peek.csv`](data/derived/peek.csv), [`race_party.csv`](data/derived/race_party.csv), [`registration.csv`](data/derived/registration.csv), [`schema.csv`](data/derived/schema.csv), [`status.csv`](data/derived/status.csv), [`turnout.csv`](data/derived/turnout.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `status.csv` breaks registrations into statuses with reasons. Work out what share of the file is not active. Who is in a voter file but cannot vote from it?
-- `lost.csv` counts voters who took part in an election but are no longer in the file. Work out what that does to anyone computing turnout from a current file for a past election.
-- `columns.csv` says how each column is `stored` and how many `distinct` values it has. Find the column stored as a number that is not a quantity. What breaks if software treats it as one?
-- `turnout.csv` gives participation by race across three elections. Compute the rate for each group and year. Then check `race_party.csv` and ask what the primary ballot column adds.
-- `deadlines.csv` gives three deadlines per jurisdiction: `online_days`, `mail_days` and `in_person_days`, each counted back from election day. Subtract the smallest from the largest in each row. Which jurisdiction asks the most of somebody who picks the wrong door, and does the answer change if you leave out the rows where a door is missing?
-- `deadlines.csv` also has `mail_rule`, which says whether the mail deadline counts the postmark or the day the form arrives. Sort by `mail_days` and compare jurisdictions with the same number of days but different rules. Which of the two is the later real deadline for a voter, and by roughly how long?
-
-**History and academic literature**
-
-- Keyssar, A. (2009). *The Right to Vote: The Contested History of Democracy
-  in the United States*, revised edition. New York: Basic Books. The source
-  for everything in the opening history: that most states kept no list before
-  the 1870s, the spread of registration between then and the First World War,
-  New Jersey's Geran Act of 1911, the Pittsburgh collapse from 95,580
-  registrants to 45,819 in 1907, the 60 to 70 per cent registration rates in
-  Philadelphia, Chicago and Boston, and the estimate that registration
-  accounts for a third or more of the era's decline in turnout.
+**Academic literature**
 
 - Ansolabehere, S. and Hersh, E. (2012). "Validation: What Big Data Reveal
   About Survey Misreporting and the Real Electorate." *Political Analysis*
   20(4): 437–459.
 - Hersh, E. D. (2015). *Hacking the Electorate: How Campaigns Perceive Voters.*
   Cambridge University Press.
-- National Voter Registration Act of 1993, 52 U.S.C. § 20501 et seq., in
-  force from 1 January 1995; the nine million registrants added in under two
-  years, and the 1996 turnout that followed, are Keyssar's figures.
+- National Voter Registration Act of 1993, 52 U.S.C. § 20501 et seq.
 - *Husted v. A. Philip Randolph Institute*, 584 U.S. 756 (2018).
-- *Shelby County v. Holder*, 570 U.S. 529 (2013).
+- *Shelby County v. Holder*, 570 U.S. 529 (2013). Section 5 preclearance is
+  why Georgia collects race at registration; the coverage formula fell, the
+  collection remained.
 
+**The data itself**
 
-**Further reading**
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
 
-- Hasen, R. L. (2020). *Election Meltdown: Dirty Tricks, Distrust, and the
-  Threat to American Democracy.* Yale University Press.
-**How the figures were made**
-
-The county file and the three sets of voting records are read and matched, giving the column listing and the four margin tables this chapter draws on. It is the only place here that reads an individual record, and what it keeps afterwards is the five rows printed above. The deadline table is built separately, by reading each jurisdiction's page in the tracker and keeping the dates it marks up rather than the sentences around them. Every number printed above is computed from the tables that came out, at the moment this document was rendered.
+[`columns.csv`](data/derived/columns.csv), [`lost.csv`](data/derived/lost.csv), [`peek.csv`](data/derived/peek.csv), [`race_party.csv`](data/derived/race_party.csv), [`schema.csv`](data/derived/schema.csv), [`status.csv`](data/derived/status.csv), [`turnout.csv`](data/derived/turnout.csv)
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
-
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
 
 ```{r ai-prompt, echo=FALSE, results="asis"}

@@ -16,141 +16,43 @@ dd_read_chunks("false-matches-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Somewhere in New Jersey there are two people who have never met. They live in different counties. They have different families, different addresses, and no connection to each other of any kind. They also have the same first name, the same last name, and the same date of birth -- not the same birthday, the same *date*, year included.
+Somewhere in New Jersey there are two people who have never met. They live in different counties, with different families, different addresses, no connection of any kind. They also have the same first name, the same last name, and the same date of birth — not the same birthday, the same *date*, year included.
 
-There are `r nn(cv("registrants in a cross-county key"))` such people in that state's registration file, and the file cannot tell them apart. Neither can any program built to read it.
+For roughly a decade, a consortium of states treated exactly this coincidence as evidence of duplicate registration, and used the matches to justify removing voters. Two records, same name, same birth date: same person, surely? That is the right question. It has an answer, and it is not the one intuition supplies.
 
-For roughly a decade, a consortium of states ran exactly such a program across their combined rolls, treated the matches it produced as evidence of duplicate registration, and used them to justify removing voters. The reasoning is easy to sympathize with. Two records, same name, same birth date: what are the odds?
+## The test
 
-That is the right question. It has an answer, and the answer is not the one intuition supplies.
+The test has two parts: first, reproduce the actual matching rule on a real statewide file and count what it catches. The Interstate Crosscheck program, which ran from about 2005 to 2019, flagged registrations sharing **a first name, a last name and a full date of birth** across its member states. New Jersey's registration list is one of the few public files carrying the complete date of birth. So the exact key can be applied to `r nn(NJN)` real records rather than approximated. Houston County, Georgia's extract, `r nn(fx("ga_n"))` records with only a birth *year*, supplies the coarser key most states force on any matcher.
 
-## Two states, and only one of them writes down the day
+The second part is borrowed, because no public voter file can say whether a matched pair is one person or two. Goel, Meredith, Morse, Rothschild and Shirani-Mehr (2020) obtained Crosscheck's own 2012 output for Iowa, the one state able to supply it. Those records carry a field no public file has: whether the last four digits of each registrant's Social Security number matched. Their study grades the rule this brief counts; what a registration record is in the first place is the [voter-file chapter's](../voter-files-source/voter-files-source-brief.html) subject.
 
-Neither file behind this chapter was published for it, and neither one leaves the folder it was read from.
+## The data
 
-The main source is New Jersey's registration list, which the state releases county by county. That is `r fx("nj_counties")` separate extracts carrying an identical layout, which is what makes reassembling them a legitimate operation rather than a guess. It arrived here as working material in a redistricting matter, which is the ordinary route for a file of this kind. It is a public record either way. The second source is one county's registration extract from Georgia. Houston County, `r nn(fx("ga_n"))` records, the same file the BISG chapter grades a surname model against.
-
-Two states is one more than the argument strictly needs, and the extra one is the whole design. **New Jersey publishes a complete date of birth. Georgia publishes a birth year.** The Interstate Crosscheck program matched on first name, last name and full date of birth. So New Jersey is the place where that rule can be *reproduced* rather than approximated: the actual key, applied to actual registrations, with the actual collisions counted.
-
-Georgia is where the same idea has to run on a far coarser key. A birth year is all a state that withholds the day and the month leaves anyone to work with. Between them, the precision of the match key becomes something this chapter can vary and measure, rather than something it has to argue about. Very few pairs of public files allow that.
-
-New Jersey's counties are also separate jurisdictions inside one file. That makes a match spanning two of them a usable stand-in for the cross-state match Crosscheck existed to return. It is a stand-in, and a later section is careful about the difference.
-
-What is being counted was settled once, and saying so matters, because the alternative would have flattered the file. **Every registration record is counted here, whatever its status.** `r nn(fx("nj_active"))` of New Jersey's `r nn(fx("nj_n"))` carry a status beginning "Active". The rest are inactive or in one of several conditional states, and they are counted too. List-maintenance programs act on the roll as a whole, and an inactive registration is exactly the kind most often put forward for removal. Restricting to active records would have measured a friendlier list than the one a purge is actually run against.
-
-Cleaning, then, was almost all subtraction, and the subtraction happens early. A handful of columns from each county file are read, and the rest are discarded as the file is parsed. Only `r fx("nj_empty_dob")` records in the entire state carry no date of birth, so nothing needed imputing and nothing was imputed. To *impute* is to fill in a value nobody recorded, by guessing it from other things.
-
-Nothing is fetched. Both extracts are read from local disk, with no network, no key and no guestbook. And nothing that leaves those files is a person. What is kept here is counts and distributions only: no name, no date, no registration number, no address. The raw extracts are never copied alongside them.
-
-That is a statement about the *derived* files, which is where the risk of quiet reuse actually lives. A committed key file would be a purge list sitting in a teaching repository, indexed and copyable. Five keys printed in the body of an argument about purge lists are a different object, and the chapter prints them for the reason given below.
-
-None of that is the same as reproducible, and the difference is worth stating plainly. There is no address in this chapter for its main source, because the file did not arrive by download at all. It arrived because somebody was already working with it.
-
-Both states will hand these lists to anyone who asks, which is what makes them public records. But asking is a form, a fee and a wait rather than a line of code. And the `r fx("nj_counties")` county extracts still have to be stitched back together at the far end of it.
-
-So a reader has a slower road to the raw records than the person who wrote this did. The decision not to commit the extracts makes it slower still. The alternative was shipping `r nn(fx("nj_n"))` people's names and birth dates in a teaching folder. That is not a trade worth making for convenience.
-
-## The file anybody can have
-
-It matters that this is not a secret document. New Jersey's registration list is a public record, and so is Georgia's; either state will hand a copy to anyone who fills in the form and pays the fee. **That is not a loophole in the argument of this chapter. It is the argument.** A matching rule anyone can run, against a list anyone can obtain, is a live capability rather than a hypothetical one. A chapter that showed you a scrubbed imitation of the file would be teaching you that it is harder to get than it is.
-
-So these are real rows. A New Jersey county extract has 28 columns:
-
-No codebook ships with the extract, so the third column is read off the names and the values rather than quoted from a document:
-
-| # | Column | What it holds | Read here |
-|---:|:---|:---|:---|
-| 1 | displayId | the identifier the state shows on screen | — |
-| 2 | leg_id | a second, internal identifier | — |
-| 3 | party | party affiliation, which New Jersey does register | — |
-| 4 | status | active or inactive | **read** |
-| 5 | reg_date | when the registration was made | — |
-| 6 | last | surname | **read** |
-| 7 | first | given name | **read** |
-| 8 | middle | middle name | **read** |
-| 9 | suffix | Jr, III, and so on | — |
-| 10 | dob | **full date of birth** — day, month and year, unlike Georgia | **read** |
-| 11 | street_num | house number | — |
-| 12 | street_pre | the N in N Main St | — |
-| 13 | street_post | the NW in Main St NW | — |
-| 14 | street_base | the street's name without its type | — |
-| 15 | street_suff | St, Ave, Rd | — |
-| 16 | street_name | the assembled street name | — |
-| 17 | apt_unit | apartment or unit | — |
-| 18 | city | city | — |
-| 19 | zip | ZIP | — |
-| 20 | county | county | **read** |
-| 21 | municipality | municipality | — |
-| 22 | ward | ward | — |
-| 23 | district | election district | — |
-| 24 | congressional | U.S. House district | — |
-| 25 | legislative | state legislative district | — |
-| 26 | freeholder | county board district — New Jersey's old name for it | — |
-| 27 | school | school district | — |
-| 28 | fire | fire district | — |
-
-Six of them are read. Here are five registrations in those six, drawn at random from all `r nn(50227)` records in the Salem County extract — not the first five, which in an alphabetized file would all be surnames beginning `AA`:
-
-| last | first | middle | dob | county | status |
-|:---|:---|:---|:---|:---|:---|
-| FOX | LESTER | H | 1953-09-18 | Salem | Active |
-| HALSTEAD | TAMMY | L | 1975-05-11 | Salem | Active |
-| MERCKX | VIRGINIA | M | 1943-01-06 | Salem | Active |
-| SCARDUZIO | JACLYN | S | 1978-04-24 | Salem | Active |
-| SZYMANSKI | JACOB | A | 1994-03-30 | Salem | Active |
-
-Every field is exactly as New Jersey publishes it, **including the full date of birth**, and that is deliberate. Name plus full date of birth is the Crosscheck key itself, so these five lines are five complete keys. That is the only honest way to show what the rule operates on. A version with the month and day starred out would be easier to print and would misrepresent the situation twice over. It would suggest the state withholds something it does not. And it would let a reader believe the key is harder to assemble than it is.
-
-The discomfort of reading five real dates of birth is the correct response to a rule that ran against 6.6 million of them. Nothing here is disclosed that the state does not sell to anyone who asks. The chapter's argument is precisely that this is so.
-
-**The other 22 columns are never loaded at all.** They are refused before the file is in memory. That is partly arithmetic: the `r fx("nj_counties")` extracts are about 1.2 gigabytes of text, and the six columns are a few hundred megabytes. It is partly a matter of appetite.
-
-The rule being examined needs a name and a birth date. It has no use for where anybody lives, so the parser never learns. A street address that is never read cannot leak from an analysis that never had it.
-
-Two things in those five rows are worth more than they look. **`county` is the same value in every row**, because a county extract is one county. The column only starts carrying information after all `r fx("nj_counties")` files are stacked, which is exactly when a match spanning two of them becomes findable. And **`status` is not a yes-or-no field.** Salem alone uses seven values: Active, Inactive Confirmation, Active Need ID, Pending-17, Pending, Inactive Confirmation Need ID, and Pending-17 Need ID. That is why what counts as a record here had to be settled deliberately, rather than by filtering on the word "Active".
-
-Then everything the chapter is about happens in one line. The six columns become one string:
+Six columns are read from each of New Jersey's `r fx("nj_counties")` county extracts: first name, last name, middle name, date of birth, county and status. The other 22 columns, addresses included, are never loaded at all: a street address that is never read cannot leak. The six become one string per registrant, and that string is the entire matching rule:
 
 ```
 TAMMY|HALSTEAD|1975-05-11
 ```
 
-**That string is the entire matching rule.** Uppercase it, trim it, join it with a separator, and a person has been reduced to a key. Sort `r nn(NJN)` of those keys, count how often each one repeats, and you have measured the Interstate Crosscheck program.
+Uppercase it, trim it, and a person has been reduced to a key. Sort `r nn(NJN)` of those keys, count how often each repeats, and you have measured the Crosscheck program.
 
-What leaves the build script is not a list of keys. It is a count of how they repeated:
+Four decisions shaped the counting. **Every record counts, whatever its status**: purges act on the whole roll, and go after inactive records first. **Case and spacing are flattened before comparing**, which creates matches, rightly: a trailing space was never a fact about a person. **The middle name is cut to an initial**, because a file where some people wrote *Q* and some wrote *Quentin* cannot be compared on the full field.
 
-```{r shape-fm}
-```
+And **nothing that identifies a person leaves the build** — counts and distributions only, because a committed key file would be a purge list sitting in a teaching folder. Only `r fx("nj_empty_dob")` records in the whole state carry no date of birth, so nothing needed filling in. To *impute* a value is to fill in what nobody recorded by guessing it, and nothing here was imputed.
 
-`r nn(NJN)` people's names and birth dates go in. A file with `r nn(nrow(KY))` rows and no names in it comes out.
+The tables that come out are small. `keys.csv` counts, for six versions of the key, the registrants `flagged` and the colliding `pairs`; `ga_keys.csv` does the same for Georgia. `groupsize.csv` counts how many registrants share each key. `monthday.csv` and `birthyears.csv` count registrations by calendar date and by birth year, `scaling.csv` counts collisions in random subsamples of the file, and `birthday.csv` holds the exact arithmetic of the next section.
 
-### The decisions
+That arithmetic starts in a room, not a file. Take `r CLASS` people and ask whether any two share a *birthday* — just the day, ignoring the year, with 365 to go around.
 
-**Every record counts, not just the active ones.** `r nn(fx("nj_active"))` of the `r nn(NJN)` registrations carry a status beginning "Active." The other `r nn(NJN - as.numeric(fx("nj_active")))` are counted too. Restricting to active registrations would have measured a tidier list than the one a purge is actually run against, and it is precisely the inactive registrations that purges go after.
+> **Before you read on, commit to two numbers.** In a room of `r CLASS` people,
+> what is the probability that at least two of them share a birthday? And how
+> many people would you need before a shared birthday is more likely than
+> not? Write both down; most people answer the second somewhere between
+> 100 and 200.
 
-**Case and spacing are flattened before anything is compared.** Names are uppercased and trimmed, so `Pat` and `PAT ` become the same string. That step *creates* matches. Two records that differed only in a trailing space now collide. It is the right thing to do, because the difference was never about a person. It is still worth seeing that a cleaning step and a matching step are the same operation here.
+## What it says about democracy
 
-**The middle name becomes a single letter.** Where the key uses it at all, it uses the initial. A file in which some people wrote *Q* and some wrote *Quentin* cannot be compared on the full field. Every such abbreviation makes the key coarser and the collisions more numerous, and those collisions are what the rest of this chapter counts.
-
-**Nothing that identifies a person is written out.** The largest group of New Jersey registrants sharing a first name, a last name and a full date of birth has `r nn(kv(CCK, "max_group"))` members. Publishing the number `r nn(kv(CCK, "max_group"))` is safe. Publishing the name and date those `r nn(kv(CCK, "max_group"))` people share would be building the purge list this chapter exists to criticize, so what is kept here is counts and distributions and nothing else.
-
-**Nothing was imputed, and one thing was left conspicuously alone.** Exactly `r fx("nj_empty_dob")` records in the whole state carry no date of birth, so there was nothing to fill in. But some of the dates that *are* present are not birth dates at all. They were left exactly as the state wrote them. This chapter comes back to that decision, because the result is one of the most revealing things in the file.
-
-## Twenty people in a room
-
-The cleanest way to see how badly intuition performs here has nothing to do with voting.
-
-Take a room of people and ask whether any two of them share a birthday -- just the day, ignoring the year. There are 365 of those to go around. This class has `r CLASS` people in it, `r CLASS - 1` students and an instructor, so the room is sparse: `r CLASS` people spread over 365 possible dates fills about `r ppct(CLASS / 365, 0)` of them.
-
-Before going further, commit to two numbers.
-
-> **Before you read on…** In a room of `r CLASS` people, what is the probability
-> that at least two of them share a birthday? And how many people would you need
-> in the room before that probability passes even odds -- before a shared
-> birthday is more likely than not? Write both down. Most people, asked the
-> second question, answer somewhere between 100 and 200.
-
-The answers are `r ppct(pshare(CLASS))` and `r EVEN`.
+The answers are `r ppct(pshare(CLASS))` and `r EVEN` people.
 
 ```{r birthday-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -158,41 +60,18 @@ The answers are `r ppct(pshare(CLASS))` and `r EVEN`.
 ```{r birthday-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-**Figure 1. The chance that a room of any given size contains a shared birthday.** Computed exactly, not by the usual approximation. At `r CLASS` people the probability is `r bpct(CLASS)`; it passes even odds at `r EVEN` people and reaches `r bpct(50, 0)` at 50. The dashed line is the question readers usually answer by mistake: the chance that somebody shares *one named person's* birthday, which at `r CLASS` people is only `r ppct(BD$pmine[BD$n == CLASS], 1, is_one = FALSE)`. **In the browser version the box above the figure sets the size of the room**, so the class can be counted on the day; the printed version is fixed at `r CLASS`. Percentages are rounded to one decimal, and a reading of `r ppct(BD$p[BD$n == XMAX], 1, is_one = FALSE)` at the right-hand end is not certainty -- see below.
+**Figure 1. The chance that a room of any given size contains a shared birthday.** A curve over room size, because the finding is how fast the chance climbs. The dashed line is the question people answer by mistake — the chance somebody shares *one named person's* birthday, which at `r CLASS` people is only `r ppct(BD$pmine[BD$n == CLASS], 1, is_one = FALSE)`.
 
-`r EVEN` people. Not 183. The guess of 183 feels right because it answers the dashed curve's question rather than the solid one. That question is how many people you need before somebody shares *your* birthday, which really does take about half a year's worth of people. But nobody asked about you.
+The curve climbs so fast because it counts **pairs, not people**. A room of `r CLASS` holds `r nn(choose(CLASS, 2))` pairs, one chance of coincidence each. Add a person and you add a chance for every person already there: the people grow in a line and the pairs grow in a square. Everything else in this brief is that one fact applied to a bigger room.
 
-**And the curve never actually reaches certainty.** Push the room size to `r XMAX` and the chance of a shared birthday is `r ppct(BD$p[BD$n == XMAX], 1, is_one = FALSE)`. This chapter prints it that way rather than as 100.0%, because it is not 100%. A shared birthday is genuinely unavoidable only at 366 people, where there are more people than dates and the pigeonhole principle takes over.
-
-That distinction looks pedantic and is about to become the entire argument. **A rule that is right 99.99% of the time is wrong once in every ten thousand tries.** A program that runs tens of millions of comparisons will be wrong thousands of times. Rounding that away on the page is how a probability turns into a certainty in somebody's mind. A certainty is what gets acted on.
-
-## It is about pairs, not people
-
-Here is the whole mechanism. Slow down for it, because everything else in this chapter is this one idea applied to a bigger file.
-
-A room of `r CLASS` people does not contain `r CLASS` chances for a coincidence. It contains one chance for every *pair* of people in it, and the number of pairs is `r CLASS` times `r CLASS - 1` over two, which is `r nn(choose(CLASS, 2))`. That is the number that matters, and it is already about half of 365.
-
-Add one person to the room and you do not add one chance. You add one chance for every person already there. **The people grow in a line and the pairs grow in a square.** That is why the curve in Figure 1 climbs faster than intuition expects. It is the reason everything that follows behaves as it does.
-
-```{r pairs-table}
-```
-
-The last two rows are worth pausing on. At 100 people the chance is `r bpct(100)` -- **not** 100%, however it rounds. The probability becomes exactly 1 only at 366 people, where there are more people in the room than there are dates in the year and a repeat is forced. Everywhere below that, a shared birthday is merely very likely, and "very likely" and "certain" are different claims about the world.
-
-Now change one thing. Instead of a room, take a state's voter registration file, and instead of a birthday, take a full date of birth attached to a name.
-
-## What a real matching rule actually catches
-
-New Jersey publishes its registration list county by county. Put all `r fx("nj_counties")` counties together and you have **`r nn(NJN)` registration records**, of which `r nn(fx("nj_active"))` are active, each carrying a first name, a last name, a middle name and a complete date of birth.
-
-That last field is why the exact key a cross-state matching program used can be reproduced here, on real records, rather than approximated. The Interstate Crosscheck program returned to each participating state a list of its registrations sharing **the same first name, last name and date of birth** as a registration in another participating state. Apply that key to New Jersey and the result is:
+Now swap the room for New Jersey's file, and the birthday for a name plus full date of birth:
 
 ```{r cck-table}
 ```
 
-`r nn(kv(CCK, "flagged"))` people in one state -- `r pct100(kv(CCK, "pct"), 2)` of the roll -- share a first name, a last name and a full date of birth with at least one other registrant. The groups are small: `r nn(GS$n_keys[GS$group_size == 2])` of them are pairs, `r GS$n_keys[GS$group_size == 3]` are triples, and exactly `r GS$n_keys[GS$group_size == 4]` is a group of four. Nothing here is a crowd. But `r nn(kv(CCK, "pairs"))` is not zero either, and zero is what the purge rule assumes.
+**`r nn(kv(CCK, "flagged"))` people in one state, `r pct100(kv(CCK, "pct"), 2)` of the roll, share a first name, last name and full date of birth with at least one other registrant.** The groups are small: `r nn(GS$n_keys[GS$group_size == 2])` pairs, `r GS$n_keys[GS$group_size == 3]` triples, one group of four. But `r nn(kv(CCK, "pairs"))` is not zero, and zero is what a purge rule assumes. Of the `r nn(cv("colliding keys"))` colliding keys, `r nn(cv("keys spanning more than one county"))` span two counties — pairs that look exactly like a person registered in two places, visible only when jurisdictions pool their lists.
 
-The interesting part is what happens when the key changes. The same `r nn(NJN)` records, keyed six different ways:
+The key's precision is a dial:
 
 ```{r ladder-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -200,52 +79,13 @@ The interesting part is what happens when the key changes. The same `r nn(NJN)` 
 ```{r ladder-static, eval=!knitr::is_html_output(), fig.height=3.6}
 ```
 
-**Figure 2. The same `r nn(NJN)` records, keyed six ways.** Each rung is the number of pairs of *different* registration records that a rule would treat as possibly the same person. Dropping the date of birth entirely leaves `r nn(kv("first + last name", "pairs"))` pairs. Keeping only the birth year leaves `r nn(kv("first + last name + birth year", "pairs"))`. Using the full date leaves `r nn(kv(CCK, "pairs"))`. Adding a middle initial, which these records already carry, leaves `r nn(kv("first + last name + full date of birth + middle initial", "pairs"))`.
+**Figure 2. The same `r nn(NJN)` records, keyed six ways.** A ladder on a log axis, because the collision counts span four orders of magnitude and the finding is the distance between rungs: pairs of *different* records a rule would treat as one person.
 
-Three things fall out of that figure, and each of them is a decision some real election office has made.
+Three findings fall out. **Birth year is not date of birth.** Matching on the year alone produces `r fx("year_vs_dob")` times as many colliding pairs as the full date, and most states, Georgia included, publish only the year. Keyed that way, `r pct100(gv("first + last name + birth year", "pct"), 2)` of Houston County's registrants collide. **Loosening the key is expensive**: cutting the first name to an initial, the tolerance that lets Robert match Bob, multiplies collisions by `r fx("initial_vs_first")`. **And the cheap fix was available**: a middle initial these records already carry removes `r pct100(fx("middle_cut"), 0)` of the collisions.
 
-**Birth year is not date of birth.** Matching on first name, last name and birth *year* produces `r fx("year_vs_dob")` times as many colliding pairs as matching on the full date. That is not a hypothetical rung on the ladder. Most states, Georgia among them, publish a birth year and withhold the day and month, so anyone matching from a public file is forced onto the coarse key whether they like it or not. Houston County, Georgia has `r nn(fx("ga_n"))` registrants; keyed on first name, last name and birth year, `r nn(gv("first + last name + birth year", "flagged"))` of them -- `r pct100(gv("first + last name + birth year", "pct"), 2)` -- share a key with someone else.
+The false-match rate is not even a fixed property of a rule. Count the key's collisions in random subsamples, and the rate grows with the pool. A county-sized pool of `r nn(SMALL_N)` records produces `r pc(SMALL_R)` colliding pairs per 100,000; the full state produces `r fx("rate_full")` — about `r fx("rate_growth")` times the rate, from the identical rule, because the pairs grow in a square. A rule that is accurate in a county is not accurate in a state, and in 2012 Crosscheck ran across more than `r fx("cc_records_2012")` records.
 
-**Fuzzy matching is expensive.** Abbreviating the first name to its initial, the kind of tolerance a system adds so that Robert and Bob both match, multiplies colliding pairs by `r fx("initial_vs_first")`. Loosening a key to catch more true duplicates catches disproportionately more false ones.
-
-**The cheap fix was available and unused.** These records carry a middle name. Using just its first letter removes `r pct100(fx("middle_cut"), 0)` of the collisions. Crosscheck's own participation guide recommended checking middle-name consistency before acting on a match; the reporting on the program suggests that recommendation was not always what member states did.
-
-## Two counties, one key
-
-The `r nn(kv(CCK, "pairs"))` colliding pairs in New Jersey are not scattered randomly with respect to geography, and the way they are arranged is the whole problem.
-
-```{r xc-table}
-```
-
-Of the `r nn(cv("colliding keys"))` keys held by more than one registrant, **`r nn(cv("keys spanning more than one county"))` are held by people in different counties** -- `r ppct(as.numeric(cv("keys spanning more than one county")) / as.numeric(cv("colliding keys")), 0)` of them. Only `r nn(cv("keys confined to a single county"))` are contained within a single county's own list.
-
-This matters because it is precisely the arrangement that a single jurisdiction cannot see and a cross-jurisdiction program is built to find. A county clerk looking only at their own roll would encounter `r nn(cv("keys confined to a single county"))` of these. Pool the counties and `r nn(cv("keys spanning more than one county"))` more appear, each one looking exactly like a person who has registered in two places.
-
-Some of them will be. People move between counties, and a stale registration left behind is a real and common thing. **That is the difficulty, not an objection to it.** A file containing a name and a date of birth has no way to separate one person who moved from two people who never met. It does not contain the information required to tell the difference, and no amount of care applied to the matching will conjure it.
-
-## The rate is not a property of the rule
-
-There is a natural way to summarize a matching rule's error -- a rate, some number of false matches per hundred thousand voters, a fixed property you could look up. It does not exist, and Figure 3 is why.
-
-```{r scaling-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r scaling-static, eval=!knitr::is_html_output(), fig.height=3.9}
-```
-
-**Figure 3. The same rule, the same records, a rising error rate.** Each point is a random subsample of the New Jersey file at a given size, with the first-name-plus-last-name-plus-date-of-birth collisions actually counted in it. In a pool of `r nn(SMALL_N)` records the rule produces `r pc(SMALL_R)` false matches per 100,000. In the full `r nn(NJN)` it produces `r fx("rate_full")` -- about `r fx("rate_growth")` times as many *per registrant on the roll*, from the identical rule. Both rates share a denominator, meaning the bottom number they are each divided by: records in the pool. That is the only reason they can be compared at all.
-
-The reason is the pairs again. Doubling the file doubles the number of records that can be wrongly matched and simultaneously doubles the number of records each of them can be wrongly matched *against*. Fitting a line through Figure 3 on log axes gives a slope of `r fx("scaling_slope")`, where 2 would be exactly quadratic.
-
-**A matching rule that is accurate in a county is not accurate in a state.** And one that is accurate in a state is not accurate across thirty of them. The rule did not change. The pool did.
-
-In 2012, Crosscheck ran across more than `r fx("cc_records_2012")` registration records.
-
-## The field underneath the key
-
-One more thing sits between the rule and the truth, and it is easy to miss because it looks like a technicality.
-
-A date of birth is only as good as whoever typed it in.
+One more thing sits under the key:
 
 ```{r calendar-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -253,136 +93,45 @@ A date of birth is only as good as whoever typed it in.
 ```{r calendar-static, eval=!knitr::is_html_output(), fig.height=4.6}
 ```
 
-**Figure 4. Every calendar date, and the number of New Jersey registrants carrying it.** One spoke per date, length proportional to count; the dashed ring is where every spoke would end if birth dates were spread evenly. `r nn(fx("jan1_n"))` registrants have a date of birth of 1 January, which is `r fx("jan1_mult")` times the even-spread expectation. The short spoke is 29 February, which occurs in one year out of four.
+**Figure 3. Every calendar date, and the number of New Jersey registrants carrying it.** A year is a cycle, so it is drawn as one: 366 spokes, length proportional to count, with a dashed ring where an even spread would end. One spoke breaks the circle.
 
-The 1 January spike is not a fact about obstetrics. It is what a default value looks like: a field that had to be filled, filled with the first date available. A single sentinel date, 1 January 1800, is carried by `r nn(fx("sentinel_n"))` records in this file, and no one born in 1800 is registered to vote in New Jersey.
+**`r nn(fx("jan1_n"))` registrants carry a date of birth of 1 January, `r fx("jan1_mult")` times the even-spread expectation.** That is not a fact about obstetrics. It is what a default value looks like: a field that had to be filled, filled with the first date available. A single sentinel, `r fx("sent_date")`, is carried by `r nn(fx("sent_n"))` records, and nobody born in `r fx("sent_year")` is registered to vote in New Jersey.
 
-The honest reading of Figure 4 is narrower than it first appears, and worth stating rather than letting the picture overclaim. Clustering in a distribution can only ever *raise* the chance of a collision, never lower it. But across all 366 dates the aggregate effect here is tiny: the observed spread produces `r pc(100 * (as.numeric(fx("md_clustering")) - 1), 1)`% more collisions than a perfectly even one would. Removing the 1800 sentinel entirely moves the statewide count from `r nn(kv(CCK, "pairs"))` pairs to `r nn(fx("pairs_nosentinel"))`.
+Inside that group the date is the same for everyone, so it contributes nothing to the key. The rule quietly collapses to first-plus-last name, the top rung of Figure 2, and the consequence is measurable: `r fx("sent_pct_records")`% of the records produce `r fx("sent_pct_pairs")`% of the statewide collisions. **A matching rule fails worst on the records that were already the most damaged.** The national file behind the 2012 election was worse still: Goel and colleagues found `r fx("natl_fom_pct")`% of its records carrying a first-of-the-month birthday, and deleted them before estimating anything.
 
-So the spike is real, it is evidence of exactly the data-quality problem it looks like, and it is *not* by itself what drives the false-match rate. What drives the false-match rate is the coarseness of the key and the size of the pool -- Figure 2 and Figure 3. A chapter that pinned the problem on dirty birthdays would be telling a more satisfying story than the numbers support.
+So what did the matches turn out to be, where somebody could check? In Iowa's copy of Crosscheck's output, about `r fx("cc_true_dup_share")`% of flagged pairings really were one person registered in two states: people who moved, which is not fraud. Of the `r fx("cc_dup_of_known")` confirmed duplicates, exactly `r fx("cc_dup_voted_twice")` were used to vote twice. And among the pairs that looked like double voting, the Social Security digits said `r pct100(fx("distinct_consortium"), 1)` were **two different people**.
 
-## The year, and the one group where the key stops working
+Now apply it as a purge rule, cancelling the older registration of every matched pair. The authors estimate that rule would impede about **`r fx("dbl_ratio")` legitimate votes for every double vote prevented**, against a national double-voting rate they put at `r fx("dbl_rate")` voters. The program was suspended in December 2019, in settlement of an ACLU of Kansas lawsuit, and has not run since.
 
-A date has a year in it too, and the year turns out to be where the day's anomaly actually came from.
+## What this brief cannot tell you
 
-The natural place to look is 1900. It is the classic placeholder, the year a system reaches for when a field must be filled and nothing is known. In this file 1900 is almost absent: `r nn(fx("n_year_1900"))` records carry it. The placeholder here is **`r fx("sent_year")`**, and it is not scattered across the calendar -- almost every record carrying it carries `r fx("sent_date")` exactly.
+**It cannot tell one person from two.** A name and a date of birth do not contain that information, which is the finding. Every claim above about which matches were real is Goel and colleagues', made possible only by Social Security digits no public file carries.
 
-```{r years-d3, results='asis', eval=knitr::is_html_output()}
-```
+**It is one state, plus one Georgia county.** The cross-county collisions inside New Jersey stand in for cross-state matching, but counties in one state share naming patterns and migration that thirty scattered states do not. No number here is a national false-positive rate, and none is offered as one.
 
-```{r years-static, eval=!knitr::is_html_output(), fig.height=3.7}
-```
+**It cannot say the placeholder dates drove the problem.** The pile-up is real, and still a side effect: across all 366 dates the clustering adds only `r pc(100 * (as.numeric(fx("md_clustering")) - 1), 1)`% to the collisions. The engine is the coarseness of the key and the size of the pool.
 
-**Figure 5. Birth years on `r nn(NJN)` New Jersey registration records.** One needle per year on a log scale, so a year held by one person and a year held by a hundred thousand are both visible. The dashed line is a smooth fitted through 1930 to 2005 -- the null here is a plausible age structure, not a flat line, because an electorate's birth years are genuinely lumpy. The bulk follows it closely. What does not is the placeholder year `r fx("sent_year")`, drawn at the left edge because `r nn(fx("sent_n"))` records is off the top of any axis that also shows the single-record years beside it.
+**And it cannot name anyone the rule wronged.** The counts say how many strangers share a key, not which flagged registration was cancelled or with what consequence.
 
-Three things are true of that figure, and only one of them is a scandal.
+## What you should have learned
 
-**The age structure itself is clean.** Running the standard test for data-entry rounding -- comparing each decade year against the mean of its two neighbours -- gives ratios between `r fx("dec_lo")` and `r fx("dec_hi")`. There is no 1950 pile-up, no 1970 pile-up, nothing. Whatever else is wrong with this field, the years people actually typed are the years people were actually born.
+- A shared birthday passes even odds at just `r EVEN` people, because coincidences count pairs: `r CLASS` people hold `r nn(choose(CLASS, 2))` of them, and pairs grow with the square of the people.
+- The Crosscheck key flags `r nn(kv(CCK, "flagged"))` of New Jersey's `r nn(NJN)` registrants, `r pct100(kv(CCK, "pct"), 2)` of the roll, as sharing a full name-and-birthdate key with a stranger.
+- Key precision is everything: matching on birth year instead of the full date multiplies colliding pairs by `r fx("year_vs_dob")`, and a middle initial removes `r pct100(fx("middle_cut"), 0)` of them.
+- The same rule gets worse as the pool grows: `r pc(SMALL_R)` false-match pairs per 100,000 records in a county-sized pool, `r fx("rate_full")` in the full state.
+- Where ground truth existed, `r pct100(fx("distinct_consortium"), 1)` of apparent double votes were two different people, and the purge rule would have impeded about `r fx("dbl_ratio")` legitimate votes per double vote prevented.
 
-**There is a thin tail of plainly impossible values.** Beyond the placeholder, `r fx("impossible_years")` records carry a birth year before 1900 -- three-digit years, a 1652, a 1776. Set the placeholder aside and `r nn(fx("n_over100"))` registrants have an implied age over 100 and `r nn(fx("n_over110"))` over 110.
+## Extensions
 
-Some of those are real centenarians, and New Jersey has them. Others are records of people who have died and have not been removed.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-**That distinction matters, because removing dead registrants is precisely what list-maintenance programs exist to do** -- and nothing in a name and a date of birth identifies which is which. At the other edge, `r nn(fx("n_under18"))` records imply an age under 18, which is not an error: New Jersey lets 17-year-olds pre-register.
+- `keys.csv` counts, in `flagged` and `pairs`, what six versions of the key catch. Compare its `pct` column rung by rung. Which single ingredient of the key does the most work?
+- `ga_keys.csv` applies the same rules to a Georgia county. Compare its `pct` against New Jersey's for the birth-year key. Does the coarse key behave the same in a far smaller pool?
+- `groupsize.csv` counts colliding groups by `group_size` and `registrants`. How many unrelated people share the largest group's key?
+- `monthday.csv` counts registrants by `monthday`. Sort by `n`. What do the dates at the top of the list have in common?
+- `scaling.csv` follows the collision rate in `per100k` as the pool in `n` grows. What happens to false matches per registrant when the roll doubles?
 
-**And the placeholder is where the matching rule quietly stops working.** This is the part that belongs in this chapter rather than in a note about data hygiene. Inside the group of `r nn(fx("sent_n"))` records sharing `r fx("sent_date")`, the date of birth is the same for everybody. It therefore contributes nothing to the key. First name plus last name plus date of birth **collapses to first name plus last name** -- the top rung of Figure 2, the rung with `r nn(kv("first + last name", "pairs"))` colliding pairs.
-
-The consequence is measurable:
-
-```{r sentinel-table}
-```
-
-`r fx("sent_pct_records")`% of the records produce `r fx("sent_pct_pairs")`% of the collisions -- an over-representation of about `r fx("sent_ratio")` to one, where both shares are taken over the same statewide file of `r nn(NJN)` records. And the comparison group is the striking part: taking `r nn(fx("sent_n"))` records with genuine dates of birth, twenty times over, produced `r fx("real_draw_mean")` colliding pairs on average and never more than `r fx("real_draw_max")`. Against `r nn(fx("sent_pairs"))`.
-
-**A matching rule fails worst on the records that were already the most damaged.** Some registrants had their date of birth recorded badly or not at all. They are disproportionately old registrations, records transferred between systems, or people who registered somewhere that did not capture the field. Those are the ones the rule is most likely to flag as somebody else.
-
-That also settles the loose end left by Figure 4. The 1 January spike looked like a general problem with birthdays. It is largely this one group.
-
-Among registrants born from 1930 onwards, 1 January is over-represented by a factor of `r fx("jan1_mult_modern")`, against `r fx("jan1_mult")` for the file as a whole.
-
-## The same defect, four times worse, in the file that mattered
-
-None of this is a peculiarity of New Jersey, and it is not a new discovery. It is documented in the peer-reviewed literature, at national scale, and it was severe enough to change what a published paper could estimate.
-
-When **Goel and colleagues (2020)** assembled a national file of 2012 vote records, they found that **`r fx("natl_fom_pct")`% of them carried a first-of-the-month birthday**. Their word for that is *improbable*, and it is the right one. Twelve of 366 dates should account for about `r pct100(fx("fom_expected_pct"), 1)` of records, not one in seven. McDonald (`r fx("mcdonald_year")`) had observed that election officials sometimes use a first-of-the-month date to mark missing information. Following that, they treated those records as carrying stand-in dates of birth and **deleted them before estimating anything**. Leaving them in would inflate the count of apparent double votes.
-
-The comparison with New Jersey is worth making carefully, because the two numbers are not alike and the difference is the interesting part.
-
-```{r fom-table}
-```
-
-New Jersey's own extract is **far cleaner** -- an excess of only `r fx("fom_mult")` times, most of it the single placeholder date already discussed. The national file the researchers had to work with was four times worse.
-
-**That gap is the argument for reading this chapter's New Jersey numbers as a floor rather than a typical case.** A state's own extract is one office's record-keeping. A national file is many offices' stitched together.
-
-A pooled matching program does not inherit the average quality of the files it searches. It inherits the problems of every one of them at once. Crosscheck pooled `r fx("cc_states_2013")` states. The collisions counted in Figure 2 were found in the cleanest kind of file this analysis could have used.
-
-## An estimate that was already wrong, about this state
-
-There is a precedent for all of this, and it is on New Jersey.
-
-In 2008, McDonald and Levitt published what was then the most extensive study of double voting yet attempted, examining it within New Jersey in the `r fx("ml_year")` presidential election. They found **`r fx("ml_pairs")` pairs** of vote records sharing a first name, last name and date of birth -- the same key this chapter has been applying, on the same state's rolls, two decades earlier.
-
-The question they then faced is the one this whole chapter is about: how many of those pairs are two different people? They simulated coincidental matches, drawing each record's birth year from the real age distribution of voters and **assuming that birthdays within a year follow a `r fx("ml_uniform")` distribution**. That produced a 95% confidence interval of **`r fx("ml_ci")` people voting twice in New Jersey** in `r fx("ml_year")`.
-
-Goel and colleagues (2020) revisited that estimate with two corrections. They allowed for the clustering in names and days of birth measured in Figures 4 and 5. They also allowed for the possibility that a registration record is wrongly marked as having been used to vote. Their conclusion is that the true number of double votes is **`r fx("ml_overestimate")` of what the earlier approach suggests.**
-
-That is this chapter's entire argument, already played out once, on this state's data. An assumption of uniform birthdays sounds harmless, sounds even conservative, and inflated a published estimate of electoral fraud by a factor of ten.
-
-Be exact about why, because the reason is not the one the phrase "birthdays are not uniform" suggests. Figure 4 showed that the *smooth* part of the variation -- seasons, days of the week -- barely matters: across all 366 dates the aggregate effect on collisions here is `r pct100(100 * (as.numeric(fx("md_clustering")) - 1), 1)`. What breaks the uniform assumption is not that real birthdays are lumpy. It is that a substantial block of recorded birthdays **are not birthdays at all** -- they are placeholders, `r fx("natl_fom_pct")`% of them in the national file, piled onto twelve dates. Assume those are uniformly distributed real birth dates and the model will conclude that a great many people improbably share one, which is exactly what "improbable coincidence" is taken to mean.
-
-One more sentence in that paper does more damage to the fraud narrative than any collision count above. Even taking the authors' own headline estimate at face value, they note something striking. A clerical error rate of merely **`r fx("clerical_rate")`**, meaning records wrongly marked as having voted, would be **enough to explain all of the apparent double votes they found.**
-
-## What was done with the matches
-
-Between roughly 2005 and 2019, the Interstate Voter Registration Crosscheck program pooled registration records from participating states. It returned to each state a list of its own registrations that shared a first name, last name and date of birth with a registration somewhere else. In 2012 it processed more than `r fx("cc_records_2012")` records. In 2013 it circulated a document reporting that it had identified **`r fx("cc_flagged_2013")` "potential duplicate voters"** among the `r fx("cc_states_2013")` states then participating.
-
-What that number means was the subject of a study by Sharad Goel, Marc Meredith, Michael Morse, David Rothschild and Houshmand Shirani-Mehr, published in the *American Political Science Review* in 2020. They filed public-records requests with every state then in the program. **Iowa was the only one able to supply the data in usable form.** What it sent was the list of `r fx("cc_iowa_2012")` pairings Crosscheck had provided to the Iowa Secretary of State before the 2012 election.
-
-Crucially, those records carried something no public voter file does. They said whether the last four digits of each registrant's Social Security number matched. That is the field that can tell one person from two. It is why every figure in this section rests on one state's copy of a multi-state program's output.
-
-Their findings are more interesting than the obvious guess, and they cut in two directions at once.
-
-```{r goel-table}
-```
-
-The last row is a different kind of quantity from the five above it, which is why it says so. It is not a rate within Crosscheck's matches. The abstract's wording is exact and worth keeping. *"We estimate that about `r fx("dbl_rate")` voters cast two ballots."*
-
-The derivation is `r fx("dbl_voters_n")` double voters among the roughly `r fx("dbl_base")` people who voted in the 2012 presidential election nationally. Read instead as a share of the flagged pairs, it would mean something else entirely. The paper itself phrases it both ways in different places, which is precisely why the base is spelled out here.
-
-**Most flagged registrations really were duplicates.** Among the Iowa pairings where the Social Security digits were known for both records, roughly three-quarters were genuinely the same person registered in two states. The match was not usually wrong about that. So the intuitive complaint -- that name-and-birthday matching mostly produces nonsense -- is not what the data show, and you should drop it.
-
-**And almost none of them voted twice.** Of the `r fx("cc_dup_of_known")` confirmed duplicate registrations, `r fx("cc_dup_voted_twice")` were used to cast a ballot twice. Being registered in two states is what happens when you move and do not file paperwork you had no reason to know existed. It is not fraud, and it is not evidence of fraud.
-
-**Where the matches did mislead was on the question that mattered.** Look only at pairs where both registrations were actually used to vote, which are the ones that look like double voting. The Social Security digits matched in `r fx("t1_both_same_ssn")` cases and differed in `r fx("t1_both_diff_ssn")`.
-
-The authors measure that three ways, and the spread is worth seeing. In the national voter file, `r pct100(fx("distinct_national"), 0)` of votes cast under the same first name, last name and date of birth came from two different people. Restricted to Crosscheck states, `r pct100(fx("distinct_crosscheck"), 1)`. Measured directly in the consortium data, where the Social Security digits settle it, `r pct100(fx("distinct_consortium"), 1)`. Three methods, three files, one answer. **A match on those three fields is overwhelmingly two people.**
-
-Put those together and you get the finding that matters for policy. Several states, Indiana among them, adopted or considered a rule cancelling the older of two registrations sharing a name and date of birth. Applied to the consortium states' own data, the authors estimate that such a rule would **impede `r fx("dbl_ratio")` legitimate votes for every double vote prevented.**
-
-That ratio is between two different things and both halves are worth stating plainly, because a bare "300 to 1" invites exactly the question this chapter keeps asking. The numerator, the top number of the fraction, is registrations that were used to cast an apparently legitimate vote and that the rule would cancel: `r fx("t1_earlier_only")` of them in the consortium data. The denominator is double votes actually prevented, of which there were `r fx("cc_dup_voted_twice")` to prevent among `r fx("t1_dup_regs")` confirmed duplicate registrations. It is not a share of anything; it is a price, quoted in lost legitimate votes per fraudulent one stopped.
-
-The program was suspended in December 2019 as part of a settlement of a lawsuit brought by the ACLU of Kansas over its handling of voter data, and it has not run since.
-
-## What the arithmetic will and will not carry
-
-The chain in this chapter is short and each link is a different kind of claim, so separate them before anyone repeats the conclusion.
-
-Two links are direct measurement. The birthday curve in Figure 1 is arithmetic with no data in it at all and no assumptions to argue with. The collision counts in Figures 2 and 3 are counts of real registration records. `r nn(NJN)` of them across `r fx("nj_counties")` New Jersey counties, plus `r nn(fx("ga_n"))` in Houston County, Georgia. All keyed and tallied, with no model in between. The scaling curve is measured by subsampling the real file rather than projected from a formula.
-
-One link is borrowed, and it is the one carrying the most weight. Nothing in a public voter file can establish whether a matched pair is one person or two. That determination required the Social Security digits. It comes entirely from Goel and colleagues, working from the one state, Iowa, that could supply Crosscheck's output with those digits attached. This chapter counts the matches. It does not and cannot verify them.
-
-The same applies to the New Jersey precedent above. McDonald and Levitt's `r fx("ml_pairs")` pairs, and the finding that the true figure is `r fx("ml_overestimate")` of their estimate, are reported here as Goel and colleagues describe them, rather than re-derived.
-
-And several things here are genuinely limited. New Jersey is one state, and the cross-county comparison inside it is a stand-in for a cross-state comparison rather than the thing itself. Counties within a state share migration patterns and naming distributions that thirty scattered states do not.
-
-Georgia's contribution is a single county. The `r fx("year_vs_dob")`-fold penalty for using birth year instead of the full date is measured on New Jersey's records. It would differ elsewhere. No number in this chapter should be read as a national false-positive rate, and none is offered as one. That is exactly why Figure 3 shows the growth curve instead of a single headline figure.
-
-What survives all of that is a claim about inference rather than about arithmetic. A name and a date of birth are not an identifier.
-
-They were never designed to be one. They are not unique in a population of any size. And the number of ways they can coincide grows with the square of the number of people you check. Treating a match on those fields as proof of identity is a decision to accept a certain number of wrongly flagged voters. The only real question is whether whoever adopts the rule knows what that number is, and says so.
-
-`r nn(kv(CCK, "flagged"))` people in New Jersey share a name and a birth date with a stranger. Almost all of them will never know it. Whether that fact costs any of them a vote depends entirely on what somebody decides a match means.
+Two stretch ideas point past the spreadsheet. Find out whether your own state publishes a full date of birth or only a year, and work out from Figure 2 which rung of the ladder any matcher there is forced onto. And read Goel and colleagues' account of the 2008 McDonald–Levitt double-voting estimate for New Jersey, which assumed uniform birthdays and overstated double voting by roughly a factor of ten.
 
 ## Sources
 
@@ -398,30 +147,12 @@ They were never designed to be one. They are not unique in a population of any s
 - Georgia Secretary of State, Houston County voter registration extract,
   consulted `r format(as.Date("2026-08-11"), "%d %B %Y")`. `r nn(fx("ga_n"))`
   registration records carrying first name, last name, middle name and **birth
-  year only**. Public records. Georgia sells the statewide list to anyone who
-  orders it; this copy arrived as working material in a county redistricting
-  matter.
+  year only**. Public records; this copy arrived as working material in a
+  county redistricting matter.
   <https://sos.ga.gov/page/order-voter-registration-lists-and-files>
-- Neither file is redistributed with this chapter, and no name, date of birth,
-  address or registration number from either appears anywhere above. Every
-  figure and table is built from counts alone.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`birthday.csv`](data/derived/birthday.csv), [`birthyears.csv`](data/derived/birthyears.csv), [`crosscounty.csv`](data/derived/crosscounty.csv), [`ga_keys.csv`](data/derived/ga_keys.csv), [`groupsize.csv`](data/derived/groupsize.csv), [`keys.csv`](data/derived/keys.csv), [`monthday.csv`](data/derived/monthday.csv), [`scaling.csv`](data/derived/scaling.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `keys.csv` and `ga_keys.csv` show what happens to a match rule as you add or remove parts of the key. Compare the `pct` flagged. Which single addition does the most work?
-- `groupsize.csv` counts how many registrants share a key, by group size. Find the largest group. How many unrelated people would a purge rule have treated as one person?
-- `monthday.csv` counts registrations by birth month and day. Look at the first of January and the first of the month generally. What is going on, and what does it do to a matching rule?
-- `scaling.csv` shows collisions rising with the number of records. Follow `per100k`. If a state doubled its roll, what happens to the false matches?
+- Neither file is redistributed with this brief. No name, date of birth or
+  address from either appears above except the one illustrative key, and
+  every figure and table is built from counts alone.
 
 **Academic literature**
 
@@ -431,23 +162,18 @@ tables you just opened.
   doi:10.1017/S000305541900087X — **every claim above about Crosscheck's
   matches, the Social Security comparison, the `r fx("natl_fom_pct")`%
   first-of-the-month finding and the `r fx("dbl_ratio")`-to-one ratio is
-  theirs.** Page citations throughout are to the published article, checked
-  against the final text; `facts.csv` records the page and the quoted
-  sentence behind every one of them.
+  theirs.**
 - McDonald, M. P. and Levitt, J. (2008), on double voting in New Jersey in
   `r fx("ml_year")`, and McDonald, M. P. (`r fx("mcdonald_year")`), on
   placeholder dates of birth — both discussed above **as Goel et al. report
-  them** (pp. 457, 459) rather than read directly, which is why no figure is
-  attributed to them here beyond what that article states.
-- The Indiana provision described above is `r fx("indiana_code")`; Goel et al.
-  cite it alongside *Common Cause Indiana v. Lawson*, 937 F.3d 944 (7th Cir.
-  2019).
+  them** rather than read directly.
 
-**How the figures were made**
+**The data itself**
 
-Both registration files are read from their original locations, with their row counts and the date they were consulted recorded. They are reduced to totals only. Collision counts at six key precisions, the cross-county breakdown, the subsample scaling curve, the calendar and birth-year distributions, the placeholder-group comparison behind Figure 5, and the exact birthday probabilities. Every number printed above is computed from those files at the moment this page was built. None is typed into the prose.
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
 
-Two conventions in that script are worth naming because they are the kind of thing that quietly goes wrong. Percentages are formatted by a single function that refuses to print a probability below 1 as "100%". The birthday probability rounds to exactly 1.0 in the computer's arithmetic at 153 people, while remaining below 1 mathematically until 366. So certainty is read off the number of people, never off the stored value. And every figure is drawn twice, once for the browser and once for print, from the same files rather than from each other.
+[`birthday.csv`](data/derived/birthday.csv), [`birthyears.csv`](data/derived/birthyears.csv), [`crosscounty.csv`](data/derived/crosscounty.csv), [`ga_keys.csv`](data/derived/ga_keys.csv), [`groupsize.csv`](data/derived/groupsize.csv), [`keys.csv`](data/derived/keys.csv), [`monthday.csv`](data/derived/monthday.csv), [`scaling.csv`](data/derived/scaling.csv)
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```
