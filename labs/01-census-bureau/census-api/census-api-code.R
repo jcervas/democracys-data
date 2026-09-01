@@ -161,13 +161,6 @@ o$what_it_holds <- c(
   H1 = "occupied and vacant housing units")[o$table]
 o
 
-## ---- ident
-data.frame(
-  category = c("Substantive variables (counts of people or housing)",
-               "Geographic identifiers and query keywords",
-               "Total rows in the file"),
-  rows = c(n_data, n_ident, nrow(v)))
-
 ## ---- adult
 data.frame(
   quantity = c("Substantive variables",
