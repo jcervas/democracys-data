@@ -395,7 +395,7 @@ YEARS <- sort(unique(ret$year))
 # 5. THE CROSSCHECK AGAINST THE CERTIFIED FILE
 # ---------------------------------------------------------------------------
 
-OFF <- "../../county-returns/data/derived/pres2024_counties_official.csv"
+OFF <- "../../../03-elections/county-returns/data/derived/pres2024_counties_official.csv"
 if (file.exists(OFF)) {
   off <- read.csv(OFF, colClasses = c(county_fips = "character"))
   off <- off[!is.na(off$county_fips) & nchar(off$county_fips) == 5, ]
