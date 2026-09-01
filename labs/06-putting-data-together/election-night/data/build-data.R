@@ -42,9 +42,27 @@ leg <- read.csv(leg_url, stringsAsFactors = FALSE)
 
 sen <- leg[leg$type == "sen" & leg$senate_class == 2, ]
 cat("Class 2 Senate seats up in 2026:", nrow(sen), "\n")
+
+# Class 2 is not the whole ballot. A seat vacated mid-term is filled at the
+# next general election whatever class it belongs to, and 2026 has two: the
+# Florida and Ohio seats given up by Rubio and Vance, held in the meantime by
+# appointees. They are Senate races on the 2026 ballot in every sense that
+# matters on election night -- results arrive, a winner is called -- so a
+# landscape built only from senate_class == 2 would leave a reader with
+# nowhere to put two of the night's results. The senate-2026 brief counts the
+# same 35 contests; if these two lists ever disagree again, one of them is
+# wrong about what is on the ballot.
+# Both vacancies are class 3 seats, so select the seat rather than the state:
+# Florida and Ohio each still have a class 1 senator who is NOT on this ballot.
+SPECIALS <- data.frame(state = c("FL", "OH"), senate_class = c(3L, 3L))
+sp <- merge(leg[leg$type == "sen", ], SPECIALS)
+stopifnot(nrow(sp) == nrow(SPECIALS), !any(sp$state %in% sen$state))
+sen <- rbind(sen, sp[, names(sen)])
+cat("plus", nrow(sp), "special elections:", paste(sp$state, collapse = " "),
+    "-- total on the 2026 ballot:", nrow(sen), "\n")
 print(table(sen$party))
 
-st_path <- file.path("..", "..", "electoral-map", "data", "derived", "pres2024_states.csv")
+st_path <- file.path("..", "..", "..", "03-elections", "electoral-map", "data", "derived", "pres2024_states.csv")
 stopifnot(file.exists(st_path))
 st <- read.csv(st_path, stringsAsFactors = FALSE)
 

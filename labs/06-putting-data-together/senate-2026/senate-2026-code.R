@@ -551,8 +551,5 @@ knitr::kable(ft, row.names = FALSE, align = c("l", "l", "r", "r"),
   col.names = c("forecaster", "ratings last changed", "races rated",
                 "average distance from the other eleven"))
 
-## ---- checks
-CK
-
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

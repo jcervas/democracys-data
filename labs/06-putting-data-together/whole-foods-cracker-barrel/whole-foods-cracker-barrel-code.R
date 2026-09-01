@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.4,
                       dpi = 96, fig.retina = 1)
@@ -22,7 +23,6 @@ FN    <- function(k) as.numeric(FV(k))
 gap   <- rd("gap.csv")
 cats  <- rd("categories.csv")
 alt   <- rd("alternatives.csv")
-inv   <- rd("inventory_check.csv")
 p20   <- rd("published_2020.csv")
 anach <- rd("anachronism.csv")
 
@@ -30,30 +30,14 @@ n  <- function(x) format(as.numeric(x), big.mark = ",")
 pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
 
 # --- palette ---------------------------------------------------------------
-# The two brands are the whole subject and a reader will map them onto parties
-# within a second of seeing any colour at all. Fighting that would be futile,
-# so the pair is a muted blue and a muted red -- close enough to read as the
-# parties everybody is already thinking of, far enough from full saturation
-# that no figure looks like an election map. The third colour is for the
-# category the metric leaves out, and it is deliberately the darkest thing on
-# the page, because that is the chapter's argument.
-WFC   <- "#4E79A7"   # Whole Foods
-CBC   <- "#C0625A"   # Cracker Barrel
-NONE  <- "#3B3B3B"   # neither store
-BOTHC <- "#8E7CA8"   # both
-NEUTC <- "#999999"
-REFC  <- "#C41230"   # a published figure, a reference line
-
-subcap <- function(txt, width = 100, line = 3.4, cex = 0.66) {
-  cw <- strwrap(txt, width = width)
-  mtext(cw, side = 1, line = line + (seq_along(cw) - 1) * 0.95, adj = 0,
-        cex = cex, col = "#555555")
-}
-
-cap_gap <- paste0(
-  "The metric on two different units, 2008-2024. Counties above, votes below.")
-cap_cat <- paste0(
-  "The four store categories in 2024, by share of counties and share of votes.")
+# The D3 figures take their colours from the shared chart library's classes,
+# so nothing here is a hex for the screen. These four are for the print
+# twins only, and they are chosen to sit near the library's series colours so
+# the printed page and the screen page are recognisably the same figure.
+CNTC <- "#1C4C5C"   # anything measured in counties
+VOTC <- "#C0625A"   # the same thing measured in votes
+NONE <- "#3B3B3B"   # the category the metric leaves out
+GRY  <- "#8A8F94"
 
 .hdr <- function(x) sub("^(.)", "\\U\\1", gsub("_", " ", names(x)), perl = TRUE)
 
@@ -75,10 +59,17 @@ nobreak <- function(x) {
 g24 <- gap[gap$year == 2024, ]
 g08 <- gap[gap$year == 2008, ]
 
-## ---- inventory
-o <- inv[, c("source", "brand", "stores", "as_of", "kind")]
-names(o) <- c("source", "brand", "stores", "as of", "what it is")
-nobreak(o)
+# the four store categories, in the order the figures and tables read them
+ORD <- c("whole foods only", "both", "cracker barrel only", "neither")
+CIX <- match(ORD, cats$category)
+
+# values quoted inline, named so the prose reads as prose
+VS <- function(k) cats$vote_share[cats$category == k]
+CS <- function(k) cats$county_share[cats$category == k]
+DC <- function(k) cats$dem_counties_pct[cats$category == k]
+MISSING_CB <- as.integer(FN("cb_10k_stores") - FN("n_cb_osm"))
+EXCL_SHARE <- VS("whole foods only") + VS("cracker barrel only")
+COVERED    <- 100 - as.numeric(FV("neither_county_pct"))
 
 ## ---- replicate
 o <- data.frame(
@@ -103,80 +94,56 @@ names(o) <- c("2024, measured in", "Whole Foods counties",
 nobreak(o)
 
 ## ---- gapfig-static
-par(mfrow = c(2, 1), mar = c(2.4, 4.6, 2.2, 7.6), xpd = NA, cex = 0.88)
-for (k in c("counties", "votes")) {
-  wfv <- gap[[paste0("wf_", k)]]; cbv <- gap[[paste0("cb_", k)]]
-  plot(NA, xlim = c(2008, 2024), ylim = c(0, 100), axes = FALSE, xlab = "",
-       ylab = if (k == "counties") "% of counties carried" else "% of votes, D share")
-  axis(1, at = gap$year, cex.axis = 0.8); axis(2, las = 1, cex.axis = 0.8)
-  grid(nx = NA, ny = NULL, col = "#EEEEEE", lty = 1)
-  polygon(c(gap$year, rev(gap$year)), c(wfv, rev(cbv)),
-          col = "#0000000D", border = NA)
-  lines(gap$year, wfv, col = WFC, lwd = 2.6); points(gap$year, wfv, pch = 19, col = WFC)
-  lines(gap$year, cbv, col = CBC, lwd = 2.6); points(gap$year, cbv, pch = 19, col = CBC)
-  text(2024.5, wfv[nrow(gap)], "Whole Foods", adj = 0, cex = 0.72, col = WFC)
-  text(2024.5, cbv[nrow(gap)], "Cracker Barrel", adj = 0, cex = 0.72, col = CBC)
-  mtext(sprintf("measured in %s  -  gap %s to %s points", k,
-                pc(wfv[1] - cbv[1], 0), pc(wfv[nrow(gap)] - cbv[nrow(gap)], 0)),
-        side = 3, line = 0.4, adj = 0, cex = 0.74, col = "#444444")
+g <- gap[order(gap$year), ]
+par(mar = c(3.6, 4.6, 1.4, 8.6), xpd = NA, cex = 0.88)
+plot(NA, xlim = range(g$year), ylim = c(0, 60), axes = FALSE,
+     xlab = "", ylab = "gap, percentage points")
+axis(1, at = g$year, cex.axis = 0.8); axis(2, las = 1, cex.axis = 0.8)
+grid(nx = NA, ny = NULL, col = "#EEEEEE", lty = 1)
+for (s in list(list("gap_counties", CNTC, "measured in counties carried"),
+               list("gap_votes",    VOTC, "measured in votes cast"))) {
+  v <- g[[s[[1]]]]
+  lines(g$year, v, col = s[[2]], lwd = 2.6)
+  points(g$year, v, pch = 19, col = s[[2]])
+  text(max(g$year) + 0.5, v[length(v)], s[[3]], adj = 0, cex = 0.7,
+       col = s[[2]])
 }
-par(mfrow = c(1, 1))
+par(xpd = FALSE)
 
 ## ---- gapfig-d3
-rows <- paste(sprintf(
-  '{"y":%d,"wc":%.2f,"cc":%.2f,"wv":%.2f,"cv":%.2f}',
-  gap$year, gap$wf_counties, gap$cb_counties, gap$wf_votes, gap$cb_votes),
-  collapse = ",")
-cat(sprintf('
-<div id="gp" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const D=[%s];
-const W=760,PH=210,M={t:26,r:118,b:34,l:52};
-const box=d3.select("#gp");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${2*PH+34}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-const x=d3.scaleLinear().domain([2008,2024]).range([M.l,W-M.r]);
-[["counties","wc","cc","%% of counties carried"],
- ["votes","wv","cv","%% of votes, D share"]].forEach((p,pi)=>{
-  const oy=pi*(PH+16);
-  const y=d3.scaleLinear().domain([0,100]).range([oy+PH-M.b,oy+M.t]);
-  const g=svg.append("g");
-  g.append("g").attr("transform",`translate(0,${oy+PH-M.b})`)
-    .call(d3.axisBottom(x).tickFormat(d3.format("d")).tickValues(D.map(d=>d.y)));
-  g.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y).ticks(4));
-  g.append("path").datum(D).attr("fill","#00000010")
-    .attr("d",d3.area().x(d=>x(d.y)).y0(d=>y(d[p[2]])).y1(d=>y(d[p[1]])));
-  const gapA=(D[0][p[1]]-D[0][p[2]]).toFixed(0),
-        gapB=(D[D.length-1][p[1]]-D[D.length-1][p[2]]).toFixed(0);
-  g.append("text").attr("x",M.l).attr("y",oy+16).attr("font-size","11.5px")
-    .attr("fill","#444").text(`measured in ${p[0]} — gap ${gapA} to ${gapB} points`);
-  [[p[1],"%s","Whole Foods"],[p[2],"%s","Cracker Barrel"]].forEach(s=>{
-    g.append("path").datum(D).attr("fill","none").attr("stroke",s[1]).attr("stroke-width",2.6)
-      .attr("d",d3.line().x(d=>x(d.y)).y(d=>y(d[s[0]])));
-    g.selectAll("circle."+s[0]).data(D).join("circle").attr("class",s[0])
-      .attr("cx",d=>x(d.y)).attr("cy",d=>y(d[s[0]])).attr("r",4).attr("fill",s[1]);
-    g.append("text").attr("x",x(2024)+9).attr("y",y(D[D.length-1][s[0]])+4)
-      .attr("font-size","11.5px").attr("fill",s[1]).text(s[2]); });
-  g.selectAll("rect.h").data(D).join("rect").attr("class","h")
-    .attr("x",d=>x(d.y)-16).attr("y",oy+M.t).attr("width",32)
-    .attr("height",PH-M.b-M.t).attr("fill","transparent")
-    .on("mousemove",function(ev,d){
-      tip.style("opacity",1).html(
-        `<b>${d.y}</b><br>Whole Foods: ${d[p[1]].toFixed(1)}%%<br>`+
-        `Cracker Barrel: ${d[p[2]].toFixed(1)}%%<br>`+
-        `gap ${(d[p[1]]-d[p[2]]).toFixed(1)} points`)
-        .style("left",Math.min(ev.offsetX+14,W-240)+"px")
-        .style("top",(ev.offsetY-10)+"px"); })
-    .on("mouseleave",()=>tip.style("opacity",0));
-});
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover any year.</p>
-', rows, WFC, CBC, cap_gap))
+# The finding, drawn with the shared chart library. Two readings of ONE
+# metric over five elections, so a line with two series is the form: the
+# reader follows each reading across time and reads the distance between
+# them off a single axis. Not two panels -- putting both on one scale is the
+# whole point, because the argument is that the two numbers are far apart.
+m <- gap[order(gap$year),
+         c("year", "gap_counties", "gap_votes", "wf_counties", "cb_counties",
+           "wf_votes", "cb_votes")]
+dd_fig("wfgap", "line", m,
+  size = list(w = 770, h = 400, m = list(t = 20, r = 210, b = 42, l = 58)),
+  # ticks = 9 over 2008-2024 is a tick every two years, so every election year
+  # this figure draws carries its own label; a smaller count lands d3 on
+  # 2010/2015/2020, which are not years this chart has data for
+  x = list(field = "year", fmt = "d", ticks = 9),
+  y = list(field = "gap_counties", label = "gap, percentage points",
+           domain = c(0, 60), fmt = "pct0", ticks = 6),
+  series = list(fields = list(
+    list(field = "gap_counties", label = "measured in counties carried",
+         class = "series-1"),
+    list(field = "gap_votes", label = "measured in votes cast",
+         class = "series-2"))),
+  points = TRUE, legend = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.year+"</b><br>"+
+      "counties carried: "+d.wf_counties.toFixed(1)+"% vs "+
+        d.cb_counties.toFixed(1)+"% \\u2014 gap "+d.gap_counties.toFixed(1)+
+        "<br>"+
+      "votes cast: "+d.wf_votes.toFixed(1)+"% vs "+
+        d.cb_votes.toFixed(1)+"% \\u2014 gap "+d.gap_votes.toFixed(1);
+  }'))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Move across the figure for both readings of any year.</p>')
 
 ## ---- cats
 o <- data.frame(
@@ -191,95 +158,52 @@ names(o) <- c("counties with", "how many", "share of all counties",
 o
 
 ## ---- catfig-static
-ord <- c("whole foods only", "both", "cracker barrel only", "neither")
-i   <- match(ord, cats$category)
-COL <- c(WFC, BOTHC, CBC, NONE)
-# barplot() stacks down the ROWS and groups across the COLUMNS, so the
-# categories have to be the rows and the two measures the columns. The columns
-# are supplied in reverse because barplot draws the first at the BOTTOM, and
-# the pair should read counties-then-votes down the page.
-m   <- cbind("share of votes"    = cats$vote_share[i],
-             "share of counties" = cats$county_share[i])
-rownames(m) <- ord
-par(mar = c(6.8, 8.4, 0.6, 1.6), cex = 0.88)
-bp <- barplot(m, horiz = TRUE, col = COL, border = "white",
-              las = 1, xlab = "", xlim = c(0, 100))
-for (b in 1:2) {
-  mid <- cumsum(m[, b]) - m[, b] / 2
-  ok  <- m[, b] > 6
-  text(mid[ok], bp[b], paste0(pc(m[ok, b], 0), "%"), col = "white",
-       cex = 0.78, font = 2)
-}
-mtext("% of the national total", side = 1, line = 2.3, cex = 0.78)
-legend("bottom", inset = c(0, -0.46), xpd = NA, horiz = TRUE, bty = "n",
-       cex = 0.62, legend = ord, fill = COL, border = NA)
-subcap(cap_cat, line = 5.2)
+d <- cats[CIX, ]
+par(mar = c(4.2, 9.6, 1.2, 1.4), cex = 0.88)
+yy <- seq_len(nrow(d))
+plot(NA, xlim = c(0, 90), ylim = c(nrow(d) + 0.5, 0.5), axes = FALSE,
+     xlab = "% of the national total", ylab = "")
+axis(1, cex.axis = 0.8); axis(2, at = yy, labels = d$category, las = 1,
+                              tick = FALSE, cex.axis = 0.8)
+abline(v = seq(0, 90, 15), col = "#EEEEEE")
+segments(d$county_share, yy, d$vote_share, yy, col = GRY, lwd = 2)
+points(d$county_share, yy, pch = 19, col = CNTC, cex = 1.2)
+points(d$vote_share,   yy, pch = 19, col = VOTC, cex = 1.2)
+legend("bottomright", bty = "n", cex = 0.7, pch = 19,
+       col = c(CNTC, VOTC),
+       legend = c("share of all counties", "share of all votes"))
 
 ## ---- catfig-d3
-ord <- c("whole foods only", "both", "cracker barrel only", "neither")
-i   <- match(ord, cats$category)
-rows <- paste(sprintf('{"k":"%s","c":%.2f,"v":%.2f,"n":%d,"dc":%.1f,"dv":%.1f}',
-                      ord, cats$county_share[i], cats$vote_share[i],
-                      cats$counties[i], cats$dem_counties_pct[i],
-                      cats$dem_votes_pct[i]), collapse = ",")
-cat(sprintf('
-<div id="ct" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s], COL=["%s","%s","%s","%s"];
-const W=760,H=210,M={t:16,r:20,b:56,l:118};
-const box=d3.select("#ct");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,100]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(["share of counties","share of votes"])
-  .range([M.t,H-M.b]).padding(0.3);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`).call(d3.axisLeft(y));
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-[["share of counties","c"],["share of votes","v"]].forEach(row=>{
-  let acc=0;
-  D.forEach((d,j)=>{
-    const x0=acc; acc+=d[row[1]];
-    svg.append("rect").attr("x",x(x0)).attr("y",y(row[0]))
-      .attr("width",x(acc)-x(x0)).attr("height",y.bandwidth())
-      .attr("fill",COL[j]).attr("stroke","#fff")
-      .on("mousemove",function(ev){
-        tip.style("opacity",1).html(
-          `<b>${d.k}</b><br>${d.n} counties<br>`+
-          `${d.c.toFixed(1)}%% of counties, ${d.v.toFixed(1)}%% of votes<br>`+
-          `D carried ${d.dc.toFixed(1)}%% of them<br>`+
-          `D won ${d.dv.toFixed(1)}%% of their two-party vote`)
-          .style("left",Math.min(ev.offsetX+14,W-270)+"px")
-          .style("top",(ev.offsetY-10)+"px"); })
-      .on("mouseleave",()=>tip.style("opacity",0));
-    if (d[row[1]]>6) svg.append("text").attr("x",x((x0+acc)/2)).attr("y",y(row[0])+y.bandwidth()/2+4)
-      .attr("text-anchor","middle").attr("font-size","11.5px").attr("font-weight","600")
-      .attr("fill","#fff").attr("pointer-events","none").text(d[row[1]].toFixed(0)+"%%");
-  });
-});
-const lg=svg.append("g").attr("transform",`translate(${M.l},${H-16})`);
-D.forEach((d,j)=>{
-  lg.append("rect").attr("x",j*150).attr("y",-10).attr("width",12).attr("height",12).attr("fill",COL[j]);
-  lg.append("text").attr("x",j*150+17).attr("font-size","11px").attr("fill","#333").text(d.k); });
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">%s Hover any block.</p>
-', rows, WFC, BOTHC, CBC, NONE, cap_cat))
-
-## ---- medians
-ord <- c("whole foods only", "both", "cracker barrel only", "neither")
-i   <- match(ord, cats$category)
-o <- data.frame(
-  category = ord,
-  pop = n(round(cats$med_pop[i])),
-  dens = n(round(cats$med_density[i])),
-  ba = paste0(pc(cats$med_ba[i], 0), "%"))
-names(o) <- c("counties with", "median population",
-              "median people per square mile", "median % with a BA")
-nobreak(o)
+# A dumbbell, because the question is asked of each category separately and
+# the answer is a DISTANCE: how far a category's share of counties sits from
+# its share of votes. A stacked bar would put those two numbers on different
+# rows and make the reader measure the gap by eye.
+d <- data.frame(
+  category = ORD,
+  county_share = round(cats$county_share[CIX], 1),
+  vote_share   = round(cats$vote_share[CIX], 1),
+  counties     = cats$counties[CIX],
+  dem_counties_pct = round(cats$dem_counties_pct[CIX], 1),
+  dem_votes_pct    = round(cats$dem_votes_pct[CIX], 1),
+  stringsAsFactors = FALSE)
+dd_fig("wfcats", "dumbbell", d, rowHeight = 40,
+  size = list(w = 770, m = list(t = 26, r = 34, b = 46, l = 150)),
+  y = list(field = "category"),
+  a = list(field = "county_share", label = "share of all counties"),
+  b = list(field = "vote_share",   label = "share of all votes"),
+  aClass = "series-1", bClass = "series-2", r = 5,
+  x = list(fmt = "pct0", zero = TRUE, label = "% of the national total"),
+  tip = dd_tip(c(counties = "counties", county_share = "share of counties",
+                 vote_share = "share of votes",
+                 dem_counties_pct = "D carried",
+                 dem_votes_pct = "D share of their votes"),
+               fmt = c(counties = "comma", county_share = "pct1",
+                       vote_share = "pct1", dem_counties_pct = "pct1",
+                       dem_votes_pct = "pct1"),
+               title = "category"))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Hover a pair of dots for the counts behind it.</p>')
 
 ## ---- alts
 o <- data.frame(
@@ -287,8 +211,9 @@ o <- data.frame(
   dc = paste0(pc(alt$dem_counties_pct, 1), "%"),
   dv = paste0(pc(alt$dem_votes_pct, 1), "%"),
   ov = paste0(pc(alt$overlap_wf_pct, 0), "%"))
-names(o) <- c("the 212 counties picked by", "D carried",
-              "D share of their votes", "that also have a Whole Foods")
+names(o) <- c(paste("the", n(FV("n_wf_counties")), "counties picked by"),
+              "D carried", "D share of their votes",
+              "that also have a Whole Foods")
 o
 
 ## ---- ai-prompt

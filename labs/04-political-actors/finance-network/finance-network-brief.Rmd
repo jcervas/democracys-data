@@ -16,53 +16,59 @@ dd_read_chunks("finance-network-code.R")
 ```{r setup, include=FALSE}
 ```
 
-An independent expenditure is money spent for or against a candidate by somebody the candidate does not control. The Federal Election Commission publishes every one of them, and the row it publishes is not a fact about a committee or a fact about a candidate. **It is a fact about a pair.** A spender, a target, a direction, an amount.
+Outside money in an American election arrives as a ranking. The ten biggest spenders, the ten most-targeted races: that is how a news story tells you what super PACs did in 2024, and every number in it is correct. It is also half of what the file says.
 
-That makes the file a graph. Almost nothing anybody writes about it is. Reporting on outside money is a ranked list: the ten biggest spenders, the ten most-targeted races. A ranked list is what you get when you take a graph and add up one end of every edge. The other end is thrown away, and with it the only question that needed the file: **who is spending on the same people.**
+The Federal Election Commission publishes independent expenditures one row at a time, and a row is not a fact about a committee or a fact about a candidate. **It is a fact about a pair.** A spender, a target, a direction, an amount. A ranking is what you get when you add up one end of every pair, and the other end goes in the bin.
 
-This chapter keeps the pairs. It also runs into the reason most people do not, which is that a graph needs nodes, and this file does not reliably supply any.
+The question that needs the other end is one a citizen has a stake in. Is outside money a crowd of committees each minding its own private set of races? Or is it a small number of committees piling onto the same few people at once? Those are different accounts of how organised money works, and a ranked list cannot tell them apart. So: what does the money look like drawn as a web, and what does the web show that a table cannot?
 
-## One row is an edge
+## The test
+
+The data is the Commission's bulk file of independent expenditures for the 2024 cycle, downloaded whole from fec.gov. The `r n(DROP)` junk filings that this book's [independent-expenditures brief](../independent-expenditures/independent-expenditures-brief.html) identifies are removed first, on the same rule; `r n(CLEAN)` rows remain, carrying `r bn(CLEANU)`.
+
+This source can answer the question because each row names both ends and the tie between them. The committee that spent, the candidate it spent on, whether the money was for or against, and how much. Two named endpoints and a weight is exactly what a network is made of, and almost no other public record of political money carries all four. What the record does not carry is any checking. It is what filers said about themselves, for the reasons [this cluster's chapter on campaign finance disclosure](../finance-source/finance-source-brief.html) sets out.
+
+The test is to collapse the file into pairs, decide what a node is, and draw it.
+
+## The data
+
+One row of `edges.csv` is one committee, one candidate and one direction, with every filing for that combination added up. The three largest:
 
 ```{r one-row}
 ```
 
+Four columns, and what each holds:
+
 ```{r varmap}
 ```
 
-After the sixteen junk filings the [independent-expenditures chapter](../independent-expenditures/independent-expenditures-brief.html) identified are removed, `r n(CLEAN)` rows remain and they carry `r bn(CLEANU)`. Collapsed to pairs, that is **`r n(NEDGE)` edges** joining **`r n(NCOMM)` committees** to **`r n(NCAND)` candidates**.
+Collapsed that way, the cleaned file is **`r n(NEDGE)` edges** joining **`r n(NCOMM)` committees** to **`r n(NCAND)` candidates**. Two cleaning decisions produced those three numbers, and both are decisions about what counts as one actor.
 
-## The file does not say what the nodes are
-
-Here is the same file, counted three ways on the candidate side and two on the committee side. Nothing changes but the rule for deciding when two rows are about the same thing.
+**The file does not say what its nodes are.** Here it is counted three ways on the candidate side and two on the committee side. Nothing changes but the rule for deciding when two rows are about the same thing.
 
 ```{r idtab}
 ```
 
-Counting candidates by the identifier the FEC supplies gives `r n(id$nodes[id$rule == "FEC candidate ID"])`. Counting by the name the filer typed gives `r n(id$nodes[id$rule == "candidate name, upper-cased"])` — nearly a third more. Both rules are defensible and they disagree about how many people this money was spent on.
-
-Neither is a rounding problem. Look at what happens to one candidate.
+Counting candidates by the identifier the FEC supplies gives `r n(id$nodes[id$rule == "FEC candidate ID"])`. Counting by the name the filer typed gives `r n(id$nodes[id$rule == "candidate name, upper-cased"])`, nearly a third more. Both rules are defensible, and they disagree about how many people this money was spent on. Look at what happens to one candidate:
 
 ```{r harris}
 ```
 
-Those are `r nrow(h)` identifiers, all of them the same person, and the top two carry nine figures each. `r h$cid[1]` is the identifier for her 2024 presidential campaign. `r h$cid[2]` is an older one. `S6CA00584` is her *Senate* identifier, used by somebody filing a row about a presidential race. The `S` and the `CA` are the file telling you it is a California Senate candidacy.
+Those are `r nrow(h)` identifiers and one person. `r h$cid[1]` belongs to her 2024 presidential campaign and `r h$cid[2]` is an older one; `S6CA00584` is her *Senate* identifier, used by somebody filing a row about a presidential race. Merge on the identifier and she is two large nodes and four small ones. Merge on the name and she is one node, but so is every pair of different people who happen to share a name.
 
-Merge on the identifier and she is two large nodes and four small ones. Merge on the name and she is one node, but so are every pair of distinct people who happen to share a name. **A ranked table of most-targeted candidates built from this file has her at first and second place**, and nothing in the file marks the two rows as the same person.
-
-Then there are the rows with no identifier at all:
+The second decision is about rows that name no candidate at all:
 
 ```{r noid}
 ```
 
-`r p1(NOIDP)`% of the rows, carrying `r mn(NOIDU)`, cannot be attached to a candidate node at all. They are not missing money, because the amount is right there. They are missing an endpoint, and an edge with one end is not an edge. Every figure below is drawn without them.
+`r p1(NOIDP)`% of the rows, carrying `r mn(NOIDU)`, cannot be attached to a candidate node. They are not missing money, because the amount is right there. They are missing an endpoint, and an edge with one end is not an edge. **Every figure below uses the FEC identifier and drops those rows.** `sid`, `cid`, `side` and `amount` are the whole of what the figures read.
 
-> **Before you read on, commit to a view.** You have to publish one number for
-> *how many candidates outside money was spent on in 2024*. **Which rule do you
-> use, and what is the one sentence you must print beside the number** so that a
-> reader is not misled? There is no rule that needs no sentence.
+> **Before you read on, commit to a number.** Of the `r n(NCOMM)` committees in
+> this graph, how many do you think spent on **exactly one candidate**? Write
+> down a share of the total, not a feeling. Then do the same for the candidates:
+> how many had exactly one committee spending on them?
 
-## The graph
+## What it says about democracy
 
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=5.6}
 ```
@@ -70,13 +76,13 @@ Then there are the rows with no identifier at all:
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The thirty largest committees and every candidate they spent at least a million dollars on.** `r n(SLN)` nodes, `r n(SLE)` edges, `r p1(SLP)`% of all cleaned independent expenditure. Squares are committees and circles are candidates; area is money and edge colour is direction. Hover a node to isolate its neighbourhood; drag one to feel what it is attached to.
+**Figure 1. The thirty largest committees and every candidate they spent at least a million dollars on.** `r n(SLN)` nodes, `r n(SLE)` edges, `r p1(SLP)`% of all cleaned independent expenditure. A node-and-link drawing is the only form that keeps both ends of a row, which is what the question is about. A bar chart of the same money would have to pick an end and add it up. Squares are committees and circles are candidates, area is money, and edge colour is direction. Hover a node to isolate its neighbourhood; drag one to feel what it is attached to.
 
-**Position in this figure is not data.** The coordinates come from a spring simulation that was run once and frozen. Run it again from a different random start and you get a mirror image, or a rotation, or a differently tangled version of the same graph. Only two things on the page mean anything: which nodes are joined, and how thick the joins are. A force layout is a reading aid, not a measurement. This one is computed in the build rather than in the browser so that it says the same thing twice.
+**Position in this figure is not data.** The coordinates come from a spring simulation that was run once and frozen. Run it again from a different random start and you get a mirror image, or a rotation, or a differently tangled version of the same graph. Only two things on the page mean anything: which nodes are joined, and how thick the joins are.
 
-What the picture shows that a ranked table cannot is the **overlap**. The large committees do not each sit above a private set of races. They share targets, in clusters. A candidate at the centre of one of those clusters is being spent on by many committees at once, which is a fact about coordination that no column in the file records.
+What the picture shows that a ranked table cannot is the **overlap**. The large committees do not each sit above a private set of races. They share targets, in clusters, and a candidate at the centre of a cluster is being spent on by many committees at once. `r f("most_targeted")` is the extreme case, reached by `r n(fn("most_targeted_n"))` separate committees. Nothing in the file records that as a fact about her; it is a property of the pairs, and only appears when you keep them.
 
-## Almost everything has one connection
+Now the rest of the graph, which is mostly the opposite.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
@@ -84,47 +90,59 @@ What the picture shows that a ranked table cannot is the **overlap**. The large 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. Degree, both sides, on log axes.** Left: how many candidates each committee spent on. Right: how many committees spent on each candidate. Hover a point for who is there.
+**Figure 2. How many nodes have how many connections, both sides of the graph on one pair of log axes.** A scatter on log axes fits because the interesting part is the tail: on ordinary axes the handful of nodes with a hundred connections would flatten everything else onto the floor. Hover a point for who is there.
 
-`r n(sum(cm$candidates == 1))` of the `r n(NCOMM)` committees spent on exactly one candidate, and `r n(sum(cd$committees == 1))` of the `r n(NCAND)` candidates were touched by exactly one committee. The median on both sides is `r f("cand_median_deg")`. At the other end, `r WIDE` reaches `r n(WIDEN)` candidates and `r f("most_targeted")` is reached by `r n(fn("most_targeted_n"))` committees.
+`r n(D1C)` of the `r n(NCOMM)` committees spent on exactly one candidate, and `r n(D1D)` of the `r n(NCAND)` candidates were touched by exactly one committee. The median on both sides is `r f("cand_median_deg")`. At the other end, `r WIDE` reaches `r n(WIDEN)` candidates. That shape is the heavy tail the [distributions brief](../../03-elections/distributions/distributions-brief.html) argues about, and it has the same consequence here: **a mean number of connections would describe nobody.**
 
-That shape is the same heavy tail the [distributions chapter](../../03-elections/distributions/distributions-brief.html) argues about, with nearly everything at one and a handful at a hundred. It has the same consequence. **A mean degree would be a number describing nobody.**
-
-## Money spent to make you dislike somebody
+Two committees can look identical in a ranked table and sit in completely different places in this graph. The ones with many connections are mostly doing one thing:
 
 ```{r attack}
 ```
 
-Of the `r n(BIGC)` committees that spent more than five million dollars, **`r n(BIGA)` spent more than ninety per cent of it against somebody.** The graph shows why that is structural rather than stylistic. An attacking committee can spread itself across many opponents, because there is no candidate it has to be loyal to. The widest committees in Figure 1 are mostly red.
+Of the `r n(BIGC)` committees that spent more than five million dollars, **`r n(BIGA)` spent more than ninety per cent of it against somebody.** The graph shows why that is structural rather than a matter of taste. A committee spending *for* a candidate is tied to that candidate, so its reach is bounded by how many people it is willing to endorse. A committee spending *against* has no such loyalty and can spread itself across every opponent it dislikes. The widest committees in Figure 1 are mostly red for that reason.
 
-> **A second prediction.** Suppose every committee in Figure 1 were required to
-> file under one permanent identifier, and every candidate likewise. **Which of
-> this chapter's findings would change, and which would survive?** Say which
-> numbers are artifacts of the identifier problem and which are not.
+## What this brief cannot tell you
 
-## What this chapter cannot tell you
+**This is not a picture of who funds whom.** Independent expenditure is money a committee spends on its own, and the file records the committee rather than the people who gave it the money. The arrow runs from a PAC to a candidate. The arrow from a donor to the PAC is in a different file with a different structure, and joining the two is a project rather than a step.
 
-**This is not a picture of who funds whom.** Independent expenditure is money a committee spends *on its own*, and the file records the committee, not the people who gave it the money. The arrow runs from a PAC to a candidate. The arrow from a donor to the PAC is in a different file with a different structure, and joining them is a project rather than a step. Everything here stops at the committee.
+**The nodes are a decision, and this brief made it.** Every figure uses the FEC identifier, which puts Kamala Harris on the page twice and drops the `r p1(NOIDP)`% of rows carrying no identifier. Merging on the name would give a different graph with different degrees. Neither graph is the true one, which is what the identity table above is for.
 
-**The nodes are a decision, and this chapter made it.** Every figure uses the FEC identifier, which puts Kamala Harris on the page twice and drops the `r p1(NOIDP)`% of rows that carry no identifier. Merging on the name instead would give a different graph with different degrees and a different-looking tail. Neither graph is the true one. What can be said is which rule was used, which is what the identity table at the top is for.
+**`sup_opp` is one character, written by the filer and checked by nobody.** The whole red-and-green reading of Figure 1 rests on it. A committee that mislabels an attack as support moves an edge from one colour to the other, and nothing anywhere fails.
 
-**Sixteen rows were removed by a threshold**, not by a diagnosis. The cut is `r usd(1e8)` and it is inherited from the sibling chapter along with its caveat: a real expenditure above that line would be removed too, and none of this chapter's figures would notice.
+Finally, Figure 1 is `r p1(SLP)`% of the money and a much smaller share of the graph, `r n(SLN)` of the `r n(NCOMM + NCAND)` nodes. It was chosen to be legible. The full graph drawn honestly is an unreadable ball of `r n(NEDGE)` edges, and that is not a failure of drawing. It is what the object is.
 
-**`sup_opp` is one character, written by the filer and checked by nobody.** The entire red-versus-green reading of Figure 1 rests on it. A committee that mislabels an attack as support moves an edge from one colour to the other and nothing anywhere fails.
+## What you should have learned
 
-Finally, the slice in Figure 1 is `r p1(SLP)`% of the money and a much smaller share of the graph — `r n(SLN)` of the `r n(NCOMM + NCAND)` nodes. It was chosen to be legible. A different threshold would produce a different picture, and the full graph, drawn honestly, is an unreadable ball of `r n(NEDGE)` edges. That is not a failure of drawing. It is what the object is.
+- One row of a spending file is a pair, and adding up one end of it destroys the only question that needed the pairs: `r n(NEDGE)` edges here collapse into two rankings and back into nothing.
+- A network needs nodes, and this file supplies none: the same candidates are `r n(id$nodes[id$rule == "FEC candidate ID"])` people by identifier and `r n(id$nodes[id$rule == "candidate name, upper-cased"])` by name, and `r p1(NOIDP)`% of rows name no candidate at all.
+- Both sides of the graph are almost all edge-of-the-map: `r n(D1C)` of `r n(NCOMM)` committees and `r n(D1D)` of `r n(NCAND)` candidates have exactly one connection, with a median of `r f("cand_median_deg")`.
+- The committees with the widest reach are the attacking ones — `r n(BIGA)` of the `r n(BIGC)` largest spent over ninety per cent against somebody — because attacking carries no loyalty to any one candidate.
+- Position in a force-directed drawing carries no information. Only the joins and their thickness do.
+
+## Extensions
+
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
+
+- `committees.csv` has `pct_against` and `candidates` for every spender. Sort by `candidates`. Do the committees that reach the most people also spend the highest share against?
+- `candidates.csv` has `committees`, `total` and `against` per candidate. Find the candidates with the most committees spending on them. Is being popular in this file the same thing as being attacked?
+- `edges.csv` gives every pair with an `amount` and a `side`. Group by `cid` and count. How many candidates have exactly one committee behind them, and how much money is in those single edges?
+- `identity.csv` gives the node count under each `rule`. Pick one and defend it in a sentence a reader could check.
+
+Two stretch ideas point past the spreadsheet. Take one of the clustered candidates in Figure 1 and look up the committees around her on fec.gov. Do any of them share a treasurer or an address? The edge list will not tell you, but the filings behind it might. Second, fetch the 2022 cycle's file and build the same edge list, to see whether the shape of the tail belongs to 2024 or to the category.
 
 ## Sources
+
+**Data**
 
 - Federal Election Commission. *Independent expenditures, 2024 cycle*, bulk
   download. <https://www.fec.gov/files/bulk-downloads/2024/independent_expenditure_2024.csv>
 - Federal Election Commission. *Independent expenditures file description*
   (the column layout, published separately from the data).
   <https://www.fec.gov/campaign-finance-data/independent-expenditures-file-description/>
-- The sixteen-row cut and the reason for it are established in this corpus's
-  [independent-expenditures chapter](../independent-expenditures/independent-expenditures-brief.html);
+- The `r n(DROP)`-row cut and the reason for it are established in this book's
+  [independent-expenditures brief](../independent-expenditures/independent-expenditures-brief.html);
   the same rule is re-applied here to the same download rather than reusing that
-  chapter's aggregates, because aggregates have no edges.
+  brief's totals, because totals have no edges.
 
 **The data itself**
 
@@ -132,16 +150,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`candidates.csv`](data/derived/candidates.csv), [`committees.csv`](data/derived/committees.csv), [`edges.csv`](data/derived/edges.csv), [`graph_edges.csv`](data/derived/graph_edges.csv), [`graph_nodes.csv`](data/derived/graph_nodes.csv), [`identity.csv`](data/derived/identity.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `committees.csv` has `pct_against` for every spender. Sort it. Which committees exist mainly to attack somebody, and how much do they spend?
-- `edges.csv` gives every committee-to-candidate link with an `amount` and a `side`. Count how many candidates have only one committee behind them. What does a network of mostly-isolated nodes tell you?
-- `candidates.csv` has `total` and `against` per candidate. Find the candidates most spent against. Did the money work?
-- `identity.csv` shows how many nodes you get under different rules for what counts as one actor. Pick a rule and defend it. How much does the network's shape depend on that choice?
 
 ```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

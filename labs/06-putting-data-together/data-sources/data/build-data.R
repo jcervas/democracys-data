@@ -184,14 +184,14 @@ stopifnot(all(cen$fips[cen$state_abbrev == "CT"] %in%
 
 # --- 4. State-level returns -------------------------------------------------
 #
-# Copied verbatim from ../../electoral-map/data/derived/pres2024_states.csv so
+# Copied verbatim from ../../../03-elections/electoral-map/data/derived/pres2024_states.csv so
 # that this lab folder is self-contained. That file was built by the `electoral-map`
 # script from jaytimm's PresElectionResults compilation; see
-# ../../electoral-map/data/build-data.R for how. Its vote columns are
+# ../../../03-elections/electoral-map/data/build-data.R for how. Its vote columns are
 # PERCENTAGES, not counts -- which is the first thing this lab has to reckon
 # with.
 
-src <- "../../electoral-map/data/derived/pres2024_states.csv"
+src <- "../../../03-elections/electoral-map/data/derived/pres2024_states.csv"
 if (file.exists(src)) {
   file.copy(src, "derived/pres2024_states.csv", overwrite = TRUE)
   st <- read.csv("derived/pres2024_states.csv")

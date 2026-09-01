@@ -26,7 +26,7 @@ dir.create("derived", showWarnings = FALSE)
 
 options(scipen = 999, stringsAsFactors = FALSE)
 
-src <- file.path("..", "..", "electoral-map", "data", "derived/pres2024_states.csv")
+src <- file.path("..", "..", "..", "03-elections", "electoral-map", "data", "derived/pres2024_states.csv")
 stopifnot(file.exists(src))
 
 st <- read.csv(src, stringsAsFactors = FALSE)

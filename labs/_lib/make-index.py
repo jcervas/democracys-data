@@ -240,7 +240,7 @@ SECTIONS = [
     ("Survey Meets Record", [], ["validated-turnout"]),
     ("Race Inference", [], ["surnames", "bisg-check", "uncertainty", "rpv"]),
     ("Districts", [],
-     ["neutral-maps", "mid-decade", "mid-decade-florida", "redistricting",
+     ["neutral-maps", "mid-decade", "redistricting",
       "vote-dilution", "sweet-spot"]),
     ("Forecasting", [],
      ["models-markets", "seat-forecast", "senate-2026", "election-night"]),

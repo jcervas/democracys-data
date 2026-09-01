@@ -16,73 +16,47 @@ dd_read_chunks("turnout-denominator-code.R")
 ```{r setup, include=FALSE}
 ```
 
-`r n(N24$TOTAL_BALLOTS_COUNTED)` ballots were counted in the November 2024 general election. Nobody disputes that number. It is the least controversial quantity in this chapter, and it will not change again.
+`r n(N24$TOTAL_BALLOTS_COUNTED)` ballots were counted in the November 2024 general election. Nobody disputes that number, and it will not change again. Divide it by one population and American turnout in 2024 was **`r f1(N24$rate_vap_tb)`%**. Divide it by another and it was **`r f1(N24$rate_vep_tb)`%**.
 
-Divide it by one population and American turnout in 2024 was **`r f1(N24$rate_vap_tb)`%**. Divide it by another and it was **`r f1(N24$rate_vep_tb)`%**. The two populations are both published by serious people, both called something reasonable, and both describe the United States in November 2024. The gap between the two answers is `r f1(GAP24)` points, which is `r n(EXTRA)` ballots -- more votes than were cast in the twelve smallest states combined.
+So what *is* the turnout rate? The question is not pedantic. A turnout rate is how a country grades its own democracy, and the American figure is the one quoted in every league table that ranks the United States against other rich democracies. Both populations below are published by serious people, both are called something reasonable, and both describe the United States in November 2024. The gap between the two answers is `r f1(GAP24)` points, worth `r n(EXTRA)` ballots.
 
-This chapter is about the bottom of that fraction. It is the least examined half of almost every rate in political science. And in this case the choice of denominator, meaning which bottom number you divide by, does not merely move a number. It reverses the answer to the question the number was built to settle.
+## The test
 
-## A decline everybody has heard about
+This brief joins one numerator, the top number of a fraction, to two competing denominators. A denominator is the bottom number, the thing you are dividing by. The ballots and the populations come from the same two files, keyed on the election year for the national series and on state and year for the fifty states.
 
+The 1948–2000 half is Michael McDonald and Samuel Popkin's Table 1 from *The Myth of the Vanishing Voter*, printed on page 966 of the December 2001 *American Political Science Review* (<https://www.jstor.org/stable/3117725>). The 1980–2024 half is McDonald's maintained series at the United States Elections Project, published as CSV under a Creative Commons licence (<https://election.lab.ufl.edu/data-downloads/>).
 
-By the late 1990s the decline of American voter participation was, in the words of the standard text on the subject, the most important and most analyzed trend in recent American political history. Turnout had run near `r f1(max(PRES$vap_rate))`% in `r PRES$year[which.max(PRES$vap_rate)]` and was down to `r f1(PRES$vap_rate[PRES$year == 1996])`% by 1996, the lowest figure since the war. An enormous literature grew up to explain it. Television had done it, or negative advertising, or the collapse of party organizations, or the decline of social capital, or the sheer number of elections Americans are asked to vote in.
+Those two sources answer the question because they are the only ones that print the ballots next to *both* candidate denominators for the same elections. Anyone can recompute either rate and compare. The join runs on a well-behaved key: a year and a state name are about as safe as keys get, which is why the interesting failure here is not in the join. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the chapter on what a key can promise, and on the crosswalk, a table that translates one set of identifiers into another when two files share no key.
 
-Every one of those explanations was an explanation of the same measurement: votes cast, divided by the **voting-age population** -- everyone in the country aged 18 and over, as estimated by the Census Bureau.
+## The data
 
-In December 2001 Michael McDonald and Samuel Popkin published a paper in the *American Political Science Review* pointing out that this denominator counts people who are not allowed to vote and misses people who are. The size of the error had been growing since about 1972. That is precisely the period the decline was measured over.^[Michael P. McDonald and Samuel L. Popkin, "The Myth of the Vanishing Voter," *American Political Science Review* 95, no. 4 (December 2001): 963--974.]
+Five tables carry this brief. `mp1948.csv` holds the article's own table, `r cv("Table 1 data rows parsed")` rows covering `r cv("Table 1 election years")`, with `year`, `vote_highest`, `vap`, `vap_rate`, the three adjustments (`noncitizens`, `felons`, `overseas`), `vep`, `vep_rate` and `inelig_pct`. `national.csv` and `states.csv` hold the modern series, `r cv("Elections Project rows, 1980-2024")` rows in all, with `YEAR`, `STATE`, `TOTAL_BALLOTS_COUNTED`, `VOTE_FOR_HIGHEST_OFFICE`, `VAP`, `VEP`, `NONCITIZEN_PCT`, `INELIGIBLE_FELONS_TOTAL`, `ELIGIBLE_OVERSEAS` and the four rates this brief computes from them. `state_trends.csv` fits both trends per state and flags `sign_flip`; `pairs2024.csv` compares every pair of states on both denominators.
 
-The rest of this chapter is what happens when you take their table apart and put it back together.
-
-## A table that prints its own ingredients
-
-There is no dataset behind the 1948--2000 series. There is a table, on page 966 of the December 2001 issue, and it is kept here exactly as a PDF-to-text converter renders it -- no character added, removed or straightened.
-
-```{r raw-capture, results='asis'}
-```
-
-This is the whole of the historical evidence, and it is worth pausing on what kind of object it is. It is not a file anybody maintains. It is typesetting. The numbers exist in this arrangement of characters and nowhere else. Every figure in the first half of this chapter was recovered by reading them off the page, the way you would read them off the page.
-
-> **Public is not the same as usable.** This recurs across almost everything
-> this course touches, and it is the reason several chapters begin with a
-> converter rather than a download. A number can be authoritative, cited for
-> twenty-five years, and still not be a dataset.
-
-The parse itself is nearly trivial: `r cv("Table 1 data rows parsed")` lines begin with an election year, and the fields are separated by whitespace. What is not trivial is knowing whether it worked. Splitting on whitespace is exactly the kind of operation that fails silently -- read one field too far left and you get numbers that are the right *shape*, in the right columns, and wrong.
-
-## Rebuilding the paper's own number
-
-
-The voting-eligible population is not a mysterious quantity. It is the voting-age population, minus the people in it who cannot vote, plus the people who can vote and are not in it:
+The voting-eligible population is not a mysterious quantity. It is the voting-age population, minus the people in it who cannot vote, plus the people who can vote and are not in it.
 
 ```{r vep-def}
 ```
 
-All four of those columns are printed in the table. So the voting-eligible population can be rebuilt, the turnout rate recomputed from it, and the result compared against the rate the authors printed one column further right.
+Two construction decisions matter more than the rest.
 
-```{r recon-check}
-```
+**The older half is typesetting, not a file.** There is no dataset behind the 1948–2000 series. The numbers exist as an arrangement of characters on a printed page, and the build recovers them by reading the converted text. Public is not the same as usable: a number can be authoritative, cited for twenty-five years, and still not be a dataset. Two independent properties of the published table are checked against each other, and all `r cv("Table 1 data rows parsed")` rows reconstruct within `r cv("largest disagreement between rebuilt and printed VEP rate, pts")` of a percentage point.
 
-All `r cv("Table 1 data rows parsed")` years reconstruct, the worst of them off by `r cv("largest disagreement between rebuilt and printed VEP rate, pts")` of a percentage point, which is rounding in a table printed to one decimal. The second test uses different columns to establish the same thing and agrees.
+**The modern file carries two numerators, and they are never spliced.** `VOTE_FOR_HIGHEST_OFFICE` counts votes for the top statewide contest; `TOTAL_BALLOTS_COUNTED` counts every ballot, including those where the voter skipped that contest. The second runs two to three per cent higher, and the two cover different years. Joining them end to end inserts a jump larger than most of the effects below, so every trend here is computed on one numerator at a time. That is why the state analysis stops at 2016 rather than 2024.
 
-That is the standard worth holding onto: **a total that adds up is weak evidence that a parse worked.** Two independent properties of the published table, checked against each other, is strong evidence. And a column read one field off would not miss by hundredths -- it would miss by tens.
+> **Before you read on, commit to a number.** Divided by the voting-age
+> population, presidential turnout fell **`r f2(abs(B_VAP[1]))` points per
+> election** across 1972–2000. Divided by the voting-*eligible* population,
+> with the same elections and the same ballots, **how much did it fall?**
+> Half as fast? A third?
 
-## The same votes, divided twice
+## What it says about democracy
 
-
-The claim in the literature was a claim about a trend: turnout had been falling since 1972. So take the presidential elections from 1972 to 2000 -- `r nrow(W72)` of them -- and fit a line. Same elections, and the same votes in the numerator, which is the top number. One line for each denominator underneath.
-
-> Divided by the voting-age population, presidential turnout fell
-> **`r f2(abs(B_VAP[1]))` points per election** across 1972--2000. Divided by
-> the voting-*eligible* population --- the same elections, the same ballots, a
-> denominator smaller by a few per cent --- **how much did it fall?** Write down
-> a number before you read on. Half as fast? A third?
+**`r sg(B_VEP[1], 3)` points per election.** Not half, and not a third. The corrected series falls by `r f2(abs(B_VEP[1] * (nrow(W72) - 1)))` of a percentage point across the whole of 1972 to 2000, with a standard error `r n(abs(B_VEP[2]/B_VEP[1]))` times the estimate itself. It cannot be told apart from a flat line.
 
 ```{r trend-tab}
 ```
 
-**`r sg(B_VEP[1], 3)` points per election.** Not half, and not a third. It is smaller by a factor of about `r n(RATIO)`, with a standard error of `r f2(B_VEP[2])`, sixty times the estimate itself. Twenty-eight years produced an entire research literature on the decline of American civic life. Across them the corrected series falls by `r f2(abs(B_VEP[1] * (nrow(W72) - 1)))` of a percentage point in total, and cannot be told apart from a flat line.
-
-The published paper reports this coefficient as a drop of 0.007 points per election with a standard error of 0.40. Recomputed here from the printed table, it is `r sg(B_VEP[1], 3)` with a standard error of `r f2(B_VEP[2])` -- the same number to the precision the article printed.
+That matters because of what the falling version was used for. By the late 1990s the decline of American voter participation was, in the words of the standard text on the subject, the most analyzed trend in recent American political history. Turnout had run near `r f1(max(PRES$vap_rate))`% in `r PRES$year[which.max(PRES$vap_rate)]` and was down to `r f1(PRES$vap_rate[PRES$year == 1996])`% by 1996. Television had done it, or negative advertising, or the collapse of party organizations, or the decline of social capital. Every one of those explanations was an explanation of the same measurement.
 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -90,21 +64,9 @@ The published paper reports this coefficient as a drop of 0.007 points per elect
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-Before 1972 the two lines are nearly the same line. After it they separate, and they separate in a way that matters: the red line goes down and the blue one does not.
+**Figure 1. Presidential turnout, 1948–2000, the same ballots over two denominators.** Two lines on one axis is the right form here because the two series share a numerator exactly: any daylight between them is the denominator and nothing else. Before 1972 they are nearly the same line. After it they separate, and the red line goes down while the blue one does not.
 
-## The error is not a constant
-
-
-If the voting-age population had always overstated the electorate by the same proportion, none of this would matter for a *trend*. Every year's rate would be too low by the same amount, the line would sit lower, and its slope would be untouched. Anyone studying change over time could ignore the problem entirely.
-
-That is not what happened.
-
-```{r gap-tab}
-```
-
-The correction is `r f2(GAP_LATE / GAP_EARLY)` times larger in the second period than the first, and by 2024 it is larger again. A growing correction subtracted from a flat series *is* a declining series. The vanishing voter was never a fact about voters. It was a fact about immigration, incarceration and Census arithmetic, entering the literature through the bottom of a fraction that nobody was reading.
-
-The cleanest way to see this is to drop the numerator entirely. The share of the voting-age population that is not eligible to vote involves no ballots at all -- it is a statement about who lives here.
+The reason the choice changes a trend rather than only a level is that the error is not a constant. If the voting-age population had always overstated the electorate by the same proportion, every year's rate would sit too low by the same amount and the slope would be untouched.
 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -112,205 +74,106 @@ The cleanest way to see this is to drop the numerator entirely. The share of the
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=3.4}
 ```
 
-Around `r f1(min(SH_MP$inelig_pct))`% at the low point in the 1960s; `r f1(SH_EP$inelig_pct[SH_EP$year == 2024])`% in 2024. That climb is the entire mechanism. Everything in the turnout-decline literature that was attributed to television, to advertising or to social capital had to compete with this line, and for thirty years nobody put it on the same axis.
+**Figure 2. The share of the voting-age population that cannot vote, 1948–2024.** There are no ballots in this figure at all; it is a statement about who lives here. The share runs about `r f1(min(SH_MP$inelig_pct))`% at the low point in the 1960s and `r f1(SH_EP$inelig_pct[SH_EP$year == 2024])`% in 2024. A growing correction subtracted from a flat series *is* a declining series.
 
-## Twenty-one million people
-
+The vanishing voter was never a fact about voters. It was a fact about immigration, incarceration and Census arithmetic, entering the literature through the bottom of a fraction that nobody was reading. Here is the same arithmetic for one recent election.
 
 ```{r decomp}
 ```
 
-`r n(N24$VAP - N24$VEP)` people, net, and the composition is lopsided: noncitizens are `r f1(100 * NC24 / (NC24 + N24$INELIGIBLE_FELONS_TOTAL))`% of everything subtracted. This is why the correction tracks immigration so closely, and why it grew when it did.
+Noncitizens are `r f1(100 * NC24 / (NC24 + N24$INELIGIBLE_FELONS_TOTAL))`% of everything subtracted, which is why the correction tracks immigration so closely and why it grew when it did.
 
-> None of these categories is a judgement this chapter is making about who
-> *should* vote. Each is a description of who **may** vote under law as it
-> stands. Whether the felony exclusions in the third row ought to exist is a
-> live political argument, taken up in the disenfranchisement chapter; the
-> arithmetic here is the same whichever side of it you are on.
-
-## What the modern file actually contains
-
-
-McDonald has maintained the series ever since, now at the University of Florida, and it is a proper CSV with documentation and a Creative Commons licence -- everything the article was not. `r cv("Elections Project rows, 1980-2024")` rows, every state and the nation, `r length(unique(na$YEAR))` elections. The first thing to do with it is check that its own headline column is what it says.
-
-```{r ep-check}
-```
-
-Everything reconciles. And then there are the columns.
-
-**`r cv("rows where VOTE_FOR_HIGHEST_OFFICE holds a URL")` rows have a web address where a vote count belongs.** The column named `VOTE_FOR_HIGHEST_OFFICE` holds numbers for most of the series and, in `r cv("which years those are")`, holds links to state election-night reporting sites instead. A tool that coerces that column to a number without looking turns `r cv("rows where VOTE_FOR_HIGHEST_OFFICE holds a URL")` states into missing values, or worse, into zeros.
-
-**`r length(strsplit(cv("election years with no published turnout rate at all"), ",")[[1]])` election years have no published turnout rate at all.** The `VEP_TURNOUT_RATE` and `VAP_TURNOUT_RATE` columns are empty for `r cv("election years with no published turnout rate at all")`. Every ingredient needed to compute them is present in those same rows; the rate itself simply is not offered. A reader who filters to rows with a rate has silently discarded the first two decades of the file.
-
-**And the numerator changes inside the series.** The file carries two of them. `VOTE_FOR_HIGHEST_OFFICE` counts votes for the top statewide contest; `TOTAL_BALLOTS_COUNTED` counts every ballot, including those where the voter skipped that contest. The second runs two to three per cent higher, and the two cover different years:
-
-```{r numerator-cov}
-```
-
-Neither covers the whole period. Joining them end to end to get one long series inserts a jump of two to three points at the seam. That jump is larger than most of the effects in this chapter, and it points the same way as the story you were hoping to tell. **Every trend below is computed on one numerator at a time**, which is why the state analysis stops at 2016 rather than running to 2024. That is a real cost, paid deliberately.
-
-## The same elections, twenty-five years apart
-
-
-The overlap is a free experiment, and it settles which half of the fraction is the unstable one.
-
-```{r overlap-tab}
-```
-
-The votes have not moved. They were certified before the article went to press and they are the same votes today, to four decimal places.
-
-The population has. The voting-age population of the United States in `r ov$year[which.max(abs(ov$vap_move_pct))]` was `r n(ov$vap_2001[which.max(abs(ov$vap_move_pct))])` when the article was published and is `r n(ov$vap_now[which.max(abs(ov$vap_move_pct))])` now. That is `r n(abs(ov$vap_now - ov$vap_2001)[which.max(abs(ov$vap_move_pct))])` people added to a denominator after the fact, because the 2000 Census came in and the estimates that preceded it were revised to meet it. The published turnout rate for that election moved `r f2(abs(ov$vap_rate_move[which.max(abs(ov$vap_move_pct))]))` points as a result.
-
-> A turnout rate has an unstable half and a stable half, and they are not the
-> ones people assume. Election results are contested, litigated, recounted
-> and then fixed forever. Population denominators are uncontroversial,
-> unlitigated, and revised every year for a decade.
-
-## Fifty states, and five that change direction
-
-
-Noncitizens are not distributed evenly. In 2024 they are `r f1(max(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% of the voting-age population in `r st$STATE[st$YEAR == 2024][which.max(st$NONCITIZEN_PCT[st$YEAR == 2024])]` and `r f1(min(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% in `r st$STATE[st$YEAR == 2024][which.min(st$NONCITIZEN_PCT[st$YEAR == 2024])]`. A correction that varies by a factor of `r n(max(st$NONCITIZEN_PCT[st$YEAR == 2024]) / min(st$NONCITIZEN_PCT[st$YEAR == 2024]))` across states cannot be waved away as a level shift.
-
-Fit the same two lines for each state across the `r TX$n` presidential elections from 1980 to 2016, on one numerator throughout. **`r cv("states whose 1980-2016 presidential trend changes sign")` states come out with turnout falling on one denominator and rising on the other.**
+Noncitizens are also not spread evenly. In 2024 they are `r f1(max(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% of the voting-age population in `r st$STATE[st$YEAR == 2024][which.max(st$NONCITIZEN_PCT[st$YEAR == 2024])]` and `r f1(min(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% in `r st$STATE[st$YEAR == 2024][which.min(st$NONCITIZEN_PCT[st$YEAR == 2024])]`. Fit the same two lines for each state across the `r TX$n` presidential elections from 1980 to 2016 and `r cv("states whose 1980-2016 presidential trend changes sign")` states come out with turnout falling on one denominator and rising on the other.
 
 ```{r flip-tab}
 ```
 
-Texas is the clearest case. Across ten presidential elections its turnout falls `r f1(abs(TX$fit_vap))` points measured against everyone of voting age, and rises `r f1(TX$fit_vep)` points measured against everyone allowed to vote. That is a swing of `r f1(TX$fit_vep - TX$fit_vap)` points, produced by nothing except the choice of who to count. Over the same period the noncitizen share of its voting-age population went from `r f1(TX$nc_first)`% to `r f1(TX$nc_last)`%.
+Texas is the clearest case, falling `r f1(abs(TX$fit_vap))` points against everyone of voting age and rising `r f1(TX$fit_vep)` points against everyone allowed to vote. Now the honest part, which is the more useful lesson of the two. **Not one of the `r 2 * nrow(FLIP)` trends in that table is statistically distinguishable from zero.** `r P_SIG` of the `r 2 * nrow(tr)` state trends across all `r nrow(tr)` jurisdictions do clear the conventional threshold, so this is not a claim that ten elections can never establish anything. The sign flips where neither slope is well determined, which is exactly where you would expect it.
 
-```{r fig3-d3, results="asis", eval=knitr::is_html_output()}
-```
+That is the finding, not a caveat on it. The denominator decides which of two unsupported stories the data appears to tell, and a reader shown only one line has no way to know the other exists.
 
-```{r fig3-static, eval=!knitr::is_html_output(), fig.height=3.4}
-```
-
-Now the honest part, and it is the more useful lesson of the two.
-
-**Not one of the `r 2 * nrow(FLIP)` trends in that table is statistically distinguishable from zero.** `r P_SIG` of the `r 2 * nrow(tr)` state trends across all `r nrow(tr)` jurisdictions clear the conventional threshold, so this is not a claim that ten elections can never establish anything. It is a claim about these five. The smallest *p*-value in the flip table is `r f2(P_MIN)`, and `r P_SIGF` of its `r 2 * nrow(FLIP)` slopes are significant.
-
-**The sign flips where neither slope is well determined, which is exactly where you would expect it.** A trend that is firmly negative stays negative when the denominator shifts a little; a trend near zero is free to land on either side. So the claim that Texas turnout rose is not supported --- and neither is the claim that it fell.
-
-That is the finding, not a caveat on it. **The denominator decides which of two unsupported stories the data appears to tell,** and a reader shown only the red line would have had no way to know the blue one existed. Choosing a denominator first and reading the trend off it afterwards is how you get a literature.
-
-## Two states, and which one voted more
-
-
-Rankings are how turnout usually reaches the public: best and worst states, league tables, a map coloured by who showed up. Take the `r cv("state pairs compared in 2024")` distinct pairs of states in 2024 and ask how many rank in one order under one denominator and the opposite order under the other.
-
-**`r cv("pairs that reverse under the two denominators")` of `r cv("state pairs compared in 2024")`** -- roughly one pair in ten. The largest reversal is not subtle.
+One comparison carries no such uncertainty, because it is two divisions rather than two estimates of a slope. Of the `r cv("state pairs compared in 2024")` distinct pairs of states in 2024, `r cv("pairs that reverse under the two denominators")` rank one way under one denominator and the opposite way under the other.
 
 ```{r pair-tab}
 ```
 
-`r TOP$state_b` beats `r TOP$state_a` by `r f1(TOP$vap_b - TOP$vap_a)` points, or loses to it by `r f1(TOP$vep_a - TOP$vep_b)` points, depending on which population you put underneath. Both statements are computed from the same certified ballot counts. Unlike the state trends, this one carries no uncertainty worth speaking of: these are two divisions, not two estimates of a slope.
+`r TOP$state_b` beats `r TOP$state_a` by `r f1(TOP$vap_b - TOP$vap_a)` points, or loses to it by `r f1(TOP$vep_a - TOP$vep_b)` points, depending on which population goes underneath. Both statements are computed from the same certified ballot counts.
 
-```{r fig4-d3, results="asis", eval=knitr::is_html_output()}
+```{r fig3-d3, results="asis", eval=knitr::is_html_output()}
 ```
 
-```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
 
-Every state sits above the diagonal, because every state has somebody in it who cannot vote. What varies is how far above -- from `r f1(min(S$rate_vep_tb - S$rate_vap_tb))` points in `r S$STATE[which.min(S$rate_vep_tb - S$rate_vap_tb)]` to `r f1(max(S$rate_vep_tb - S$rate_vap_tb))` points in `r S$STATE[which.max(S$rate_vep_tb - S$rate_vap_tb)]`. A ranking is a comparison of vertical positions, and the vertical positions have been shifted by different amounts.
+**Figure 3. Every state in 2024, measured both ways.** Every state sits above the diagonal, because every state has somebody in it who cannot vote. What varies is how far above, from `r f1(min(S$rate_vep_tb - S$rate_vap_tb))` points in `r S$STATE[which.min(S$rate_vep_tb - S$rate_vap_tb)]` to `r f1(max(S$rate_vep_tb - S$rate_vap_tb))` points in `r S$STATE[which.max(S$rate_vep_tb - S$rate_vap_tb)]`. A ranking compares vertical positions, and the vertical positions have been shifted by different amounts.
 
-## The better denominator is still wrong
+## What this brief cannot tell you
 
+**The denominator is an estimate, not a count.** Voting-age population comes from Census projections between the decennial counts, and the noncitizen share from the American Community Survey. The felon population comes from Bureau of Justice Statistics series, and the overseas figure is projected forward from a single survey. None of them carries anything saying how far off it could be. The voting-eligible population is a better denominator, not a measured one.
 
-The voting-eligible population subtracts people in prison, on probation and on parole where state law bars them from voting. It does not subtract people who have **completed** a sentence in full and remain barred, and the documentation says so in as many words. The author reports having no reliable way to estimate that population, and therefore chooses not to make the adjustment.^[Michael P. McDonald, *2024 General Election Turnout Rates,* version 0.4, documentation, United States Elections Project.]
+**None of the five sign changes rests on a significant trend.** They show how sensitive a conclusion is to a choice of denominator. They do not establish that turnout rose anywhere, and the claim that Texas turnout fell is not supported either.
 
-The disenfranchisement chapter has the number he could not use. The Sentencing Project's *Locked Out 2024* counts `r n(read.csv("../disenfranchisement/data/derived/national.csv")$post_sentence)` people in that category -- Americans who have served their sentences in full, cannot vote, and are inside the denominator this chapter has spent nine pages recommending.
+**The better denominator is still wrong.** It subtracts people in prison, on probation and on parole where state law bars them from voting. It does not subtract people who have completed a sentence in full and remain barred, because the maintainer reports having no reliable way to estimate that population and says so in the documentation. Residency requirements are not adjusted for by either source.
 
-```{r still-in}
-```
+**And the 2024 figures are a version 0.x release.** Some state ballot counts in that file are visibly rounded estimates rather than certifications, and the publisher still calls the file preliminary.
 
-That is `r f2(100 * DIS$post_sentence / N24$VEP)`% -- an order of magnitude smaller than the `r f1(N24$inelig_pct)`% error it replaces, and in the same direction. **The lesson is not that one denominator is right and one is wrong. It is that a denominator is a claim about who counts, that every such claim is contestable, and that the honest move is to say which one you used and why.**
+## What you should have learned
 
-> **Where this chapter borrows.** The post-sentence figure is read straight
-> out of the disenfranchisement chapter's own data folder rather than
-> re-derived here, because that chapter has already made the hard decisions
-> about what the Sentencing Project's five categories mean and which of them
-> a state's law actually bars. Its build script parses them out of the
-> published PDF; this one reads the result.
+- The same `r n(N24$TOTAL_BALLOTS_COUNTED)` ballots give a 2024 turnout rate of `r f1(N24$rate_vap_tb)`% or `r f1(N24$rate_vep_tb)`%, `r f1(GAP24)` points apart, worth `r n(EXTRA)` ballots, depending only on which population sits underneath.
+- Presidential turnout from 1972 to 2000 falls `r f2(abs(B_VAP[1]))` points per election on the voting-age population and `r sg(B_VEP[1], 3)` on the voting-eligible population, so an entire research literature was explaining a denominator.
+- The correction is not a level shift: the share of voting-age adults who cannot vote runs from about `r f1(min(SH_MP$inelig_pct))`% in the 1960s to `r f1(SH_EP$inelig_pct[SH_EP$year == 2024])`% in 2024, and a growing correction turns a flat series into a declining one.
+- `r cv("states whose 1980-2016 presidential trend changes sign")` states change the direction of their turnout trend with the denominator, and `r cv("pairs that reverse under the two denominators")` of `r cv("state pairs compared in 2024")` state pairs swap places in a 2024 ranking.
+- A denominator is a claim about who counts, every such claim is contestable, and the honest move is to say which one you used and why.
 
-## What this evidence will bear
+## Extensions
 
-The 1948--2000 series is a table in a journal article, recovered from the printed page and checked two independent ways against properties the table itself publishes. The 1980--2024 series is a maintained CSV under a Creative Commons licence whose every published rate this chapter reproduces to within `r cv("largest disagreement with a published rate, pts")` of a point. Both are recomputed each time this document is rendered.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The limits bound different claims, and they are worth taking one at a time.
-
-**The denominator is an estimate, not a count.** Voting-age population comes from Census projections between decennial counts, and the noncitizen share from the American Community Survey. The felon population comes from Bureau of Justice Statistics series, and the overseas figure from an extrapolation of a 2022 survey. None of them carries a margin of error into this file, meaning any statement of how far off it could be.
-
-The section on the 1980--2000 overlap shows how far they move: up to `r f2(max(abs(ov$vap_move_pct)))`% on a single election's voting-age population. **The VEP is a better denominator, not a measured one.**
-
-**None of the five sign changes rests on a significant trend.** They are real arithmetic on real data, and they are also, every one of them, a change between two slopes that cannot be told apart from zero --- which is why they flip at all. They demonstrate how sensitive a conclusion is to a choice of denominator. They do not establish that turnout rose anywhere. The `r P_SIG` significant trends elsewhere in the same table keep their sign under both denominators, which is the reassuring half of the same result.
-
-**The state analysis stops in 2016** because that is where a consistent numerator runs out, and the alternative -- splicing two vote-counting definitions at 1998 -- would have inserted an artifact larger than the effect. **The 2024 figures are version 0.x** and preliminary; some state ballot counts in that file are visibly rounded estimates rather than certifications. **Two elections carry no highest-office numerator at all**, so 2020 and 2024 appear only in total-ballots form.
-
-**And the better denominator still contains `r n(DIS$post_sentence)` people who cannot vote**, by the maintainer's own documented choice, plus everyone excluded by residency requirements, which neither source adjusts for.
-
-What can be said is bounded and worth saying. The decline in American voter turnout after 1972 is the most analyzed trend in modern American political history, and the subject of an enormous literature on television, advertising and social capital. Divide the ballots by the people who were allowed to cast them, and it is `r sg(B_VEP[1], 3)` points per election, with a standard error of `r f2(B_VEP[2])`. The correction that produces this is not exotic and was never secret. It is subtraction, applied to a column that everybody had. Nobody applied it for thirty years because the denominator is the half of a rate that nobody reads.
+- `state_trends.csv` carries `b_vap`, `b_vep` and `sign_flip`. Sort by `divergence` and read the twenty states where the two denominators disagree most, whether or not the sign changes.
+- `pairs2024.csv` has `vap_a`, `vap_b`, `vep_a`, `vep_b` and `swing`. Sort by `swing` and list the ten pairs the choice of denominator reverses most sharply. Do the same states keep appearing?
+- `mp1948.csv` shows the adjustments one at a time in `noncitizens`, `felons` and `overseas`. Work out which one matters most in 1960 and which matters most in 2000.
+- `states.csv` has `NONCITIZEN_PCT` and `inelig_pct` for every state and year. Rank the states by how much their correction grew between 1980 and 2024.
+- **Stretch.** Several other democracies publish turnout over a registered-voter denominator rather than an age or eligibility one. Find two, and work out which American figure their number should be compared against.
+- **Stretch.** The Sentencing Project counts Americans who have completed a felony sentence and remain barred from voting. Fetch that number, subtract it from the voting-eligible population, and see how far the 2024 rate moves.
 
 ## Sources
 
 **Data**
 
 - McDonald, Michael P., and Samuel L. Popkin. 2001. "The Myth of the Vanishing
-  Voter." *American Political Science Review* 95 (4): 963--974.
+  Voter." *American Political Science Review* 95 (4): 963–974.
   <https://www.jstor.org/stable/3117725>
   Table 1, page 966, captured with `pdftotext -layout` into
   `mp2001-table1.txt`. `r cv("Table 1 data rows parsed")` election
   years, `r cv("Table 1 election years")`. See `README.txt` for what
   was and was not altered.
-- McDonald, Michael P. *1980--2022 General Election Turnout Rates*, version 1.2.
+- McDonald, Michael P. *1980–2022 General Election Turnout Rates*, version 1.2.
   United States Elections Project, University of Florida. CC BY 4.0.
   <https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_1980_2022_v1.2.csv>
 - McDonald, Michael P. *2024 General Election Turnout Rates*, version 0.4.
   United States Elections Project, University of Florida.
   <https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.4.csv>
   Both files' documentation is fetched alongside them and quoted above.
-- Uggen, Christopher, Ryan Larson, Sarah Shannon and Robert Stewart. 2024.
-  *Locked Out 2024: Four Million Denied Voting Rights Due to a Felony
-  Conviction.* The Sentencing Project. Read from
-  `national.csv`, which that chapter's build script
-  parses out of the published PDF.
 
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`mp1948.csv`](data/derived/mp1948.csv), [`national.csv`](data/derived/national.csv), [`overlap.csv`](data/derived/overlap.csv), [`pairs2024.csv`](data/derived/pairs2024.csv), [`state_trends.csv`](data/derived/state_trends.csv), [`states.csv`](data/derived/states.csv), [`national.csv`](../disenfranchisement/data/derived/national.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `state_trends.csv` fits a trend on both denominators and flags `sign_flip`. Count the states where the two denominators disagree about the direction of turnout.
-- `pairs2024.csv` compares states in pairs on both denominators, with a `swing`. Find the pairs where the choice of denominator reverses which state turned out more.
-- `mp1948.csv` shows the adjustments one at a time: noncitizens, felons, overseas. Work out which adjustment matters most, and whether that has changed over time.
-- `overlap.csv` recomputes an old published series with today's numbers. Compare `vap_rate_move` and `vep_rate_move`. How much of a famous decline survives?
+[`mp1948.csv`](data/derived/mp1948.csv), [`national.csv`](data/derived/national.csv), [`pairs2024.csv`](data/derived/pairs2024.csv), [`state_trends.csv`](data/derived/state_trends.csv), [`states.csv`](data/derived/states.csv)
 
 **Also cited**
 
 - Rosenstone, Steven J., and John Mark Hansen. 1993. *Mobilization,
-  Participation, and Democracy in America.* New York: Macmillan --- the
+  Participation, and Democracy in America.* New York: Macmillan — the
   characterisation of the decline as the most analyzed trend in recent American
   political history, quoted at the opening of the 2001 article.
 - Teixeira, Ruy. 1992. *The Disappearing American Voter.* Washington, DC:
-  Brookings Institution --- the case for the voting-age population as the
+  Brookings Institution — the case for the voting-age population as the
   denominator, which the 2001 article argues against.
-- Putnam, Robert D. 2000. *Bowling Alone.* New York: Simon and Schuster ---
+- Putnam, Robert D. 2000. *Bowling Alone.* New York: Simon and Schuster —
   one of the explanations offered for the decline that turns out not to need
   explaining.
-
-**Checks**
-
-Every figure below is recomputed from the sources listed above, and checked against the values asserted in `checks.csv`. The table is printed here verbatim.
-
-```{r checks}
-```
-
-Every file this chapter reads can be regenerated from the addresses above. For each download the url, bytes, hash and row count are recorded and compared against the previous run, so a source that changes under the chapter announces itself instead of passing quietly.
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

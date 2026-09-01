@@ -16,109 +16,60 @@ dd_read_chunks("policing-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Over ten years the San Francisco police recorded `r n(ST)` traffic stops. Hispanic drivers were stopped `r bfmt(bget("hispanic","residents"))` times as often as white drivers, which makes them the least-stopped large group in the city. Hispanic drivers were also stopped `r bfmt(bget("hispanic","drives to work"))` times as often as white drivers, which is exactly even.
+Police stop Black drivers far more often than white drivers. You have heard the claim, and San Francisco's own paperwork looks like it should settle it: over ten years the city's officers wrote down `r n(ST)` traffic stops, each one carrying the driver's race. Is it true?
 
-Both figures come from the same stops. They differ only in what the stops were divided by: the first by the number of Hispanic residents of San Francisco, the second by the number of Hispanic San Franciscans who drive to work. Neither denominator is dishonest. Neither is right, either, and the choice between them decides the sign of the finding.
+The honest answer is that it depends on a number nobody ever counted. Divide those stops by the city's Black residents, and Black drivers are stopped `r bfmt(bget("black","residents"))` times as often as white drivers. Divide them instead by the people who drive to work, and the figure is `r bfmt(bget("black","drives to work"))`. Do the same for Hispanic drivers and the finding changes sign: `r bfmt(bget("hispanic","residents"))` against residents, which reads as under-stopped, and `r bfmt(bget("hispanic","drives to work"))` against drivers, which is exactly even.
 
-That is the difficulty at the center of every argument about policing data, and it is not the difficulty most people expect. The problem is not that records are missing. **The problem is that the comparison is ill-defined**, and the useful part of this chapter is what remains sayable once that is admitted.
+A citizen should care about this before an analyst does. A traffic stop is the most common encounter between an American and the state's power to detain, and roughly one adult in ten has one in a given year. Whether that power falls evenly is a question about ordinary life. This brief asks it in the two forms the record can carry, and says plainly which one it can answer.
 
-## Nobody was required to write any of this down
+## The test
 
-There is no national record of traffic stops, because no law creates one.
+Using San Francisco police stop records from `r min(y$year)` to `r max(y$year)`, taken from the Stanford Open Policing Project's release of 1 April 2020 (<https://openpolicing.stanford.edu/data/>). No law requires a national record of traffic stops, and none exists. The project assembled what there is by public-records request, one agency at a time, and then forced dozens of incompatible extracts into a single layout with the same column names and the same coding.
 
-What exists is whatever each police department chose to keep, in whatever format its records system happened to use. It was released only where a state disclosure law obliged it. The Stanford Open Policing Project assembled what there is the slow way, by public-records requests, one agency at a time. Then it did the harder half. It forced dozens of mutually incompatible extracts into one layout, with the same column names and the same coding, so that a method could be carried from one department to another.
+That layout is why this source, of all sources, can answer the question. Each row carries whether a search happened **and** what the search turned up, on the same record. Many agencies publish one and not the other, and a department's own summary table publishes neither. The population figures come from a different kind of source entirely. They are U.S. Census Bureau American Community Survey counts for San Francisco County, from the two five-year releases that cover the stop years exactly, 2007–2011 and 2012–2016.
 
-This chapter uses one department out of that collection, San Francisco, from the project's 2020-04-01 release. That is `r n(ST)` stops between `r min(y$year)` and `r max(y$year)`, one row each, in a file far too large to travel inside a chapter. That standardization is the project's real contribution, and it is also the thing to keep in view. Every column below has been through somebody's translation.
+A stop record is administrative. It is paperwork an institution left behind while doing something else, and nobody in it was being measured or asked. [The section introduction](../admin-records-source/admin-records-source-brief.html) sets out what that kind of record can bear, and why it nearly always arrives as a top number with nothing underneath it.
 
-The stops answer only half the question, so the other half comes from an entirely different kind of source. The population figures are American Community Survey counts for San Francisco County, taken from the two five-year releases that tile the stop window exactly. They were pulled through the Census API on `r unique(read.delim("data/PROVENANCE.tsv")$first_seen)`. That is `r nrow(read.delim("data/PROVENANCE.tsv"))` calls in all, each logged with the size and SHA-256 of what came back, and the API key stripped out of the recorded address.
+## The data
 
-Set those two paragraphs beside each other and the asymmetry is the point. The denominator came from an agency whose job is publishing numbers, in an afternoon, over a documented interface, and anyone can re-run those calls tomorrow and check the answers against the hashes recorded here. The numerator, the top number of every rate here, came from police departments that publish nothing, one letter at a time, and it cannot be re-run at all. It is a release, not a feed. It is dated, the stops end in `r max(y$year)`, and a version of this chapter about last year would have to begin by filing the requests again and waiting.
+Everything below rests on `by_race.csv`, which has `r nrow(d)` rows and five columns: `race`, `stops`, `searched`, `contraband_found` and `arrests`. It was built by reading the release's one-row-per-stop file once and adding the rows up by the driver's race. `by_year.csv` does the same split by `year`, and `acs_denominators.csv` holds the population counts, one row per group per `denominator`, each naming the census table it came from in `source`.
 
-**The cost of getting data this way is that the data has an expiry date somebody else controls.** None of that is visible in the two small CSVs sitting here, which look exactly like any other download.
-
-Both are the right evidence for this chapter, and neither is the evidence anyone would have designed. The outcome test needs one thing no published summary can supply: whether a search happened and what it turned up, carried on the same record. Plenty of agencies record one and not the other. The file that would answer the question outright -- what the drivers who were *not* searched had in their cars -- cannot exist, because nobody looked, which is what "not searched" means. The census side is imperfect in a way worth naming precisely.
-
-The residents table splits the population cleanly. The adult and commuter tables are "race alone" versions that fold in Hispanic respondents of those races, nudging two of the groups' counts up. And the commuter table covers workers who *live* in San Francisco, so it counts a resident driving out to San Mateo and misses the one driving in from Oakland. Where no honest match existed at all -- the "other" category, past the residents rung -- the row was left out rather than approximated.
-
-Cleaning here mostly meant throwing things away on purpose. The source file carries a row per stop; it is streamed once and reduced to `r nrow(d)` rows by race and a small year-by-race table, so nothing individual-level is stored here at all. Its boolean columns are text, and only the literal string `TRUE` is read as true, which means a blank counts as a no rather than as a mystery. Nothing was imputed, meaning no missing value was filled in by guessing, and nothing was reweighted. What a reader would have to redo is the download and that one reduction; everything after it is arithmetic on five rows.
-
-## A traffic stop is a decision, and the file records only the outcome
-
-A traffic stop is the most common encounter between an American citizen and the state's coercive power. Roughly one adult in ten is stopped in a given year. What happens next is decided by one person, at the roadside, in seconds, under a legal standard the law leaves deliberately vague. A warning, a citation, a search, an arrest.
-
-Each row of the Stanford Open Policing Project's San Francisco file is **one stop**, with roughly these fields:
+The raw file offers about these fields, and two of them decide everything that follows:
 
 ```{r schema}
 ```
 
-Two entries in that list decide everything that follows.
+**`subject_race` is the officer's perception**, not the driver's self-report. It is a box somebody ticked at the roadside. For a question about the officer's behaviour that is arguably the right variable, because what matters is what the officer believed he was looking at. It is not the census's variable, and the two must never be quietly mixed.
 
-**`subject_race` is the officer's perception**, not the driver's self-report. It is a box somebody ticked at the roadside. That is a limitation, and it means the variable is not the census's variable and the two must never be silently mixed. But for a question about *the officer's behavior* it is arguably the correct variable, because what matters is what the officer believed he was looking at.
+**`contraband_found` exists only where `search_conducted` is true.** Where nobody searched, the value is blank, and that blank is not missing data. It records that there was nothing to find because nobody looked.
 
-**`contraband_found` exists only where `search_conducted` is true.** There is no counterfactual anywhere in this file. You never learn what a driver who was not searched had in the car, and that absence turns out to be the whole problem.
+Cleaning here mostly meant throwing things away on purpose. Every column of the raw file was dropped except race, the two search columns, the arrest column and the year inside the date, so no individual-level record is kept here at all. The booleans arrive as text, and only the literal string `TRUE` is read as true, which makes a blank a no rather than a mystery. Nothing was filled in by guessing and nothing was reweighted. A stop with no race recorded is dropped rather than filed under `other`, because "the officer did not write it down" and "the officer wrote other" are different facts. That rule costs nothing here: the `r nrow(d)` categories account for all `r n(ST)` stops.
 
-```{r counts}
-```
+The census side has one flaw worth naming. The residents table splits the population cleanly, while the adult and commuter tables fold Hispanic respondents into the other races. The commuter table also counts workers who *live* in San Francisco, so it holds a resident driving out to San Mateo and misses one driving in from Oakland. Where no honest match existed, as for the `other` category past the residents row, the row was left out rather than approximated.
 
-Note how narrow the interesting part is. **Searches are rare**, `r SE_PCT`% of stops, and everything this chapter can establish happens inside that thin slice.
-
-## Nine hundred thousand rows, and the two that show the work
-
-That field list was a description. This is the file. Below are the header line and two stops from `ca_san_francisco_2020_04_01.csv`, the Stanford release, as they come out of the zip. The lines are long, and are folded at their commas to fit the page. `location`, `lat` and `lng` are replaced with `[redacted]`, because a street corner and a timestamp are a record about a person, and nothing here needs them. Everything else is verbatim.
-
-```{r rawstop}
-```
-
-Read the last two columns first, because they are the whole lesson. They are prefixed `raw_`, and they hold the San Francisco Police Department's own words in the department's own vocabulary — phrases nobody outside that department would guess. Beside them sit the standardized columns this chapter actually reads. Here is the same two stops, with each department phrase set against what the release made of it:
-
-```{r translate}
-```
-
-**Somebody read the left column and wrote the right one.** The Stanford project keeps the original string beside its translation precisely so that the translation can be audited, and this chapter's entire finding rests on it being right. It is a judgment call made by people who are not in this chapter, on material this chapter never sees.
-
-Three more things in those `r NF` fields decide what can be asked. `contraband_found` is `NA` on the first stop and `TRUE` on the second, and it is not missing data: it is `NA` because nobody searched, so there was nothing to find. That single pattern is why the counterfactual does not exist. `district` and `subject_age` are `NA` on both — columns the common schema defines and this department did not fill, which is what standardization looks like from the inside. And every boolean is the *text* `TRUE` or `FALSE`, alongside the *text* `NA`, so something has to decide what a blank means. Here only the literal `TRUE` counts as true, which turns every blank and every `NA` into a no rather than a mystery.
-
-Now the clean file, which is small enough to print entire. This is `by_race.csv` in full, exactly as the build writes it:
+Here is the cleaned table, exactly as the build writes it:
 
 ```{r cleanrace}
 ```
 
-`r n(ST)` stops became `r nrow(d)` rows. Every column of the raw file was thrown away except `subject_race`, `search_conducted`, `contraband_found`, `arrest_made` and the year inside `date`. That reduction was deliberate rather than incidental. **No individual-level record is stored here at all**, so the folder cannot be re-identified, re-purposed, or quietly used to answer a question it was not collected for. What that costs is everything conditional. No question about time of day, or district, or the interaction of race and sex, can be asked of these five rows, and getting it back means re-running the download.
+> **Before you read on, commit to two numbers.** You have seen what happens
+> to Hispanic drivers when the bottom number of the fraction changes, from
+> `r bfmt(bget("hispanic","residents"))` against residents to
+> `r bfmt(bget("hispanic","drives to work"))` against drivers. Now abandon
+> population altogether. Of the drivers an officer had already pulled over,
+> what share was searched? Write down the ratio you expect for Black drivers
+> against white ones. Then write down whether searches of Black drivers
+> turned up contraband **more** often, **less** often, or about as often as
+> searches of white drivers.
 
-The grouping key is `subject_race`, whose `r nrow(d)` values are the officer's categories rather than the census's. `asian/pacific islander` is one box on a form, and several dozen lines of the census's race table. The chapter never merges the two without saying so.
+## What it says about democracy
 
-A row with a blank in that column is dropped by the build rather than filed under `other`. "The officer did not record it" and "the officer recorded other" are different facts, and only one of them is about the driver. In this release the rule costs nothing, because the `r nrow(d)` categories account for every one of the `r n(ST)` stops. But a rule that happens to catch no rows today is still a decision, and the next release is not obliged to cooperate.
-
-## The population at risk of being stopped was never counted
-
-Here is the table anybody produces on opening this file with no theory at all.
-
-```{r stops-by-race}
-```
-
-Black drivers were `r pc(r("black","share"),1)`% of stops. San Francisco's Black population over this period was roughly 5 to 6% of residents. It is very tempting to set those two numbers side by side, and it is a mistake, because **the residential population is not the population at risk of being stopped.**
-
-To compare a stop count against a population you would have to know who was *driving*, where, and when. San Francisco is a commuter city: a large share of the cars on its streets on a weekday belong to people who live somewhere else. Driving is not distributed like residence. It varies with car ownership, with work schedules, and with which arterial roads happen to run through which neighborhoods.
-
-And a perfect count of drivers still would not be enough, because you would also need to know **how many drivers of each group were doing something that warranted a stop.** Nobody records that. Nobody could.
+To turn stops into a rate you need a denominator, the bottom number of the fraction — the thing you divide by. Here is what you would actually need, and whether it exists:
 
 ```{r denominator}
 ```
 
-This is not a funding problem that a better survey would fix. **There is no census of who was on the road**, the denominator cannot be constructed, and the share in the table above therefore proves nothing on its own. Most public arguments about policing stall exactly here, with each side asserting a denominator neither can produce.
-
-Figure 1 shows what is at stake in the choice. The same `r n(ST)` stops are divided by three *different* real denominators from the American Community Survey. Each group is plotted as a ratio to white drivers, so a value of one means "stopped at the same rate as white drivers."
-
-> **Before you look at the figure, put a number on its fourth column.** The
-> first three divide these stops by people, and you have already seen what two
-> of them do to Hispanic drivers: `r bfmt(bget("hispanic","residents"))` against
-> residents, `r bfmt(bget("hispanic","drives to work"))` against people who
-> drive to work — under-stopped, then dead level. The fourth column asks
-> something else entirely. It abandons population and takes the stop as given:
-> of the drivers an officer had already pulled over, what share were searched,
-> again as a ratio to white drivers. Commit to a figure for Hispanic drivers
-> before you read on. Below one, like the first column? At one, like the third?
-> Above it — and if above, how far above?
+Figure 1 shows what the choice is worth. It puts the same `r n(ST)` stops over three real census counts and one question needing no population at all.
 
 ```{r bench-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -126,36 +77,20 @@ Figure 1 shows what is at stake in the choice. The same `r n(ST)` stops are divi
 ```{r bench-static, eval=!knitr::is_html_output(), fig.height=4.9}
 ```
 
-**Figure 1. The same stops, four denominators, and a disparity that changes sign.** Stop rate relative to white drivers on a log scale.
+**Figure 1. The same stops, four denominators, and a disparity that changes sign.** One line per group, on a log scale, because the whole question is how far a ratio travels when only the number underneath it changes; equal distances on this axis are equal ratios. Against residents Hispanic drivers read `r bfmt(bget("hispanic","residents"))`, against adults `r bfmt(bget("hispanic","adults 18+"))`, against people who drive to work `r bfmt(bget("hispanic","drives to work"))`. Black drivers move from `r bfmt(bget("black","residents"))` to `r bfmt(bget("black","drives to work"))`. The gray band is the denominator nobody has.
 
-The first three columns divide the identical `r n(ST)` stops by three real American Community Survey counts for San Francisco County. The fourth drops population denominators entirely and asks instead how often a stop led to a search. Against residents Hispanic drivers read `r bfmt(bget("hispanic","residents"))`, against adults `r bfmt(bget("hispanic","adults 18+"))`, against people who drive to work `r bfmt(bget("hispanic","drives to work"))`, and on searches `r bfmt(bget("hispanic","per stop"))`. Black drivers move from `r bfmt(bget("black","residents"))` to `r bfmt(bget("black","drives to work"))` across the three, and read `r bfmt(bget("black","per stop"))` on searches. The gray band is the denominator nobody has.
+Read the Hispanic line first, because it breaks the argument most people want to make. Three defensible census counts give three different stories, and the sign of the disparity flips between the first and the third. Black drivers move a long way too, in the other direction. Which conclusion you reach was decided by a choice made before any analysis began, and the data cannot settle it.
 
-Read the Hispanic line first, because it is the one that breaks the argument most people want to make. Against residents Hispanic drivers look *under*-stopped, at `r bfmt(bget("hispanic","residents"))` times the white rate. Against adults the figure is `r bfmt(bget("hispanic","adults 18+"))`. Against people who drive to work it is `r bfmt(bget("hispanic","drives to work"))`, dead level. Three defensible denominators, three different stories, **and the sign of the disparity flips between the first and the third.**
+The column that would settle it is the gray band. You would need to know who was on that road, at that hour, driving in a way that could attract a stop. **No agency collects that, and no survey asks it.** Most public arguments about policing stall here, with each side asserting a denominator neither can produce.
 
-Black drivers move too, from `r bfmt(bget("black","residents"))` to `r bfmt(bget("black","drives to work"))`, in the other direction. Which conclusion you reach has been decided by a choice the data cannot adjudicate, and the column that would adjudicate it sits in the gray band, unbuilt.
-
-The fourth column is where most guesses fail. Having watched Hispanic drivers come in under one and then level, readers tend to keep them somewhere near one. On searches per stop they read `r bfmt(bget("hispanic","per stop"))` — not near one, and not on the side of it the first three columns pointed to.
-
-There is a further reason to distrust those first three columns even on their own terms. The ACS counts are self-reported race; the stop file records an officer's perception. They are different variables, and every ratio joining them is a rough benchmark rather than a measurement.
-
-So much for that. Notice the fourth column, which is where the rest of this chapter goes.
-
-## Take the stop as given
-
-Change the question. Instead of asking who gets stopped, treat the stop as having happened and ask **what happened next.** Among the people an officer had already pulled over, how often did a search follow?
+So change the question. Take the stop as given, and ask what happened next to the people an officer had already pulled over.
 
 ```{r search-rate}
 ```
 
-**Black drivers were searched in `r pc(r("black","search_rate"),2)`% of stops and white drivers in `r pc(r("white","search_rate"),2)`%**, a ratio of `r pc(r("black","search_rate")/r("white","search_rate"),1)` to one. Hispanic drivers, the group that looked under-stopped or level on every population denominator available, were searched `r bfmt(bget("hispanic","per stop"))` times as often as white drivers.
+**Black drivers were searched in `r pc(r("black","search_rate"),2)`% of stops and white drivers in `r pc(r("white","search_rate"),2)`%**, a ratio of `r pc(r("black","search_rate")/r("white","search_rate"),1)` to one. Hispanic drivers, level or under-stopped on every population denominator available, were searched `r bfmt(bget("hispanic","per stop"))` times as often as white drivers. No count of who was driving is needed for this comparison, because the officer supplied the comparison group.
 
-This is a better comparison than the share of stops. Both groups have already been picked out by the same officers under the same conditions, and no count of who was driving is needed to make it. It is still not enough, and the objection is the standard one: **perhaps the stopped populations genuinely differed.** If officers were on average encountering more grounds for suspicion among drivers of one group than another, a higher search rate would follow from correct policing rather than from a lower bar.
-
-That objection cannot be answered with search rates, because answering it would require knowing how suspicious each driver actually was, which is precisely what nobody observes.
-
-## Condition once more
-
-In 2001 three economists, **Knowles, Persico and Todd**, proposed a way out that needs no denominator at all. Condition one step further: take the search as given, and ask what the officer found.
+There is a serious objection: perhaps the stopped groups genuinely differed. If officers were meeting more grounds for suspicion among the drivers of one group, a higher search rate would follow from correct policing rather than from a lower bar. Search rates cannot answer that, so take the search as given too. In 2001 the economists Knowles, Persico and Todd proposed the move:
 
 > An officer searches when suspicion crosses some internal threshold. If the
 > same threshold is applied to everyone, the searches it authorises should
@@ -163,26 +98,12 @@ In 2001 three economists, **Knowles, Persico and Todd**, proposed a way out that
 > searches on weaker evidence, and weaker evidence means a lower success rate.
 > **So unequal hit rates imply unequal thresholds.**
 
-The comparison is now between searches, not between populations. Nothing has to be known about who was driving, who was stopped, or how suspicious anyone was. Figure 2 draws the price of that, which is that each conditioning step throws away nearly everything.
-
-```{r funnel-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r funnel-static, eval=!knitr::is_html_output(), fig.height=3.4}
-```
-
-**Figure 2. Each conditioning step buys a valid comparison by discarding almost all the data.** `r n(ST)` stops, of which `r n(SE)` produced a search (`r SE_PCT`% of stops) and `r n(FD)` produced contraband (`r FD_PCT`% of stops). The dashed box on the left is everyone who was on the road and was never counted; it has no width because it has no number. The final band is not a rendering fault, and neither renderer inflates it: `r n(FD)` finds really is `r FD_PCT`% of `r n(ST)` stops.
-
-It is worth predicting the answer before reading it. Given a search rate roughly `r pc(r("black","search_rate")/r("white","search_rate"),0)` times higher for Black drivers, should the share of searches that turn up contraband be higher, lower, or about the same? Each answer has a serious defender, and each implies a different account of what the department was doing.
-
-## What the searches found
-
 ```{r hit-rate}
 ```
 
-**Contraband was found in `r pc(r("black","hit_rate"),1)`% of searches of Black drivers and `r pc(r("white","hit_rate"),1)`% of searches of white drivers.** Searched `r pc(r("black","search_rate")/r("white","search_rate"),1)` times as often, and found with something `r pc(r("white","hit_rate")/r("black","hit_rate"),1)` times *less* often. Under the outcome test that is evidence of a lower evidentiary bar, and it required no denominator to reach.
+**Contraband was found in `r pc(r("black","hit_rate"),1)`% of searches of Black drivers and `r pc(r("white","hit_rate"),1)`% of searches of white drivers.** Searched `r pc(r("black","search_rate")/r("white","search_rate"),1)` times as often, and found with something `r pc(r("white","hit_rate")/r("black","hit_rate"),1)` times *less* often. That comparison is between searches, not between populations, so no denominator had to be chosen to reach it.
 
-Two groups could be a coincidence. Figure 3 puts all five on the same plane: search rate along the bottom, hit rate up the side.
+Two groups could be a coincidence. Figure 2 puts all `r nrow(d)` groups on the same plane.
 
 ```{r scatter-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -190,54 +111,40 @@ Two groups could be a coincidence. Figure 3 puts all five on the same plane: sea
 ```{r d3-scatter, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. The more often a group was searched, the less often the searches found anything.** Share of stops leading to a search against share of searches finding contraband, one circle per officer-perceived race group, circle area proportional to stops. The dashed line is the overall hit rate, `r pc(WM, 1)`%, where equal thresholds would place every group. Black drivers sit at `r pc(r("black","search_rate"),2)`% searched and `r pc(r("black","hit_rate"),1)`% found; Asian and Pacific Islander drivers at `r pc(r("asian/pacific islander","search_rate"),2)`% searched and `r pc(r("asian/pacific islander","hit_rate"),1)`% found. The ordering is monotone across all `r nrow(d)` groups.
+**Figure 2. The more often a group was searched, the less often the searches found anything.** Share of stops leading to a search against share of searches finding contraband, one point per officer-perceived race group. A scatter is the right form because the claim is about two rates moving together, and the dashed line is the overall hit rate, `r pc(WM, 1)`%, where equal thresholds would put every group.
 
-That steady ordering is what makes an innocent explanation hard to construct. It would have to account for the Black and Hispanic results at the same time as the reverse pattern among Asian and Pacific Islander drivers. They were searched least often and found with contraband most often, across `r n(ST)` stops.
+The exception is the most useful part of the figure, because it runs the other way and still fits. Asian and Pacific Islander drivers were searched least often of all, in `r pc(r("asian/pacific islander","search_rate"),2)`% of stops, and their searches found contraband most often, `r pc(r("asian/pacific islander","hit_rate"),1)`% of the time. The ordering is monotone across all `r nrow(d)` groups, which is what makes an innocent explanation hard to build: it would have to account for the Black and Hispanic results and this reversal at once.
 
-## Ten years, and the ordering never flips
+Nor is the pattern the work of one strange year. Split the same counts by year and searches of white drivers found contraband more often than searches of Black drivers in `r WHI` years out of `r NYR`. The levels move a great deal. The ordering does not move at all.
 
-Ten years are stacked into every number so far. A pattern visible only in aggregate, produced by one or two unusual years, would be a different finding from one that repeats.
+## What this brief cannot tell you
 
-```{r trend-static, eval=!knitr::is_html_output(), fig.height=4.2}
-```
+**It cannot tell you who was driving.** The population at risk of being stopped was never counted and cannot be reconstructed, so Figure 1's first three columns are benchmarks rather than measurements. The outcome test routes around that problem rather than solving it.
 
-```{r d3-trend, results='asis', eval=knitr::is_html_output()}
-```
+**It cannot separate the causes.** Individual animus, departmental policy, and where officers were deployed all produce the same department-level pattern. A pattern like this one can also be produced by a small number of officers behaving very differently from their colleagues.
 
-```{r yearcheck}
-```
+**It cannot treat "contraband found" as untouched.** What counts as a find, and whether it is written down, are decisions made by the officers being measured.
 
-**Figure 4. The levels move a great deal; the ordering does not move at all.** Share of searches finding contraband, by year and officer-perceived race, `r min(y$year)` to `r max(y$year)`. Every group's hit rate falls through 2012 and rises afterwards, so the level is clearly responding to something outside this file. In all `r nrow(m)` years searches of white drivers found contraband more often than searches of Black drivers.
+**And the test compares averages, not margins.** The theory is about the weakest search an officer chooses to make; the file supports only the average one. If suspicion is spread differently across groups, average hit rates can differ even under one threshold. Simoiu and colleagues named that problem in 2017, and it bounds the finding rather than contradicting it.
 
-Whatever produced the gap in Figure 3, it was not one unusual year.
+## What you should have learned
 
-## What can be said, and what cannot
+- The same `r n(ST)` stops support opposite conclusions about Hispanic drivers: `r bfmt(bget("hispanic","residents"))` times the white rate against residents, `r bfmt(bget("hispanic","drives to work"))` against people who drive to work.
+- A rate needs a bottom number, and for traffic stops that number does not exist. Saying so plainly is worth more than a confident ratio built on a census count that measures residence rather than driving.
+- Conditioning on the stop gets rid of the problem, because the officer chose the comparison group: Black drivers were searched in `r pc(r("black","search_rate"),2)`% of stops against `r pc(r("white","search_rate"),2)`% for white drivers.
+- Those searches succeeded less often, not more: contraband in `r pc(r("black","hit_rate"),1)`% of searches of Black drivers against `r pc(r("white","hit_rate"),1)`% for white drivers, with the ordering holding across all `r nrow(d)` groups and in `r WHI` years out of `r NYR`.
+- Race in this file is an officer's perception recorded at the roadside, which is the right column for a question about the officer and the wrong one for a comparison against census categories.
 
-Within this department, over these ten years, searches of Black and Hispanic drivers were authorized on weaker evidence than searches of white drivers. That is a statement about the bar an officer applied, and it was reached without ever knowing who was driving, which is the whole reason it can be made at all.
+## Extensions
 
-What cannot be said is how much of that gap is individual animus, how much is departmental policy, and how much is a consequence of where officers were deployed. All three produce the same aggregate pattern, this data cannot separate them, and the distinction matters enormously for anyone proposing to do something about it.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-## The argument about this method
-
-The part usually left out of accounts of the outcome test is what happened when its inventors ran it. **Knowles, Persico and Todd applied their own test to Maryland and found no evidence of prejudice against Black motorists.** They concluded that the disparity in search rates there fitted officers maximizing arrests, rather than acting on racial animus. The method and the conclusion are separable, and it is worth sitting with the fact that the tool used above was built by people whose own application of it came out the other way.
-
-The most serious objection is technical and unresolved. The outcome test compares **average** hit rates, but the theory it rests on is about the **marginal** search, the weakest one an officer chooses to make. If the underlying distribution of suspiciousness differs between groups, average hit rates can differ even when the threshold is identical. Simoiu and colleagues (2017) formalized this problem, named it infra-marginality, and proposed alternatives. It is a good reason to treat the outcome test as strong evidence rather than as proof, and the hedged phrasing two paragraphs above is hedged for exactly that reason.
-
-The largest study to date is Pierson et al. (2020), covering roughly **100 million stops** nationally. It used two designs at once: the outcome test, and a "veil of darkness" test, which exploits the fact that a driver's race is harder to see after dark. It found evidence that the bar for searching Black and Hispanic drivers was lower than for white drivers. The literature has not converged, and nothing here should be read as claiming it has.
-
-## What this evidence will bear
-
-The strength of this file is that it is not a summary. It holds individual records, and it records both the search and its outcome, which is what makes the outcome test possible at all; many jurisdictions record one and not the other. The coding is standardized across jurisdictions by the project that assembled it, so the method travels even where the levels do not.
-
-Its limits bound different claims, and it is worth being specific about which. Race here is an officer's perception entered on a form. That is the right column for a question about the officer's behavior, and the wrong one for any comparison against census categories. So Figure 1's first three columns are weaker evidence than Figure 3, even before their denominators are argued about.
-
-"Contraband found" is itself a judgment. What counts as a find, and whether a find is written down, are decisions made by the same officers whose behavior is being measured, so the hit rate is not an untouched outcome.
-
-One city through `r max(y$year)` limits the reach of all of it. Nothing here describes San Francisco today, and the levels certainly do not travel. The denominator problem never actually goes away, because the outcome test routes around it rather than solving it. And nothing here is about an individual officer: these are department-level patterns, and a department-level pattern can be produced by a small number of people behaving very differently from their colleagues.
-
-Three questions stay open, and none of them will be closed by this file. Infra-marginality is real and unresolved, and it bounds the confidence of the central claim rather than contradicting it. Whether the pattern generalizes is a question for the national data, not for one city. And what produces the threshold is invisible here: animus, policy, deployment, or the assignment of officers to neighborhoods. That is inconvenient, because those four would call for four different remedies.
-
-What survives all of that is the shape of Figure 1. Ask who gets stopped and the answer depends on a denominator that does not exist. The same Hispanic drivers can be shown as under-stopped, or as exactly level, depending on a choice made before any analysis begins. Ask instead what happened to the people an officer had already pulled over, and the denominator problem disappears. The officer supplied the comparison group. The disparity that survives that move is the one worth arguing about, and it is larger, not smaller, than the one that does not.
+- `by_race.csv` carries `stops`, `searched`, `contraband_found` and `arrests`. Compute an arrest rate per stop for each group and set it beside the search rate. Do the two measures rank the groups the same way?
+- `acs_denominators.csv` has a `count` for each `race` at each `denominator`. Recompute Figure 1 using `other` where it exists, and say what the missing rows cost.
+- `by_year.csv` has `stops`, `searched` and `contraband_found` by `year` and `race`. Compute the search rate per year for each group and find the year in which the gap between Black and white drivers was widest.
+- `by_year.csv` also holds the size of the file itself. Sum `stops` by `year` and read the trend. Would a department stopping fewer people change any rate above?
+- **Stretch.** The Open Policing Project publishes dozens of other departments in the same layout. Fetch one and run the search rate and hit rate again. Does the ordering survive the change of city, even though the levels will not?
+- **Stretch.** The census tables named in `source` can be pulled for a later five-year release. Rebuild the residents denominator for 2018–2022 and ask how much of a decade-old disparity is really a changing city.
 
 ## Sources
 
@@ -247,11 +154,9 @@ What survives all of that is the shape of Figure 1. Ask who gets stopped and the
   2020-04-01 release. <https://openpolicing.stanford.edu/data/> — one row per
   stop, reduced here to the by-race and by-year counts every figure above is
   drawn from.
-- U.S. Census Bureau, American Community Survey, San Francisco County — the
-  three population denominators in Figure 1. The exact ACS table behind each
-  row is recorded, and `acs_denominators.csv` carries it beside
-  the count. The counts come from the Bureau's own five-year ACS API, which
-  documents every table and geography it will answer for.
+- U.S. Census Bureau, American Community Survey five-year estimates, San
+  Francisco County — the three population denominators in Figure 1. The exact
+  table behind each row is recorded in `acs_denominators.csv` beside the count.
   <https://www.census.gov/data/developers/data-sets/acs-5year.html>
 
 **The data itself**
@@ -260,16 +165,6 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`acs_denominators.csv`](data/derived/acs_denominators.csv), [`by_race.csv`](data/derived/by_race.csv), [`by_year.csv`](data/derived/by_year.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `by_race.csv` has `stops`, `searched`, `contraband_found` and `arrests`. Compute a search rate and a hit rate for each group. Do the two measures point the same way?
-- `acs_denominators.csv` offers several denominators for the same population. Recompute the stop disparity with each one. How much does the conclusion depend on the choice?
-- `by_year.csv` runs the same counts across years. Plot the search rate by race over time. Did anything change, and when?
-- A hit rate needs no population denominator at all. Explain why, then say what it still cannot tell you about who was stopped.
 
 **Academic literature**
 
@@ -282,9 +177,6 @@ tables you just opened.
 - Simoiu, C., Corbett-Davies, S. and Goel, S. (2017). "The problem of
   infra-marginality in outcome tests for discrimination." *Annals of Applied
   Statistics* 11(3).
-
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

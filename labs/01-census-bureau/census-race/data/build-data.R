@@ -143,7 +143,7 @@ all$logrec <- NULL
 all$state <- gsub("_", " ", all$state)
 
 # County names from the Census Gazetteer (see note above).
-gaz <- read.csv(file.path("..", "..", "data-sources", "data", "derived",
+gaz <- read.csv(file.path("..", "..", "..", "06-putting-data-together", "data-sources", "data", "derived",
                           "census_counties.csv"),
                 stringsAsFactors = FALSE, colClasses = c(fips = "character"))
 stopifnot(all(all$fips %in% gaz$fips))

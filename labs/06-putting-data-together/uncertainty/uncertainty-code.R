@@ -40,6 +40,17 @@ NARROW <- max(de$width)
 ACC2 <- "#1C4C5C"; WARN <- "#C41230"; GRY <- "#8A8F94"
 POOL <- "#54278F"; BAND <- "#E7EFF1"
 
+# ---- why these three figures are hand-written (STYLE.md rule 16) -----------
+# Designated showpieces, not drift. All three draw a mark the shared library
+# has no vocabulary for, and the mark IS the argument:
+#   fig1, fig2  a forest plot -- the interval drawn as a bar with a diamond at
+#               the estimate, and the pooled interval carried through as a
+#               band. dd_fig() draws points and bars, never an interval, and a
+#               brief whose whole subject is interval width cannot imply one.
+#   fig3        an ROC curve with a threshold slider that re-reports four
+#               counts of real people. The interaction is the point: the
+#               reader moves the cut and watches the errors trade.
+
 knit_print.data.frame <- function(x, ...) {
   nm <- names(x)
   nm <- gsub("_", " ", nm)

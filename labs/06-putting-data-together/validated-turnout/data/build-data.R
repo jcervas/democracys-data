@@ -96,7 +96,7 @@ blk$reported_voters <- blk$vap_thousands * blk$pct_total_basis * 10
 blk$citizen_vap     <- blk$vap_thousands * 1000 * blk$pct_total_basis / blk$pct_citizen_basis
 
 # --- actual ballots for president -------------------------------------------
-pres_file <- file.path("..", "..", "historical-campaigns", "data", "derived",
+pres_file <- file.path("..", "..", "..", "03-elections", "historical-campaigns", "data", "derived",
                        "pres_national.csv")
 stopifnot(file.exists(pres_file))
 pres <- read.csv(pres_file)

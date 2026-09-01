@@ -90,7 +90,7 @@ options(scipen = 999, stringsAsFactors = FALSE, timeout = 900)
 
 FETCH_DATE_1620 <- "2026-08-12"
 OUT <- "."
-DS  <- file.path("..", "..", "data-sources", "data")
+DS  <- file.path("..", "..", "..", "06-putting-data-together", "data-sources", "data")
 
 say <- function(...) cat(..., "\n", sep = "")
 

@@ -73,6 +73,23 @@ fit <- function(k, fr) {
   z[which.min(abs(z$frac - fr)), ]
 }
 
+# Values the brief quotes inline, named here so the prose reads as prose
+# rather than as a subsetting expression.
+zg     <- function(k, r, col) zp[[col]][zp$series == k & zp$rank == r]
+Z100S  <- zg("surnames", 100, "who")
+Z100SN <- zg("surnames", 100, "observed")
+Z100SR <- zg("surnames", 100, "ratio")
+Z100RN <- zg("receipts", 100, "observed")
+Z100RR <- zg("receipts", 100, "ratio")
+SL10   <- sapply(SER, function(k) fit(k, .1)$slope)
+RECL   <- tolower(su$short[su$series == "receipts"])
+STRLO  <- tolower(STRL)
+RC01   <- fit("receipts", .01)$slope
+RC1    <- fit("receipts", 1)$slope
+SN01   <- fit("surnames", .01)$slope
+SN1    <- fit("surnames", 1)$slope
+RNSM   <- RN - round(0.1 * RN)
+
 # strings on their way into a <script>: the FEC files carry apostrophes, and
 # one committee name carries a doubled one
 esc <- function(x) {

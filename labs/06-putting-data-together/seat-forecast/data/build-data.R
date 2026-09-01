@@ -86,9 +86,9 @@ dir.create("raw",     showWarnings = FALSE)
 options(stringsAsFactors = FALSE, scipen = 999, timeout = 600)
 set.seed(20261103)          # election day; the simulations must be reproducible
 
-HC  <- "../../house-competition/data/derived"
-HC2 <- "../../historical-campaigns/data/derived"
-ML  <- "../../midterm-loss/data/derived"
+HC  <- "../../../03-elections/house-competition/data/derived"
+HC2 <- "../../../03-elections/historical-campaigns/data/derived"
+ML  <- "../../../03-elections/midterm-loss/data/derived"
 EN  <- "../../election-night/data/derived"
 
 say <- function(...) cat(..., "\n", sep = "")

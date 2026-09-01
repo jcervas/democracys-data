@@ -728,3 +728,176 @@ thead th[align="center"], tbody td[align="center"] { text-align: center; }
 }
 .ai-prompt-copy:hover { color: var(--accent); border-color: var(--accent); }
 .ai-prompt.frozen .ai-prompt-copy:hover { color: var(--gap); border-color: var(--gap); }
+
+/* ------------------------------------------------------------
+   THE DD-CHARTS FIGURES
+
+   labs/_lib/dd-charts.js draws the library figures, and this block is its
+   half of the contract, modelled on the .wind-fig block above: the JS names
+   a class, this file says what the class means in each theme, and no figure
+   ever writes a hex into a presentation attribute. Everything routes through
+   the theme tokens, so dark mode comes free and the attribute-selector
+   rescue rules above have nothing to rescue here.
+
+   THE EIGHT SERIES COLOURS follow the --ink-orange idea above: one hue, two
+   weights, held in a token that flips with the theme. The light values are
+   the corpus's own series hexes where those already clear 3:1 on the light
+   page, and a darker shade of the same hue where they did not (s4 is the
+   text-weight orange, exactly as --ink-orange resolves it). The dark values
+   are lifted the way --map-gop and --map-dem are. All sixteen measured at
+   3.4:1 or better against their page. Re-check both surfaces before
+   changing any of them.
+
+   THE TEN RAMP BINS are the shared diverging choropleth scale, dem side and
+   gop side, quantised in R by dd_ramp_class(). Light is ColorBrewer RdBu;
+   dark keeps the same convention -- near the tie means near the page -- so
+   the mid bins sit close to the dark ground and the extremes come up
+   saturated. Fills on a graded ramp are an encoding, not text: the bins are
+   not each required to clear 3:1, only to stay ordered and distinguishable,
+   which they do in both themes.
+   ------------------------------------------------------------ */
+:root {
+  --dd-s1: #2C7FB8;   /* blue   -- the corpus line blue */
+  --dd-s2: #C41230;   /* red    -- Carnegie Red, the gop hex */
+  --dd-s3: #4D9221;   /* green  */
+  --dd-s4: #A4590F;   /* orange -- text weight of #e08214 */
+  --dd-s5: #8856A7;   /* purple */
+  --dd-s6: #00857C;   /* teal   */
+  --dd-s7: #8A5B1B;   /* tan    -- = --gap light */
+  --dd-s8: #8C4A3C;   /* clay   -- = --ink-clay light */
+
+  --ramp-d5: #053061; --ramp-d4: #2166AC; --ramp-d3: #4393C3;
+  --ramp-d2: #92C5DE; --ramp-d1: #D1E5F0;
+  --ramp-r1: #FDDBC7; --ramp-r2: #F4A582; --ramp-r3: #D6604D;
+  --ramp-r4: #B2182B; --ramp-r5: #67001F;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --dd-s1: #6FA8DC;
+    --dd-s2: #F4677F;
+    --dd-s3: #7FBF4D;
+    --dd-s4: #E08214;
+    --dd-s5: #B48CD9;
+    --dd-s6: #4DB8A8;
+    --dd-s7: #D9A441;
+    --dd-s8: #CC7766;
+
+    --ramp-d5: #5AA5E8; --ramp-d4: #4585C4; --ramp-d3: #35688F;
+    --ramp-d2: #2A4E68; --ramp-d1: #22394A;
+    --ramp-r1: #4A2E31; --ramp-r2: #6B3A3C; --ramp-r3: #94464A;
+    --ramp-r4: #C4535B; --ramp-r5: #F4677F;
+  }
+}
+
+/* the container: tooltips and sliders position against it */
+.dd-fig { position: relative; }
+
+/* text roles -- the same five names the wind-fig block uses */
+.dd-fig .ttl  { fill: var(--ink); }
+.dd-fig .sub  { fill: var(--ink-2); }
+.dd-fig .lbl  { fill: var(--ink-2); }
+.dd-fig .foot { fill: var(--ink-3); }
+/* a d3 axis paints itself currentColor, so one `color` reaches the ticks,
+   the domain path and the tick labels together */
+.dd-fig .axis { color: var(--ink-2); }
+
+/* furniture */
+.dd-fig .rule      { stroke: var(--rule); }
+.dd-fig .rule-2    { stroke: var(--rule-2); }
+.dd-fig .zero      { stroke: var(--ink-3); }
+.dd-fig .band      { fill: var(--rule-2); opacity: .55; }
+.dd-fig .hoverline { stroke: var(--ink); stroke-dasharray: 3 3; }
+.dd-fig .hilite    { stroke: var(--ink); }
+
+/* the map ground, shared with .wind-fig */
+.dd-fig .land { fill: var(--map-land); stroke: var(--map-edge); }
+.dd-fig .geo  { stroke: var(--map-edge); }
+
+/* the party pair: data colours, not the page accent */
+.dd-fig .gop      { stroke: var(--map-gop); }
+.dd-fig .dem      { stroke: var(--map-dem); }
+.dd-fig .gop-fill { fill: var(--map-gop); }
+.dd-fig .dem-fill { fill: var(--map-dem); }
+.dd-fig .gop-txt  { fill: var(--map-gop); }
+.dd-fig .dem-txt  { fill: var(--map-dem); }
+
+/* the eight categorical series: stroke, fill and text weights */
+.dd-fig .series-1 { stroke: var(--dd-s1); }
+.dd-fig .series-2 { stroke: var(--dd-s2); }
+.dd-fig .series-3 { stroke: var(--dd-s3); }
+.dd-fig .series-4 { stroke: var(--dd-s4); }
+.dd-fig .series-5 { stroke: var(--dd-s5); }
+.dd-fig .series-6 { stroke: var(--dd-s6); }
+.dd-fig .series-7 { stroke: var(--dd-s7); }
+.dd-fig .series-8 { stroke: var(--dd-s8); }
+.dd-fig .series-1-fill { fill: var(--dd-s1); }
+.dd-fig .series-2-fill { fill: var(--dd-s2); }
+.dd-fig .series-3-fill { fill: var(--dd-s3); }
+.dd-fig .series-4-fill { fill: var(--dd-s4); }
+.dd-fig .series-5-fill { fill: var(--dd-s5); }
+.dd-fig .series-6-fill { fill: var(--dd-s6); }
+.dd-fig .series-7-fill { fill: var(--dd-s7); }
+.dd-fig .series-8-fill { fill: var(--dd-s8); }
+.dd-fig .series-1-txt { fill: var(--dd-s1); }
+.dd-fig .series-2-txt { fill: var(--dd-s2); }
+.dd-fig .series-3-txt { fill: var(--dd-s3); }
+.dd-fig .series-4-txt { fill: var(--dd-s4); }
+.dd-fig .series-5-txt { fill: var(--dd-s5); }
+.dd-fig .series-6-txt { fill: var(--dd-s6); }
+.dd-fig .series-7-txt { fill: var(--dd-s7); }
+.dd-fig .series-8-txt { fill: var(--dd-s8); }
+
+/* the diverging choropleth bins */
+.dd-fig .ramp-d5 { fill: var(--ramp-d5); }
+.dd-fig .ramp-d4 { fill: var(--ramp-d4); }
+.dd-fig .ramp-d3 { fill: var(--ramp-d3); }
+.dd-fig .ramp-d2 { fill: var(--ramp-d2); }
+.dd-fig .ramp-d1 { fill: var(--ramp-d1); }
+.dd-fig .ramp-r1 { fill: var(--ramp-r1); }
+.dd-fig .ramp-r2 { fill: var(--ramp-r2); }
+.dd-fig .ramp-r3 { fill: var(--ramp-r3); }
+.dd-fig .ramp-r4 { fill: var(--ramp-r4); }
+.dd-fig .ramp-r5 { fill: var(--ramp-r5); }
+
+/* the tooltip is HTML, not SVG, so its colours need `color`; same for the
+   legend. One list covers both. */
+.dd-fig .dd-tip {
+  position: absolute; pointer-events: none; opacity: 0;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--rule);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+  padding: 8px 11px; border-radius: 2px;
+  font: 12px/1.4 var(--body); white-space: nowrap;
+  transition: opacity .08s;
+}
+.dd-fig .dd-tip .series-1-txt, .dd-fig .dd-legend .series-1-txt { color: var(--dd-s1); }
+.dd-fig .dd-tip .series-2-txt, .dd-fig .dd-legend .series-2-txt { color: var(--dd-s2); }
+.dd-fig .dd-tip .series-3-txt, .dd-fig .dd-legend .series-3-txt { color: var(--dd-s3); }
+.dd-fig .dd-tip .series-4-txt, .dd-fig .dd-legend .series-4-txt { color: var(--dd-s4); }
+.dd-fig .dd-tip .series-5-txt, .dd-fig .dd-legend .series-5-txt { color: var(--dd-s5); }
+.dd-fig .dd-tip .series-6-txt, .dd-fig .dd-legend .series-6-txt { color: var(--dd-s6); }
+.dd-fig .dd-tip .series-7-txt, .dd-fig .dd-legend .series-7-txt { color: var(--dd-s7); }
+.dd-fig .dd-tip .series-8-txt, .dd-fig .dd-legend .series-8-txt { color: var(--dd-s8); }
+.dd-fig .dd-tip .gop-txt, .dd-fig .dd-legend .gop-txt { color: var(--map-gop); }
+.dd-fig .dd-tip .dem-txt, .dd-fig .dd-legend .dem-txt { color: var(--map-dem); }
+
+/* the legend row under a figure */
+.dd-fig .dd-legend { margin-top: 6px; font: 12px var(--body); }
+.dd-fig .dd-legend-item {
+  display: inline-block; margin-right: 14px; font-weight: 600;
+}
+
+/* the slider bar above a figure; screen furniture, like the zoombar */
+.dd-fig .dd-slider {
+  display: flex; align-items: center; gap: .5rem; margin: 0 0 6px;
+  font: 12px var(--body); color: var(--ink-2);
+}
+.dd-fig .dd-slider input[type="range"] { accent-color: var(--accent); }
+.dd-fig .dd-slider-value {
+  min-width: 2.5em; text-align: right;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+
+@media print {
+  .dd-fig .dd-tip, .dd-fig .dd-slider { display: none; }
+}

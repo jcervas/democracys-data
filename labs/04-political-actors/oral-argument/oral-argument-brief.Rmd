@@ -16,60 +16,51 @@ dd_read_chunks("oral-argument-code.R")
 ```{r setup, include=FALSE}
 ```
 
-> *"The justices are talking more than they used to."*
+> *"You could tell from the questioning which way it was going."*
 
-That sentence has been true for five years and it has been written about the wrong thing. This chapter is about the difference.
+Reporters write that sentence every term, and there is research behind it: the side that draws the harder questions tends to lose. Any version of the claim rests on a count, and before anybody can count, somebody has to decide what a question is, whose turn it was, and how long it lasted. This brief asks how much of an apparent fact about nine people survives that decision.
 
-The sibling chapter in this part built a score for the Supreme Court out of votes. It had to say, over and over, that almost nothing in the Supreme Court Database is an observation. Whether a decision was liberal or conservative is a coder's reading of an opinion. So is the issue area, and so is the reason the Court took the case. **The Court publishes opinions, and opinions are not data until somebody makes them into data.**
+It matters because oral argument is the only part of the Supreme Court's work an ordinary citizen can watch happen. The Court publishes no video, but it does publish the audio. Every claim about a hot bench or a silenced advocate is a count somebody made from that tape, and the counts get written up as facts about the justices.
 
-Oral argument is the exception, and it is why this chapter sits beside that one. The Court records the argument itself. Oyez publishes that audio lined up with the transcript, one row per speaking turn, with a start time and a stop time on every row. Nobody had to read anything and reach a conclusion to know that `r EXNAME` first asked a question `r nm(EXT$start, 2)` seconds into the argument in *`r EXCASE`*.
+Most of them are not. Ask who talks the most in `r NMEAS` defensible ways and `r length(FIRSTS)` different justices come first. And the sharpest movement anywhere in the file, a number going from zero to a hundred and a twenty-year silence ending, was not a change in anybody's behaviour at all.
 
-So here is the same institution, measured twice. One file is made of judgments. The other is made of a clock. This chapter asks what the second kind buys you, and the answer is less than you would think and something better than you expected.
+## The test
 
-## What arrived
+Everything below comes from [Oyez](https://api.oyez.org), a free public archive of the Court's audio run by Cornell's Legal Information Institute, Justia and Chicago-Kent College of Law. The build reads `r n(NARG)` arguments across the `r T0` to `r T1` terms, which is every argument the Roberts Court has heard, and `r n(NTURN)` speaking turns inside them.
 
-Everything below comes from Oyez, a free public archive of the Court's audio run by Cornell's Legal Information Institute, Justia and Chicago-Kent College of Law. The build reads `r n(NARG)` arguments across the `r T0` to `r T1` terms: every argument the Roberts Court has heard, and `r n(NTURN)` speaking turns inside them.
+This source is the right one for what it is not. The [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) sets out the clean case, a record in which the act is the data, and names the Supreme Court Database as the courts' version of it. Almost nothing in that database is an observation: whether a decision was liberal or conservative is a coder's reading of an opinion. Oral argument is the exception. Oyez publishes the audio lined up with the transcript, one row per speaking turn, with a start and a stop time on every row.
 
-None of it was assembled with counting in mind. Oyez is a teaching archive, built so that students and the public could hear the Court rather than read about it. Its editorial product is precisely the object measured here: the transcript aligned against the audio, with a speaker's name on every turn. Using that as a measurement instrument is a repurposing, and a fortunate one. An archive made for listeners keeps exactly the details a listener needs, and they turn out to be the details a count needs too.
+Nobody had to read anything and reach a conclusion to know that `r EXNAME` first asked a question `r nm(EXT$start, 2)` seconds into the argument in *`r EXCASE`*. Oyez is a teaching archive, built so the public could hear the Court rather than read about it. Using it as a measuring instrument is a repurposing, and a fortunate one: an archive made for listeners keeps exactly the details a count needs.
 
-The file is not a table. It arrives as nested text, and the shape of it is the first thing worth seeing. Here is one turn, exactly as it comes down:
+## The data
+
+The file is not a table. It arrives as nested text, one turn inside a section inside a case, and this is one turn as it comes down.
 
 ```{r rawturn}
 ```
 
-Read down that and compare it with the row of the Supreme Court Database printed in the sibling chapter. There, every value except the name and the date was an integer standing for a word somebody chose. Here, `start` and `stop` are seconds. **Nobody decided them. A machine lined the words up against the tape.**
+`start` and `stop` are seconds. **Nobody decided them.** A machine lined the words up against the tape. That is a real difference from a coded column, and it is smaller than it looks.
 
-That is a real difference and it is worth naming. It is also smaller than it looks.
+**A turn is a decision, and a person made it.** The timestamps are attached to units a court reporter drew. Somebody decided where one turn stops and the next begins, whether an interruption counts as a turn of its own, and which of two people talking across each other got the words. Oyez then attached a name to every turn, which is a second judgment on top of the first. None of that is sloppiness: there is no way to turn a recording of nine people interrupting each other into rows without deciding what a row is. **The judgments moved upstream**, out of the column you want to analyse and into the definition of the row.
 
-## The clock is honest. The turn is not.
+Two kinds of justice turn are not participation, and this build drops them from every count below: gavelling an argument in or out, and courtesy, which is "Thank you, counsel" and "No questions." The Chief Justice opens and closes every argument, so counting those would make whoever holds that office the busiest questioner on the Court by arithmetic rather than by behaviour. Dropping them removes `r nm(ck$value[ck$check == "share of turns dropped as administrative or courtesy is under 10%"], 2)`% of all turns here.
 
-**A turn is a decision, and a person made it.** The timestamps are attached to units that a court reporter drew. Somebody decided where one turn stops and the next begins. Somebody decided whether an interruption counts as a turn of its own. When two people talk across each other, somebody decided which of them got the words.
+Seven tables come out of that. `arguments.csv` holds one row per argument, with `minutes`, `turns`, `justice_turns`, `justice_words` and a `regime` naming the rules the argument was heard under. `measures.csv` ranks the justices `r NMEAS` ways, with a `measure`, a `value` and a `rank`. `order.csv` gives `pct_in_seniority_order` by term, `silence.csv` gives `pct_silent` per justice per term, and `speakers.csv` gives each justice a `seniority_rank`.
 
-Oyez then attached a name to every turn, which is a second judgment on top of the first. None of that is sloppiness. There is no way to turn a recording of nine people interrupting each other into rows without deciding what a row is.
-
-So the honest description is narrower than "this file has no judgments in it." It is this: **the judgments moved upstream.** In the Supreme Court Database they sit in the column you want to analyse. Here they sit in the definition of the row, which is easier to forget about and just as consequential.
-
-One more decision is this build's own. Two kinds of justice turn are not participation and are dropped from every count below.
-
-```{r drops}
-```
-
-The Chief Justice opens and closes every argument. Counting those turns would make whoever holds that office the busiest questioner on the Court by arithmetic rather than by behaviour. Dropping them removes `r nm(ck$value[ck$check == "share of turns dropped as administrative or courtesy is under 10%"], 2)`% of all turns here. Lee Epstein and Eric Posner (2026) drop the same two categories and report that it removes 4% of theirs. The two rules are close enough to be looking for the same thing, and far enough apart to be worth saying out loud.
-
-## Who talks the most?
-
-This is the question every story about a hot bench is really asking, and it has no single answer. Below are `r NMEAS` ways to ask it, over the `r RW[1]` to `r RW[2]` terms, which is the window with the current nine justices in it. Every one of them is defensible. Every one is computed from the same turns.
+Here are the `r NMEAS` ways of asking who talks the most, over the `r RW[1]` to `r RW[2]` terms, the window with the current nine justices in it. Every one of them is defensible, and every one is computed from the same turns.
 
 ```{r measure-list}
 ```
 
 > **Before you look at the figure, commit to a number.** Take the nine justices
-> and rank them by how many words they say in an average argument. Now rank them
-> instead by how many seconds of the clock they personally hold. Those sound like
-> the same question asked twice. Across all `r NMEAS` measures, how far does one
-> justice move? Say how many places, from best rank to worst, the biggest mover
-> travels. Then say how many of the nine hold exactly the same rank on all
+> and rank them by how many words they say in an average argument. Now rank
+> them instead by how many seconds of the clock they personally hold. Those
+> sound like the same question asked twice. Across all `r NMEAS` measures,
+> **how many places does the biggest mover travel**, from their best rank to
+> their worst? Then say how many of the nine hold exactly the same rank on all
 > `r NMEAS`.
+
+## What it says about democracy
 
 ```{r bump-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -77,53 +68,29 @@ This is the question every story about a hot bench is really asking, and it has 
 ```{r bump-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
 
-**Figure 1. The same nine justices, ranked `r NMEAS` ways, on the `r RW[1]` to `r RW[2]` terms.** Rank 1 is at the top. Each line is one justice and keeps its identity across every column, so a line that slopes is a justice whose answer depends on which question you asked. Nine is more than the eye can separate by colour, so nobody gets a colour of their own and names sit at both ends of every line. On screen every line starts grey and hovering raises one. In print the three justices the text discusses are the ones drawn in red.
+**Figure 1. The same nine justices, ranked `r NMEAS` ways, on the `r RW[1]` to `r RW[2]` terms.** A bump chart fits this question because what matters is not any one number but whether a justice's *rank* holds still. Rank 1 is at the top, each line is one justice and keeps its identity across every column, so a line that slopes is a justice whose answer depends on which question you asked. Nine lines is more than the eye can separate by colour, so names sit at both ends of each one. On screen the lines start grey and hovering raises one; in print the three the text discusses are red.
 
 ```{r measure-table}
 ```
 
-`r MOVER` is the whole argument in one line. Ranked by `r MOVER_HI`, `r short(MOVER)` is **`r ord(BEST)`** on the Court. Ranked by `r MOVER_LO`, the same justice over the same terms is **`r ord(WORST)`**. Nothing about the underlying turns changed. The question changed by a few words.
+`r MOVER` is the whole argument in one line. Ranked by `r MOVER_HI`, `r short(MOVER)` is **`r ord(BEST)`** on the Court. Ranked by `r MOVER_LO`, the same justice over the same terms is **`r ord(WORST)`**. Nothing about the underlying turns changed, and the question changed by a few words.
 
-**`r MOVE` places is the widest swing, and `r NMOVED` of the `r NJ` justices move at all.** Almost nobody stands still. If you have ever read that some justice is the most active questioner on the Court, that sentence had a measure behind it, and the writer probably did not tell you which one.
+**`r MOVE` places is the widest swing, and `r NMOVED` of the `r NJ` justices move at all.** Taking the floor often and holding it a long time are different habits. A justice who fires twenty short questions and one who asks three long ones can end with the same word count and opposite rankings on everything else.
 
-The reason is not mysterious once you see it. Taking the floor often and holding it a long time are different habits. A justice who fires twenty short questions and one who asks three long ones can end up with the same word count and opposite rankings on everything else.
+**The ends of the table do not move**, and that matters more. `r sub(",.*", "", TOP3)` is in the top three on every measure, and `r sub(",.*", "", LAST)` is last on every measure. The scrambling is all in the middle, where the differences between justices are small enough that the choice of measure decides the order.
 
-## Where the measures agree
+There is an unusually clean outside check on that. Lee Epstein and Eric Posner built the same kind of file from Westlaw transcripts rather than from Oyez. They ran 18 measures rather than `r NMEAS`, and reported the same justice in the top three on 17 of them.
 
-Now the other half, which matters more.
-
-```{r stable}
+```{r epcompare}
 ```
 
-**The ends of the table do not move.** `r sub(",.*", "", TOP3)` is in the top three on every measure. `r sub(",.*", "", LAST)` is last on every measure. The scrambling is all in the middle, where the differences between justices are small enough that the choice of measure decides the order.
+Two teams, two sources, two parsers written by people who never spoke, and the justice word count for the `r T0` term differs by `r abs(round(WRD0) - 3866)` word in `r n(round(WRD0))`. The thing being counted survives who counts it, which is not true of most measures in this book. The share of decisions coded conservative in the [Supreme Court chapter](../scdb/scdb-brief.html) would not survive a second team recoding it. **Word counts survive because a word is not a judgment.**
 
-This is the same lesson the sibling chapter reached from votes, arriving from a different direction. There, an ordering of the justices was stable at the level of blocs and unstable at the level of neighbours. Here, a ranking is stable at the extremes and unstable in the middle. **The coarse structure is in the data. The fine structure is in the choice of measure.**
+Everything so far has been a fact about nine people. The next number is not.
 
-There is an outside check available on that, and it is unusually clean. Epstein and Posner ran 18 measures of participation rather than `r NMEAS`, on a different set of transcripts, and reported that the same justice placed in the top three on 17 of them. Two teams, two sources, two lists of measures, and the same shape.
+Start with the sentence everybody writes: the justices are talking more than they used to. It is true. An argument ran `r nm(MIN0)` minutes on average in the `r T0` term and `r nm(MIN1)` in `r T1`. But the justices speak at `r nm(RAT0)` words a minute in `r T0` and `r nm(RAT1)` in `r T1`, and that rate barely moves across the whole `r NTERM` terms. The bench did not get hotter. The container got bigger, by `r nm(GROWTH, 0)`% since the Court stopped meeting in its courtroom.
 
-## The number that is not about the justices
-
-Everything so far has been a fact about nine people. This section is not, and telling the difference is the skill worth taking out of this chapter.
-
-Start with the sentence at the top: the justices are talking more than they used to. It is true. In the `r T0` term an argument ran `r nm(MIN0)` minutes on average. In `r T1` it ran `r nm(MIN1)`. The justices got through `r n(WRD0)` words in an average `r T0` argument and `r n(WRD1)` in an average `r T1` one, which is half as much again.
-
-```{r longview-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r longview-static, eval=!knitr::is_html_output(), fig.height=4.0}
-```
-
-**Figure 2. How long an argument runs, and how fast the justices fill it.** The top panel is the mean length of an argument in each term. The bottom panel is the number of words the justices got through per minute of argument. The shaded band is the `r TELT` term, argued by telephone. The two panels are drawn one above the other rather than on a shared frame. Minutes and words a minute are different units, and putting them on one plot would suggest a relationship the data does not contain.
-
-Look at the bottom panel. **The justices speak at `r nm(RAT0)` words a minute in `r T0` and `r nm(RAT1)` in `r T1`.** That rate barely moves across the whole `r NTERM` terms. They are not talking faster, and in any given minute they are not talking more. The argument simply lasts longer, by `r nm(GROWTH, 0)`% on average since the Court stopped meeting in its courtroom.
-
-The bench did not get hotter. The container got bigger.
-
-## What changed on 4 May 2020
-
-On that date the Court heard argument by telephone for the first time, and gave itself a rule it had never had. After the advocate's opening, the justices would question one at a time, in order of seniority, with the Chief going first.
-
-That rule leaves a mark you can measure. If the justices ask their first questions in seniority order, the list of who spoke first, second and third is sorted. So count the arguments where it is.
+On 4 May 2020 the Court heard argument by telephone for the first time, and gave itself a rule it had never had. After the advocate's opening, the justices would question one at a time, in order of seniority, with the Chief going first. That rule leaves a mark anybody can measure. If the justices ask their first questions in seniority order, the list of who spoke first, second and third is sorted.
 
 ```{r order-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -131,104 +98,63 @@ That rule leaves a mark you can measure. If the justices ask their first questio
 ```{r order-static, eval=!knitr::is_html_output(), fig.height=3.2}
 ```
 
-**Figure 3. Two shares of each term's arguments.** In blue, the share where the justices asked their first questions in exact order of seniority. In red, the share where Justice Thomas asked no question at all. Both are divided by the same bottom number, the arguments heard that term, which is why they belong on one axis.
+**Figure 2. Two shares of each term's arguments.** In blue, the share where the justices asked their first questions in exact seniority order. In red, the share where Justice Thomas asked nothing. Both are divided by the same bottom number, the arguments heard that term, which is why they belong on one axis. The shaded band is the `r TELT` term, argued by telephone.
 
-```{r orderfacts}
-```
+**For `r NZERO` straight terms the blue line is exactly zero. In the telephone term it is `r nm(ORD(2020))`%.** Then the Court went back to its courtroom and it fell to `r nm(ORD(2021))`% again. The `r SPLIT` term is the seam and reads `r nm(ORD(SPLIT))`%, because it was argued in the courtroom until March and by telephone in May.
 
-**For `r NZERO` straight terms the number is exactly zero. In the telephone term it is `r nm(ORD(2020))`%.** Then the Court went back to its courtroom and it fell to `r nm(ORD(2021))`% again.
+Nothing about the nine people produced that. They did not become more deferential to seniority in 2020 and abandon it in 2021. **An administrative decision about how to run a hearing on a conference call moved a social statistic from zero to a hundred and back.**
 
-The `r SPLIT` term is the seam, and it reads `r nm(ORD(SPLIT))`%. That term was argued in the courtroom until March and by telephone in May, so it is the only one in the file with both rules inside it.
+The red line is Justice Thomas. He asked nothing in `r nm(100 * TH_SILENT_PRE / TH_ON_PRE)`% of the arguments he sat for through 2018, and in `r TH_TERMS_100` of those terms he asked nothing in a single argument. He was famous for it, and the fame came with explanations about temperament and about what he thought argument was for. Then the format handed every justice a turn by name, and his silence went to `r nm(TH_2020)`%. It has stayed near there since, at `r nm(100 * sum(TH_POST$arguments_silent) / sum(TH_POST$arguments_on_bench))`% across every argument.
 
-Nothing about the nine people produced that. They did not become more deferential to seniority in 2020 and abandon it in 2021. **An administrative decision about how to run a hearing on a conference call moved a social statistic from 0 to 100 and back.**
+**Whatever that silence had been, it was at least partly a fact about a room in which you had to interrupt to be heard.** A measure of a person turned out to be measuring an arrangement of chairs. **Ask of any statistic about people: could a rule have produced this?** Here the answer was yes, and it hid behind a sentence everybody found easy to believe.
 
-The fall back to zero is worth a second look, because the rule did not go away. The Court kept a seniority round when it returned, but put it at the *end* of each advocate's time, after the open questioning. So the first questions went back to being a free-for-all while the ordered part moved somewhere this measure does not look. **A measure that reads 0% in 2021 and 0% in 2015 is not saying the same thing about those two terms.**
+## What this brief cannot tell you
 
-## The other thing the rule did
+**Nothing here measures persuasion.** Talking is not the same as changing an outcome, and the justice who says least may be the one who decides the case. This brief can tell you who held the floor. It cannot tell you who won the argument. The claim it opened with, that the questioning shows which way a case is going, needs the outcomes joined to the transcripts and a design this file does not supply.
 
-The red line in Figure 3 is Justice Thomas.
+**A turn is a transcription decision**, drawn by a court reporter, so every count of turns inherits a definition nobody here chose. The rule for dropping gavel and courtesy turns is this build's own, and it removes a different share than Epstein and Posner's does.
 
-```{r thomas}
-```
+**The bench roster is a period, not a day.** Counting silence needs a roster, and a transcript has none: a justice who says nothing leaves no row in it. The roster here is Oyez's record of who was sitting over a stretch of terms, so a justice recused from one case reads as one who kept quiet in it.
 
-Thomas asked nothing in `r nm(100 * TH_SILENT_PRE / TH_ON_PRE)`% of the arguments he sat for through 2018. In `r TH_TERMS_100` of those terms he asked nothing in every single argument. He was famous for it, and the fame came with explanations about temperament and about what he thought argument was for.
+**The seniority measure looks only at first questions.** The Court kept a seniority round when it returned to the courtroom, but put it at the end of each advocate's time rather than the start. A measure reading zero in 2021 and zero in 2015 is not saying the same thing about those two terms.
 
-Then the Court went to the telephone, the format handed every justice a turn by name, and his silence went to `r nm(TH_2020)`%. It has stayed near there: `r nm(100 * sum(TH_POST$arguments_silent) / sum(TH_POST$arguments_on_bench))`% across every argument since.
+## What you should have learned
 
-**Whatever that silence had been, it was at least partly a fact about a format in which you had to interrupt to be heard.** A measure of a person turned out to be measuring an arrangement of chairs. That is the single most useful thing in this chapter, and it generalises well past the Supreme Court.
+- Six reasonable ways to ask who talks the most produce `r length(FIRSTS)` different answers to the question, and the widest swing by one justice is `r MOVE` places.
+- The extremes hold and the middle does not: `r sub(",.*", "", TOP3)` is top three on every measure, `r sub(",.*", "", LAST)` is last on every one, and `r NMOVED` of `r NJ` justices move in between.
+- Arguments got longer without the justices getting faster, from `r nm(MIN0)` minutes in `r T0` to `r nm(MIN1)` in `r T1` at a near-constant `r nm(RAT1)` words a minute.
+- A rule change moved the share of arguments questioned in seniority order from zero to `r nm(ORD(2020))`% and back, and ended a silence that had run `r nm(100 * TH_SILENT_PRE / TH_ON_PRE)`% of one justice's arguments.
+- Two teams counting different transcripts agreed to within `r abs(round(WRD0) - 3866)` word in `r n(round(WRD0))`, because a word count is not a coding judgment.
 
-One caution belongs with those numbers. Counting silence needs a roster, and a transcript has none: a justice who says nothing leaves no row in it. The bench list here comes from Oyez's record of who was sitting in that stretch of the Court's history, so a justice recused from one case reads as a justice who kept quiet in it. The first version of this build did not notice, and reported that no justice had ever been silent, which is what a file that only records talking will always tell you.
+## Extensions
 
-## Checking it against somebody else's file
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-The measures above have an unusual advantage: somebody else built the same thing from different paper, three days before this chapter was written.
+- `measures.csv` ranks the justices `r NMEAS` ways, in `measure`, `value` and `rank`. Find the justice whose `rank` changes most. Which measure would you use in a sentence, and what would you be claiming?
+- `arguments.csv` has `minutes`, `turns` and `justice_words` per case, with a `regime` column. Average each of them inside each `regime`. What did the rule change actually change?
+- `silence.csv` has `pct_silent` per justice per `term`. Sort it, find the justices who said nothing most often, and check whether that changed under the new format.
+- `order.csv` gives `pct_in_seniority_order` by `term`, and `speakers.csv` gives each justice a `seniority_rank`. Who gains from a fixed speaking order, and who loses?
 
-Epstein and Posner assembled the Roberts Court Oral Argument Corpus from transcripts bought from Westlaw and published a report on it for the *New York Times* on 12 August 2026. **Their file is not public and cannot be**, because Westlaw licenses it, so nothing in this chapter is built on their data. What follows is a comparison, and the left column is the only place in this chapter where a number came from somewhere other than this book's own build.
-
-```{r epcompare}
-```
-
-Two teams, two sources, two parsers written by people who never spoke. The justice word count for the `r T0` term differs by `r abs(round(WRD0) - 3866)` word in `r n(round(WRD0))`.
-
-That is worth more than it looks. It says the thing being counted is robust to who counts it, which is not true of most measures in this book. The share of decisions coded conservative in the sibling chapter would not survive a second team recoding it. **Word counts survive because a word is not a judgment.**
-
-The differences that remain are also informative rather than embarrassing. This build finds `r n(NARG)` arguments against their 1,425, because Oyez is missing audio for a handful. The turn counts differ by a fraction of a percent for the same reason.
-
-## What this evidence will bear
-
-The record is complete and it is not a sample. Every argument the Roberts Court has heard is here, and the counts inside them are reproducible by anybody with the same file. Two independent teams got the same numbers, which is the strongest form of check available and one most chapters in this book cannot run.
-
-The limits bound different claims, and each has appeared above in its place. **A turn is a transcription decision**, drawn by a court reporter, so every count of turns inherits a definition nobody in this chapter chose. **The rule for dropping gavel and courtesy turns is this build's own**, and it removes a different share than Epstein and Posner's does. **The bench roster is a period, not a day**, so a recusal reads as a silence. And **the seniority measure looks only at first questions**, which is why it reads zero for two terms that are nothing alike.
-
-The largest limit is not about the data at all. **Nothing here measures persuasion.** Talking is not the same as changing an outcome, and the justice who says least may be the one who decides the case. This chapter can tell you who held the floor. It cannot tell you who won the argument, and the temptation to slide from one to the other is exactly what a clean, complete, timestamped file makes easy.
-
-Two questions stay open. Whether the longer post-2020 argument produces better decisions is not answerable from a transcript, and nobody has proposed a way to answer it. And whether the seniority round improved the hearing or merely made it orderly is a question about what oral argument is for, which Epstein and Posner take up in the paper this report accompanies.
-
-What can be said is worth the trouble. **The same nine justices, the same `r n(NARG)` arguments, and six reasonable ways to ask who talks the most produce `r length(FIRSTS)` different answers to that question.** The extremes hold and the middle does not. And the sharpest movement in the whole file, a number going from zero to a hundred and a justice's twenty-year silence ending, was not a change in anybody's behaviour. It was a change in the rules of the room.
-
-**Ask of any statistic about people: could a rule have produced this?** For most of them the answer is no. For this one it was yes, and it was hiding behind a sentence everybody found easy to believe.
+Two stretch ideas point past the spreadsheet. Oyez covers argument back to 1955, so fetch a term from before the Roberts Court and ask whether argument length was already growing. And the Court's own site posts same-day audio, so count a term of it yourself and compare your totals against `arguments.csv`.
 
 ## Sources
 
 **Data**
 
 - **Oyez**, oral argument audio aligned to transcripts, `r T0`-`r T1` terms.
-  <https://api.oyez.org> — keyless and public. Three endpoints are read: the case
-  list for each term, each case, and each case's argument transcript. The
-  transcript is turn-level, and every turn carries a start and stop time in
-  seconds. `r n(NARG)` arguments and `r n(NTURN)` turns are read; two kinds of
-  justice turn, gavelling and courtesy, are excluded from every count, by a rule
-  the build script states.
-- The bench roster used for the silence table is Oyez's record of the natural
-  court, which is the set of justices sitting over a stretch of terms rather than
-  on a given day.
+  <https://api.oyez.org> — keyless and public. The transcript endpoint is
+  turn-level, and every turn carries a start and stop time in seconds.
+  `r n(NARG)` arguments and `r n(NTURN)` turns are read. The bench roster is
+  Oyez's record of the natural court.
 
 **Compared against, but not used**
 
 - Epstein, L. and Posner, E. A. (2026). *Two Decades of Oral Argument in the
   Supreme Court, 2005-2025 Terms.* Report prepared for the *New York Times*,
   12 August 2026. <https://epstein.wustl.edu/s/oralargumentreport.pdf> The
-  underlying Roberts Court Oral Argument Corpus is built from Westlaw
-  transcripts and is not publicly available, so the six figures quoted from it
-  here are read off the published report and are labelled in the table that uses
-  them.
-
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`arguments.csv`](data/derived/arguments.csv), [`exhibit.csv`](data/derived/exhibit.csv), [`measures.csv`](data/derived/measures.csv), [`order.csv`](data/derived/order.csv), [`silence.csv`](data/derived/silence.csv), [`speakers.csv`](data/derived/speakers.csv), [`totals.csv`](data/derived/totals.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `measures.csv` ranks the justices six different ways. Find a justice whose rank changes a lot between measures. Which measure would you use, and what would you be claiming?
-- `arguments.csv` has `minutes`, `turns` and `justice_words` per case, with a `regime` column. Compare the regimes. What did the rule change actually change?
-- `silence.csv` has `pct_silent` per justice per term. Find the justices who said nothing most often. Then check whether that changed under the new format.
-- `order.csv` gives `pct_in_seniority_order` by term. Follow it across the regime change. Who benefits from a fixed speaking order?
+  underlying corpus is built from Westlaw transcripts and is not public, so the
+  figures quoted from it are read off the report and labelled in the table that
+  uses them.
 
 **Academic literature**
 
@@ -237,14 +163,16 @@ tables you just opened.
 - Epstein, L., Landes, W. M. and Posner, R. A. (2010). "Inferring the Winning
   Party in the Supreme Court from the Pattern of Questioning at Oral Argument."
   *Journal of Legal Studies* 39(2): 433-467.
-- "How a Covid-Era Scramble Transformed Supreme Court Arguments." *New York
-  Times*, 13 August 2026, the article the report above was prepared for.
-
-
-**Further reading**
-
 - Johnson, T. R., Wahlbeck, P. J. and Spriggs, J. F. (2006). "The Influence of
   Oral Arguments on the U.S. Supreme Court." *American Political Science Review*
   100(1): 99-113.
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`arguments.csv`](data/derived/arguments.csv), [`exhibit.csv`](data/derived/exhibit.csv), [`measures.csv`](data/derived/measures.csv), [`order.csv`](data/derived/order.csv), [`silence.csv`](data/derived/silence.csv), [`speakers.csv`](data/derived/speakers.csv), [`totals.csv`](data/derived/totals.csv)
+
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

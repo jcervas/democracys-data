@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -149,40 +150,11 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- rawvd-plan
-data.frame(GEOID20 = c("131530201061000", "131530201061001"),
-           District = c(1L, 1L))
-
-## ---- rawvd-pop
-data.frame(GEOID20 = "131530201062020", pop = 0L, pop_black = 0L,
-           pop_white = 0L, vap = 0L, vap_white = 0L, vap_black = 0L,
-           county = "153")
-
-## ---- rawvd-voters
-data.frame(surname = "[withheld]", race = "white",
-           GEOID20 = "131530211253020")
-
 ## ---- one-row
 o <- b[order(-b$vap_black), ][1, c("GEOID20", "boe5", "pop", "vap",
                                    "vap_black", "reg", "reg_black")]
 names(o) <- c("census block", "enacted district", "population", "voting age",
               "Black adults", "registered", "Black registered")
-o
-
-## ---- file
-data.frame(
-  quantity = c("Census blocks", "Population", "Voting-age population",
-               "Registered voters", "Blocks with nobody living in them",
-               "Black share of population", "Black share of voting-age population",
-               "Black share of registered voters"),
-  value = c(n(nrow(b)), n(POP), n(VAP), n(REG), n(EMPTY),
-            paste0(pc(sh_pop, 2), "%"), paste0(pc(sh_vap, 2), "%"),
-            paste0(pc(sh_reg, 2), "%")))
-
-## ---- deviation
-o <- ag[order(ag$boe5), c("boe5", "pop", "dev")]
-o$pop <- n(o$pop); o$dev <- sprintf("%+.2f%%", ag$dev[order(ag$boe5)])
-names(o) <- c("district", "population", "deviation from ideal")
 o
 
 ## ---- dev-static
@@ -206,61 +178,29 @@ mtext(sprintf("total spread %.2f points; a legislature is allowed 10",
               DEV_RANGE), 3, line = 0.4, cex = 0.82, col = "#555")
 
 ## ---- dev-d3
-rows <- paste(sprintf('{"d":%d,"p":%d,"v":%.4f}', ag$boe5, ag$pop, ag$dev),
-              collapse = ",")
+# The shared chart library draws this one: five rows, one signed value, a
+# shaded allowance. Nothing here is particular enough to hand-write, and this
+# chunk is the document's first D3 output, so dd_fig() emits the script tags.
+o <- ag[order(ag$boe5), ]
+o$district <- paste("District", o$boe5)
+dd_fig("dev", "bar", o[, c("district", "pop", "dev")],
+  rowHeight = 44, size = list(m = list(t = 54, b = 16)),
+  x = list(field = "dev", fmt = "signed2", domain = c(-5.6, 5.6), ticks = 7),
+  y = list(field = "district", band = TRUE),
+  valueLabels = TRUE,
+  annotations = list(
+    list(type = "band", axis = "x", from = -5, to = 5),
+    list(type = "vline", x = -5),
+    list(type = "vline", x = 5),
+    list(type = "text", px = TRUE, x = 380, y = 16, anchor = "middle",
+         size = 12, text = "deviation from equal population (%)")),
+  tip = dd_tip(c(pop = "people", dev = "from the ideal"),
+               fmt = c(pop = "comma", dev = "signed2"), title = "district"))
 cat(sprintf('
-<div id="dev" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const D=[%s];
-const W=740,H=300,M={t:40,r:34,b:52,l:96};
-const box=d3.select("#dev");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-5.6,5.6]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.d)).range([M.t,H-M.b]).padding(0.4);
-svg.append("rect").attr("x",x(-5)).attr("y",M.t-8).attr("width",x(5)-x(-5))
-  .attr("height",H-M.b-M.t+16).attr("fill","#4d9221").attr("fill-opacity",0.09);
-[-5,5].forEach(v=>svg.append("line").attr("x1",x(v)).attr("x2",x(v))
-  .attr("y1",M.t-8).attr("y2",H-M.b+8).attr("stroke","#4d9221")
-  .attr("stroke-dasharray","5,4"));
-svg.append("text").attr("x",x(5)+6).attr("y",M.t-12).attr("font-size","11px")
-  .attr("fill","#4d9221").text("the 10%% band a legislative plan gets");
-svg.append("line").attr("x1",x(0)).attr("x2",x(0)).attr("y1",M.t-8)
-  .attr("y2",H-M.b+8).attr("stroke","#777");
-svg.append("g").attr("transform",`translate(0,${H-M.b+8})`)
-  .call(d3.axisBottom(x).ticks(7).tickFormat(d=>d+"%%"));
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-10).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("deviation from equal population");
-const yc=d=>y(d.d)+y.bandwidth()/2;
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("line.s").data(D).join("line")
-  .attr("x1",x(0)).attr("x2",d=>x(d.v)).attr("y1",yc).attr("y2",yc)
-  .attr("stroke","#2c7fb8").attr("stroke-width",4);
-svg.append("g").selectAll("circle").data(D).join("circle")
-  .attr("cx",d=>x(d.v)).attr("cy",yc).attr("r",7).attr("fill","#2c7fb8")
-  .on("mousemove",function(e,d){tip.style("opacity",1).html(
-     `<b>District ${d.d}</b><br>${d3.format(",")(d.p)} people<br>`+
-     `${d.v>0?"+":""}${d.v.toFixed(2)}%% from ideal`)
-     .style("left",Math.min(e.offsetX+14,W-260)+"px").style("top",(e.offsetY-10)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0));
-svg.append("g").selectAll("text.v").data(D).join("text")
-  .attr("x",d=>x(d.v)+(d.v>0?12:-12)).attr("y",d=>yc(d)+4)
-  .attr("text-anchor",d=>d.v>0?"start":"end").attr("font-size","11.5px")
-  .attr("fill","#1a5c88").text(d=>(d.v>0?"+":"")+d.v.toFixed(2));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickSize(0).tickFormat(d=>"District "+d))
-  .call(g=>g.select(".domain").remove())
-  .selectAll("text").attr("font-size","12px");
-})();
-</script>
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Total spread %.2f points. A legislature drawing state or local districts is
-presumed to be in the clear under 10.</p>
-', rows, DEV_RANGE))
+Total spread %.2f points; the shaded band is the 10 points a legislature
+drawing state or local districts is presumed to be within.</p>
+', DEV_RANGE))
 
 ## ---- county-units
 data.frame(
@@ -521,83 +461,6 @@ data.frame(
                     ifelse(o$reg_black_pct > 50, "on registered voters only",
                            "on neither")))
 
-## ---- dumb-static
-par(mar = c(4.4, 4.6, 2.4, 7.6))
-o <- t4[is.finite(t4$reach) & t4$reach <= 100, ]
-y <- rev(seq_len(nrow(o)))
-plot(NA, xlim = c(40, 58), ylim = c(0.5, nrow(o) + 0.5), yaxt = "n", bty = "n",
-     las = 1, xlab = "Black share of the district (%)", ylab = "reach")
-rect(50, 0, 60, nrow(o) + 1, col = "#f0f5ea", border = NA)
-abline(v = 50, lty = 2, col = "#4d9221", lwd = 1.8)
-axis(2, at = y, labels = o$reach, las = 1, tick = FALSE, cex.axis = 0.8)
-segments(o$vap_black_pct, y, o$reg_black_pct, y, col = "grey75", lwd = 2)
-points(o$pop_black_pct, y, pch = 15, cex = 0.9, col = "#8856a7")
-points(o$vap_black_pct, y, pch = 19, cex = 1.15, col = "#C41230")
-points(o$reg_black_pct, y, pch = 19, cex = 1.15, col = "#2c7fb8")
-text(58.4, nrow(o), "registered\nvoters", pos = 4, cex = 0.7, col = "#2c7fb8",
-     xpd = NA)
-text(58.4, nrow(o) - 3.2, "voting-age\npopulation", pos = 4, cex = 0.7,
-     col = "#C41230", xpd = NA)
-text(58.4, nrow(o) - 6.4, "total\npopulation", pos = 4, cex = 0.7,
-     col = "#8856a7", xpd = NA)
-mtext("four-district configuration; every district crosses 50 on one measure and none on the other",
-      3, line = 0.5, cex = 0.76, col = "#555")
-
-## ---- dumb-d3
-o <- t4[is.finite(t4$reach) & t4$reach <= 100, ]
-rows <- paste(sprintf('{"r":%d,"p":%.3f,"v":%.3f,"g":%.3f}',
-                      o$reach, o$pop_black_pct, o$vap_black_pct,
-                      o$reg_black_pct), collapse = ",")
-cat(sprintf('
-<div id="dm" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[%s];
-const W=740,H=440,M={t:22,r:150,b:52,l:66};
-const box=d3.select("#dm");
-const svg=box.append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([40,58]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(D.map(d=>d.r)).range([M.t,H-M.b]).padding(0.35);
-svg.append("rect").attr("x",x(50)).attr("y",M.t).attr("width",W-M.r-x(50))
-  .attr("height",H-M.b-M.t).attr("fill","#4d9221").attr("fill-opacity",0.09);
-svg.append("line").attr("x1",x(50)).attr("x2",x(50)).attr("y1",M.t).attr("y2",H-M.b)
-  .attr("stroke","#4d9221").attr("stroke-dasharray","5,4").attr("stroke-width",1.8);
-svg.append("g").attr("transform",`translate(0,${H-M.b})`)
-  .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%%"));
-svg.append("g").attr("transform",`translate(${M.l},0)`)
-  .call(d3.axisLeft(y).tickSize(0)).call(g=>g.select(".domain").remove())
-  .selectAll("text").attr("font-size","10.5px");
-svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-12).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("Black share of the district");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",16)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("reach");
-const yc=d=>y(d.r)+y.bandwidth()/2;
-const tip=box.append("div").attr("style",
- "position:absolute;pointer-events:none;background:#111;color:#fff;padding:7px 10px;border-radius:4px;font-size:12px;opacity:0;white-space:nowrap");
-svg.append("g").selectAll("line.c").data(D).join("line")
-  .attr("x1",d=>x(d.v)).attr("x2",d=>x(d.g)).attr("y1",yc).attr("y2",yc)
-  .attr("stroke","#bbb").attr("stroke-width",2.5);
-const S=[["p","#8856a7","total population"],["v","#C41230","voting-age population"],
-         ["g","#2c7fb8","registered voters"]];
-S.forEach(s=>svg.append("g").selectAll("circle."+s[0]).data(D).join("circle")
-  .attr("cx",d=>x(d[s[0]])).attr("cy",yc).attr("r",5.5).attr("fill",s[1])
-  .on("mousemove",function(e,d){tip.style("opacity",1).html(
-     `<b>reach ${d.r}</b><br>${s[2]}: ${d[s[0]].toFixed(2)}%%<br>`+
-     `${d[s[0]]>50?"a majority":"not a majority"}`)
-     .style("left",Math.min(e.offsetX+14,W-300)+"px").style("top",(e.offsetY-10)+"px");})
-  .on("mouseleave",()=>tip.style("opacity",0)));
-S.forEach((s,i)=>{
-  svg.append("circle").attr("cx",W-M.r+20).attr("cy",M.t+16+i*22).attr("r",5.5)
-    .attr("fill",s[1]);
-  svg.append("text").attr("x",W-M.r+31).attr("y",M.t+20+i*22)
-    .attr("font-size","11px").attr("fill","#444").text(s[2]);});
-})();
-</script>
-', rows))
-
 ## ---- on-mark-halo
 # A label lying across a saturated or mid-toned mark, where neither the
 # authored colour nor the lifted one reaches 3:1. Recolouring cannot fix a
@@ -608,9 +471,11 @@ S.forEach((s,i)=>{
 # stroke there would sit dark behind a dark ink, and the checker scores the
 # fill against the stroke it touches.
 # Sites found by _lib/check-contrast.js --light.
+# The deviation figure is no longer here: it comes from the shared chart
+# library now, which colours by class rather than by fill, so brief.css
+# already handles it in both themes.
 cat('<style>
 @media (prefers-color-scheme: light) {
-#dev text[fill="#1a5c88" i],
 #fr text[fill="#1a5c88" i],
 #fr text[fill="#4d9221" i],
 #fr text[fill="#8856a7" i]

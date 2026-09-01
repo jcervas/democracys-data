@@ -16,234 +16,53 @@ dd_read_chunks("bisg-check-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A statistical inference cannot normally be checked. That is what makes it an inference rather than a measurement: if the answer were already written down, nobody would need to estimate it.
+Courts are told every year how many Black voters live in a district, and nobody counted them. Voter files do not record race, so the number is manufactured by a method: **Bayesian Improved Surname Geocoding**, or BISG, which multiplies what a surname implies about a person by what their neighbourhood implies. Elliott and colleagues (2009) built it for health records; Imai and Khanna (2016) brought it to voter files. It is the standard evidence in Section 2 vote-dilution cases and in federal lending-discrimination work. How good is the guess?
 
-Georgia writes it down. Race appears on the voter registration form, collected for Voting Rights Act compliance rather than for anybody's research. So in one Georgia county there are `r n(nrow(v))` people whose race a widely used statistical method is trying to guess, and whose race is already on file.
+Almost everywhere, that question cannot be asked, because an inference is an inference when the answer is not written down. Georgia writes it down. Race appears on the voter registration form, collected so the state could report who was registering. So in one Georgia county there are `r n(nrow(v))` people whose race a widely used method is guessing, and whose race is already on file.
 
-The method is **Bayesian Improved Surname Geocoding**, or BISG. **Elliott and colleagues (2009)** built it to estimate a patient's race from a surname and a neighbourhood, for health records that did not collect it. **Imai and Khanna (2016)** brought it to voter files, which is how it reached redistricting cases. Here it can be graded.
+The question sounds like it has one answer. It has five, and they disagree with each other by more than seventy points.
 
-So: **how good is the guess?**
+## The test
 
-It sounds like a question with one answer. It has five, and they disagree with each other by more than seventy points.
+The test joins three files, none of which was built to meet the others. The first is a Houston County, Georgia voter registration extract, carrying each voter's surname, the race they reported and the census block they live in. It is working data from the county's 2026 redistricting matter, and it is not published: a Georgia voter file is ordered from the state (<https://sos.ga.gov/page/order-voter-registration-lists-and-files>), cut on one day and never regenerated. The second file is the 2020 Census count of who lives on each of the county's blocks. The third is the Census Bureau's *Frequently Occurring Surnames from the 2010 Census*, read out of the [surnames brief](../surnames/surnames-brief.html)'s folder rather than copied, so the two briefs cannot disagree about it.
 
-## Why anybody needs to know
+These files can answer the question because one of them contains the answer. A small number of states put a race question on the registration form, most of them once subject to federal supervision of their election law. Nobody collected that column to grade a statistical method, which is what makes it a fair answer key.
 
-BISG estimates who the voters are. Ecological inference then estimates how those groups voted. Chained together, the two are the standard evidentiary basis of a Section 2 vote-dilution case — the evidence on which districts are drawn or struck down. The same method is used by the Consumer Financial Protection Bureau to detect lending discrimination.
+It is also the deepest problem in this literature. **An inference can only be graded where the answer is recorded, and the answer is only recorded where the inference is unnecessary.** Every published accuracy figure for BISG comes from a place that did not need it.
 
-**In both settings the error rate is almost never reported**, because in both settings it is almost never knowable. A federal court is handed an estimate with no accompanying statement of how often the method is wrong, for whom, or in which direction.
+Two joins have to hold before anything can be scored. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the reading on what a join key is and how one fails silently. It also covers the repair when two files carry different keys: a crosswalk, a table that translates one set of identifiers into another.
 
-Nobody serious argues that BISG should therefore be thrown out, because the alternative is no evidence at all. The dispute is about **what has to accompany an estimate before a court should act on it**. And about whether one overall accuracy figure is a fair summary of a method whose performance varies enormously by group. This county is one of the few places where the aggregate figure can be taken apart and the pieces looked at.
+## The data
 
-## An answer key that exists for an unrelated reason
+The table was built by running BISG from scratch on every voter and comparing each answer with the race that voter reported. The surname distribution, the block prior, the two fallback rules and the scoring are recomputed here; nothing is copied from a published accuracy figure.
 
-Three files meet in this chapter and none of them was built to meet the others. The first is a Georgia voter registration extract for Houston County, carrying the race each voter wrote on the form. It comes from the working data assembled for the county's 2026 redistricting matter. The second is the 2020 census count of who lives on each of the county's blocks. The third is the Census Bureau's list of how often each surname is held by people of each race, tabulated from the 2010 census and published for exactly this kind of use. It is read here out of the surnames chapter's folder rather than copied, so the two chapters cannot disagree about it.
+The join runs on two keys and both are strings of text. The **surname** joins a voter to the Census surname list. The **fifteen-character census block identifier**, `GEOID20`, joins a voter to the block table, and it arrived already filled in. Somebody matched street addresses to blocks before this brief existed, and every address that failed was settled by a rule no column records. Geography is half of what the method uses, so part of what gets graded below is that match.
 
-The registration file is the one that makes the chapter possible, and it exists for a reason that has nothing to do with research. A small number of states put a race question on the voter registration form, most of them states once subject to federal preclearance. The Voting Rights Act obliged them to be able to report who was registering. Nobody collected it to grade a statistical method. But the effect is that in this county the thing BISG is trying to estimate is already written down, which almost nowhere else it is.
+Three cleaning decisions got `r length(hdr)` columns down to three, and each one changes what can be claimed.
 
-That is also the deepest problem with the whole literature, and it is a problem about measurement rather than about this file. **An inference can only be graded where the answer is already recorded, and the answer is only recorded where the inference is unnecessary.** Every published accuracy figure for BISG therefore comes from the handful of places that did not need BISG — and the method is used overwhelmingly in the places that do. Carrying a number from here to there is an assumption about how alike two electorates are, and no amount of care with this county's data converts it into a measurement. What would have been better is a national file with the same truth column, which does not exist and, for good reasons, is not going to.
+**Rows whose answer key was written by the method being graded are dropped first.** `r n(SV("imputed_rows"))` of the `r n(SV("master_rows"))` records carry a flag saying the voter left the race question blank and somebody filled it in by running BISG. Scored against those rows the method looks superb, and nothing in the numbers would give the circularity away.
 
-One decision was made before anything else and it is the one that matters most. The source registration file carries a flag marking records whose race was not supplied by the voter but **filled in by BISG itself**, and every one of those records is dropped here. Scoring a method against its own output would have produced a beautiful and completely meaningless result, and it would have looked exactly like a success.
+**A further `r n(SV("other_unknown_rows"))` voters reported a race the five-category scheme has no box for, or none at all.** They are dropped too, which is not a neutral act: the method is now graded only on people who fit the categories it predicts.
 
-The rest of the cleaning is smaller. The extract arrives with dozens of columns, including full name, birth year and street address. Three are carried forward: surname, reported race, census block. Nothing identifying is committed here at all.
+**The identifiers go on purpose.** The registration number joins the two state files and is discarded as soon as the join is done, so the committed table cannot be linked back to a person. It cannot be audited against its source either.
 
-And the census side got a check worth copying. The script requires the white-alone-not-Hispanic column of one census table to match the same column of the other, person for person, and stops if it does not. It matches. The Black column does not, and that mismatch is how the any-part definition used throughout this chapter announced itself rather than being assumed.
-
-The three files also arrived three different ways. The surname list was published by the Census Bureau for exactly this use, and it is an ordinary download. It is not downloaded twice: this chapter reads the copy already sitting in the surnames chapter's folder. The block counts are the Bureau's own tables, public on the same terms.
-
-The registration extract came from neither. It came out of a case file: the working data assembled for the 2026 Houston County matter, on one machine, behind no URL at all. It is read from that disk, and the work stops if it is not there. So for anyone but its author, the CSV here is not the output of a build that can be re-run. It is the only copy there is.
-
-Something arrived with it that is easy to miss. The block each voter sits in came already assigned. Somebody matched street addresses to census blocks before this chapter ever saw the file. Every address that failed to match, or matched to the wrong side of a street, was settled by a judgment no column records. Geography is half of what the method below uses. Grading BISG here means grading it partly on the quality of a geocode nobody here performed.
-
-## Fifty-three columns arrive, and three survive
-
-The registration extract cannot be shown here, and that is the point of the section rather than an obstacle to it. What can be shown is its shape. These are the column names, exactly as they arrive on the first line of the file:
-
-```{r reg-header}
-```
-
-`r length(hdr)` columns and `r n(SV("reg_rows"))` rows, one per registered voter in the county. Not one of those rows appears anywhere in this book. The two columns marked with a star are the only ones this chapter is allowed to want. Everything else is either irrelevant to a surname model, or the kind of thing that must not be carried into a folder handed to a class. A first name, a middle name, a birth year, a street number, a street name, an apartment number, a mailing address in another state.
-
-The race column is not in that file at the point the chapter uses it. It comes from a second file, one row per voter, whose relevant columns are `race_self`, `race_raw`, `GEOID20` and a flag called `is_bisg_imputed`. That flag is the whole chapter in one column.
-
-The cleaned result has three columns and no way back to a person:
-
-```{r clean-row}
-```
-
-Four judgments got from `r length(hdr)` columns to three, and every one of them changes what the chapter can claim.
-
-**Drop the rows where the answer key was written by the thing being graded.** `r n(SV("imputed_rows"))` of the `r n(SV("master_rows"))` records in the race file have `is_bisg_imputed` set true: the voter left the question blank and somebody filled it in by running BISG. Score BISG against those rows and it looks superb. Nothing in the numbers would give the circularity away, because a model checked against its own output agrees with itself. They are dropped first, before anything else happens.
-
-**Decide what counts as an answer.** A further `r n(SV("other_unknown_rows"))` voters reported a race the five-category scheme has no box for, or none at all. They are dropped too, which is not a neutral act: the method is now being graded only on people who fit the categories it predicts.
-
-**Throw away the identifiers on purpose.** The registration number is what joins the two files, and it is discarded the moment the join is done. The committed file has no key, which means it can never be linked back to a person and also that nobody can re-derive it or audit it against the source. That is a deliberate trade, and it is the same trade the chapter on levels of aggregation is about.
-
-**Accept a geocode you did not perform.** `GEOID20` arrives already filled in. Somebody matched a street address to a census block before this chapter existed, and every address that failed, or landed on the wrong side of a street, was resolved by a rule no column records. Half of what BISG uses is geography, so part of what gets graded below is the quality of that geocode.
-
-What comes out is `r n(nrow(v0))` rows across `r n(length(unique(v0$GEOID20)))` blocks, and the census tables that go with it are aggregated to the same `r n(nrow(g))` blocks so that the two can be joined on a fifteen-character string.
-
-## What one record is
-
-```{r one-row}
-```
-
-Three columns: a surname, the race the voter reported on the registration form, and the census block they live in. **No names and no addresses** — the model only ever receives the surname and the block, so that is all the file carries.
-
-```{r counts}
-```
-
-The block file is the **geographic prior**: for each block, who lives there.
-
-## What gets dropped before anything is measured
+What survives is `r n(nrow(v0))` voters across `r n(length(unique(v0$GEOID20)))` blocks, in three columns: `surname`, `race` as the voter reported it, and `GEOID20`. The census side is aggregated to the same `r n(nrow(g))` blocks, one column of residents per group. One more thing happens before scoring:
 
 ```{r drop}
 ```
 
-`r n(nrow(drop))` voters, `r pc(100 - p_match)`% of them, hold a surname that is not in the Census list, because fewer than a hundred Americans shared it in 2010. **The method has no opinion about them at all**, so they are not in any figure below. Who they are turns out to matter a great deal.
+`r n(nrow(drop))` voters, `r pc(100 - p_match)`% of them, hold a surname the Census list does not carry, because fewer than a hundred Americans shared it in 2010. The method has no opinion about them, so they appear in no figure below. Who they are turns out to matter.
 
-## The surname alone
+> **Before you read on, write down three numbers.** BISG scores
+> `r pc(o_bis)`% overall on these voters. First: what share of *white* voters
+> do you think it gets right? Second: what share of *Black* voters? Third,
+> and this is the one that matters — **what would a method score if it simply
+> guessed "white" for every voter in the county**, with no surname, no
+> geography and no model at all?
 
-```{r surname-only}
-```
+## What it says about democracy
 
-**Overall accuracy: `r pc(o_sur)`%.**
-
-That is the number a methods section reports, and it sounds like a method that works.
-
-> **Before you read on, write down three numbers.** The surname alone scores
-> `r pc(o_sur)`% overall. First: what percentage of *white* voters do you think
-> it gets right? Second: what percentage of *Black* voters? Third, and this is
-> the one that matters — **what would a method score if it simply guessed
-> "white" for every single voter in this county**, with no surname, no
-> geography, and no model at all?
-
-## Read down the column, not across the bottom
-
-The accuracy column in that table is the thing to look at, and it is not what the overall figure suggests.
-
-**The surname gets white voters right `r pc(a_sur[["white"]])`% of the time and Black voters right `r pc(a_sur[["black"]])`% of the time.** And:
-
-```{r baseline}
-```
-
-**Guessing "white" for every voter scores `r pc(base_white)`%**, because `r pc(base_white)`% of these voters are white. Almost nobody writes that number down; the guess is usually somewhere near a fifth, on the reasonable-sounding intuition that a five-category problem gives a coin-flip method about one chance in five. The floor is not one in five. It is a little over half, and it is available to anyone willing to type one word.
-
-Here is the county, one square per percent of the `r n(nrow(v))` voters being scored.
-
-```{r waffle-static, eval=!knitr::is_html_output(), fig.height=4.2}
-```
-
-```{r waffle-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 1. The electorate being scored, one square per percent.** Each of the 100 squares is one percent of the `r n(nrow(v))` voters the method is graded on, colored by the race the voter reported and allocated by largest remainder. The heavy line encloses the green squares: `r pc(base_white)` of them, which is what a method with no method at all collects by guessing "white" every time. The surname's `r pc(o_sur)`% has to be read against that line, not against zero.
-
-The overall figure is not a summary of how the method performs. It is a summary of who lives in Houston County. **On an unbalanced problem, overall accuracy mostly reports the balance.**
-
-## Geography is a trade, not an improvement
-
-Surname alone is not BISG. The method multiplies the surname distribution by the block composition, which is the step Elliott and colleagues (2009) added. If a name is ambiguous but the block is overwhelmingly Black, the block should carry the inference.
-
-```{r bisg}
-```
-
-```{r overall}
-```
-
-Overall accuracy rises from `r pc(o_sur)`% to `r pc(o_bis)`% — `r sprintf("%+.1f", o_bis - o_sur)` points. That is the number a methods section would report, and it is the wrong number.
-
-```{r chg-static, eval=!knitr::is_html_output(), fig.height=4}
-```
-
-```{r chg-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 2. What adding the census block does to each group, separately.** The change in accuracy from multiplying the surname distribution by the block's racial composition, in percentage points. One bar rises and three fall. The `r sprintf("%+.1f", o_bis - o_sur)`-point gain in the overall figure is the sum of these movements weighted by group size, which is why it reports none of them.
-
-**Adding geography is not a free improvement. It is a redistribution.** Black voters gain `r sprintf("%+.1f", chg[["black"]])` points, from `r pc(a_sur[["black"]])`% to `r pc(a_bis[["black"]])`%. That is the method working as designed, and it works because Black residents of this county are geographically concentrated, so the block genuinely carries information about them. Asian voters lose `r pc(-chg[["asian"]])` points, Hispanic voters `r pc(-chg[["hispanic"]])`, white voters `r pc(-chg[["white"]])`. Those populations are spread thinly across the county, so no block is distinctively Asian or Hispanic; the geographic term drags the estimate toward the local majority and overrides a surname signal that was already decent.
-
-One group gained `r pc(chg[["black"]])` points. Three lost. The `r sprintf("%+.1f", o_bis - o_sur)` overall conceals all of it, and a report that quotes only the overall figure has not lied about anything.
-
-**And the number that should stay with you:** with everything the method has, BISG identifies Black voters correctly **`r pc(a_bis[["black"]])`% of the time**. It is wrong about them more often than it is right — in a county that is about a third Black, on the question Section 2 litigation turns on.
-
-An accuracy column reports only the diagonal. Being wrong is not one thing; the errors go somewhere, and where they go is the rest of the table.
-
-```{r conf-static, eval=!knitr::is_html_output(), fig.height=4.6}
-```
-
-```{r conf-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 3. Where the errors go.** Each row is a group of voters as they reported themselves; each column is what BISG guessed; rows sum to 100%. The outlined diagonal is the accuracy column from the table above, and everything off it is a specific mistake. The largest single off-diagonal cell is `r pc(cmp[cm_worst[["row"]], cm_worst[["col"]]])`% of `r PR[cm_worst[["row"]]]` voters labeled `r PR[cm_worst[["col"]]]`; the second column of the Black row shows `r pc(cmp["black","white"])`% of Black voters labeled white. **The errors are not scattered.** They run in one direction, toward the group that is locally largest, which is exactly what multiplying by a geographic prior does.
-
-## Two places the method has no answer
-
-```{r fallbacks}
-```
-
-`r n(sum(empty))` voters live in a block the census records as empty, mostly new construction. The geographic term vanishes for them, and the county's own composition is used instead. And for `r n(sum(degen))` voters the surname is 100% one group while their block has zero residents of that group, so every category multiplies to zero. **BISG is undefined for them.**
-
-Without those two lines of handling, R would raise no error. The routine that picks the largest of the final probabilities returns the *first* column on an all-zero row, so all `r n(sum(fallback))` would have been silently labeled **white** — and `r n(fb_black)` of them are Black.
-
-**A quiet default is worse than a crash.**
-
-## Confidence, and the decision rule
-
-Accuracy asks whether the winning label was right. Ask instead how much probability the model put on the *true* answer.
-
-```{r calibration}
-```
-
-A mean hides a shape. Here is the whole distribution — for every voter, how much probability BISG put on the answer that turned out to be correct.
-
-```{r cali-static, eval=!knitr::is_html_output(), fig.height=3.4}
-```
-
-```{r cali-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 4. How much probability the model placed on the answer that was correct.** One panel per group, on a common vertical scale, each bar a five-point slice of probability; the vertical rule in each panel is that group's mean. White voters pile against the right-hand wall at a mean of `r pc(cali[["white"]], 2)`. `r PR[which.min(cali)]` voters pile against the left-hand wall at `r pc(min(cali), 2)`. The Black panel is the one to sit with: it is not concentrated at either end but spread through the middle, at a mean of `r pc(cali[["black"]], 2)`.
-
-For Black voters the model puts `r pc(cali[["black"]], 2)` on the truth. **It is not confidently wrong; it is genuinely uncertain** — and then the decision rule forces a hard guess anyway. A meaningful part of the information loss is in collapsing a probability to a label, not in the model.
-
-For American Indian voters the model puts `r pc(cali[["aian"]], 2)` on the truth. Those `r n(sum(v$race == "aian"))` voters cannot be found by any threshold at all. Recalibration would not fix that.
-
-## Two checks that cut the other way
-
-**First: does geography help, or does *this* geography help?** Replace the block prior with a single county-wide one, so geography carries no information about where within the county anybody lives.
-
-```{r county-prior}
-```
-
-A county prior scores **worse than no prior at all**. It multiplies every voter by the same composition, which is `r pc(base_white)`% white, so it tilts everyone toward white and destroys information the surname had. "We controlled for geography" means nothing without saying at what scale.
-
-**Second: how does it do on the people it is actually for?** Restrict to voters whose surname gives no group above 60% — the ambiguous names.
-
-```{r ambiguous}
-```
-
-`r sprintf("%+.1f", a_amb[["bisg"]] - a_amb[["surname"]])` points — the largest gain in any *overall* accuracy figure anywhere in this chapter, more than twice the `r sprintf("%+.1f", o_bis - o_sur)` it gains on the full file. (The single largest gain of any kind is still the `r sprintf("%+.1f", chg[["black"]])` points for Black voters above.) **The method is not uniformly weak.** It is weak where the surname was already informative and strong where it was not, which is the opposite of the impression Figure 2 leaves on its own. Both are true, and a fair account has to carry both.
-
-## Who never entered the test at all
-
-```{r who-dropped}
-```
-
-Two numbers are fighting in that table — how big each group is, and how often it is dropped. Give each group a column as wide as it is large, and shade the part of the column the surname list has no opinion about.
-
-```{r mosaic-static, eval=!knitr::is_html_output(), fig.height=4.9}
-```
-
-```{r mosaic-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-**Figure 5. Who the Census surname list has no opinion about, by group and by size.** Each column is one group, as wide as that group's share of all `r n(nrow(v0))` registered voters. The solid block at the top of each column is the share of that group with no surname match, and therefore no score at all. The `r PR[mos_wd]` column is the widest, at `r pc(mos_w[mos_wd])`% of voters, and only `r pc(mos_p[mos_wd])`% solid. The `r PR[mos_hi]` column is `r pc(mos_w[mos_hi])`% of voters and `r pc(mos_p[mos_hi])`% solid. **The rule that decides who gets scored is not neutral with respect to who they are.**
-
-The `r n(nrow(drop))` voters whose surname is not in the Census list are **`r pc(mix_drop[["hispanic"]])`% Hispanic, against `r pc(mix_all[["hispanic"]])`% among all registered voters** — over-represented by a factor of about `r pc(mix_drop[["hispanic"]]/mix_all[["hispanic"]], 1)`. Asian voters are over-represented too.
-
-So the Hispanic accuracy reported above was measured on the Hispanic voters with *common* Hispanic surnames. The hard cases were removed before the scoring began, by a rule that looks purely technical. **Every accuracy figure in this document is conditional on the method having had an opinion in the first place.**
-
-## Everything, against the floor
+Start with the third number, because it is free. **Guessing "white" for everybody scores `r pc(base_white)`%**, since `r pc(base_white)`% of these voters are white. Most people put that floor near a fifth, on the intuition that a five-category problem gives a blind method one chance in five. The surname alone scores `r pc(o_sur)`%, and BISG with the block scores `r pc(o_bis)`%.
 
 ```{r floor-static, eval=!knitr::is_html_output(), fig.height=4.0}
 ```
@@ -251,37 +70,78 @@ So the Hispanic accuracy reported above was measured on the Hispanic voters with
 ```{r floor-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 6. Every accuracy in this chapter, against the number available for free.** How often BISG identifies each group correctly, with the whole scored electorate on the right. The dashed line is `r pc(base_white)`% — what guessing "white" every time collects. `r sum(a_bis < base_white)` of the five groups sit below it, and so would the overall bar if the county were not `r pc(base_white)`% white to begin with.
+**Figure 1. Every accuracy in this brief, against the number available for free.** One bar per group fits this question, because the question is a comparison against a fixed reference. The bars are how often BISG identifies each group correctly, with the whole scored electorate on the right, and the dashed line at `r pc(base_white)`% is what a method with no method collects. `r sum(a_bis < base_white)` of the five groups sit below it, and so would the overall bar if the county were not `r pc(base_white)`% white.
 
-## Should courts stop using it?
+Read down the column rather than across the bottom:
 
-That is not what this evidence supports, and the temptation should be resisted. The defensible statement is narrower: an error rate this uneven should be reported alongside any estimate derived from it, and usually is not. A report saying "BISG was used, with `r pc(o_bis, 0)`% accuracy" is accurate and useless.
+```{r bisg}
+```
 
-**Why is it so bad for Black voters?** Because the surnames are shared. The common American surnames are held by Black and white families alike: Williams, Johnson, Smith. So the name carries almost no signal, and that is what the `r pc(a_sur[["black"]])`% surname-only figure is measuring, on `r n(sum(v$race == "black"))` people. It is not a design flaw and not ill will. The signal is genuinely absent, for historical reasons that are themselves part of what the Voting Rights Act exists to address.
+**The overall figure is not a summary of how the method performs. It is a summary of who lives in Houston County.** On an unbalanced problem, overall accuracy mostly reports the balance.
 
-**And the improvement is real.** Imai, Olivella and Rosenman's fully Bayesian version, which handles the Census file's own missingness and adds supplementary name lists, improves accuracy most for exactly the groups the simple version handles worst. Better in degree. The kind of thing it is does not change: a probability about a population, attached to a person, used to decide a case about that person's district.
+Adding the census block is not a free improvement either. It is a redistribution. Black voters gain `r sprintf("%+.1f", chg[["black"]])` points, from `r pc(a_sur[["black"]])`% to `r pc(a_bis[["black"]])`%, because Black residents of this county are geographically concentrated and the block genuinely carries information about them. Asian voters lose `r pc(-chg[["asian"]])` points, Hispanic voters `r pc(-chg[["hispanic"]])`, white voters `r pc(-chg[["white"]])`. Those populations are spread thinly, so no block is distinctively Asian or Hispanic, and the geographic term drags the estimate toward the local majority. One group gained and three lost, while the overall figure moved `r sprintf("%+.1f", o_bis - o_sur)` points and reported none of it.
 
-**The validation itself is unrepresentative.** Checking BISG requires a state that records race on registration — a small set, concentrated in the South, and overlapping heavily with the states most often in Section 2 litigation. That is either reassuring, because it is where the method is used, or circular, because it is where the method is used. Both readings are defensible.
+Accuracy asks whether the winning label was right. Ask instead how much probability the model put on the answer that turned out to be correct, and the per-person picture changes.
 
-## What a graded guess can testify to
+```{r cali-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```
 
-The evidence here is unusually strong in one respect and unusually local in another.
+```{r cali-d3, results='asis', eval=knitr::is_html_output()}
+```
 
-It is strong because these are records for one real person each, carrying the race that person reported and matched to a census block. That is the rare case where a guess nobody can normally check can be graded at all. And the grading is done group by group rather than in aggregate, which is the entire point: an aggregate number on this problem is a headcount wearing a performance figure's clothes.
+**Figure 2. How much probability the model placed on the answer that was correct.** One panel per group on a common scale, each bar a five-point slice of probability, with the vertical rule at that group's mean. White voters pile against the right-hand wall and `r PR[which.min(cali)]` voters against the left. The Black panel is the one to sit with: spread through the middle, at neither end.
 
-It is local because it is one county. Houston County, Georgia, about `r pc(base_white, 0)`% white and moderately segregated, and nothing here says whether it is typical. The surname list is from 2010 while the registration file is not. `r pc(100 - p_match)`% of voters could not be scored at all, and not at random.
+```{r calibration}
+```
 
-"Any-part Black" is the definition used throughout, following Voting Rights Act practice. The stricter definition would give a different denominator, a different bottom number to divide by, and would move every figure above. These are registered voters rather than residents, so the people who never registered are absent, and they are not a random subset either.
+For Black voters the model puts `r pc(cali[["black"]], 2)` on the truth. It is not confidently wrong; it is genuinely uncertain, and then the decision rule forces a hard guess anyway. Much of the information loss is in collapsing a probability into a label rather than in the model. For American Indian voters it puts `r pc(cali[["aian"]], 2)` on the truth, and those `r n(sum(v$race == "aian"))` voters cannot be found by any threshold at all.
 
-And there are five categories, which puts anybody who is both Hispanic and Black in one box.
+Being wrong is also not one thing. The errors go somewhere, and where they go is the rest of the table.
 
-Nor is the answer key itself beyond question. **The race on a registration form is also a measurement** — one box, chosen by the voter, flattening the same people every categorical race question flattens. Calling it ground truth is a convenience, not a claim about the world.
+```{r conf-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
 
-So the sentence this chapter will bear is that on `r n(nrow(v))` people whose race is on record, BISG scores `r pc(o_bis)`% overall — and that the sentence should not be said without the rest of it. `r pc(o_bis)`% overall is `r pc(a_bis[["white"]])`% for white voters and `r pc(a_bis[["black"]])`% for Black voters, against a `r pc(base_white)`% floor available to anyone willing to guess "white" every time. Adding block geography bought `r pc(chg[["black"]])` points for Black voters and cost Asian, Hispanic and white voters. And `r pc(100 - p_match)`% of voters were dropped before scoring, disproportionately Hispanic. The shape of all that generalizes; the specific figures should not be quoted anywhere else.
+```{r conf-d3, results='asis', eval=knitr::is_html_output()}
+```
 
-Three questions stay open, and they are the ones practitioners actually argue about. What threshold of accuracy is enough for a method used in federal court, and whether the answer should depend on what is being proven. Whether probabilities should be carried forward rather than collapsed into labels. Figure 4 suggests a real gain is available there, and nobody agrees on how to carry the uncertainty into the second stage. And what to do about a group the method simply cannot see: American Indian voters are identified correctly `r pc(a_bis[["aian"]])`% of the time, and no recalibration reaches them.
+**Figure 3. Where the errors go.** Each row is a group of voters as they reported themselves, each column is what BISG guessed, and rows sum to 100%. The outlined diagonal is the accuracy column from the table above; everything off it is a specific mistake. The largest off-diagonal cell is `r pc(cmp[cm_worst[["row"]], cm_worst[["col"]]])`% of `r PR[cm_worst[["row"]]]` voters labeled `r PR[cm_worst[["col"]]]`, and `r pc(cmp["black","white"])`% of Black voters are labeled white.
 
-The method is not illegitimate and the alternative is not better. What is hard to defend is the practice of handing a court one number. In this county that number is `r pc(o_bis)`%, and it is the least informative true statement available about what the method did.
+**The errors are not scattered.** They run one way, toward the group that is locally largest, which is exactly what multiplying by a geographic prior does.
+
+The same mechanism breaks the method outright for `r n(sum(fallback))` people. `r n(sum(empty))` live in a block the census records as empty; for `r n(sum(degen))` more, surname and block contradict each other so flatly that every category multiplies to zero. Without two lines of handling they would all have been labeled white, and `r n(fb_black)` of them are Black.
+
+Two checks cut the other way. Replace the block with a single county-wide prior and the method scores `r pc(o_c)`% overall, **worse than no geography at all**, because one composition applied to everybody tilts every voter toward white. And on the `r n(sum(amb))` voters whose surname gives no group above 60%, adding the block is worth `r sprintf("%+.1f", a_amb[["bisg"]] - a_amb[["surname"]])` points, more than twice what it gains on the full file. The method is strong exactly where the surname was weak.
+
+**The number that should stay with you** is that with everything it has, BISG identifies Black voters correctly `r pc(a_bis[["black"]])`% of the time. It is wrong about them more often than it is right, in a county that is about a third Black, on the question Section 2 litigation turns on. That is not an argument for throwing the method out, because the alternative is no evidence and no way to prove vote dilution at all. It is an argument that an error rate this uneven belongs beside every estimate built on it, and it almost never is.
+
+## What this brief cannot tell you
+
+**It is one county.** Houston County, Georgia is about `r pc(base_white, 0)`% white and moderately segregated, and nothing here says whether it is typical. The shape of these findings travels; the figures should not be quoted anywhere else.
+
+**Whoever the surname list missed never entered the test.** The `r n(nrow(drop))` unscored voters are `r pc(mix_drop[["hispanic"]])`% Hispanic against `r pc(mix_all[["hispanic"]])`% among all registered voters, over-represented by a factor of about `r pc(mix_drop[["hispanic"]]/mix_all[["hispanic"]], 1)`. So the Hispanic accuracy above was measured on Hispanic voters with common Hispanic surnames. Every figure here is conditional on the method having had an opinion in the first place.
+
+**The answer key is itself a measurement.** The race on a registration form is one box, chosen by the voter, flattening the same people every categorical race question flattens. Any-part Black is the definition used throughout, following Voting Rights Act practice; the stricter one would move every figure above. And these are registered voters rather than residents.
+
+**And the validation comes from a biased set of places.** Checking BISG requires a state that records race on registration, which is a small group concentrated in the South and overlapping heavily with the states most often in Section 2 litigation. That is either reassuring, because it is where the method is used, or circular, for the same reason.
+
+## What you should have learned
+
+- On `r n(nrow(v))` people whose race is on record, BISG scores `r pc(o_bis)`% overall, against a free floor of `r pc(base_white)`% for guessing "white" every time.
+- That overall figure conceals the groups: `r pc(a_bis[["white"]])`% for white voters, `r pc(a_bis[["black"]])`% for Black, `r pc(a_bis[["aian"]])`% for American Indian.
+- Adding the census block is a redistribution, not an improvement: `r sprintf("%+.1f", chg[["black"]])` points for Black voters, a loss for Asian, Hispanic and white voters, and `r sprintf("%+.1f", o_bis - o_sur)` overall.
+- The errors run one way, toward the locally largest group, which is what multiplying by a geographic prior does: `r pc(cmp["black","white"])`% of Black voters are labeled white.
+- `r pc(100 - p_match)`% of voters were never scored, their surname being absent from the Census list, and they are `r pc(mix_drop[["hispanic"]])`% Hispanic against `r pc(mix_all[["hispanic"]])`% of all registered voters.
+
+## Extensions
+
+None of these is answered above, and every one can be answered by sorting or grouping the tables the Sources section hands over.
+
+- `houston_voters.csv` gives every voter a `surname`, a self-reported `race` and a `GEOID20`. Group by `race` and count. Which groups are large enough here to say anything about?
+- Take a common surname from `census_surnames.csv` and find its holders in `houston_voters.csv`. Compare `pctwhite` and `pctblack` against what these voters reported.
+- `houston_blocks.csv` gives each block's residents by race. Sort on the five count columns to find the blocks with nobody in them. What should a method do when it lands on one?
+- Pick a surname in `census_surnames.csv` whose shares are close to even, and work out the most confident BISG could possibly be about anyone carrying it.
+
+Two stretch ideas point past the spreadsheet. North Carolina also records race on its registration form and publishes its file; run the same comparison there and see whether the pattern holds. And find an expert report quoting a BISG accuracy figure, then check whether it reports by group or only overall.
 
 ## Sources
 
@@ -289,36 +149,18 @@ The method is not illegitimate and the alternative is not better. What is hard t
 
 - Houston County, Georgia voter registration with self-reported race and
   geocoded block assignment, from working data for the 2026 Houston County
-  redistricting matter. **Rows whose race had been filled in by BISG rather than
-  reported by the voter were dropped first**; scoring BISG against BISG would
-  have produced an excellent and meaningless result, so those records are
-  dropped before anything is scored.
+  redistricting matter. **Rows whose race had been filled in by BISG were
+  dropped first.** Georgia sells registration extracts to anyone who orders one.
+  <https://sos.ga.gov/page/order-voter-registration-lists-and-files>
 - Block population by race: 2020 Census P.L. 94-171 and Demographic and Housing
   Characteristics tables.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
 - Surname probabilities: U.S. Census Bureau, *Frequently Occurring Surnames from
-  the 2010 Census* — for each surname held by at least a hundred Americans, the
-  share of holders in each race category.
+  the 2010 Census*, giving the racial composition of the holders of every
+  surname held by at least a hundred Americans.
   <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>
 
-**The data itself**
-
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`houston_blocks.csv`](data/derived/houston_blocks.csv), [`houston_voters.csv`](data/derived/houston_voters.csv), [`census_surnames.csv`](../../06-putting-data-together/surnames/data/derived/census_surnames.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `houston_voters.csv` gives every voter a surname, a self-reported race and a block. Group by race and count. Which groups are large enough here to say anything about?
-- Take a common surname from `census_surnames.csv` and find its holders in `houston_voters.csv`. Compare the national shares against what these voters actually reported.
-- `houston_blocks.csv` gives the racial composition of each block. Find the blocks with nobody in them. What does the method do when it lands on an empty block?
-- Pick a surname whose national shares are close to even. Work out how confident the method could possibly be about anyone carrying it.
-
-**Literature**
+**Literature and cases**
 
 - Elliott, M. N. et al. (2009). "Using the Census Bureau's Surname List to
   Improve Estimates of Race/Ethnicity and Associated Disparities." *Health
@@ -329,14 +171,16 @@ tables you just opened.
 - Imai, K., Olivella, S. and Rosenman, E. T. R. (2022). "Addressing Census Data
   Problems in Race Imputation via Fully Bayesian Improved Surname Geocoding and
   Name Supplements." *Science Advances* 8(49): eadc9824.
+- Consumer Financial Protection Bureau (2014). *Using Publicly Available
+  Information to Proxy for Unidentified Race and Ethnicity.*
 - *Thornburg v. Gingles*, 478 U.S. 30 (1986).
 
-**How the figures were made**
+**The data itself**
 
-Every number and every figure above is computed at render time from the three files kept here and the surname list, by re-running BISG from scratch. That means the surname distribution, the block prior, the posterior, the two fallback rules and the scoring. Nothing is copied from a published accuracy figure, and the confusion matrix, the calibration histograms and the accuracy bars are all different views of the same one run.
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
 
-```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
+[`houston_blocks.csv`](data/derived/houston_blocks.csv), [`houston_voters.csv`](data/derived/houston_voters.csv), [`census_surnames.csv`](../../06-putting-data-together/surnames/data/derived/census_surnames.csv)
 
 ```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

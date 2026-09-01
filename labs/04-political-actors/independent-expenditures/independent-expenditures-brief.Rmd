@@ -17,43 +17,23 @@ dd_read_chunks("independent-expenditures-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A committee calling itself Gus Associates filed a `r n(FLB)`-byte electronic document with the Federal Election Commission, signed `r fdate(F24F[16])`. It is three records long. The first is a header. The second is an FEC Form 24, a `r F24F[3]`-hour notice of independent expenditure. The third is a single line of Schedule E, reporting `r d(FEEAMT)` spent in support of a candidate for the House of Representatives.
+Outside money is the least accountable part of an American campaign and the best documented part of it. Every dollar a super PAC spends for or against a candidate has to be reported to the Federal Election Commission. The Commission publishes the whole cycle as one file that anybody can download for nothing. So the obvious questions look answerable. How much was there in 2024, and was it spent promoting candidates or attacking them?
 
-The treasurer named on it shares a name with a fictional drug distributor. The payee shares a name with a fictional lawyer. The candidate is the protagonist of a television series. The stated purpose is *`r SEF[24]`*.
+Both are questions a citizen has a stake in, because this is the money nobody can be asked about. A campaign that runs a dishonest advertisement can be made to answer for it. A super PAC cannot be voted out, and the candidate it helps can disclaim it truthfully, because coordinating with it would be illegal. *Citizens United v. FEC* (2010) held that such spending cannot be limited, on the reasoning that money spent independently cannot corrupt. Whether it mostly promotes or mostly attacks is one of the few things about it a reader can check.
 
-It is in the official federal record of American campaign spending. It is still there. And it is one of `r NOUT` rows that, between them, decide what the country's outside spending in 2024 appears to have been for.
+So you download the file and add up a column. **Can you?**
 
-## Money the candidate cannot be asked about
+## The test
 
-An **independent expenditure** is money spent for or against a candidate by somebody the candidate does not control, and by law may not coordinate with. It is reported to the Commission separately from the campaign's own money, it is frequently larger than the campaign's own spending, and it is the part of the disclosure system that works least well.
+The data is the Commission's bulk file of independent expenditures for the 2024 cycle: `r n(ROWS)` rows, one per reportable expenditure, published at fec.gov with no key, no account and no request form. An independent expenditure is money spent for or against a candidate by somebody the candidate does not control. Anyone who spends above a threshold on a message urging the election or defeat of a named federal candidate has to report it. In the closing weeks of a campaign they have to report it within a day or two of writing the check.
 
-**This is the money the candidate cannot be held responsible for.** A campaign that runs a dishonest advertisement can be asked about it. A super PAC cannot be voted out, and the candidate it supports can disclaim it truthfully, because coordination is illegal.
+This file can answer the question because of one column. Schedule E makes the spender code every line as **supporting** or **opposing** the candidate it names. Almost no other record of political money in the United States carries that field, and without it the only answerable question is how much, which is the less interesting one. What the file does not carry is any checking. Nobody stands between the filer and the reader: the Commission is a disclosure agency rather than an auditor, for the reasons [this cluster's chapter on campaign finance disclosure](../finance-source/finance-source-brief.html) sets out.
 
-*Citizens United v. FEC* (2010) established that independent spending cannot be limited. In the Court's reasoning, spending that is genuinely uncoordinated cannot corrupt. **The entire constitutional argument rests on a factual premise about independence that no dataset can verify**, this one included. "Independent" is a legal claim, not an observed property.
+The test is to add the column up as the file arrives, look at the largest rows, and add it up again.
 
-What the record *can* say is how much there was and what it was for. Both turn out to depend entirely on how the file is read.
+## The data
 
-## A deadline, a form, and four small tables
-
-The record behind this chapter is the Commission's bulk file of independent expenditures for the 2024 cycle: `r n(ROWS)` rows, one per reportable expenditure. It is compelled in the same way a candidate's own ledger is compelled, but the obligation falls on a different person. Anyone who spends above a threshold on a message expressly urging the election or defeat of a clearly identified federal candidate must report it. In the closing weeks of a campaign they must report it within a day or two of writing the check. The `r F24F[3]`-hour notice reproduced in Figure 1 is that rule operating.
-
-By the legal definition of the category, the filer is somebody the campaign has nothing to do with. So nobody with a stake in the candidate's reputation ever reads the form before it is published.
-
-The file suits this chapter's question for one specific reason. Schedule E makes the spender code every line as supporting or opposing the candidate it names. Almost no other record of political money in the United States carries that field, and without it the only answerable question is how much, which is the less interesting one. What would have been better is easy to name and does not exist: what the advertisement actually said, who saw it, and whether the spender was in fact independent. The first two live in the platforms' advertising libraries, which are closed. The third is not observable by anyone, which is the difficulty the previous section describes.
-
-A second difficulty belongs to nobody's negligence. "An expenditure" is whatever the filer decides to put on one line. One committee books a statewide media buy as a single row; another itemizes every invoice from the same buy. Row counts are therefore not comparable between spenders, which is why every quantity in this chapter is measured in dollars and never in filings — and why `r NOUT` rows can matter more than seventy thousand.
-
-What this chapter ships is not the file. The raw download runs to roughly 19 megabytes and is deliberately not committed. It is fetched from the address above, candidate names upper-cased so that case variants of one person merge, exactly one exclusion rule, and writes the four small tables read here. The `r n(ROWS)` row count is consequently a number the build script recorded when it ran, and not one this document can recompute — the only figure in the chapter of which that is true. Every row the exclusion rule removed is committed in `ie_outliers.csv`, so the rule can be argued with rather than taken on faith. The argument comes later, and it is not a formality: the rule is a threshold, and a threshold is not a diagnosis.
-
-Getting the file is trivial and that is not a coincidence. One address on `fec.gov` hands over the entire cycle: no key, no account, no request form, nothing to scrape and nothing to reassemble. The reason it is that easy is the same reason the totals in the next section are what they are.
-
-**Nobody stands between the filer and the reader.** No Commission analyst reconciles Schedule E before it is posted, and no research team tidies it afterward and republishes a usable version. The obligation the statute creates is to receive and publish what was submitted, so what arrives is the submission. The cleaning that a compiler would have done quietly, years ago, on somebody else's schedule, has instead to be done here, in the open, with the rule written down and the discarded rows kept.
-
-Exactly one thing in this chapter took a second fetch. The bulk file gives a filing number and nothing more, and the filing itself sits elsewhere on the Commission's servers and has to be fetched by that number. Which is the only reason Figure 1 can show the form rather than describe it.
-
-## Twenty-three columns, and the one the argument rests on
-
-Figure 1 shows a single filing. This is the bulk file every number in the chapter is actually computed from: `r NCOL` columns, `r n(ROWS)` rows, one per reportable expenditure. Here is every column, with the part worth insisting on: **what each one actually contains across all `r n(ROWS)` rows**, rather than whatever it happened to say in the first one.
+The table every number here rests on is that bulk file: `r NCOL` columns, `r n(ROWS)` rows. Here is every column, with the part worth insisting on — **what each one actually contains across all `r n(ROWS)` rows**, rather than whatever it happened to say in the first one.
 
 ```{r schema}
 ```
@@ -63,39 +43,33 @@ Figure 1 shows a single filing. This is the bulk file every number in the chapte
 
 Three things in that table are worth stopping on.
 
-**The spender's name begins with a space.** `" Go America PAC"`, not `"Go America PAC"`. Group the file by spender without trimming and this committee becomes two committees, sorted to opposite ends of any alphabetical list, with its money split between them. Nothing announces it; it is one invisible character.
+**The spender's name begins with a space.** `" Go America PAC"`, not `"Go America PAC"`. Group the file by spender without trimming and this committee becomes two committees, sorted to opposite ends of any alphabetical list, with its money split between them. Nothing announces it. It is one invisible character.
 
-**There are three date columns and the obvious one is the emptiest.** `exp_date` is the date of the expenditure, the column anyone would reach for, and it is blank on **`r pc(bl("exp_date"))`% of rows**. `dissem_dt`, the date the message actually went out, is blank on `r pc(bl("dissem_dt"))`%. Only `receipt_dat`, the date the Commission received the paperwork, is filled in on every row, and that is a fact about the FEC's mailroom rather than about when anybody spent anything. Any question of the form *when was this spent* has to begin by choosing which of the three columns to believe, row by row, because they are not all populated on the same rows.
+**There are three date columns and the obvious one is the emptiest.** `exp_date` is the date of the expenditure, the column anyone would reach for, and it is blank on **`r pc(bl("exp_date"))`% of rows**. `dissem_dt`, the date the message actually went out, is blank on `r pc(bl("dissem_dt"))`%. Only `receipt_dat` is filled in on every row, and that is the date the Commission received the paperwork rather than the date anybody spent anything.
 
-That is the difference between reading a column and reading a single row of it. The first row of this file happens to have an empty `exp_date`, which looks like a stray gap; a third of the file having one is a property of the instrument.
+**`sup_opp` is one letter, and this brief's central finding is a count of it.** `S` for support, `O` for oppose, written by the filer and checked by nobody. The whole argument about whether outside money attacks or promotes is that single character added up across `r n(ROWS)` rows.
 
-**`sup_opp` is one letter, and this chapter's central finding is a count of it.** `S` for support, `O` for oppose, written by the filer, checked by nobody. The entire argument about whether outside money mostly attacks or mostly promotes is that single character added up across `r n(ROWS)` rows. Which is why it matters so much that the sixteen rows in the next section are coded `S`.
+Two decisions were made before any of that was counted, and both are written down rather than assumed. **Candidate names were uppercased** so that case variants of one person would merge: `Evans, Gabe` becomes `EVANS, GABE`. The key is a name rather than an identifier, and it does not fully work.
 
-Out of all that come four small tables. Here is the whole of the summary one:
+**One exclusion rule was applied, stated as a number:** rows above `r ml(CUT)` are dropped. That is a threshold and not a diagnosis. Every row it removes is committed to `ie_outliers.csv`, so a reader can disagree with the cut and recompute from the discarded rows. Nothing else was touched: no amount corrected, no filer contacted, no obviously false row quietly deleted.
 
-```{r clean-ie}
-```
+One number below cannot be recomputed from the tables. The raw download runs to roughly 19 megabytes and is not committed, so `r n(ROWS)` is the row count the build recorded at the moment it read the file.
 
-`r n(ROWS)` rows and `r NCOL` columns reduced to `r nrow(s)` numbers — and the top half and the bottom half of that table disagree about the most important thing in the chapter.
+> **Before you read on, commit to a number.** `r NOUT` of those `r n(ROWS)` rows
+> sit above the cut and come out. A count that small, in a file that large,
+> ought to leave a percentage where it was. Write down how far you think the
+> share of
+> money spent **supporting** candidates moves when they go. A tenth of a point?
+> A point? Five? Put an actual number on the page before you turn it.
 
-### What was decided
+## What it says about democracy
 
-**Names were uppercased so that case variants of one person would merge.** `Evans, Gabe` becomes `EVANS, GABE`. The key here is a *name*, not an identifier, which is exactly the arrangement the false-matches chapter warns about. And it does not fully work. `r nrow(TR)` spellings of Donald Trump and `r nrow(TE)` of Jon Tester survive into `ie_candidates.csv`, each carrying part of the money.
-
-**One exclusion rule, stated as a number.** Rows above `r ml(CUT)` are dropped. That is a threshold and not a diagnosis: it does not know that `r n(FWN)` of the rows it removes are the same filing exported `r n(FWN)` times, or that others are fantasies. It only knows they are large. **Every row it removes is committed to `ie_outliers.csv`.** That is what makes it a rule rather than a judgment: a reader can disagree with the cut and recompute from the discarded rows, which the next sections do.
-
-**Nothing else was touched.** No amount was corrected, no filer was contacted, no obviously false row was quietly deleted. The Walter White filing is in the raw totals below because it is in the file, and the only reason it leaves is that it is larger than `r ml(CUT)`.
-
-## The number the file gives you
+Here is the file added up exactly as it arrives.
 
 ```{r raw}
 ```
 
-**`r bn(RAW)`, of which `r pc(100*RAWS/RAW)`% supports candidates and `r pc(100*RAWO/RAW)`% opposes them.**
-
-Both of those numbers are wrong. One is wrong by a factor of ten. The other is backwards, and it is the dangerous one.
-
-## Sixteen rows
+**`r bn(RAW)`, of which `r pc(100*RAWS/RAW)`% supports candidates and `r pc(100*RAWO/RAW)`% opposes them.** Both of those numbers are wrong. One is wrong by a factor of ten. The other is backwards, and it is the dangerous one.
 
 ```{r outliers}
 ```
@@ -103,9 +77,9 @@ Both of those numbers are wrong. One is wrong by a factor of ten. The other is b
 ```{r outlier-share}
 ```
 
-**`r NOUT` rows, `r pc(100*NOUT/ROWS, 2)`% of the file, carry `r pc(SHARE)`% of the dollars.**
+**`r NOUT` rows, `r pc(100*NOUT/ROWS, 2)`% of the file, carry `r pc(SHARE)`% of the dollars.** Read who filed them. **"THE COURT OF DIVINE JUSTICE."** **"THE COMMITTEE OF 300."** **"The Masonic Illuminati Eye."** Nearly ten billion dollars each, almost all naming one obscure candidate, for purposes including *"DEPOSIT FOR WINNING IN ELECTION"*.
 
-Read who filed them. **"THE COURT OF DIVINE JUSTICE."** **"THE COMMITTEE OF 300."** **"The Masonic Illuminati Eye."** Nearly ten billion dollars each, almost all naming one obscure candidate, for purposes including *"DEPOSIT FOR WINNING IN ELECTION"*. And, at `r d(o$amount[o$cand_name == "WHITE, WALTER"])`, the filing this chapter opened with.
+One of them can be read in full, because the Commission publishes the submissions as well as the summary file.
 
 ```{r d3-card, results='asis', eval=knitr::is_html_output()}
 ```
@@ -113,146 +87,76 @@ Read who filed them. **"THE COURT OF DIVINE JUSTICE."** **"THE COMMITTEE OF 300.
 ```{r card-static, eval=!knitr::is_html_output(), fig.height=4.7}
 ```
 
-**Figure 1. One junk filing, as the Federal Election Commission received and published it.** Every value on this card is read out of `ie_filing_1707511.fec` rather than retyped. That is the submission itself: `r n(FLB)` bytes, three records, fields separated by the ASCII file-separator character. The payee is a fictional lawyer, the treasurer a fictional drug distributor, the candidate the protagonist of a television series, and the amount `r d(FEEAMT)`. The single letter in the support-or-oppose field, shown in blue, is what decides which side of every total in this chapter the money lands on. This is row `r which(order(-o$amount) == which(o$spender == "Gus Associates"))` of the `r NOUT` above.
+**Figure 1. One junk filing, as the Federal Election Commission received and published it.** A facsimile of the record fits this question better than any chart would, because the claim is about what a federal agency published rather than about a quantity. Every value on the card is read out of `ie_filing_1707511.fec` rather than retyped: `r n(FLB)` bytes, three records, fields separated by the ASCII file-separator character. The payee is a fictional lawyer, the treasurer a fictional drug distributor, the candidate the protagonist of a television series, and the amount `r d(FEEAMT)`. The single letter in the support-or-oppose field, shown in blue, decides which side of every total below the money lands on.
 
-These are not errors. They are **junk filings**, sitting in the federal government's official record of campaign spending, published exactly as submitted.
+These are not errors. They are **junk filings**, sitting in the federal government's official record of campaign spending, published exactly as submitted. That is not an oversight. An agency empowered to decide which political filings are real would hold a power over political speech that nobody would want it to have, exercised by commissioners appointed on a partisan basis. **There is no free version of this**, and the cost of the arrangement we have is a national statistic that is wrong by a factor of ten until somebody reads `r NOUT` rows.
 
-**The Commission publishes what is filed. It does not check whether it is true.** That is not an oversight: it is a disclosure agency, not an auditor, and it was never funded to be one. The counterargument to "somebody should check" is not trivial either. An agency empowered to decide which political filings are real would hold a power nobody would want it to have, over political speech, by commissioners appointed on a partisan basis. **There is no free version of this**, and the cost of the current arrangement is a national statistic that is wrong by a factor of ten until somebody reads sixteen rows.
-
-## A second problem, of a completely different kind
+Not every bad row is somebody lying, either.
 
 ```{r fw}
 ```
 
-`r FWN` rows, all `r d(FW$amount[1])`, all the same committee, all supporting the same candidate — and **all carrying the same file number**. One filing, exported `r FWN` times, worth `r bn(FWAMT)` of phantom spending.
+`r FWN` rows, all `r d(FW$amount[1])`, all the same committee, all supporting the same candidate — and **all carrying the same file number**. One filing, exported `r FWN` times, worth `r bn(FWAMT)` of spending that never happened. The junk filings are people lying to the government. This is the government's own export repeating a row. They need different fixes, and calling both of them "bad data" loses the distinction.
 
-**Two kinds of bad data in one table, and only one of them was anybody's fault.** The junk filings are people lying to the government. This is the government's own export repeating a row. They need different fixes, and lumping them together as "bad data" loses the distinction that matters.
-
-Either way, all `r NOUT` are obviously nonsense and obviously enormous, so removing them will obviously shrink the total. The interesting question is what it does to the *other* number — the `r pc(100*RAWS/RAW)`% to `r pc(100*RAWO/RAW)`% split between money spent supporting candidates and money spent attacking them. Sixteen rows out of `r n(ROWS)` ought to leave a percentage alone.
-
-> **Before you turn the page, commit to a direction and a size.** The raw file
-> says `r pc(100*RAWS/RAW)`% of this money supports candidates rather than
-> attacks them. Strike those `r NOUT` rows and that share becomes something
-> else. Write down which way it moves — and how far. A tenth of a point? A
-> point? Five? Put an actual number on the page before you read the next one.
-
-## What happens when you take them out
+Now take all `r NOUT` out.
 
 ```{r cleaned}
 ```
 
-**The total falls from `r bn(RAW)` to `r bn(CLN)`** — which is the real figure, and matches what watchdog organizations report for the cycle.
-
-**And the headline reverses.** In the raw file, `r pc(100*RAWS/RAW)`% of outside money supports candidates. Once `r NOUT` rows are gone, **`r pc(100*CLNO/CLN)`% of it is spent attacking somebody.**
-
-Almost nobody guesses far enough. The supportive share does not slip by a point or two: it falls `r pc(100*RAWS/RAW - 100*CLNS/CLN)` points, and crosses the halfway line on the way down.
-
-That is not a rounding change. It is the single most important fact about independent expenditure: **most of this money is negative**. And the official file, read as published, tells you the opposite.
-
-Here is why that matters more than the ten-fold error. `r bn(RAW)` is *obviously* wrong; anyone would query it. **`r pc(100*RAWS/RAW)`% supportive is a perfectly plausible number.** It would pass a referee, sit unremarked in a paper, and be cited. **Wrongness that announces itself is the safe kind.**
+**The total falls from `r bn(RAW)` to `r bn(CLN)`**, which matches what watchdog organizations report for the cycle. **And the headline reverses.** In the raw file, `r pc(100*RAWS/RAW)`% of outside money supports candidates. Once `r NOUT` rows are gone, **`r pc(100*CLNO/CLN)`% of it is spent attacking somebody.** The supportive share does not slip by a point or two. It falls `r pc(100*RAWS/RAW - 100*CLNS/CLN)` points and crosses the halfway line on the way down.
 
 ```{r d3-flip, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r flip-static, eval=!knitr::is_html_output(), fig.height=3.2}
+```{r flip-static, eval=!knitr::is_html_output(), fig.height=2.6}
 ```
 
-**Figure 2. Removing `r NOUT` rows out of `r n(ROWS)` does not shrink the answer. It reverses it.** The upper bar is the file as published: `r bn(RAW)`, of which `r pc(100*RAWS/RAW)`% supports candidates. The lower bar is the same file with the `r NOUT` rows gone: `r bn(CLN)`, of which `r pc(100*CLNO/CLN)`% attacks somebody. Both bars are percentages of their own version's total, so the reversal is visible even though the totals differ by a factor of ten.
+**Figure 2. Removing `r NOUT` rows out of `r n(ROWS)` does not shrink the answer. It reverses it.** Each bar is the share of its own version's dollars spent attacking a candidate: `r pc(100*RAWO/RAW)`% as published, `r pc(100*CLNO/CLN)`% with `r NOUT` rows gone. One bar against a line at half works better here than a pair of totals, because the two versions differ tenfold in size and the point is not size. The point is which side of the line they land on.
 
-## Arguing with the cleaning rule
+Here is why that matters more than the ten-fold error. `r bn(RAW)` is *obviously* wrong, and anyone would query it. **`r pc(100*RAWS/RAW)`% supportive is a perfectly plausible number.** It would pass a referee, sit unremarked in a paper, and be cited. **Wrongness that announces itself is the safe kind.**
 
-The rule was crude and is stated openly: **drop every row above `r ml(CUT)`.** That is a threshold, not a diagnosis, and a finding that depends on where the threshold sits is not a finding.
+Two exceptions have to be told, because a finding that depends on where a threshold sits is not a finding.
 
 ```{r threshold}
 ```
 
-**Nothing sits anywhere near the cut.** The largest row the rule keeps is `r d(KEPT)`, and the smallest it removes is `r d(min(o$amount))`. That is a gap of `r ml(min(o$amount) - KEPT)` with `r INBAND` rows in it.
+**Nothing sits anywhere near the cut.** The largest row the rule keeps is `r d(KEPT)` and the smallest it removes is `r d(min(o$amount))`, a gap of `r ml(min(o$amount) - KEPT)` with `r INBAND` rows in it. Any threshold between those two figures removes the same `r NOUT` rows and gives the same answer, so the cut could have been set anywhere across a factor of `r pc(min(o$amount) / KEPT)` without changing a number here. That slack is what makes the rule defensible, and it is the thing to check rather than the roundness of the number chosen.
 
-Any threshold between those two figures removes exactly the same `r NOUT` rows and gives exactly the same answer. The cut could have been set anywhere from `r ml(KEPT)` to `r ml(min(o$amount))`, a factor of `r pc(min(o$amount) / KEPT)`, without changing a number in this chapter.
-
-A rule with that much slack around it is far more defensible than one tuned to the data. The slack is the thing to check, not the roundness of the number chosen.
-
-The interesting test is the other direction: put back **only** the `r FWN` duplicated rows, the plumbing failure rather than the fraud, and see whether the finding survives.
+The second exception is sharper. Put back **only** the `r FWN` duplicated rows, the export bug rather than the fantasy, and see whether the finding survives.
 
 ```{r restore}
 ```
 
-**It does not.** Restoring one committee's duplicated filing is enough on its own to flip the conclusion back. That is `r bn(FWAMT)` of supporting money, reported once and exported `r FWN` times.
+**It does not.** Restoring one committee's duplicated filing is enough on its own to flip the conclusion back. So the honest sentence is narrower than "most outside money is negative." It is **"most outside money is negative, and that conclusion depends on handling one export bug correctly."** Which is exactly why the `r NOUT` removed rows are published beside the total instead of being quietly dropped.
 
-So the honest statement is narrower than "most outside money is negative." It is **"most outside money is negative, and that conclusion depends on correctly handling one export bug."** Which is exactly why the `r NOUT` removed rows are published alongside the total instead of being quietly dropped.
+## What this brief cannot tell you
 
-## Who is being attacked
+**The cleaned file is not clean.** Uppercasing merged `Harris, Kamala` with `HARRIS, KAMALA`, and could not merge `TRUMP, DONALD` with `TRUMP, DONALD J.`. `r nrow(TR)` spellings of Donald Trump and `r nrow(TE)` of Jon Tester survive into `ie_candidates.csv`, each carrying part of the money. Cleaning is not a phase that finishes.
 
-```{r candidates}
-```
+**Nothing here is evidence of fraud, and nobody was prosecuted.** The `r NOUT` rows look like what they probably are: nonsense, or somebody's error, sitting unremarked in a system that publishes what it receives.
 
-```{r d3-butterfly, results='asis', eval=knitr::is_html_output()}
-```
+**"Independent" is a legal claim rather than an observed property.** Coordination is decided after the fact if at all, and it is not a field. The constitutional argument that this spending cannot corrupt rests on a factual premise no dataset can check.
 
-```{r butterfly-static, eval=!knitr::is_html_output(), fig.height=5.2}
-```
+**There is no persuasion data anywhere in this.** Dollars and direction are here; effects are not. The obvious next source is the platform advertising libraries, and they are closed: Meta requires identity verification and Google reports spending in ranges. This is also one category of spending in one cycle. Electioneering communications, party spending, and groups that never file at all are elsewhere or nowhere.
 
-**Figure 3. Money spent on a candidate, split by which direction it was pointed.** The `r nrow(BF)` best-funded candidates in the cleaned file, with supporting money to the left and opposing money to the right. Both wings are drawn on one dollar scale, so a bar twice as long is twice the money. The two Trump rows are the same person, split by a middle initial, for a reason this chapter comes back to.
+## What you should have learned
 
-Look at the Senate races. **Sherrod Brown: `r pc(cd$pct_against[cd$candidate=="BROWN, SHERROD"])`% of the outside money aimed at him was spent trying to defeat him. Bob Casey: `r pc(cd$pct_against[cd$candidate=="CASEY, ROBERT"])`%.**
+- A federal record can be complete, official and free, and still be wrong: `r NOUT` filings out of `r n(ROWS)` inflate the 2024 outside-spending total from `r bn(CLN)` to `r bn(RAW)`, and they are still in the published file.
+- Bad rows do more than inflate a total. Removing these `r NOUT` moves the file from `r pc(100*RAWS/RAW)`% supportive to `r pc(100*CLNO/CLN)`% attacking, a `r pc(100*RAWS/RAW - 100*CLNS/CLN)`-point swing that crosses the halfway line.
+- The dangerous error is the plausible one. `r bn(RAW)` invites a query; `r pc(100*RAWS/RAW)`% supportive would pass a referee and be cited.
+- A cleaning rule is trustworthy when there is slack around it: the cut here could sit anywhere between `r d(KEPT)` and `r d(min(o$amount))` without changing an answer.
+- Two kinds of bad row need two kinds of fix. `r FWN` of the `r NOUT` are one filing exported `r FWN` times by the agency's own system, and restoring just those flips the finding back.
 
-```{r by-office}
-```
+## Extensions
 
-**`r byoff$off[1]` races are `r pc(byoff$pct_against[1])`% negative; presidential spending is `r pc(byoff$pct_against[nrow(byoff)])`%.** The mechanism is name recognition. A negative advertisement about a little-known Senate challenger can define them before they define themselves. That option is not available against a sitting president everyone already has an opinion about.
+None of these is answered above, and every one can be answered from the tables the Sources section hands over.
 
-Notice what this does to the phrase "money spent on a candidate." Money spent *on* Sherrod Brown was overwhelmingly money spent against him.
+- `ie_outliers.csv` lists every filing the rule cut, with `spender`, `amount` and `pur`. Read them. What makes these obviously wrong, and what would a plausibly wrong one look like?
+- `ie_columns.csv` gives each column a `blank` percentage. Sort by it and find the columns that are mostly empty. Which of them would you have assumed was reliable?
+- `ie_candidates.csv` has `pct_against` for every candidate, with `supporting` and `opposing` beside it. Sort it. Who was money mostly spent against rather than for, and does office explain it?
+- `ie_committees.csv` has `pct_against` and `amount` per spender. Which committees exist almost entirely to attack, and how much of the cycle's money do they hold between them?
 
-## Who is doing it
-
-```{r committees}
-```
-
-```{r d3-swarm, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r swarm-static, eval=!knitr::is_html_output(), fig.height=3.32}
-```
-
-**Figure 4. Committees sort themselves along the attacking axis.** The `r nrow(BEE)` biggest independent-expenditure committees in the cleaned file, positioned horizontally by the share of their own money they spent attacking a candidate. Committees at the left almost never do; committees at the right do almost nothing else. Circle area is dollars, so the largest is not `r pc(max(BEE$amount) / min(BEE$amount), 0)` times the width of the smallest. The vertical spread is packing only and means nothing.
-
-Some committees exist almost entirely to attack; others almost entirely to promote. **The same legal tool does both**, and the disclosure form tells them apart only by a single letter, `S` or `O`, in a column most readers never open. Every number in this chapter turns on that letter, including the one in Figure 1.
-
-## The cleaning is not finished
-
-```{r name-split}
-```
-
-**Those are the same two people, four rows.** The build upper-cased candidate names to merge "Harris, Kamala" with "HARRIS, KAMALA". It could not merge "TRUMP, DONALD" with "TRUMP, DONALD J.". That would mean deciding that a middle initial is not a different person, and no rule that does so safely can be written without a list of candidates.
-
-```{r trump-merge}
-```
-
-Read the largest row alone and you get `r pc(TR$pct_against[which.max(TR$total)])`% against. Merge the identities and you get `r pc(100*sum(TR$opposing)/sum(TR$total))`%. **A `r pc(abs(TR$pct_against[which.max(TR$total)] - 100*sum(TR$opposing)/sum(TR$total)), 0)`-point difference produced by a middle initial**, in a file that has already been cleaned once.
-
-This is the part to remember. **Cleaning is not a phase that finishes; it is a set of decisions, each of which changes an answer, and there is always another one nobody has made yet.**
-
-## What a mandatory filing is worth
-
-Two further arguments run alongside this material, and neither is settled by it.
-
-The first is about the size of the category. Since *Citizens United*, independent expenditure has grown into something comparable to candidate fundraising in competitive races. Whether that is corrosive is contested. La Raja and Schaffner (2015) argue that restricting money to candidates and parties pushed it toward ideologically motivated outside groups. On that account the polarizing effect of the current arrangement is partly a consequence of reform rather than of deregulation. If that is true, the obvious remedy has already been tried, and it produced this.
-
-The second is about negativity, and it is where the record speaks loudest. `r pc(byoff$pct_against[1])`% of the outside money in Senate races was spent attacking somebody. The mechanism is name recognition: a negative advertisement about a little-known challenger can define them before they define themselves, and that option is not available against a sitting president everyone already has an opinion about. Whether that is a pathology or simply what informative competition looks like is an argument this file frames and cannot resolve.
-
-The file's own strengths are worth stating plainly, because they are the reason any of the above was findable. Filing is mandatory and covers every reportable independent expenditure. Each row carries a direction, support or oppose, which almost no other spending dataset records. And the Commission publishes the raw file in full. **The problems in this chapter are visible only because nothing was hidden.** The agency's own summary pages apply filters this bulk file does not, so the same body publishes both a clean version and a dirty one, and the dirty one is the one that downloads.
-
-The weaknesses are correspondingly specific. `r NOUT` fraudulent or duplicated rows carrying `r pc(SHARE)`% of the dollars are still present in the published file. The rule used to remove them is a threshold rather than a diagnosis, and the headline finding survives only if one export bug is handled correctly. Candidate identities are not normalized, so a middle initial can move a percentage by `r pc(abs(TR$pct_against[which.max(TR$total)] - 100*sum(TR$opposing)/sum(TR$total)), 0)` points. Coordination cannot be observed, so "independent" is asserted rather than measured.
-
-This is one category of spending. Electioneering communications, party spending, and groups that never file at all are elsewhere or nowhere. And there is no persuasion data anywhere in it. The obvious next source is the platform advertising libraries, and they are closed: Meta requires identity verification and Google reports spending in ranges. So **the most detailed record of political persuasion in America is not public.**
-
-So the sentences this file supports are these. `r NOUT` filings out of `r n(ROWS)` inflate the federal record of outside spending from `r bn(CLN)` to `r bn(RAW)`, and they are still there, because the Commission discloses rather than audits. And, more sharply: those `r NOUT` rows do not merely inflate a total, they reverse the file's most important substantive finding, from `r pc(100*RAWS/RAW)`% supportive to `r pc(100*CLNO/CLN)`% negative.
-
-It does not support the claim that the cleaned file is clean, that anyone was prosecuted for the junk, that any advertisement worked, or that "independent" spending was in fact independent. That last is a legal category rather than an observation.
-
-Whether negative outside spending works at all is open: dollars and direction are here, effects are not. How much political money never appears in any filing is open by design. And the premise of *Citizens United*, that uncoordinated spending cannot corrupt, is a factual claim that was settled as a legal one. This file cannot test it.
-
-What carries beyond campaign finance is a single sentence: **official does not mean checked.** The `r n(FLB)` bytes reproduced in Figure 1 are a mandatory legal filing to a federal regulator, published in full and exactly as submitted. Reading the file without looking at it produces a number that is wrong in magnitude, and a second number that is wrong in direction and looks entirely reasonable. **Wrongness that announces itself is the safe kind.**
+Two stretch ideas point past the spreadsheet. Take the largest row in `ie_outliers.csv`, look the committee up on fec.gov, and see what else it filed and whether anything ever happened to it. And download the 2022 cycle's file from the same address, apply the same rule, and find out whether junk of this size is a feature of the register or an accident of one year.
 
 ## Sources
 
@@ -261,10 +165,9 @@ What carries beyond campaign finance is a single sentence: **official does not m
 - Federal Election Commission bulk downloads, **independent expenditures, 2024
   cycle** — `r n(ROWS)` filings.
   <https://www.fec.gov/data/browse-data/?tab=bulk-data>
-  **Every row removed by the cleaning rule is kept in `ie_outliers.csv`**, so
-  the decision can be checked
-  rather than trusted. The `r n(ROWS)` row count is the source file's, recorded
-  by the build script; the raw file itself is not committed.
+  Every row removed by the cleaning rule is kept in `ie_outliers.csv`, so the
+  decision can be checked rather than trusted. The `r n(ROWS)` row count is the
+  source file's, recorded by the build; the raw file itself is not committed.
 - Federal Election Commission, **electronic filing `r FLN`**, the Form 24
   reproduced in Figure 1 — `ie_filing_1707511.fec`, `r n(FLB)` bytes,
   retrieved 10 August 2026 from
@@ -273,41 +176,22 @@ What carries beyond campaign finance is a single sentence: **official does not m
   `ie_outliers.csv`, in the FEC's own delimited filing format; every value in
   the figure is parsed from it.
 
+**Academic literature**
+
+- La Raja, R. J. and Schaffner, B. F. (2015). *Campaign Finance and Political
+  Polarization: When Purists Prevail.* University of Michigan Press.
+- Ansolabehere, S., de Figueiredo, J. M. and Snyder, J. M. Jr. (2003). "Why Is
+  There So Little Money in U.S. Politics?" *Journal of Economic Perspectives*
+  17(1): 105–130.
+- *Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010).
+- *Buckley v. Valeo*, 424 U.S. 1 (1976).
+
 **The data itself**
 
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`ie_candidates.csv`](data/derived/ie_candidates.csv), [`ie_columns.csv`](data/derived/ie_columns.csv), [`ie_committees.csv`](data/derived/ie_committees.csv), [`ie_facts.csv`](data/derived/ie_facts.csv), [`ie_outliers.csv`](data/derived/ie_outliers.csv), [`ie_summary.csv`](data/derived/ie_summary.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `ie_summary.csv` reports the same totals before and after the junk rows are removed. Compare the raw and cleaned shares. How much does one bad filing move a national number?
-- `ie_outliers.csv` lists the filings that were cut. Read the spender names and amounts. What makes these obviously wrong, and what would a plausibly wrong one look like?
-- `ie_columns.csv` gives each column its `blank` percentage. Find the columns that are mostly empty. Which of them would you have assumed was reliable?
-- `ie_candidates.csv` has `pct_against` for every candidate. Sort it. Who was money mostly spent against rather than for?
-
-**Academic literature**
-
-- La Raja, R. J. and Schaffner, B. F. (2015). *Campaign Finance and Political
-  Polarization: When Purists Prevail.* University of Michigan Press.
-- *Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010).
-- *Buckley v. Valeo*, 424 U.S. 1 (1976).
-
-
-**Further reading**
-
-- Ansolabehere, S., de Figueiredo, J. M. and Snyder, J. M. Jr. (2003). "Why Is
-  There So Little Money in U.S. Politics?" *Journal of Economic Perspectives*
-  17(1): 105–130.
-**How the figures were made**
-
-The Commission's bulk independent-expenditure file for the cycle is downloaded whole, the threshold rule applied, and the result reduced to the four small tables this chapter reads. One of them is `ie_outliers.csv`, every row the rule removed, kept so that the decision can be checked rather than trusted.
-
-The Form 24 in Figure 1 is parsed here, in this document, from the committed copy of the filing itself. Every number printed above is computed at the moment this document was rendered, with one exception. The raw 19 MB source file is not committed alongside it, so the `r n(ROWS)` rows in that file is the count the build script recorded when it ran.
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

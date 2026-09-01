@@ -8,15 +8,15 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
 options(scipen = 999)
 
-ag <- read.csv("data/derived/agreement.csv",   stringsAsFactors = FALSE)
-jj <- read.csv("data/derived/justices.csv",    stringsAsFactors = FALSE)
-bt <- read.csv("data/derived/by_term.csv",     stringsAsFactors = FALSE)
-cc <- read.csv("data/derived/close_cases.csv", stringsAsFactors = FALSE)
+ag <- read.csv("data/derived/agreement.csv", stringsAsFactors = FALSE)
+jj <- read.csv("data/derived/justices.csv",  stringsAsFactors = FALSE)
+bt <- read.csv("data/derived/by_term.csv",   stringsAsFactors = FALSE)
 
 js   <- sort(unique(c(ag$a, ag$b)))
 NJ   <- length(js); NPAIR <- nrow(ag)
@@ -62,15 +62,6 @@ CONS  <- names(ord)[1:6]; LIBS  <- names(ord)[7:NJ]
 SPAN  <- ord[6] - ord[1]
 CHASM <- ord[7] - ord[6]
 
-# --- close cases -----------------------------------------------------------
-inmaj <- table(unlist(strsplit(cc$majority_bloc, " ")))
-jj$close_maj <- as.vector(inmaj[jj$justice])
-# Sat for the whole run of one-vote decisions. Only Breyer and Jackson did not:
-# Barrett (222 coded cases) was confirmed before the first of them was handed
-# down, so her denominator is the same 30 as everyone else's.
-FULL <- jj$cases >= 200
-jj$close_pct <- ifelse(FULL, 100 * jj$close_maj / nrow(cc), NA)
-
 nm <- function(x, k = 3) formatC(x, format = "f", digits = k)
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
@@ -89,6 +80,14 @@ swap_txt <- local({
   out
 })
 
+# the two runs side by side, for Figure 2 and its static twin: one row per
+# justice who appears in both, in the order the filled scaling put them
+SW <- data.frame(justice = nice(keep),
+                 filled  = as.vector(ord[keep]),
+                 refused = as.vector(ord2[keep]),
+                 stringsAsFactors = FALSE)
+SW$moved <- ifelse(keep == names(ord2), "stayed", "swapped")
+
 # ---- render every data.frame in this document as a TABLE, not code output ----
 knit_print.data.frame <- function(x, ...) {
   n <- names(x); n <- gsub("_", " ", n)
@@ -98,128 +97,6 @@ knit_print.data.frame <- function(x, ...) {
 }
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
-
-## ---- rawscdb
-# A verbatim capture of the download's header and of the first justice-vote
-# row, read UTF-8. (The build script reads it UTF-8 too, and says why: the
-# apostrophe in DOBBS v. JACKSON WOMEN'S HEALTH ORGANIZATION is three bytes,
-# and reading the file as latin1 turns it into WOMENaEUR(tm)S in silence.)
-HD <- paste0(
- "caseId,docketId,caseIssuesId,voteId,dateDecision,decisionType,usCite,",
- "sctCite,ledCite,lexisCite,term,naturalCourt,chief,docket,caseName,",
- "dateArgument,dateRearg,petitioner,petitionerState,respondent,",
- "respondentState,jurisdiction,adminAction,adminActionState,threeJudgeFdc,",
- "caseOrigin,caseOriginState,caseSource,caseSourceState,lcDisagreement,",
- "certReason,lcDisposition,lcDispositionDirection,declarationUncon,",
- "caseDisposition,caseDispositionUnusual,partyWinning,precedentAlteration,",
- "voteUnclear,issue,issueArea,decisionDirection,decisionDirectionDissent,",
- "authorityDecision1,authorityDecision2,lawType,lawSupp,lawMinor,",
- "majOpinWriter,majOpinAssigner,splitVote,majVotes,minVotes,justice,",
- "justiceName,vote,opinion,direction,majority,firstAgreement,secondAgreement")
-VT <- c(
-"term                1946",
-"caseName            HALLIBURTON OIL WELL CEMENTING CO. v. WALKER ...",
-"issueArea           8",
-"decisionDirection   2",
-"majVotes            8",
-"minVotes            1",
-"justiceName         HHBurton",
-"vote                2",
-"opinion             1",
-"direction           1",
-"majority            1")
-NCOL_SCDB <- 1L + sum(strsplit(HD, "", fixed = TRUE)[[1]] == ",")
-fold <- function(s, w = 72) {
-  ch <- strsplit(s, "", fixed = TRUE)[[1]]
-  brk <- which(ch == "," & !(cumsum(ch == "\"") %% 2 == 1))
-  out <- character(0); i <- 1L
-  while (i <= length(ch)) {
-    cand <- brk[brk >= i & brk < i + w]
-    j <- if (length(ch) - i + 1L <= w || !length(cand)) length(ch) else max(cand)
-    out <- c(out, paste(ch[i:j], collapse = "")); i <- j + 1L
-  }
-  out
-}
-# Sixty-one names read down the page, each with what the Database's codebook
-# says it holds. The paragraph below asks the reader to sort them into two
-# piles; the descriptions are what make that possible, and they deliberately do
-# not do the sorting.
-.nm <- strsplit(HD, ",", fixed = TRUE)[[1]]
-.d <- c(
- caseId = "identifier for the case",
- docketId = "identifier for the case as docketed",
- caseIssuesId = "identifier for one legal issue within the case",
- voteId = "identifier for one justice's vote — the grain of this file",
- dateDecision = "the day the decision came down",
- decisionType = "how the Court disposed of it: signed opinion, per curiam, and so on",
- usCite = "citation in the United States Reports",
- sctCite = "citation in the Supreme Court Reporter",
- ledCite = "citation in the Lawyers' Edition",
- lexisCite = "citation in LEXIS",
- term = "the Court's term, which begins in October",
- naturalCourt = "which stable set of nine justices was sitting",
- chief = "the Chief Justice at the time",
- docket = "the docket number the Court assigned",
- caseName = "the case's name",
- dateArgument = "the day it was argued",
- dateRearg = "the day it was reargued, if it was",
- petitioner = "coded category of who brought the case",
- petitionerState = "the petitioner's state, where one applies",
- respondent = "coded category of who was sued",
- respondentState = "the respondent's state, where one applies",
- jurisdiction = "how the case reached the Court — appeal, certiorari, and so on",
- adminAction = "the federal agency below, if any",
- adminActionState = "that agency's state, if any",
- threeJudgeFdc = "whether a three-judge district court heard it",
- caseOrigin = "the court where the case began",
- caseOriginState = "that court's state",
- caseSource = "the court the Court took it from",
- caseSourceState = "that court's state",
- lcDisagreement = "whether the record shows disagreement in the court below",
- certReason = "why the Court agreed to hear it — a reason somebody had to read for",
- lcDisposition = "what the court below did",
- lcDispositionDirection = "whether the decision below was liberal or conservative",
- declarationUncon = "whether a law was declared unconstitutional",
- caseDisposition = "what this Court did with it",
- caseDispositionUnusual = "whether the disposition was out of the ordinary",
- partyWinning = "whether the petitioner won",
- precedentAlteration = "whether the Court altered its own precedent",
- voteUnclear = "whether the vote itself was hard to code",
- issue = "the specific legal issue, from a coded list",
- issueArea = "the broad area that issue falls in",
- decisionDirection = "whether the decision was liberal or conservative",
- decisionDirectionDissent = "whether the dissent ran the other way",
- authorityDecision1 = "the basis the Court decided on",
- authorityDecision2 = "a second basis, where there was one",
- lawType = "the kind of law at issue — constitutional, statutory, other",
- lawSupp = "the specific provision",
- lawMinor = "the provision in the Court's own words",
- majOpinWriter = "who wrote the majority opinion",
- majOpinAssigner = "who assigned it",
- splitVote = "whether the vote was recorded in more than one way",
- majVotes = "how many justices were in the majority",
- minVotes = "how many were not",
- justice = "the justice's numeric ID",
- justiceName = "the justice's name",
- vote = "how this justice voted, as a code",
- opinion = "whether this justice wrote an opinion",
- direction = "whether this justice's vote was liberal or conservative",
- majority = "whether this justice was in the majority",
- firstAgreement = "a justice this one joined",
- secondAgreement = "a second justice this one joined")
-data.frame(Position = seq_along(.nm),
-           Column_name = .nm,
-           What_the_codebook_says = unname(.d[.nm]))
-
-## ---- rawscdb2
-# VT is already one field per line; splitting on the run of spaces that
-# separates name from value turns it into the two columns it always was.
-.m <- regmatches(VT, regexec("^(\\S+)\\s{2,}(.*)$", VT))
-data.frame(Field = vapply(.m, function(z) z[2], character(1)),
-           Value = trimws(vapply(.m, function(z) z[3], character(1))))
-
-## ---- cleanag
-head(ag[order(-ag$agree / pmax(ag$cases, 1)), ], 3)
 
 ## ---- justices
 o <- jj[order(-jj$pct_conservative),
@@ -249,14 +126,15 @@ HOLEA <- HOLE$a; HOLEB <- HOLE$b
 
 ## ---- heat-d3
 # ---------------------------------------------------------------------------
-# The same 45 rates the table above is drawn from, as a matrix, in two orders:
-# the file's own and the one the scaling recovers. Colors are computed in R by
-# gcol() and passed through as hex, so the browser and the PDF device shade the
-# identical cell identically.
+# A DESIGNATED SHOWPIECE. The shared library has no matrix type, and the whole
+# argument of this figure is that the same 45 numbers re-sorted look like a
+# finding -- which needs the toggle. Colors are computed in R by gcol() and
+# passed through as hex, so the browser and the PDF device shade the identical
+# cell identically.
 #
 # This chunk carries the ONE d3 <script src> for the document. A second copy
-# would silently double the payload; the later figures use the library loaded
-# here.
+# would silently double the payload; the dd_fig() figure below is emitted with
+# d3 = FALSE for that reason.
 # ---------------------------------------------------------------------------
 cells <- character(0)
 for (i in seq_len(NJ)) for (k in seq_len(NJ)) {
@@ -378,28 +256,6 @@ o <- data.frame(justice = nice(names(ord)),
                 stringsAsFactors = FALSE)
 o
 
-## ---- clusters
-data.frame(
-  quantity = c(paste0("Span of the ", length(CONS), " on one side"),
-               paste0("Span of the ", length(LIBS), " on the other"),
-               "Distance across the gap between them"),
-  value = c(nm(SPAN), nm(ord[NJ] - ord[7]), nm(CHASM)))
-
-## ---- hole
-o <- HOLE[, c("a", "b", "agree", "cases", "pct")]
-o$a <- nice(o$a); o$b <- nice(o$b); o$pct <- "undefined"
-names(o) <- c("justice", "justice", "voted the same way", "shared cases",
-              "% agreement")
-o
-
-## ---- fill
-data.frame(
-  quantity = c("Pairs with a real agreement rate", "Pairs with none",
-               "Value used to fill the gap",
-               "What that value is"),
-  value = c(NPAIR - nrow(HOLE), nrow(HOLE), nm(FILL),
-            "the mean agreement across every other pair"))
-
 ## ---- refuse
 o <- data.frame(rank = seq_along(ord2),
                 `with the gap filled` = nice(keep),
@@ -408,214 +264,46 @@ o <- data.frame(rank = seq_along(ord2),
                 check.names = FALSE)
 o
 
-## ---- d3-line
-rA <- paste(sprintf('{"k":"%s","v":%.4f}', nice(names(ord)), as.vector(ord)),
-            collapse = ",")
-rB <- paste(sprintf('{"k":"%s","v":%.4f}', nice(names(ord2)), as.vector(ord2)),
-            collapse = ",")
-cat(sprintf('
-<div id="scd" style="position:relative;margin:1em 0">
- <div style="margin-bottom:6px">
-  <button id="sA" style="font:12px inherit;padding:4px 10px;margin-right:4px;cursor:pointer">%d justices, gap filled</button>
-  <button id="sB" style="font:12px inherit;padding:4px 10px;cursor:pointer">%d justices, refusing to guess</button>
- </div>
-</div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const A=[%s], B=[%s];
-const W=760,H=190,M={t:60,r:40,b:44,l:40};
-const svg=d3.select("#scd").append("svg").attr("viewBox",`0 0 ${W} ${H}`)
-  .attr("style","max-width:100%%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-0.30,0.32]).range([M.l,W-M.r]);
-svg.append("line").attr("x1",M.l).attr("x2",W-M.r).attr("y1",M.t).attr("y2",M.t)
-  .attr("stroke","#bbb");
-svg.append("g").attr("transform",`translate(0,${M.t+18})`)
-  .call(d3.axisBottom(x).ticks(7));
-svg.append("text").attr("x",M.l).attr("y",H-8).attr("font-size","11px")
-  .attr("fill","#666").text("position recovered from agreement alone; the direction of this axis is arbitrary");
-const pts=svg.append("g"), labs=svg.append("g");
-function draw(d,color){
-  pts.selectAll("circle").data(d,q=>q.k).join(
-    e=>e.append("circle").attr("cy",M.t).attr("r",7).attr("cx",q=>x(q.v)),
-    u=>u, ex=>ex.remove())
-    .transition().duration(750).attr("cx",q=>x(q.v)).attr("fill",color);
-  labs.selectAll("text").data(d,q=>q.k).join(
-    e=>e.append("text").attr("font-size","11px").attr("fill","#333")
-        .attr("transform",q=>`translate(${x(q.v)},${M.t-14}) rotate(-45)`),
-    u=>u, ex=>ex.remove())
-    .text(q=>q.k)
-    .transition().duration(750)
-    .attr("transform",q=>`translate(${x(q.v)},${M.t-14}) rotate(-45)`);
-}
-draw(A,"#2c7fb8");
-d3.select("#sA").on("click",()=>draw(A,"#2c7fb8"));
-d3.select("#sB").on("click",()=>draw(B,"#C41230"));
-})();
-</script>
-<p style="font-size:0.85em;color:#666;margin-top:0.2em">
-Toggle to see what one missing cell does.</p>
-', NJ, length(js2), rA, rB))
+## ---- swap-d3
+# One row per justice who appears in both runs, two positions joined by a rule.
+# A dumbbell is the form the comparison actually has: the question is asked of
+# each person separately, and the reader follows one name across two runs.
+# NOT a length: cmdscale fixes neither sign nor scale, so the two runs are on
+# scales that are only comparable in their ORDER, which is what the caption
+# tells the reader to read. d3 = FALSE: the heat map above already loaded d3.
+dd_fig("scdbswap", "dumbbell", SW, d3 = FALSE, rowHeight = 26,
+       size = list(m = list(t = 26, r = 30, b = 58, l = 108)),
+       y = list(field = "justice"),
+       a = list(field = "filled",  label = "with the gap filled"),
+       b = list(field = "refused", label = "refusing to guess"),
+       aClass = "series-1", bClass = "series-2", r = 5,
+       x = list(domain = c(-0.32, 0.34), fmt = "f2",
+                label = "position recovered from agreement alone; the direction of this axis is arbitrary"),
+       annotations = list(dd_annot_vline(0)),
+       tip = dd_tip(c(filled = "with the gap filled",
+                      refused = "refusing to guess",
+                      moved = "when the guess went"),
+                    fmt = c(filled = "f3", refused = "f3"),
+                    title = "justice"))
 
-## ---- line-static
-par(mfrow = c(2, 1), mar = c(3.2, 1, 2.2, 1))
-for (z in list(list(ord, paste(NJ, "justices, gap filled"), "#2c7fb8"),
-               list(ord2, paste(length(js2), "justices, refusing to guess"), "#C41230"))) {
-  plot(z[[1]], rep(0, length(z[[1]])), pch = 19, cex = 1.5, col = z[[3]],
-       yaxt = "n", ylab = "", xlab = "", ylim = c(-1, 1),
-       xlim = c(-0.30, 0.32), main = z[[2]])
-  text(z[[1]], 0.35, nice(names(z[[1]])), srt = 45, adj = 0, cex = 0.7)
-  abline(h = 0, col = "grey80")
-}
-par(mfrow = c(1, 1))
-mtext("the direction of this axis is arbitrary: only order and spacing mean anything",
-      side = 1, line = 2.0, cex = 0.66, col = "#777777")
-
-## ---- majority
-o <- jj[order(-jj$pct_in_majority), c("justice", "pct_conservative", "pct_in_majority")]
-o$justice <- nice(o$justice)
-names(o) <- c("justice", "% of votes coded conservative",
-              "% of the time in the majority")
-o
-
-## ---- close
-o <- jj[FULL, ]
-o <- o[order(-o$close_pct), c("justice", "pct_in_majority", "close_maj", "close_pct")]
-o$justice <- nice(o$justice)
-o$pct_in_majority <- pc(o$pct_in_majority); o$close_pct <- pc(o$close_pct)
-names(o) <- c("justice", "% in majority, all cases",
-              paste0("in majority, of the ", nrow(cc), " one-vote cases"),
-              "% in majority, close cases")
-o
-
-## ---- arch-prep
-AR <- data.frame(justice = names(ord), pos = as.vector(ord),
-                 stringsAsFactors = FALSE)
-AR$all   <- jj$pct_in_majority[match(AR$justice, jj$justice)]
-AR$close <- jj$close_pct[match(AR$justice, jj$justice)]
-AR$full  <- !is.na(AR$close)
-AR$lab   <- nice(AR$justice)
-ALLCOL   <- "#333333"    # every case
-CLOSECOL <- "#e08214"    # the one-vote cases only
-PEAK     <- AR$lab[which.max(AR$all)]
-DROP     <- max(AR$all) - max(AR$close, na.rm = TRUE)
-# where two justices sit almost on top of each other, drop the second label
-AR$up <- TRUE
-for (i in 2:nrow(AR))
-  if (abs(AR$pos[i] - AR$pos[i - 1]) < 0.03 && abs(AR$all[i] - AR$all[i - 1]) < 9)
-    AR$up[i] <- !AR$up[i - 1]
-
-## ---- arch-d3
-rows <- paste0("{\"k\":\"", AR$lab, "\",\"x\":",
-               formatC(AR$pos, format = "f", digits = 4),
-               ",\"a\":", formatC(AR$all, format = "f", digits = 1),
-               ",\"c\":", ifelse(AR$full, formatC(AR$close, format = "f", digits = 1),
-                                 "null"),
-               ",\"u\":", tolower(as.character(AR$up)), "}", collapse = ",")
-cat(paste0('
-<div id="arch" style="position:relative;margin:1em 0"></div>
-<!-- d3 v7 is loaded once, by the first D3 figure above -->
-<script>
-(function(){
-const D=[', rows, '];
-const W=770,H=380,M={t:22,r:26,b:66,l:56};
-const svg=d3.select("#arch").append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([-0.30,0.32]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([40,106]).range([H-M.b,M.t]);
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")").call(d3.axisBottom(x).ticks(7));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).tickValues([40,50,60,70,80,90,100]).tickFormat(d=>d+"%"));
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(H-M.b+M.t)/2).attr("y",14)
-  .attr("text-anchor","middle").attr("font-size","12px").attr("fill","#444")
-  .text("% of the time in the majority");
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-30).attr("text-anchor","middle")
-  .attr("font-size","12px").attr("fill","#444")
-  .text("position on the line recovered from agreement alone");
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-14).attr("text-anchor","middle")
-  .attr("font-size","11px").attr("fill","#888")
-  .text("The direction of this axis is arbitrary: only the order and the spacing mean anything.");
-D.forEach(function(d){
-  if(d.c!==null){
-    svg.append("line").attr("x1",x(d.x)).attr("x2",x(d.x)).attr("y1",y(d.a)).attr("y2",y(d.c))
-      .attr("stroke","#bbb").attr("stroke-width",2);
-    svg.append("circle").attr("cx",x(d.x)).attr("cy",y(d.c)).attr("r",5).attr("fill","', CLOSECOL, '");
-  }
-  svg.append("circle").attr("cx",x(d.x)).attr("cy",y(d.a)).attr("r",5)
-    .attr("fill",d.c===null?"#fff":"', ALLCOL, '")
-    .attr("stroke","', ALLCOL, '").attr("stroke-width",2);
-  svg.append("text").attr("x",x(d.x)).attr("y",y(d.a)+(d.u?-10:16)).attr("text-anchor","middle")
-    .attr("font-size","10.5px").attr("fill","#555").text(d.k);
-});
-const lg=svg.append("g").attr("transform","translate("+(M.l+8)+","+(M.t+8)+")");
-lg.append("circle").attr("cx",6).attr("cy",-4).attr("r",5).attr("fill","', ALLCOL, '");
-lg.append("text").attr("x",16).attr("y",0).attr("font-size","11px").text("all cases");
-lg.append("circle").attr("cx",96).attr("cy",-4).attr("r",5).attr("fill","', CLOSECOL, '");
-lg.append("text").attr("x",106).attr("y",0).attr("font-size","11px")
-  .text("the ', nrow(cc), ' one-vote cases");
-lg.append("circle").attr("cx",256).attr("cy",-4).attr("r",5).attr("fill","#fff")
-  .attr("stroke","', ALLCOL, '").attr("stroke-width",2);
-lg.append("text").attr("x",266).attr("y",0).attr("font-size","11px")
-  .text("sat for part of the window: no comparable close-case rate");
-})();
-</script>'))
-
-## ---- arch-static
-par(mar = c(5.4, 4.4, 1.6, 1.0))
-plot(NA, xlim = c(-0.30, 0.32), ylim = c(40, 106), las = 1, xlab = "", ylab = "",
-     yaxt = "n", cex.axis = 0.8)
-axis(2, at = seq(40, 100, 10), labels = paste0(seq(40, 100, 10), "%"), las = 1,
-     cex.axis = 0.8)
-mtext("% of the time in the majority", 2, line = 2.8, cex = 0.85)
-mtext("position on the line recovered from agreement alone", 1, line = 2.3,
+## ---- swap-static
+d <- SW
+par(mar = c(5.0, 7.4, 1.2, 1.0))
+plot(NA, xlim = c(-0.32, 0.34), ylim = c(nrow(d) + 0.5, 0.5), yaxt = "n",
+     xlab = "", ylab = "", cex.axis = 0.8)
+abline(v = 0, lty = 3, col = "grey70")
+segments(d$filled, seq_len(nrow(d)), d$refused, seq_len(nrow(d)),
+         col = "#BBBBBB", lwd = 2)
+points(d$filled,  seq_len(nrow(d)), pch = 19, col = "#2c7fb8", cex = 1.1)
+points(d$refused, seq_len(nrow(d)), pch = 19, col = "#C41230", cex = 1.1)
+axis(2, at = seq_len(nrow(d)), labels = d$justice, las = 1, tick = FALSE,
+     cex.axis = 0.75)
+mtext("position recovered from agreement alone", side = 1, line = 2.4,
       cex = 0.85)
-mtext(paste("The direction of this axis is arbitrary: only the order and the",
-            "spacing mean anything."), 1, line = 3.4, cex = 0.7, col = "#777777")
-with(AR[AR$full, ], segments(pos, all, pos, close, col = "#bbbbbb", lwd = 2))
-with(AR[AR$full, ], points(pos, close, pch = 19, col = CLOSECOL, cex = 1.1))
-points(AR$pos, AR$all, pch = 21, cex = 1.1, lwd = 2, col = ALLCOL,
-       bg = ifelse(AR$full, ALLCOL, "white"))
-text(AR$pos, AR$all + ifelse(AR$up, 2.8, -3.2), AR$lab, cex = 0.62,
-     col = "#555555")
-legend("top", c("all cases", paste("the", nrow(cc), "one-vote cases"),
-                "sat for part of the window: no comparable rate"),
-       pch = c(19, 19, 21), col = c(ALLCOL, CLOSECOL, ALLCOL), horiz = TRUE,
-       pt.bg = "white", pt.lwd = 2, bty = "n", cex = 0.6)
-
-## ---- long
-data.frame(
-  quantity = c("Terms in the series", "First", "Last",
-               "Highest share of decisions coded conservative",
-               "Lowest"),
-  value = c(nrow(bt), min(bt$term), max(bt$term),
-            paste0(pc(max(bt$pct_conservative)), "% (", bt$term[which.max(bt$pct_conservative)], ")"),
-            paste0(pc(min(bt$pct_conservative)), "% (", bt$term[which.min(bt$pct_conservative)], ")")))
-
-## ---- long-plot
-par(mar = c(3.6, 4.2, 1, 1))
-plot(bt$term, bt$pct_conservative, type = "l", col = "grey65",
-     xlab = "", ylab = "% of decisions coded conservative")
-lines(bt$term, filter(bt$pct_conservative, rep(1/5, 5), sides = 2),
-      col = "#C41230", lwd = 2.2)
-abline(h = 50, lty = 3)
-
-## ---- on-mark-halo
-# A label lying across a saturated or mid-toned mark, where neither the
-# authored colour nor the lifted one reaches 3:1. Recolouring cannot fix a
-# label the same colour as the thing it labels, so it gets a halo instead:
-# paint-order draws a --paper outline behind the glyph. It is invisible where
-# the text sits on the page, so scoping by figure and fill is safe.
-# LIGHT PAGE ONLY: on the dark page the fill is lifted and already passes,
-# and a --paper stroke would sit dark behind a dark ink there, because the
-# checker scores the fill against the stroke it touches.
-# Sites found by _lib/check-contrast.js --light.
-cat('<style>
-@media (prefers-color-scheme: light) {
-#arch text[fill="#555" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
-</style>')
+mtext("the direction of this axis is arbitrary: only order and spacing mean anything",
+      side = 1, line = 3.5, cex = 0.66, col = "#777777")
+legend("topright", c("with the gap filled", "refusing to guess"), pch = 19,
+       col = c("#2c7fb8", "#C41230"), bty = "n", cex = 0.7)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

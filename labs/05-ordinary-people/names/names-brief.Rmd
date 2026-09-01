@@ -16,61 +16,57 @@ dd_read_chunks("names-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Almost every record in this book carries a name. The voter file has one, the campaign filing has one, the court docket, the jury questionnaire, the police stop, the lobbying registration. Some of these records carry nothing else about the person: no age, no address, no race, no sex.
+Every administrative record about a person carries a name, and in many it is the only description there is. The voter registration has one, and so do the campaign filing, the court docket, the jury questionnaire and the traffic stop. None was written to describe anybody, so most hold no age, no sex and no race. They hold a name, because a clerk had to write something in the box.
 
-So the name gets asked to do work. Three jobs, over and over:
+So the name is asked to do work, and always the same three jobs:
 
-1. **Identify.** Two records carry the same name, so they are the same person.
-2. **Stand in for sex**, when the file does not record it.
-3. **Stand in for race**, when the file does not record it — which is most of
-   the time, because most American records of a person do not.
+1. **Identify.** Pick this person out from everybody else.
+2. **Link.** Two records carry the same name, so they are the same person.
+3. **Infer.** The file records no sex or race, so guess them from the name.
 
-None of these is a job a name can do properly, and the interesting question is not whether they work but *how badly, and in which direction*. In April 2026 the Census Bureau published the file that lets you check. It is two tabulations of every American name, from the 2020 census: one of first names and one of last names. This chapter is about what is in that file, and what had to be done to a name before it could be counted. And about what each of the three jobs above looks like when you measure it instead of assuming it.
+Each is a claim about how names are spread across the country, and nobody holding a voter file can check it from the voter file. Two administrative tabulations can. How far a name carries decides whether you are matched to the right registration, flagged as somebody else on a purge list, or counted into a disparity a court must rule on.
 
-## What arrives
+## The test
 
-```{r raw, comment="", class.output="rawblock"}
-```
+The first source is the Census Bureau's tabulation of the name field in the 2020 census. It appeared in April 2026 as *Frequently Occurring First Names in the 2020 Census* and its companion for last names (<https://www.census.gov/topics/population/genealogy/data/2020_names.html>). Together they hold `r n(F("first_names"))` first names covering `r n(F("first_people"))` people, and `r n(F("last_names"))` surnames covering `r n(F("last_people"))`.
 
-That is the first-name-by-sex table, opened. Two title rows above the column names, one row per name, and the proportion columns cut here from seventeen digits to four. A second file gives the same names by race and Hispanic origin; a third and fourth give the last names.
+The second is the Social Security Administration's national name file: one plain text table per year of birth from `r F("ssa_min")` to `r F("ssa_max")`, three columns wide, name and sex and count (<https://www.ssa.gov/oact/babynames/limits.html>).
+
+These two are the right instruments because they count the field itself. Every other file in this book has a name column and no way to say how common a name is, which is what all three jobs depend on. Neither was made to study names. The agency writes down a name and a birth year because it cannot issue a card otherwise; the Bureau counts residents. Both tabulations are by-products, the kind of record [Section III](../admin-records-source/admin-records-source-brief.html) is about.
+
+## The data
+
+Each row of a census table is one name with a rank and a count. The first-name table adds `pct_female`; both add six shares, `pct_white`, `pct_black`, `pct_aian`, `pct_asian`, `pct_twoplus` and `pct_hispanic`. That is the whole record: no age, no state, no way to join a first name to a surname.
 
 ```{r sizes}
 ```
 
-Three things in that table are worth stopping on before anything is computed from it.
+Three things there decide what can be asked of it. **A name is listed only if about a hundred people had it**, and everyone else, `r n(F("residual_first"))` people by first name, goes into a final row called ALL OTHER NAMES with an empty rank. **A first name was recorded for `r pc(F("first_coverage_pct"))`% of those enumerated.** The other `r n(F("no_first_name"))` are not a random draw; they sit wherever the census fell back on administrative records or a neighbour's answer. **And the counts have been noised**, by the same disclosure-avoidance machinery as the rest of that census.
 
-**The threshold.** A name is listed if about a hundred people had it. Everyone else, `r n(F("residual_first"))` people by first name, is swept into a single final row called ALL OTHER NAMES. In the exhibit above that row has an empty rank cell, so a reader who filters out rows without a rank deletes `r mil(F("residual_first"))` million people and is told nothing.
+Before any of it could be counted, the field had to be made. The unedited returns held about 6.0 million distinct first names, and editing removed roughly 800,000. The largest problem was not misspelling. Over ten million entries were not names at all: PERSON, CHILD, DAUGHTER, TENANT, MRS SMITH. Left alone, PERSON would have been one of the country's most common first names.
 
-**The coverage.** A first name was recorded for `r pc(F("first_coverage_pct"))`% of the people the 2020 census enumerated. The other `r n(F("no_first_name"))` have no usable first name in this file at all, and they are not a random draw of the country. They are concentrated wherever the census had to fall back on administrative records or proxy answers to count somebody, which is where coverage is worst to begin with.
+Two repairs travel into every other file you will ever join. Punctuation, numbers, spaces and suffixes were removed, so MICHAEL, MI CH AEL and MICHAEL III all count as MICHAEL. That is right for a frequency table, and it is what a matching program has to do too, which most do not. And Spanish names holding Ñ reached the Bureau with the character already turned into a question mark, so PEÑA is published as PENA. The damage happened upstream, and the repair is a second decision on top of it.
 
-**The counts have been noised.** These are 2020 census tabulations, so they went through the same disclosure-avoidance machinery as everything else from that census. What that did here is stranger than usual, and it gets its own section at the end.
+The noise was run independently into the sex table and the race table, so **`r n(F("disagree_n"))` of `r n(F("first_names"))` first names carry a different total in the two.** Neither is wrong. No fact about how many Americans are named MICHAEL survives publication, because publication is what added the noise.
 
-## Before a name could be counted, it had to be made
+```{r disagree-tab}
+```
 
-The Bureau's own methodology brief is the most useful thing on the page it was published from, and this is the part of it nobody quotes.
+The Social Security file has different limits. It counts card applications by the birth year the applicant gave, and drops any name given to fewer than five babies in a year. Cards were first issued in `r F("ssa_card_year")`, so anyone born earlier appears only if they lived long enough to apply.
 
-The unedited 2020 returns contained about **6.0 million distinct first names**. Editing removed roughly 800,000 of them and revised millions more, leaving 5.2 million. The largest single problem was not misspelling. It was that over **ten million first-name entries were not names**: PERSON, CHILD, DAUGHTER, GRANDSON, ELDERLY, RESIDENT, TENANT, HOUSEHOLDER, MRS SMITH, EIGHTEEN, TWENTY-TWO, CHILD 2, PERSONA DOS. Left alone, PERSON would have been one of the most common first names in the United States.
+> **Before you read on, commit to a number.** The census publishes
+> `r n(F("last_names"))` surnames. **How many of them, the most common ones,
+> would you need to cover half of everybody in the file?** Write it down, then
+> do the same for first names, of which there are `r n(F("first_names"))`.
 
-Two details from that clean-up are worth carrying into every other chapter.
+## What it says about democracy
 
-**Punctuation and structure were removed, not preserved.** All punctuation, numbers and spaces go, and so do suffixes: JR, SR, III, THIRD. MICHAEL, MI CH AEL, MICHAELJR and MICHAEL III are all counted as MICHAEL. That is the right decision for counting names, and it is exactly the decision a matching program has to make too. A matching program usually does not make it, and so treats those four as four different people.
-
-**Ñ did not survive the trip.** In the 2020 returns, Spanish names containing Ñ arrived with the character turned into a question mark, so PEÑA came through as PE?A. The tables carry only the 26 English letters, so the Bureau corrected the question mark to N, and PEÑA is published as PENA. The name was damaged upstream, in transcription, and the repair is a second decision layered on the damage. Neither is hidden; both are irreversible.
-
-And the clean-up is not finished. The Bureau states that the edits caught more than 95 percent of nonname entries. So some are still in the table. Real names that are also ordinary words, like BABY, CHILD, PERSON, SON and YOUNG, may be inflated, and the frequency published for DOE "is surely too high."
-
-> **Before you read on, commit to a number.** There are
-> `r n(F("last_names"))` last names in this file. **How many of them would you
-> need — the most common ones — to cover half of everybody in it?** Write the
-> number down. Then do the same for first names, of which there are
-> `r n(F("first_names"))`.
-
-## A name is a distribution, not a label
+**The first job is to identify, and a name is a distribution rather than a label.**
 
 ```{r top-tab}
 ```
 
-The answers to the question above are **`r n(F("half_first"))` first names** and **`r n(F("half_last"))` last names**. Out of `r n(F("first_names"))` and `r n(F("last_names"))` published, and out of the 5.2 and 7.8 million the census actually collected.
+It takes `r n(F("half_first"))` first names to cover half the country, and `r n(F("half_last"))` surnames.
 
 ```{r curve-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -78,330 +74,115 @@ The answers to the question above are **`r n(F("half_first"))` first names** and
 ```{r curve-static, eval=!knitr::is_html_output(), fig.height=4.3}
 ```
 
-*Figure 1. How much of the country the most common names cover. In the browser version, moving the pointer across the figure reads a rank off it.*
-
-Neither curve reaches the top, and that is the residual again, the share left over, rather than a drawing error. Take **every** published first name, all `r n(F("first_names"))` of them, and you have covered `r pc(max(curve$cum_pct[curve$which == "first name"]))`% of the people in the file. Every published surname covers `r pc(max(curve$cum_pct[curve$which == "last name"]))`%. The rest hold names that fewer than a hundred Americans share, and the file will not tell you what they are.
+**Figure 1. How much of the country the most common names cover.** Rank runs along the bottom on a log scale, so the first thousand names and the hundred-thousandth are both readable. A cumulative curve fits the question, which is not what one name is worth but how fast coverage piles up. Neither curve reaches the top, and that is the threshold rather than a drawing error: every published first name covers only `r pc(max(curve$cum_pct[curve$which == "first name"]))`% of the file, every published surname `r pc(max(curve$cum_pct[curve$which == "last name"]))`%.
 
 ```{r cover-tab}
 ```
 
-**First names are the more concentrated of the two**, and by a lot: a thousand of them cover `r pc(cover$first_pct[cover$top_n == 1000])`% of Americans, where a thousand surnames cover `r pc(cover$last_pct[cover$top_n == 1000])`%. That ordering runs against the intuition that first names are where individuality lives. It has a plain cause. A surname is inherited from a limited stock, and American surnames come from every immigration history the country has had. A first name is chosen, and chosen from fashion, which is a much smaller menu than the world's surname stock.
+**First names are the more concentrated of the two, and by a lot.** A thousand first names cover `r pc(cover$first_pct[cover$top_n == 1000])`% of Americans where a thousand surnames cover `r pc(cover$last_pct[cover$top_n == 1000])`%. That runs against the intuition that first names are where individuality lives, and the cause is plain. A surname is inherited from a stock the country's whole immigration history filled up, and a first name is chosen from fashion, a much smaller menu.
 
-### Two summaries of the same distribution, and only one of them survives
-
-There is a standard way to say how many names there "really" are. Both of these have a name in the ecology literature and both get used on distributions like this one, and this file separates them cleanly.
-
-The first is the chance that **two people picked at random share a name** — Simpson's index, the sum of the squared shares. That number is `r paste0("1 in ", n(CL("two people share a first name")))` for first names and `r paste0("1 in ", n(CL("two people share a last name")))` for last names.
-
-The second is the **effective number of names**: how many equally common names would be as hard to guess as the real distribution. It is the exponential of the entropy, and it is the number people reach for when they want to say "53,615, but really only about *N*."
-
-Only the first one can be computed from this file, and the reason is the residual line. Everything below the threshold is one lump: millions of names the file does not list.
-
-For the collision probability that does not matter. Each of those names is held by fewer than a hundred people, so a bound falls straight out. The whole unlisted tail can account for at most `r pc(FN("bound_pct_first"), 3)`% of the first-name figure, and `r pc(FN("bound_pct_last"), 3)`% of the last-name one. For the effective number it matters entirely. That figure is a statement about how the tail is spread, and the tail is what is missing. All this file supports is a bracket:
-
-```{r eff-tab}
-```
-
-The brackets are the two extremes the tail could take: every unlisted name held by the maximum hundred people, or every one held by a single person. The truth is somewhere between, and this file cannot say where. That is not a defect in the file. It is a demonstration that **the choice of summary statistic decides whether a truncated table can answer your question** — and the one that survives is the one the next section needs.
-
-## The first job: identifying a person
+**The second job is to link, and the number underneath it is small.**
 
 ```{r coll-tab}
 ```
 
-A first name and a last name together are worth about **one in `r n(CL("two people share both, if the two are unrelated"))`**. That is the number a matching program is quietly relying on. It is arrived at by multiplying the two separate figures together, which is only legitimate if a person's first name tells you nothing about their last name.
+A first name and a surname together are worth about **one in `r n(CL("two people share both, if the two are unrelated"))`**. That is the figure a matching program quietly relies on, and it comes from multiplying the two separate chances. That step is legitimate only if a first name tells you nothing about a surname, and it obviously does. A floor on the error can be measured: correlate the two through the six census race categories alone, and a shared full name gets `r pc(100 * (FN("inflate_race") - 1), 0)`% more likely. The real correlation runs through national origin and generation, which is why NGUYEN and GARCIA do not draw first names from the same pot.
 
-It obviously does. These files publish no joint table of first name against last name, so the size of that error cannot be measured here. A floor on it can be: let the two names be correlated through the six census race categories and through nothing else, and shared full names get `r pc(100 * (FN("inflate_race") - 1), 0)`% more likely, at `r paste0("1 in ", n(CL("two people share both, allowing correlation through race")))`. Six categories is a coarse instrument for this. The real correlation is finer than any category the file publishes. It runs through national origin, when a family arrived, and generation, and it is the reason NGUYEN and GARCIA do not draw their first names from the same pot.
-
-One thing to keep straight about all four of those numbers: each is the chance for **one pair of people**. It is not the chance of finding a match in a list, which depends on how long the list is and is a different calculation entirely — the one the [false matches chapter](../../03-elections/false-matches/false-matches-brief.html) does.
-
-### The two fields are not even distinct
+Each is the chance for **one pair of people**, not the chance of a match somewhere in a list, which depends on how long the list is. That is the [false matches brief](../../03-elections/false-matches/false-matches-brief.html).
 
 ```{r both-tab}
 ```
 
-`r n(F("both_names"))` names appear in both tables. **`r pc(F("both_pct_first"))`% of Americans have a first name that is also somebody's surname**, and `r pc(F("both_pct_last"))`% have a surname that is also somebody's first name. The twelve above are the most-used names that are split most evenly between the two roles.
+The two fields are not even distinct. `r n(F("both_names"))` names appear in both tables, and **`r pc(F("both_pct_first"))`% of Americans have a first name that is also somebody's surname**. That is why a swapped-column bug is so hard to see. Exchange `first` and `last` for part of a load, and three-quarters of the affected rows still hold an ordinary name.
 
-This is the reason a swapped-column bug in a name file is so hard to see. Suppose `first` and `last` are swapped for part of a load. Three-quarters of the affected rows still hold a perfectly ordinary name for the column it has landed in, and no check that asks whether a field "looks like a name" will fire.
-
-## The second job: standing in for sex
-
-The first-name table is the only place the Bureau attaches sex to a name. It answers the question analysts actually ask: assign every person the majority sex of their first name, and how many do you get wrong?
-
-**`r pc(F("maj_right_pct"), 2)`% right.** Which is **`r n(F("maj_wrong"))` people wrong** — a population between Washington and Massachusetts, misfiled by a rule that is correct about 39 times out of 40.
-
-```{r sex-band-tab}
-```
-
-```{r sex-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r sex-static, eval=!knitr::is_html_output(), fig.height=4.4}
-```
-
-*Figure 2. Every first name held by `r n(F("sex_scatter_cut"))` people or more — `r n(nrow(scat))` names, a declared cut, below which the figure is a solid cloud. Point area is proportional to the number of people. The browser version names any point you hover.*
+**The third job is to infer, and it is the one most used and least measured.** Assign every person the majority sex of their first name and you are right **`r pc(F("maj_right_pct"), 2)`% of the time**. That is **`r n(F("maj_wrong"))` people wrong**, a population the size of Massachusetts.
 
 ```{r unisex-tab}
 ```
 
-These twelve are the most-used first names, `r n(min(uni$people))` bearers and up, that come closest to an even split. JORDAN is `r pc(uni$pct_female[uni$name == "JORDAN"])`% female and TAYLOR is `r pc(uni$pct_female[uni$name == "TAYLOR"])`%, close to mirror images of each other. A rule that assigns each of them to its majority is making the same size of mistake in opposite directions. Between them the two names account for `r n(sum(uni$people[uni$name %in% c("JORDAN", "TAYLOR")]))` people.
+Those are the most-used first names closest to an even split. JORDAN is `r pc(uni$pct_female[uni$name == "JORDAN"])`% female and TAYLOR is `r pc(uni$pct_female[uni$name == "TAYLOR"])`%, so a majority rule errs by the same amount in opposite directions on the two. The census item is **sex**, asked as two boxes, and nothing here speaks to gender. The table is also a 2020 snapshot, so a name whose usage shifted is described by an average across the shift.
 
-Two limits on all of this, and both are about the question rather than the arithmetic. The census item is **sex**, asked as two boxes. It is not gender, it does not allow a third answer, and nothing in this file speaks to people for whom the two differ.
-
-And the table is a snapshot of everyone alive in 2020. A name whose usage shifted, and the names in that list are mostly names that shifted, is being described by an average taken across the shift.
-
-## The third job: standing in for race
-
-Here the two kinds of name behave differently, and the difference is the reason this book's race-inference chapters use surnames.
-
-Put both on one scale by asking how much a name tells you, in bits. Before you hear a person's name, your uncertainty about which of the six census categories they fall into is some number of bits. After you hear it, it is smaller. The difference is what the name carried.
+Race is the job the field is asked to do most, and the two halves of a name are not equally good at it. Put both on one scale: how much of your uncertainty about a person's race does the name remove?
 
 ```{r race-tab}
 ```
 
-**A last name removes `r pc(RI("last name", "pct_of_uncertainty_removed"))`% of the uncertainty about a person's race; a first name removes `r pc(RI("first name", "pct_of_uncertainty_removed"))`%.** That is the whole justification for surname-based inference in one line, and it is measured rather than assumed. It is also not nothing for first names, since the résumé-audit literature is built on the fact that a first name carries a signal. But if you are going to pick one field, the surname is the one that carries more.
+**A surname removes `r pc(RI("last name", "pct_of_uncertainty_removed"))`% of the uncertainty; a first name removes `r pc(RI("first name", "pct_of_uncertainty_removed"))`%.** That is the whole justification for surname-based inference, measured rather than assumed. It is not enough alone, because a name cannot outrun the base rate. The file's most distinctive surname for American Indians is only `r pc(rext$pct_in_group[rext$which == "last name" & rext$group == "Am. Indian"])`% American Indian, because the group is `r pc(rext$group_share_of_file[rext$which == "last name" & rext$group == "Am. Indian"])`% of the file. Any method has to bring something else, usually where the person lives. That is Section IV's subject: the [surnames brief](../../06-putting-data-together/surnames/surnames-brief.html) builds the method from this same table.
 
-Now the ceiling, which is the part that sets up the chapter after this one.
-
-```{r extremes-tab}
-```
-
-The most distinctive surname for white Americans is `r pc(rext$pct_in_group[rext$which == "last name" & rext$group == "white"])`% white. The most distinctive one for American Indians is `r pc(rext$pct_in_group[rext$which == "last name" & rext$group == "Am. Indian"])`% American Indian. Both are the strongest signal the file contains for their group, and they are two orders of magnitude apart in what they can support.
-
-Nothing is wrong with the names. A name cannot outrun the base rate: if a group is `r pc(rext$group_share_of_file[rext$which == "last name" & rext$group == "Am. Indian"])`% of the file, then even a name whose bearers are enriched fifty-fold for that group is still mostly not that group. So a name alone will never identify the members of a small group, however distinctive the name is. Any method that tries has to bring something else to the problem, most often where the person lives. That is what [surname-based inference](../surnames/surnames-brief.html) does with this file.
-
-**One warning the Bureau prints and this section has to repeat.** These tables are not a source for the racial composition of the United States. The "bits before" figures above are the composition *of the people in this file*, which is the right baseline for measuring what a name adds and the wrong number to quote as a national statistic.
-
-## Look a name up
-
-```{r explore-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r explore-static, eval=!knitr::is_html_output()}
-```
-
-*Figure 3. In the browser, a box you can type any name into. It gives the rank, how many people hold it, the sex split if it is a first name, the racial composition, and whether it is also used the other way round. The cut is declared: the `r n(F("explore_n"))` most common names of each kind, which is `r pc(F("explore_cov_first"))`% of Americans by first name and `r pc(F("explore_cov_last"))`% by surname. Print gets four rows of it instead.*
-
-## The same names, counted at birth instead
-
-The census file cannot tell you when a name was given, and that is usually the first thing worth knowing about one. DOROTHY and AIDEN are not two kinds of person. They are two decades. A snapshot of everyone alive in 2020 holds every decade at once and separates none of them.
-
-A second file does nothing else. The Social Security Administration publishes the name on every application for a card, arranged by the year the applicant was born, back to `r F("ssa_min")`. It is the only source in this chapter that is not the census, and it is here because the two files count different things.
-
-That difference decides which questions each one can answer, so it is worth a pair of words. A **stock** is how many there are right now. A **flow** is how many arrived this year. The census hands you a stock of people, Social Security hands you a flow of births, and the two behave nothing alike when something happens to a name.
-
-Where this second file comes from is worth pausing on, because nobody meant to build it. **Nobody was studying names.** The Social Security Administration writes down a name and a year of birth because it has to know who is who and when they qualify. The birth file is a byproduct of issuing Social Security cards, tabulated and published by the agency's actuaries, whose business is birth cohorts rather than baby names. No question was ever asked of anyone. The file exists because an administrative machine cannot run without recording names, and it covers exactly what that machine happened to touch.
-
-**What it costs to get.** Nothing, with one flourish. The file sits on the agency's public site, no key and no account, but the server refuses a plain scripted request and answers one that claims to be a browser. A person can always have it; a program has to dress as a person.
-
-None of that machinery was pointed at fashion. It records fashion anyway, faster than any census can, because a flow shows a shock in the year it lands.
-
-Something happened to ALEXA. Amazon announced the Echo in November 2014 and put it on general sale in `r F("echo_year")`, and the name has been falling away from babies ever since. In `r F("ssa_max")` it went to `r n(F("alexa_last_n"))` girls in the whole country, ranked `r n(F("alexa_last_rank"))`, down `r pc(F("alexa_drop_pct"), 0)`% from where it stood ten years earlier.
-
-The part usually left out is what happened first. `r F("alexa_best_year")` is the best year the name has ever had: rank `r F("alexa_best_rank")` among girls, its highest in `r n(FN("ssa_max") - FN("ssa_min") + 1)` years of records, with `r n(F("alexa_best_n"))` girls given it. The launch year was the peak. Parents appear to have heard the name, liked it, and then watched it become the thing you say to a speaker in the kitchen.
-
-> **Before you read on, commit to a number.** The Bureau published a first-name
-> table from the 2020 census. Suppose it had published one from 2010 as well.
-> **Which way would ALEXA have moved between the two, and by how much?** Write
-> it down before you look at the next figure.
+**All three jobs lean on a count of everyone alive, and such a count is slow.** The census file is a stock, how many there are now; the birth file is a flow, how many arrived this year. Amazon put the Echo on sale in `r F("echo_year")`, the best year ALEXA has ever had at rank `r F("alexa_best_rank")`. By `r F("ssa_max")` it went to `r n(F("alexa_last_n"))` girls in the whole country, down `r pc(F("alexa_drop_pct"), 0)`%.
 
 ```{r flow-stock, fig.height=3.5}
 ```
 
-*Figure 4. ALEXA, both sexes, from the Social Security birth file. The left panel is how many were given the name each year. The right panel is the same numbers added up, which is what a census counts. The left panel falls `r pc(F("alexa_drop_pct"), 0)`% and the right panel does not fall at all.*
+**Figure 2. ALEXA, both sexes, from the Social Security birth file.** The left panel is how many were given the name each year; the right is the same numbers added up, which is what a census counts. Two panels rather than two lines on one pair of axes, because a count per year and a running total share no scale.
 
-The census would have shown the name **rising by `r pc(F("alexa_stock_growth"), 0)`%**.
+A census taken in 2020 would have shown the name **rising by `r pc(F("alexa_stock_growth"), 0)`%**. Everyone given it before the collapse was still alive to be counted, and `r n(F("alexa_born_decade"))` more were added between the censuses. **A stock absorbs a shock and a flow records it**, and that is a rule about records rather than names. Registered voters, houses and licences are counted as stocks, and each shows a change years late and smaller than it was.
 
-Nothing about that is a trick. Everyone given the name before the collapse was alive in 2020 and got counted in 2020. The babies born during the collapse were added on top of them, `r n(F("alexa_born_decade"))` more between the two censuses. A fall in the flow does not empty the stock. It only slows what is being added.
+## What this brief cannot tell you
 
-That is the rule to carry out of this section, and it is not about names. **A stock absorbs a shock and a flow records it.** Houses, registered voters, guns, people: anything counted as a stock will show you a change years late and smaller than it really was. Leaving the stock of a name takes a death, which for a name given to babies is most of a lifetime away.
+**It cannot put a first name and a surname together.** They are tabulated separately, so every statement above about full names rests on multiplying two tables. The `r pc(100 * (FN("inflate_race") - 1), 0)`% correction is a floor on that error, not a measure of it.
 
-A flow moves at the other speed, and ALEXA is not a special case. Three more names had something happen to them, and the birth file caught every one within about a year of the event.
+**It cannot tell you where anybody is.** Names are not spread evenly and everything here is national, which is why the surname method needs a second file.
 
-```{r shock-tab}
-```
+**It is not a source for the racial composition of the country**, and the Bureau prints that warning on both products. The shares above describe the people whose names could be used, `r pc(F("first_coverage_pct"))`% of the census.
 
-Read that table carefully, because it invites more than it can carry. It shows four names falling after four events. It does not show that the events caused the falls. Names go out of fashion on their own, constantly, and the table has no column for what these four would have done anyway. ISIS is the useful warning: it bottomed out at `r n(IS_LOW)` girls in `r IS_LOW_Y` and was back to `r n(IS_BACK)` by `r IS_BACK_Y`, which is not what the permanent ruin of a name looks like.
+**It cannot see a name that arrived recently.** To be published from 2020 a first name had to occur a hundred times in 2010 as well, so the names doing something interesting in the 2010s are missing by design.
 
-There is also a plainer reason you cannot run that comparison yourself. **The Bureau has never published a first-name table for 2010.** The 2010 release is surnames only, and first names arrived for the first time with the 2020 one, so there is no earlier vintage to hold this against. The 2010 to 2020 comparison that does exist is the surname one, and the [surnames chapter](../surnames/surnames-brief.html) runs it.
+**And these are edited names.** MICHAEL III is MICHAEL and PEÑA is PENA, which is right for a frequency table and makes the file a poor guide to the raw name field in the records you will actually join.
 
-A threshold is in the way as well, and it points the same direction. To be published in 2020 a first name had to occur at least a hundred times in **both** 2010 and 2020. A name that arrived during the 2010s is missing from the file by design, which means the census tables are least able to see exactly the names that were doing something interesting.
+## What you should have learned
 
-### Which names are arriving
+- A name is a distribution, not a label: `r n(F("half_first"))` first names cover half the country, and `r n(F("half_last"))` surnames, out of `r n(F("first_names"))` and `r n(F("last_names"))` published.
+- First names are more concentrated than surnames, `r pc(cover$first_pct[cover$top_n == 1000])`% against `r pc(cover$last_pct[cover$top_n == 1000])`% for the top thousand, because a first name is chosen from fashion and a surname inherited.
+- A full name is worth about one in `r n(CL("two people share both, if the two are unrelated"))` for a single pair, and that is optimistic: it assumes the two halves are unrelated when they are not.
+- Guessing sex from a first name is `r pc(F("maj_right_pct"), 2)`% right and `r n(F("maj_wrong"))` people wrong. A surname removes `r pc(RI("last name", "pct_of_uncertainty_removed"))`% of the uncertainty about race; a first name removes `r pc(RI("first name", "pct_of_uncertainty_removed"))`%.
+- A stock absorbs a shock and a flow records it: ALEXA fell `r pc(F("alexa_drop_pct"), 0)`% in births while the census count rose `r pc(F("alexa_stock_growth"), 0)`%.
 
-The fastest-rising names in America are old names. These ten gained the most ground between `r F("rise_then0")`–`r F("rise_then1")` and `r F("rise_now0")`–`r F("rise_now1")`, measured as a share of each year's births. The last two columns are the year each was previously at its busiest, and how many babies got it that year.
+## Extensions
 
-```{r risers-tab}
-```
+None is answered above, and every one can be answered from the tables below.
 
-`r F("rise_top")` is the clearest case. It was last this common in `r F("rise_top_old_year")`, and almost everyone who received it then is gone. A name can be new to a parent and a century old in the file.
-
-All `r F("rise_in_census")` of them are in the census table, and the threshold from a moment ago is why. A revival clears it without trouble, because the earlier cohort was alive in 2010 and got counted. What cannot clear it is a name that did not exist yet.
-
-```{r newcomers-tab}
-```
-
-`r F("new_n")` names were given to `r n(F("new_min"))` or more babies in the last three years and have no row in the census file at all. That is `r n(F("new_people"))` children whose first name the 2020 tables cannot report, led by `r F("new_top")`. Several of the ten are recognisable from film and television, and the years in the second column will line up with whatever you remember. Resist finishing that thought: the shock table above is the reason.
-
-This is the same gap as ALEXA, running the other way. ALEXA is in the census file because it was already a common name when the assistant took the name over. The names arriving now are not, and will not be until a census counts the children who have them. A file that reports the stock is always reporting the last generation's fashions.
-
-### Holding the two files against each other
-
-The two files agree about as well as two files counting different things can. `r n(F("alexa_born_2020"))` people have been given the name ALEXA since records begin. The 2020 census counts `r n(F("alexa_census_2020"))` of them, which is `r pc(F("alexa_survive_pct"), 0)`%. The missing tenth is deaths, people who have left the country, people who go by something else, and the `r pc(100 - FN("first_coverage_pct"), 0)`% of the census with no usable first name at all.
-
-```{r vs-tab}
-```
-
-The last row is a warning about the other four. That `r pc(F("alexa_survive_pct"), 0)`% works for ALEXA because it is a young name and almost nobody who has it has died yet. DOROTHY was given mostly in the 1920s, and only `r pc(svc$pct_still_counted[svc$name == "DOROTHY"], 0)`% of the people who received it are still here to be counted. Comparing the two files tells you about mortality as much as about names, and which one you are looking at depends entirely on the name.
-
-One name in the lookup above has no birth record at all. The census gives `r F("never_name")` to `r n(F("never_people"))` people, and Social Security has never once registered five babies with it in a year. Either those people were all born outside the United States, or `r F("never_name")` is not a name — and after PERSON, CHILD and TENANT, the second is the way to bet.
-
-## Look your own name up in the other file
-
-```{r birth-d3, results='asis', eval=knitr::is_html_output()}
-```
-
-```{r birth-static, eval=!knitr::is_html_output()}
-```
-
-*Figure 5. In the browser, a box you can type your own name into: how often it was given in each year of birth since `r F("birth_y0")`, against how many people the 2020 census counts with it now. The line is a share of that year's births rather than a count, which is what makes the shaded early years readable at all. A declared cut — the `r n(F("birth_n"))` most common first names in the census plus the risers and the newcomers above, `r n(F("birth_names"))` names in all, which is `r pc(F("birth_cov"))`% of Americans. The `r F("birth_new")` newcomers add nothing to that percentage, because the census cannot see them. Print gets four rows of it instead.*
-
-Start with your own name, and find the year it peaked. For most readers that will be close to the year they were born. The buttons under the box are there for the three shapes this section has been describing, and they are worth clicking in order.
-
-`r CHIPS[2]` and the two risers beside it climb twice, a century apart, and the second climb has already gone past the first. Its best year on record is `r peak_year(CHIPS[2])`, which is this year. `r CHIPS[5]` and `r CHIPS[6]` do the opposite. They were at their most common in `r peak_year(CHIPS[5])` and `r peak_year(CHIPS[6])`, longer ago than anyone now alive, and neither has recovered since. ALEXA does neither, because it is the one name here that was interrupted.
-
-`r CHIPS[7]` is the fourth shape and the one with something missing. Its curve starts at the floor and goes almost straight up, and where the card should report a census count it reports that there is no row to read. That is not a gap in the figure. It is the threshold from two pages ago, seen from the side of the file that loses by it, and `r F("birth_new")` of the names in the box are in the same position.
-
-Then compare the two numbers on the card for `r CHIPS[5]` or `r CHIPS[6]`. The census rank is a stock, and it is nothing like the rank the name held in the years it was actually being given.
-
-## The same census, counted twice, disagreeing with itself
-
-One last thing about the file, and it is the kind of thing that is invisible until you hold two of its tables side by side.
-
-The Bureau published first names by sex and first names by race as separate products, ran the disclosure-avoidance noise **independently** into each, and then derived each table's total from its own noisy cells. The consequence:
-
-```{r disagree-tab}
-```
-
-**`r n(F("disagree_n"))` of `r n(F("first_names"))` first names, `r pc(F("disagree_pct"))`% of them, have a different total in the two files.** The two tables disagree by `r F("disagree_max")` people at the widest (`r F("disagree_name")`), and they even disagree about the residual line, by `r F("resid_diff")`.
-
-```{r disagree-dist}
-```
-
-Neither file is wrong. There is no fact of the matter about how many Americans are named MICHAEL that survives publication, because publication is what added the noise. A question asked twice of a noisy process gets two answers. The Bureau documents this in the methodology brief for each product. Almost nobody who downloads one file reads the brief for the other.
-
-The same mechanism has two more visible effects. The threshold for publication is a hundred people. And yet `r F("below_100_first")` first names and `r F("below_100_last")` last names are published with totals below it, the smallest at `r F("min_first")`, because the noise carried them under after the cut was made. And the noise pushed some small cells below zero:
-
-```{r neg-tab}
-```
-
-The published tables have no negatives; the Bureau also ships the un-repaired copies "for research purposes," and comparing them shows what the repair did.
-
-```{r neg-top-tab}
-```
-
-Minus one man named RENITA. The repair moves the impossible count to zero and takes the difference out of the cell beside it, so **every row's total is preserved exactly** — `r n(sum(negs$rows_whose_total_is_unchanged))` of `r n(sum(negs$rows))` across both tables. The [surnames chapter](../surnames/surnames-brief.html) works through the same phenomenon in the last-name tables, where the counts are larger and the negatives rarer.
-
-## What this chapter cannot tell you
-
-**The census file itself is not about age**, and the birth file brought in above only patches the hole. A first name is a fashion object, given at a moment in time, and the most useful thing you could know about DOROTHY is when it was given. The census tables are one snapshot of everyone alive in 2020 and cannot supply it. There is a construction detail on top of that limitation. To be published, a 2020 first name had to have occurred at least a hundred times **in both 2010 and 2020**. Names that arrived during the 2010s are absent by design.
-
-**And the birth file is not a birth file.** It counts applications for a Social Security card, tabulated by the year of birth the applicant gave, and it counts the name written on the application rather than the edited name the census publishes. Numbers were first issued in `r F("ssa_card_year")`, so anyone born before then is in it only if they lived long enough to apply. Of the births the country registered in 1920, `r pc(scov$pct[scov$year == 1920], 0)`% reached the file, and by 1950 that was `r pc(scov$pct[scov$year == 1950], 0)`%. Before 1915 there is nothing to hold it against, because the country kept no national count of births. It also drops any name given to fewer than five babies in a year, and it knows nothing about anyone born outside the United States.
-
-**Nothing here is about geography.** Names are not spread evenly across the country, and the entire premise of [surname-based inference](../surnames/surnames-brief.html) is that combining a name with a place does far more than either alone. Everything in this chapter is national.
-
-**There is no joint distribution.** First names and last names are tabulated separately, always, and the Bureau says so explicitly. Every statement in this chapter about full names rests on multiplying two marginals, and the `r pc(100 * (FN("inflate_race") - 1), 0)`% correction computed above is a floor on the error in that step, not an estimate of it.
-
-**These are not national demographic statistics**, and the Bureau prints that warning on both products. The racial composition of the people in this file is not the racial composition of the United States. The difference is the nine to ten percent of the census whose names could not be used.
-
-**Sex is not gender**, and two boxes are not a spectrum. The `r n(F("maj_wrong"))` people the majority rule gets wrong are people whose recorded sex differs from their name's majority; nothing here counts people for whom the recorded sex is itself the wrong answer.
-
-**And the names are edited names.** MICHAEL III is MICHAEL, PEÑA is PENA, middle names and suffixes are gone, and by the Bureau's own account as much as five percent of what is left is not a name at all. That editing is the right call for a frequency table. It is also the thing that makes this file a poor guide to what a *raw* name field looks like — which is what every chapter that matches records is actually working with.
+- `explore_first.csv` gives every common first name a `pct_female`. Sort by it and read the names nearest 50. What happens to those people when a file guesses sex from a name?
+- `explore_last.csv` has `pct_white` through `pct_hispanic` beside `people`. Sort by `pct_hispanic`, then by `people`. How many Americans do the strongest surnames cover?
+- `race_info.csv` reports `bits_before`, `bits_after` and `pct_of_uncertainty_removed` for both kinds of name. Compare the rows. Is either enough to act on alone?
+- `ssa_totals.csv` has `census_2020` beside `born_all` and `median_birth_year`. Pick a name once common and now rare, and say whether it is dying out or only ageing.
+- **Stretch.** The Social Security file publishes a table for every state. Fetch two and compare one name in both, which is the geography this file cannot give you.
 
 ## Sources
 
 **Data**
 
-- U.S. Census Bureau. *Frequently Occurring First Names in the 2020 Census*,
-  by sex and by race and Hispanic origin, together with the "WithNegatives"
-  research copies of both. Four spreadsheets, no key or account required.
+- U.S. Census Bureau. *Frequently Occurring First Names in the 2020 Census*, by
+  sex and by race and Hispanic origin, and *Frequently Occurring Last Names in
+  the 2020 Census*. Spreadsheets, no account required.
   <https://www.census.gov/topics/population/genealogy/data/2020_names.html>
-- U.S. Census Bureau. *Frequently Occurring Last Names in the 2020 Census*, by
-  race and Hispanic origin, from the same page. The
-  [surnames chapter](../surnames/surnames-brief.html) uses this spreadsheet
-  too and keeps its own copy; nothing here depends on that one.
-- Comenetz, Joshua. *First Name Data From the 2020 Census*. 2020 Census Briefs
+- Comenetz, Joshua. *First Name Data From the 2020 Census*, 2020 Census Briefs
   C2020BR-13, April 2026, and *Last Name Data From the 2020 Census*,
   C2020BR-14. Every statement above about editing, generic entries, the
-  question-mark substitution, the two-vintage threshold and the size of the
-  infused noise comes from these two documents.
+  question mark and the noise is theirs.
   <https://www2.census.gov/library/publications/decennial/2020/c2020br-13.pdf>
-  and `c2020br-14.pdf`. Disclosure Review Board approval CBDRB-FY26-058.
-- Social Security Administration. *Beyond the Top 1000 Names*, national data.
-  One plain text file for every year of birth from `r F("ssa_min")` to
-  `r F("ssa_max")`, three columns: name, sex, count. Everything in the
-  flow-and-stock section comes from here, and nothing else in the chapter does.
+- Social Security Administration. *Beyond the Top 1000 Names*, national data,
+  one file per year of birth, `r F("ssa_min")` to `r F("ssa_max")`.
   <https://www.ssa.gov/oact/babynames/limits.html>
-- National Center for Health Statistics. *Vital Statistics of the United
-  States*, historical birth registrations. Four years only, 1920 through 1950,
-  used as a yardstick for how much of each year the birth file caught.
-- Nothing else. Every other number in this chapter comes from the two census
-  tabulations and the Bureau's briefs on them. No voter file, survey or
-  registry is read, and the collision table is arithmetic on the published
-  counts rather than a count of matches in anybody's list.
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
+Every figure above is drawn from these tables. They are plain CSV, they open
+in a spreadsheet, and they are yours to take further.
 
-[`both_ways.csv`](data/derived/both_ways.csv), [`collision.csv`](data/derived/collision.csv), [`cover.csv`](data/derived/cover.csv), [`curve.csv`](data/derived/curve.csv), [`disagreement.csv`](data/derived/disagreement.csv), [`disagreement_top.csv`](data/derived/disagreement_top.csv), [`explore_first.csv`](data/derived/explore_first.csv), [`explore_last.csv`](data/derived/explore_last.csv), [`negatives.csv`](data/derived/negatives.csv), [`negatives_top.csv`](data/derived/negatives_top.csv), [`race_extremes.csv`](data/derived/race_extremes.csv), [`race_info.csv`](data/derived/race_info.csv), [`sex_bands.csv`](data/derived/sex_bands.csv), [`sex_scatter.csv`](data/derived/sex_scatter.csv), [`ssa_alexa.csv`](data/derived/ssa_alexa.csv), [`ssa_births.csv`](data/derived/ssa_births.csv), [`ssa_coverage.csv`](data/derived/ssa_coverage.csv), [`ssa_explore.csv`](data/derived/ssa_explore.csv), [`ssa_newcomers.csv`](data/derived/ssa_newcomers.csv), [`ssa_risers.csv`](data/derived/ssa_risers.csv), [`ssa_shock.csv`](data/derived/ssa_shock.csv), [`ssa_totals.csv`](data/derived/ssa_totals.csv), [`ssa_vs_census.csv`](data/derived/ssa_vs_census.csv), [`top25.csv`](data/derived/top25.csv), [`unisex.csv`](data/derived/unisex.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `explore_first.csv` gives every common first name a `pct_female` and a set of race shares. Sort by `pct_female` and find the names sitting near the middle. What happens to anyone who guesses sex from those names?
-- `race_info.csv` reports how much uncertainty a name actually removes, for first names and last names. Compare the two. Which half of a person's name tells you more, and is either enough to act on?
-- `negatives.csv` and `negatives_top.csv` show published counts that go below zero once the research copy is used. Find a name where the published figure and the research figure disagree. What was the Bureau protecting, and what did it cost you?
-- `ssa_totals.csv` has `census_2020` beside `born_all` and `pct_still_counted`. Pick a name that was once common and is now rare. Work out whether it is dying out or just ageing.
+[`both_ways.csv`](data/derived/both_ways.csv), [`collision.csv`](data/derived/collision.csv), [`cover.csv`](data/derived/cover.csv), [`curve.csv`](data/derived/curve.csv), [`disagreement_top.csv`](data/derived/disagreement_top.csv), [`explore_first.csv`](data/derived/explore_first.csv), [`explore_last.csv`](data/derived/explore_last.csv), [`race_extremes.csv`](data/derived/race_extremes.csv), [`race_info.csv`](data/derived/race_info.csv), [`ssa_alexa.csv`](data/derived/ssa_alexa.csv), [`ssa_totals.csv`](data/derived/ssa_totals.csv), [`top25.csv`](data/derived/top25.csv), [`unisex.csv`](data/derived/unisex.csv)
 
 **Related work**
 
-- Word, David L., Charles D. Coleman, Robert Nunziata and Robert Kominski
-  (2008). "Demographic Aspects of Surnames from Census 2000." U.S. Census
-  Bureau technical documentation — the methodology these products descend from.
-- Bertrand, Marianne and Sendhil Mullainathan (2004). "Are Emily and Greg More
-  Employable Than Lakisha and Jamal? A Field Experiment on Labor Market
-  Discrimination." *American Economic Review* 94(4): 991–1013 — the best-known
-  demonstration that a first name carries a signal somebody acts on.
-- Fryer, Roland G. and Steven D. Levitt (2004). "The Causes and Consequences of
-  Distinctively Black Names." *Quarterly Journal of Economics* 119(3): 767–805.
-- Elliott, Marc N. et al. (2009). "Using the Census Bureau's surname list to
-  improve estimates of race/ethnicity and associated disparities." *Health
-  Services and Outcomes Research Methodology* 9: 69–83 — the method the
-  [surnames](../surnames/surnames-brief.html) and
-  [BISG](../../06-putting-data-together/bisg-check/bisg-check-brief.html) chapters implement by hand.
-
-**How the figures were made**
-
-Every number above is computed at render time from the five spreadsheets, and none is typed into the prose. Two conventions are worth naming. The collision probabilities are computed over the **whole** population, residual line included, rather than over the published rows rescaled to themselves. Rescaling would drop the people with rare names, who are precisely the people least likely to collide, and would overstate every figure in the identification section. And every figure that carries a cut prints the coverage that cut buys, in the figure itself, so that a reader cannot mistake any of them for the whole table.
-
-There are three: `r n(F("explore_n"))` names in the lookup, `r n(F("sex_scatter_cut"))` bearers in the scatter, and `r n(F("birth_n"))` names in the birth curves.
-
-**Checks**
-
-```{r checks}
-```
-
-Each line is asserted before any of the tables above are written; a change in any source that moved one of these numbers would stop the document rather than change it quietly.
-
-```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
-
-```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
-```
+- Word, D. L., Coleman, C. D., Nunziata, R. and Kominski, R. (2008).
+  "Demographic Aspects of Surnames from Census 2000." U.S. Census Bureau
+  technical documentation, which these products descend from.
+- Elliott, M. N. et al. (2009). "Using the Census Bureau's surname list to
+  improve estimates of race/ethnicity." *Health Services and Outcomes Research
+  Methodology* 9: 69–83, the method the
+  [surnames](../../06-putting-data-together/surnames/surnames-brief.html) and
+  [BISG](../../06-putting-data-together/bisg-check/bisg-check-brief.html)
+  briefs implement by hand.
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

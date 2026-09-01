@@ -40,8 +40,8 @@ source("../../../_lib/precision.R")   # dd_write_csv(): six significant digits
 #       state canvasses. The presidential, Senate and House results in this
 #       chapter are all read out of it.
 #
-#   ../../data-sources/data/derived/pres2020_counties.csv
-#   ../../data-sources/data/derived/pres2024_counties.csv
+#   ../../../06-putting-data-together/data-sources/data/derived/pres2020_counties.csv
+#   ../../../06-putting-data-together/data-sources/data/derived/pres2024_counties.csv
 #       County presidential returns for both elections, from Tony McGovern's
 #       compilation. The data-sources chapter records how it was assembled; the
 #       county-returns chapter checks it against the fifty-one official state
@@ -72,8 +72,8 @@ source("../../../_lib/precision.R")   # dd_write_csv(): six significant digits
 # ---------------------------------------------------------------------------
 
 CLERK <- "../../house-competition/data/derived/clerk_2024.txt"
-C20   <- "../../data-sources/data/derived/pres2020_counties.csv"
-C24   <- "../../data-sources/data/derived/pres2024_counties.csv"
+C20   <- "../../../06-putting-data-together/data-sources/data/derived/pres2020_counties.csv"
+C24   <- "../../../06-putting-data-together/data-sources/data/derived/pres2024_counties.csv"
 PBCD  <- "../../house-competition/data/derived/pres_by_cd.csv"
 CHOUS <- "../../house-competition/data/derived/clerk_house.csv"
 BYYR  <- "../../house-competition/data/derived/by_year.csv"

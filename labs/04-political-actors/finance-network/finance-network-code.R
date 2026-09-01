@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -40,6 +41,26 @@ BIGC  <- fn("big_committees"); BIGA <- fn("big_attack")
 
 COMM <- "#54278F"; CAND <- "#2c7fb8"; OPP <- "#C41230"; SUP <- "#4d9221"
 GRY  <- "#8A8F94"; ACC <- "#1C4C5C"
+
+# ---- Figure 2: how many nodes sit at each degree ---------------------------
+# One frame, two series, rather than two panels: the claim is that both sides
+# of the graph have the same shape, and a shared pair of axes is the only way
+# to see that. Built once here so the screen figure and the printed twin are
+# reading the same rows.
+degtab <- function(v, nm, side) {
+  tb <- table(v)
+  data.frame(deg = as.numeric(names(tb)), n = as.integer(tb), side = side,
+             ex = vapply(as.integer(names(tb)), function(k)
+                    gsub("[\"<>]", "", paste(substr(head(nm[v == k], 3), 1, 34),
+                                             collapse = "; ")),
+                  character(1)),
+             stringsAsFactors = FALSE)
+}
+DEG <- rbind(degtab(cm$candidates, cm$name, "committees, by candidates spent on"),
+             degtab(cd$committees, cd$name, "candidates, by committees spending on them"))
+DEGC <- list("committees, by candidates spent on"         = "series-5",
+             "candidates, by committees spending on them" = "series-1")
+D1C  <- sum(cm$candidates == 1); D1D <- sum(cd$committees == 1)
 
 knit_print.data.frame <- function(x, ...) {
   nm <- names(x)
@@ -229,77 +250,42 @@ bar.append("span").attr("style","color:#76838C").text("drag a node");
 </script>'))
 
 ## ---- fig2-static
-op <- par(mfrow = c(1, 2), mar = c(4.0, 4.2, 2.4, 0.8), mgp = c(2.5, 0.7, 0))
-for (z in list(list(cm$candidates, COMM, "committees", "candidates it spent on"),
-               list(cd$committees, CAND, "candidates", "committees that spent on it"))) {
-  tb <- table(pmin(z[[1]], 60))
-  plot(as.numeric(names(tb)), as.numeric(tb), log = "xy", pch = 19, cex = 0.6,
-       col = z[[2]], axes = FALSE, xlab = "", ylab = "")
-  axis(1, cex.axis = 0.78, lwd = 0, lwd.ticks = 1)
-  axis(2, las = 1, cex.axis = 0.78, lwd = 0, lwd.ticks = 1)
-  mtext(z[[4]], 1, line = 2.3, cex = 0.8)
-  mtext(paste("number of", z[[3]]), 2, line = 2.6, cex = 0.8)
-  mtext(paste(z[[3]], "by degree"), 3, line = 0.8, cex = 0.86, font = 2, adj = 0)
+op <- par(mar = c(4.2, 4.4, 1.2, 0.8), mgp = c(2.6, 0.7, 0))
+plot(NA, xlim = range(DEG$deg), ylim = range(DEG$n), log = "xy",
+     axes = FALSE, xlab = "", ylab = "")
+for (z in list(list("committees, by candidates spent on", COMM),
+               list("candidates, by committees spending on them", CAND))) {
+  s <- DEG[DEG$side == z[[1]], ]
+  points(s$deg, s$n, pch = 19, cex = 0.6, col = z[[2]])
 }
+axis(1, cex.axis = 0.78, lwd = 0, lwd.ticks = 1)
+axis(2, las = 1, cex.axis = 0.78, lwd = 0, lwd.ticks = 1)
+mtext("connections a node has (log scale)", 1, line = 2.4, cex = 0.82)
+mtext("nodes with that many (log scale)", 2, line = 2.8, cex = 0.82)
+legend("topright", c("committees, by candidates spent on",
+                     "candidates, by committees spending on them"),
+       pch = 19, col = c(COMM, CAND), bty = "n", cex = 0.66)
 par(op)
 
 ## ---- fig2-d3
-# Degree on both sides of the graph, on log axes because the tail is the point.
+# Both sides of the graph in one frame, on log axes because the tail is the
+# point. Drawn with the shared chart library; d3 itself is already on the page,
+# loaded by the network figure above, so only dd-charts.js is emitted here.
 # Hovering names the committees or candidates that sit at a given degree, which
-# is the thing a bare power-law plot never tells you.
-mkdeg <- function(v, nm) {
-  tb <- table(v)
-  paste0('{d:', names(tb), ',n:', as.integer(tb), ',ex:"',
-         vapply(as.integer(names(tb)), function(k) {
-           z <- head(nm[v == k], 3)
-           gsub('"', "'", paste(substr(z, 1, 34), collapse = "; "), fixed = TRUE)
-         }, character(1)), '"}', collapse = ",")
-}
-cat(paste0('
-<div id="deg" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const A=[', mkdeg(cm$candidates, cm$name), '];
-const B=[', mkdeg(cd$committees, cd$name), '];
-const COMM="', COMM, '", CAND="', CAND, '";
-const W=770,H=380,PW=W/2,M={t:36,r:20,b:52,l:58};
-const box=d3.select("#deg");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;max-width:250px;'
-, 'box-shadow:0 1px 4px rgba(0,0,0,.14)");
-[[A,COMM,"committees","candidates it spent on"],
- [B,CAND,"candidates","committees that spent on it"]].forEach(function(P,pi){
-  const D=P[0], col=P[1], ox=pi*PW;
-  const g=svg.append("g").attr("transform","translate("+ox+",0)");
-  const x=d3.scaleLog().domain([1,d3.max(D,d=>d.d)*1.15]).range([M.l,PW-M.r]);
-  const y=d3.scaleLog().domain([0.8,d3.max(D,d=>d.n)*1.3]).range([H-M.b,M.t]);
-  g.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-   .call(d3.axisBottom(x).ticks(4,"~s"));
-  g.append("g").attr("transform","translate("+M.l+",0)")
-   .call(d3.axisLeft(y).ticks(4,"~s"));
-  g.append("text").attr("x",M.l).attr("y",20).attr("font-size","12px")
-   .attr("font-weight","700").text(P[2]+" by degree");
-  g.append("text").attr("x",(M.l+PW-M.r)/2).attr("y",H-14)
-   .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
-   .text(P[3]);
-  g.selectAll("circle").data(D).join("circle")
-   .attr("cx",d=>x(d.d)).attr("cy",d=>y(d.n)).attr("r",3.4)
-   .attr("fill",col).attr("fill-opacity",0.8)
-   .on("mousemove",function(e,d){
-     d3.select(this).attr("r",6);
-     const r=box.node().getBoundingClientRect();
-     tip.style("opacity",1).style("left",(e.clientX-r.left+14)+"px")
-        .style("top",(e.clientY-r.top-8)+"px")
-        .html("<b>"+d.n+" "+P[2]+"</b> with "+d.d+" connection"+(d.d===1?"":"s")+
-              "<br><span style=\\"color:#76838C\\">"+d.ex+"</span>");
-   })
-   .on("mouseleave",function(){d3.select(this).attr("r",3.4);tip.style("opacity",0);});
-});
-})();
-</script>'))
+# is the thing a bare degree plot never tells you.
+dd_fig("deg", "scatter", DEG,
+  size = list(w = 770, h = 400, m = list(t = 16, r = 24, b = 48, l = 62)),
+  x = list(field = "deg", label = "connections a node has (log scale)",
+           log = TRUE, domain = c(0.9, max(DEG$deg) * 1.2)),
+  y = list(field = "n", label = "nodes with that many (log scale)",
+           log = TRUE, domain = c(0.8, max(DEG$n) * 1.3)),
+  series = list(field = "side", classes = DEGC),
+  r = 3.6, opacity = 0.8, legend = TRUE,
+  tip = dd_js('function(d){
+    return "<b>"+d.n+" "+d.side.split(",")[0]+"</b> with "+d.deg+
+      " connection"+(d.deg===1?"":"s")+"<br>"+d.ex;
+  }'),
+  d3 = FALSE)
 
 ## ---- attack
 b <- cm[cm$total > 5e6, ]

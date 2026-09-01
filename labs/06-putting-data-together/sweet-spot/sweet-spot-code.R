@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -17,12 +18,7 @@ d   <- read.csv("data/derived/districts.csv",  stringsAsFactors = FALSE)
 mem <- read.csv("data/derived/members.csv",    stringsAsFactors = FALSE)
 bn  <- read.csv("data/derived/bins.csv",       stringsAsFactors = FALSE)
 lub <- read.csv("data/derived/lublin.csv",     stringsAsFactors = FALSE)
-sim <- read.csv("data/derived/simulation.csv", stringsAsFactors = FALSE)
 pk  <- read.csv("data/derived/sweetspot.csv",  stringsAsFactors = FALSE)
-fit <- read.csv("data/derived/fitted.csv",     stringsAsFactors = FALSE)
-sc  <- read.csv("data/derived/surname_check.csv", stringsAsFactors = FALSE)
-sg  <- read.csv("data/derived/surname_grade.csv", stringsAsFactors = FALSE)
-hyp <- read.csv("data/derived/surname_hyphen.csv", stringsAsFactors = FALSE)
 
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
@@ -58,20 +54,16 @@ FLIP <- FLIP[order(-FLIP$pop_black_low_pct), ]
 L3 <- lub[lub$table == 3 & lub$panel == "A" & lub$chamber == "U.S. House", ]
 L3 <- L3[order(match(L3$bin, LAB)), ]
 LUB_4050 <- sum(L3$n[L3$bin %in% c("40-45%", "45-50%")])
-LUB_SEN  <- lub[lub$table == 3 & lub$chamber == "State Senate" & lub$bin == "45-50%", ]
-LUB_SH   <- lub[lub$table == 3 & lub$chamber == "State House"  & lub$bin == "45-50%", ]
 
 NOW <- bn[bn$group == "Black" & bn$base == "total population", ]
 NOW <- NOW[order(match(NOW$bin, LAB)), ]
 NOW_4050  <- sum(NOW$n[NOW$bin %in% c("40-45%", "45-50%")])
 NOW_4050E <- sum(NOW$elected[NOW$bin %in% c("40-45%", "45-50%")])
 
-# ---- the simulation --------------------------------------------------------
+# ---- where the model puts the peak -----------------------------------------
+# One row per assumed Black Democratic share, at the authors' sigma. The brief
+# draws these as reference lines rather than redrawing the model itself.
 S03  <- pk[pk$sigma == 0.03, ]
-P30  <- pk[pk$BD == 0.30, ]
-P40  <- pk[pk$BD == 0.40, ]
-FIG1A <- P30[P30$sigma == 0.03, ]
-SIGMAS <- sort(unique(pk$sigma))
 
 # ---- the sweet spot, looked for ------------------------------------------
 band <- d[d$cvap_black_low_pct >= 30 & d$cvap_black_low_pct < 50, ]
@@ -81,8 +73,6 @@ sm <- glm(black ~ cvap_black_low_pct + rep_pct + I(rep_pct^2),
           family = binomial, data = d)
 SM <- summary(sm)$coefficients
 QP <- SM["I(rep_pct^2)", "Pr(>|z|)"]
-
-HALF <- function(m) 100 * fit$half[fit$model == m][1]
 
 # ---- render every data.frame in this document as a TABLE ------------------
 knit_print.data.frame <- function(x, ...) {
@@ -96,34 +86,6 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 
 PAL <- c(win = "#2c7fb8", lose = "#d9a441", warn = "#C41230",
          grey = "#8a8a8a", green = "#4d9221", purple = "#8856a7")
-
-## ---- raw
-# The page's markup stays markup: the point is WHERE the identifier sits, which
-# is a fact about the HTML and not a field in a record. `A000370` appears only
-# inside the photograph's filename.
-cat("```\n", paste(c(
-"history.house.gov/People/Search?filter=1        (Black Americans)",
-"",
-'  <div class="result grid_5 alpha">',
-'    <a href="/People/Detail/15032409256?current_search_qs=...">',
-'      <img alt="ADAMS, Alma" src=".../People/Listing/A/A000370.jpg" />',
-'      <span class="name">ADAMS, Alma</span>',
-"",
-"                                       A000370  <- the join key"),
-collapse = "\n"), "\n```\n", sep = "")
-
-## ---- raw-historian
-.h <- head(read.csv("data/raw/historian.csv", stringsAsFactors = FALSE,
-                    colClasses = "character"), 2)
-data.frame(
-  Column = names(.h),
-  What_it_holds = c(
-    "which of the Historian's two lists this member came from",
-    "the member's name, as the gallery prints it",
-    "the Bioguide ID, scraped out of the photograph's filename",
-    "the numeric ID in the member's detail-page URL"),
-  Row_1 = unname(unlist(.h[1, ])),
-  Row_2 = unname(unlist(.h[2, ])))
 
 ## ---- one-row
 o <- d[d$key == "SC-06", c("key", "name", "party", "pop_total",
@@ -145,185 +107,6 @@ data.frame(
                "Latino members elected as Republicans"),
   value = c(n(NDIST), n(nrow(mem)), n(NCHG), n(NBLACK), n(NHISP), n(NBOTH),
             n(nrow(BLK_R)), n(nrow(HSP_R))))
-
-## ---- sigma-static
-par(mfrow = c(1, 2), mar = c(4.3, 4.3, 2.6, 1.0))
-cols <- colorRampPalette(c("#cfe3f2", "#17527a"))(length(SIGMAS))
-for (bd in c(0.30, 0.40)) {
-  plot(NA, xlim = c(0, 60), ylim = c(0, 1.02), las = 1,
-       xlab = "Republicans in the electorate (%)",
-       ylab = if (bd == 0.30) "P(Black Democrat wins the seat)" else "")
-  rect(-5, -0.1, 65, 1.2, col = "#fafafa", border = NA)
-  for (i in seq_along(SIGMAS)) {
-    z <- sim[sim$BD == bd & sim$sigma == SIGMAS[i], ]
-    z <- z[order(z$R), ]
-    lines(100 * z$R, z$p, col = cols[i], lwd = if (SIGMAS[i] == 0.03) 3 else 1.8)
-  }
-  pp <- pk[pk$BD == bd, ]
-  points(100 * pp$peak_R, pp$peak_p, pch = 19, cex = 0.8, col = PAL["warn"])
-  lines(100 * pp$peak_R, pp$peak_p, col = PAL["warn"], lty = 3)
-  mtext(sprintf("BD = %d%%", round(100 * bd)), 3, line = 1.0, cex = 0.92)
-  mtext(sprintf("peak moves %.1f points across sigma",
-                100 * (max(pp$peak_R) - min(pp$peak_R))), 3, line = 0.1,
-        cex = 0.74, col = "#666")
-  if (bd == 0.30)
-    legend("topleft", legend = sprintf("%.3f", SIGMAS), col = cols, lwd = 2,
-           bty = "n", cex = 0.66, title = expression(sigma), title.adj = 0)
-}
-
-## ---- sigma-d3
-# ---------------------------------------------------------------------------
-# Seven curves per panel, and the chapter's whole complaint is that the peak
-# moves as sigma changes. On paper the reader has to trace one curve out of
-# seven overlapping ones. Here selecting a sigma isolates it in BOTH panels and
-# marks its peak, which turns "the sweet spot is not one place" from an
-# assertion into something you operate.
-#
-# This chunk carries the ONE d3 <script src> for the document.
-# ---------------------------------------------------------------------------
-BDS <- c(0.30, 0.40)
-Rv  <- sort(unique(sim$R))
-ser <- unlist(lapply(BDS, function(bd) vapply(SIGMAS, function(s) {
-  z <- sim[sim$BD == bd & sim$sigma == s, ]
-  z <- z[order(z$R), ]
-  paste0('{bd:', bd, ',s:', s, ',p:[',
-         paste(formatC(z$p, format = "f", digits = 4), collapse = ","), ']}')
-}, character(1))))
-pks <- vapply(seq_len(nrow(pk[pk$BD %in% BDS, ])), function(i) {
-  q <- pk[pk$BD %in% BDS, ][i, ]
-  paste0('{bd:', q$BD, ',s:', q$sigma, ',R:', q$peak_R, ',p:',
-         formatC(q$peak_p, format = "f", digits = 4), '}')
-}, character(1))
-cat(paste0('
-<div id="ssg" style="position:relative;margin:1em 0"></div>
-<script src="../../_lib/d3.v7.min.js"></script>
-<script>
-(function(){
-const S=[', paste(ser, collapse = ","), '];
-const PK=[', paste(pks, collapse = ","), '];
-const RV=[', paste(formatC(Rv, format = "f", digits = 4), collapse = ","), '];
-const SIG=[', paste(SIGMAS, collapse = ","), '];
-const BDS=[', paste(BDS, collapse = ","), '];
-const WARN="', PAL["warn"], '";
-const cols=d3.scaleLinear().domain([0,SIG.length-1])
-  .range(["#cfe3f2","#17527a"]);
-const W=770,H=400,PW=W/2,M={t:38,r:18,b:48,l:56};
-const box=d3.select("#ssg");
-const bar=box.append("div").attr("style","margin:0 0 6px;font:11.5px inherit");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-let sel=null;                     // null = show all seven
-const panels=BDS.map(function(bd,pi){
-  const ox=pi*PW;
-  const g=svg.append("g").attr("transform","translate("+ox+",0)");
-  const x=d3.scaleLinear().domain([0,60]).range([M.l,PW-M.r]);
-  const y=d3.scaleLinear().domain([0,1.02]).range([H-M.b,M.t]);
-  g.append("rect").attr("x",M.l).attr("y",M.t).attr("width",PW-M.r-M.l)
-   .attr("height",H-M.b-M.t).attr("fill","#fafafa");
-  g.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-   .call(d3.axisBottom(x).ticks(6));
-  g.append("g").attr("transform","translate("+M.l+",0)")
-   .call(d3.axisLeft(y).ticks(5));
-  g.append("text").attr("x",M.l).attr("y",20).attr("font-size","12px")
-   .attr("font-weight","700").text("BD = "+Math.round(100*bd)+"%");
-  g.append("text").attr("x",(M.l+PW-M.r)/2).attr("y",H-12)
-   .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
-   .text("Republicans in the electorate (%)");
-  if(pi===0) g.append("text").attr("transform","rotate(-90)")
-   .attr("x",-(M.t+(H-M.b))/2).attr("y",14).attr("text-anchor","middle")
-   .attr("font-size","11px").attr("fill","#4E5A63")
-   .text("P(Black Democrat wins the seat)");
-  const line=d3.line().x((v,i)=>x(100*RV[i])).y(v=>y(v));
-  const paths=SIG.map(function(s,si){
-    const rec=S.find(z=>z.bd===bd&&z.s===s);
-    return g.append("path").attr("fill","none").attr("stroke",cols(si))
-      .attr("stroke-width",s===0.03?3:1.8).attr("d",line(rec.p))
-      .attr("data-sigma",s);
-  });
-  const pp=PK.filter(z=>z.bd===bd).sort((a,b)=>a.s-b.s);
-  const peakLine=g.append("path").attr("fill","none").attr("stroke",WARN)
-    .attr("stroke-dasharray","2 3")
-    .attr("d",d3.line().x(z=>x(100*z.R)).y(z=>y(z.p))(pp));
-  const peakDots=g.selectAll("circle.pk").data(pp).join("circle")
-    .attr("class","pk").attr("cx",z=>x(100*z.R)).attr("cy",z=>y(z.p))
-    .attr("r",3.4).attr("fill",WARN);
-  g.append("rect").attr("x",M.l).attr("y",M.t).attr("width",PW-M.r-M.l)
-   .attr("height",H-M.b-M.t).attr("fill","transparent")
-   .on("mousemove",function(e){
-     const rr=x.invert(d3.pointer(e,this)[0]+M.l)/100;
-     let i=d3.bisectCenter(RV,rr); if(i<0)i=0; if(i>=RV.length)i=RV.length-1;
-     const shown=sel===null?SIG:[sel];
-     const rows=shown.map(function(s){
-       const rec=S.find(z=>z.bd===bd&&z.s===s);
-       const si=SIG.indexOf(s);
-       return "<span style=\\"color:"+cols(si)+"\\">&#9632;</span> \\u03c3="+
-         s.toFixed(3)+": "+rec.p[i].toFixed(3);
-     }).join("<br>");
-     const r=box.node().getBoundingClientRect();
-     tip.style("opacity",1)
-        .style("left",(e.clientX-r.left+14)+"px")
-        .style("top",(e.clientY-r.top-10)+"px")
-        .html("<b>BD = "+Math.round(100*bd)+"%</b><br>Republicans: "+
-              (100*RV[i]).toFixed(1)+"%<br>"+rows);
-   })
-   .on("mouseleave",function(){tip.style("opacity",0);});
-  return {paths:paths,peakLine:peakLine,peakDots:peakDots};
-});
-function draw(){
-  panels.forEach(function(P){
-    P.paths.forEach(function(p,si){
-      const on=sel===null||SIG[si]===sel;
-      p.attr("opacity",on?1:0.10)
-       .attr("stroke-width",SIG[si]===sel?3.4:(SIG[si]===0.03?3:1.8));
-    });
-    P.peakDots.attr("opacity",z=>sel===null||z.s===sel?1:0.15);
-    P.peakLine.attr("opacity",sel===null?1:0.2);
-  });
-  btns.style("background",s=>s===sel?"#1C4C5C":"#fff")
-      .style("color",s=>s===sel?"#fff":"#12181D")
-      .style("font-weight",s=>s===sel?"600":"400");
-  allb.style("background",sel===null?"#1C4C5C":"#fff")
-      .style("color",sel===null?"#fff":"#12181D")
-      .style("font-weight",sel===null?"600":"400");
-}
-bar.append("span").attr("style","margin-right:8px;color:#4E5A63")
-   .text("isolate \\u03c3:");
-const allb=bar.append("button")
-  .attr("style","margin:0 6px 4px 0;padding:3px 9px;border:1px solid #CBD3D8;'
-, 'border-radius:3px;cursor:pointer;font:11.5px inherit;background:#fff")
-  .text("all seven").on("click",function(){sel=null;draw();});
-const btns=bar.selectAll("button.s").data(SIG).join("button").attr("class","s")
-  .attr("style","margin:0 6px 4px 0;padding:3px 9px;border:1px solid #CBD3D8;'
-, 'border-radius:3px;cursor:pointer;font:11.5px inherit;background:#fff")
-  .text(s=>s.toFixed(3))
-  .on("click",function(e,s){sel=(sel===s?null:s);draw();});
-draw();
-})();
-</script>'))
-
-## ---- sigma-table
-o <- pk[pk$BD %in% c(0.30, 0.40), ]
-o <- data.frame(
-  BD = paste0(round(100 * o$BD), "%"),
-  sigma = sprintf("%.3f", o$sigma),
-  peak_at = paste0(pc(100 * o$peak_R), "%"),
-  peak_height = pc(o$peak_p, 3),
-  plateau_width = paste0(pc(100 * o$plateau_width, 1), " pts"))
-names(o) <- c("BD", "sigma", "Peak at R =", "Height of peak",
-              "Width of the near-flat top")
-o
-
-## ---- lublin-3a
-o <- data.frame(bin = as.character(L3$bin),
-                percent_black_elected = ifelse(is.na(L3$pct), "--",
-                                               paste0(pc(L3$pct), "%")),
-                number_of_cases = n(L3$n))
-names(o) <- c("Black share of district", "% electing a Black member (2015)",
-              "Number of districts")
-o
 
 ## ---- now-table
 o <- data.frame(bin = as.character(NOW$bin),
@@ -463,14 +246,6 @@ o <- data.frame(measure = unname(BASES), districts = n(MAJ))
 names(o) <- c("Measure of \"majority Black\"", "Districts over 50%")
 o
 
-## ---- flip-table
-o <- data.frame(district = FLIP$key, member = FLIP$name)
-for (b in names(BASES)) o[[b]] <- pc(FLIP[[b]])
-names(o) <- c("District", "Member", "Pop, alone", "Adults, alone",
-              "Cit. adults, alone", "Pop, any-part", "Adults, any-part",
-              "Cit. adults, any-part")
-o
-
 ## ---- flip-static
 par(mar = c(4.4, 6.4, 2.6, 8.0))
 y <- rev(seq_len(nrow(FLIP)))
@@ -497,6 +272,12 @@ mtext("every district that is majority-Black on some measure and not on others",
 # Six marks per district, distinguished on paper by six point shapes that a
 # reader has to decode against a legend. Here each mark says its own name, so
 # "which measure is the one over the line" is answerable without the legend.
+# Hand-written rather than dd_fig(): the filled/open pairing of two definitions
+# on one row, and a tooltip that reads all six measures at once, are the whole
+# figure, and the shared library's dot type carries neither.
+#
+# This chunk carries the ONE d3 <script src> for the document; the dd_fig()
+# scatter later passes d3 = FALSE and rides on it.
 BLAB <- unname(BASES)
 rows <- vapply(seq_len(nrow(FLIP)), function(i) {
   v <- as.numeric(FLIP[i, names(BASES)])
@@ -506,6 +287,7 @@ rows <- vapply(seq_len(nrow(FLIP)), function(i) {
 labs <- paste0('"', BLAB, '"', collapse = ",")
 cat(paste0('
 <div id="ssf" style="position:relative;margin:1em 0"></div>
+<script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const D=[', paste(rows, collapse = ","), '];
@@ -576,16 +358,6 @@ LAB.forEach(function(L,j){
 })();
 </script>'))
 
-## ---- halfway
-o <- data.frame(
-  model = c("Black, total population", "Black, citizen voting-age",
-            "Latino, total population", "Latino, citizen voting-age"),
-  half = paste0(pc(sapply(c("Black, total population", "Black, citizen voting-age",
-                            "Latino, total population", "Latino, citizen voting-age"),
-                          HALF)), "%"))
-names(o) <- c("Group and population base", "Share giving even odds")
-o
-
 ## ---- scatter-static
 par(mar = c(4.4, 4.6, 2.8, 1.2))
 plot(NA, xlim = c(0, 75), ylim = c(0, 80), las = 1,
@@ -615,97 +387,51 @@ mtext(sprintf("%d districts of the 118th Congress", NDIST), 3, line = 0.5,
       cex = 0.8, col = "#666")
 
 ## ---- scatter-d3
-# 435 points, and on paper each one is anonymous. The chapter argues from where
-# particular districts sit, so every point can name itself: district, member,
-# party, and both coordinates.
-esc <- function(z) gsub('"', "'", z, fixed = TRUE)
-rows <- paste0('{k:"', d$key, '",m:"', esc(d$name), '",p:"',
-               substr(d$party, 1, 1), '",b:', ifelse(d$black, 1, 0),
-               ',x:', formatC(d$cvap_black_low_pct, format = "f", digits = 2),
-               ',y:', formatC(d$rep_pct, format = "f", digits = 1), '}',
-               collapse = ",")
-peaks <- paste0('{bd:', S03$BD, ',R:', S03$peak_R, '}', collapse = ",")
-cat(paste0('
-<div id="ssc" style="position:relative;margin:1em 0"></div>
-<script>
-(function(){
-const D=[', rows, '];
-const PKS=[', peaks, '];
-const WIN="', PAL["win"], '", LOSE="', PAL["lose"], '", PUR="', PAL["purple"], '";
-const BAND_W=', formatC(BAND_W, format = "f", digits = 1),
-    ', BAND_L=', formatC(BAND_L, format = "f", digits = 1), ';
-const W=770,H=470,M={t:34,r:22,b:50,l:60};
-const box=d3.select("#ssc");
-const svg=box.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:12px inherit");
-const x=d3.scaleLinear().domain([0,75]).range([M.l,W-M.r]);
-const y=d3.scaleLinear().domain([0,80]).range([H-M.b,M.t]);
-svg.append("rect").attr("x",x(30)).attr("y",M.t)
-  .attr("width",x(50)-x(30)).attr("height",H-M.b-M.t).attr("fill","#f7f3ea");
-svg.append("text").attr("x",(x(30)+x(50))/2).attr("y",M.t-8)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#9c8348")
-  .text("30\\u201350% Black");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).ticks(8));
-svg.append("g").attr("transform","translate("+M.l+",0)")
-  .call(d3.axisLeft(y).ticks(6));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-12)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
-  .text("Black share of citizen voting-age population (%)");
-svg.append("text").attr("transform","rotate(-90)")
-  .attr("x",-(M.t+(H-M.b))/2).attr("y",15).attr("text-anchor","middle")
-  .attr("font-size","11px").attr("fill","#4E5A63")
-  .text("Trump share of the 2020 vote (%)");
-PKS.forEach(function(q){
-  svg.append("line").attr("x1",M.l).attr("x2",W-M.r)
-     .attr("y1",y(100*q.R)).attr("y2",y(100*q.R))
-     .attr("stroke",PUR).attr("stroke-width",1.4).attr("stroke-dasharray","4 4");
-});
-svg.append("text").attr("x",W-M.r-4).attr("y",y(100*d3.max(PKS,q=>q.R))-6)
-  .attr("text-anchor","end").attr("font-size","11px").attr("fill",PUR)
-  .text("the model\\u2019s sweet spot, one line per BD");
-[[BAND_W,WIN,"elected a Black member: median "],
- [BAND_L,LOSE,"did not: median "]].forEach(function(s){
-  svg.append("line").attr("x1",x(30)).attr("x2",x(50))
-     .attr("y1",y(s[0])).attr("y2",y(s[0]))
-     .attr("stroke",s[1]).attr("stroke-width",2.6);
-  svg.append("text").attr("x",x(50)+6).attr("y",y(s[0])+4)
-     .attr("font-size","10.5px").attr("fill",s[1]).text(s[2]+s[0].toFixed(1));
-});
-const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
-, 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
-, 'padding:6px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-svg.selectAll("circle.d").data(D).join("circle").attr("class","d")
-  .attr("cx",d=>x(d.x)).attr("cy",d=>y(d.y))
-  .attr("r",d=>d.b?4:2.6)
-  .attr("fill",d=>d.b?WIN:"none")
-  .attr("stroke",d=>d.b?WIN:LOSE).attr("stroke-width",1.2)
-  .on("mousemove",function(e,d){
-    d3.select(this).attr("r",d.b?6:5).raise();
-    const r=box.node().getBoundingClientRect();
-    tip.style("opacity",1)
-       .style("left",(e.clientX-r.left+14)+"px")
-       .style("top",(e.clientY-r.top-10)+"px")
-       .html("<b>"+d.k+"</b> \\u2014 "+d.m+" ("+d.p+")<br>"+
-         "Black CVAP: "+d.x.toFixed(1)+"%<br>Trump 2020: "+d.y.toFixed(1)+"%<br>"+
-         (d.b?"<span style=\\"color:"+WIN+"\\">elected a Black member</span>"
-             :"<span style=\\"color:"+LOSE+"\\">did not</span>"));
-  })
-  .on("mouseleave",function(e,d){
-    d3.select(this).attr("r",d.b?4:2.6);
-    tip.style("opacity",0);
-  });
-const leg=svg.append("g").attr("transform","translate("+(W-M.r-186)+","+(M.t+6)+")");
-[["elected a Black member",WIN,true],["did not",LOSE,false]].forEach(function(s,i){
-  leg.append("circle").attr("cx",6).attr("cy",i*17).attr("r",s[2]?4:2.6)
-     .attr("fill",s[2]?s[1]:"none").attr("stroke",s[1]).attr("stroke-width",1.2);
-  leg.append("text").attr("x",18).attr("y",i*17+4).attr("font-size","11px")
-     .attr("fill","#4E5A63").text(s[0]);
-});
-svg.append("text").attr("x",M.l).attr("y",20).attr("font-size","11px")
-  .attr("fill","#666").text("', NDIST, ' districts of the 118th Congress");
-})();
-</script>'))
+# The shared chart library draws this one: 435 points, two classes, a shaded
+# band and a handful of reference lines. d3 = FALSE because the flip figure
+# above already loaded d3.
+#
+# The model does not name a single sweet spot. It names one for each assumed
+# Black Democratic share, so there is one reference line per row of S03.
+sd <- d[, c("key", "name", "party", "cvap_black_low_pct", "rep_pct")]
+sd$elected <- ifelse(d$black, "elected a Black member", "did not")
+peaks <- lapply(S03$peak_R, function(r) list(type = "hline", y = 100 * r))
+dd_fig("ssc", "scatter", sd,
+  size = list(w = 760, h = 470),
+  x = list(field = "cvap_black_low_pct", domain = c(0, 75), fmt = "f0",
+           label = "Black share of citizen voting-age population (%)"),
+  y = list(field = "rep_pct", domain = c(0, 80), fmt = "f0",
+           label = "Trump share of the 2020 vote (%)"),
+  r = 4, opacity = 0.85,
+  series = list(field = "elected",
+                classes = list("elected a Black member" = "series-1",
+                               "did not" = "series-3")),
+  legend = TRUE,
+  annotations = c(
+    list(list(type = "band", axis = "x", from = 30, to = 50),
+         list(type = "text", x = 40, y = 78, anchor = "middle",
+              text = "30-50% Black")),
+    peaks,
+    list(list(type = "text", x = 74, y = 100 * max(S03$peak_R) + 3,
+              anchor = "end",
+              text = "the model's sweet spot, one line per assumed Black share"),
+         list(type = "rule", x1 = 30, x2 = 50, y1 = BAND_W, y2 = BAND_W),
+         list(type = "rule", x1 = 30, x2 = 50, y1 = BAND_L, y2 = BAND_L),
+         list(type = "text", x = 51, y = BAND_W, size = 10.5,
+              text = sprintf("elected a Black member: median %.1f", BAND_W)),
+         list(type = "text", x = 51, y = BAND_L, size = 10.5,
+              text = sprintf("did not: median %.1f", BAND_L)))),
+  tip = dd_tip(c(name = "member", party = "party",
+                 cvap_black_low_pct = "Black citizen adults",
+                 rep_pct = "Trump 2020", elected = "Historian"),
+               fmt = c(cvap_black_low_pct = "pct1", rep_pct = "pct1"),
+               title = "key"),
+  d3 = FALSE)
+cat(sprintf('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+%d districts of the 118th Congress. Hover a point for the district and its
+member.</p>
+', NDIST))
 
 ## ---- sweet-fit
 o <- data.frame(term = c("Black share of citizen voting-age population",
@@ -715,108 +441,6 @@ o <- data.frame(term = c("Black share of citizen voting-age population",
                 p = ifelse(SM[2:4, 4] < 0.001, "<0.001", pc(SM[2:4, 4], 3)))
 names(o) <- c("Term", "Estimate", "Std. error", "p")
 o
-
-## ---- republicans
-o <- BLK_R[order(-BLK_R$rep_pct), ]
-o <- data.frame(district = o$key, member = o$name,
-                share = pc(o$cvap_black_low_pct), trump = pc(o$rep_pct))
-names(o) <- c("District", "Member", "Black % of citizen adults", "Trump % 2020")
-o
-
-## ---- sn-match
-data.frame(
-  quantity = c("Seated members", "Matched on the whole surname",
-               "Matched only after splitting a hyphen or space",
-               "No entry in the surname file",
-               "Matched, but Black share suppressed",
-               "Matched, but Hispanic share suppressed"),
-  n = c(n(nrow(sc)), n(sum(sc$matched) - sum(grepl("[ -]", sc$last) & sc$matched)),
-        n(sum(grepl("[ -]", sc$last) & sc$matched)), n(sum(!sc$matched)),
-        n(sum(sc$matched & is.na(sc$pctblack))),
-        n(sum(sc$matched & is.na(sc$pcthispanic)))))
-
-## ---- sn-grade
-g <- sg[sg$threshold %in% c(25, 50, 75), ]
-data.frame(
-  group     = g$group,
-  cutoff    = paste0(g$threshold, "%"),
-  recovered = g$tp,
-  missed    = g$fn,
-  `false positives` = g$fp,
-  precision = pc(g$precision, 2),
-  check.names = FALSE)
-
-## ---- sn-top
-tp <- sc[sc$black & !is.na(sc$pctblack), c("last", "pctblack")]
-tp <- tp[order(-tp$pctblack), ][1:5, ]
-bt <- sc[sc$black & !is.na(sc$pctblack), c("last", "pctblack")]
-bt <- bt[order(bt$pctblack), ][1:5, ]
-data.frame(
-  `highest` = paste0(tp$last, " (", pc(tp$pctblack), "%)"),
-  `lowest`  = paste0(bt$last, " (", pc(bt$pctblack), "%)"),
-  check.names = FALSE)
-
-## ---- bisg-overall
-cal <- read.csv("data/derived/bisg_calibration.csv", stringsAsFactors = FALSE)
-bim <- read.csv("data/derived/bisg_members.csv",     stringsAsFactors = FALSE)
-data.frame(
-  labeller = c("District plurality only (ignores the name)",
-               "Surname only (ignores the district)",
-               "BISG (both)"),
-  accuracy = pc(c(mean(bim$geo == bim$truth), mean(bim$surname == bim$truth),
-                  mean(bim$bisg == bim$truth)), 3))
-
-## ---- bisg-cal
-data.frame(
-  `district Black share` = cal$stratum, districts = cal$districts,
-  geography = pc(cal$acc_geo, 2), surname = pc(cal$acc_surname, 2),
-  BISG = pc(cal$acc_bisg, 2),
-  `Black members` = cal$black_members,
-  `found by BISG` = cal$black_found_bisg,
-  check.names = FALSE)
-
-## ---- bisg-down
-dv <- read.csv("data/derived/bisg_downstream.csv", stringsAsFactors = FALSE)
-data.frame(`dependent variable` = dv$labels,
-           coefficient = pc(dv$coef, 3),
-           p = format.pval(dv$p, digits = 2),
-           check.names = FALSE)
-
-## ---- prov
-p <- read.csv("data/derived/checks.csv", stringsAsFactors = FALSE)
-p$ok <- ifelse(is.na(p$ok), "", ifelse(p$ok == "TRUE", "yes", "NO"))
-p$expected[is.na(p$expected)] <- ""
-names(p) <- c("Check", "Value", "Expected", "Passed")
-p
-
-## ---- on-mark
-# Labels drawn ON a mark, not on the page. brief.css lifts dark text fills for
-# the dark page; over a light bar or cell that would give near-white on
-# near-white, so these pin the ink tokens back to the values the figure was
-# drawn with. Listed per figure and per fill, because the same hex elsewhere in
-# the chapter IS on the page and does want lifting.
-# Sites found by _lib/check-contrast.js; re-run it after touching these figures.
-cat('<style>
-#ssc text[fill="#2c7fb8" i]
-  { --ink:#12181D; --ink-2:#4E5A63; --ink-3:#76838C;
-    --map-gop:#C41230; --map-dem:#2C7FB8; }
-</style>')
-
-## ---- on-mark-halo
-# A label the same colour as the line it labels, invisible at 1:1.
-# Recolouring would break the label-to-line link, so it gets a halo instead:
-# paint-order draws a --paper outline behind the glyph.
-# LIGHT PAGE ONLY: the on-mark chunk above pins this fill for the dark page,
-# so a --paper stroke there would sit dark behind a dark ink, and the checker
-# scores the fill against the stroke it touches.
-# Sites found by _lib/check-contrast.js --light.
-cat('<style>
-@media (prefers-color-scheme: light) {
-#ssc text[fill="#2c7fb8" i]
-  { paint-order:stroke; stroke:var(--paper); stroke-width:3px;
-    stroke-linejoin:round; }
-}
-</style>')
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
