@@ -1,7 +1,7 @@
 ---
-title: "Whole Foods vs. Cracker Barrel"
+title: "Testing a Famous Political Proxy: Whole Foods vs. Cracker Barrel"
 type: brief
-subtitle: "A famous proxy, rebuilt from scratch: the metric reproduces, and then does not survive being asked about people"
+subtitle: "The metric replicates to within a point, and then does not survive being asked about people"
 author: "Democracy's Data"
 date: "`r format(max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))), 'Last updated %e %B %Y')`"
 toc_depth: 3
@@ -16,180 +16,124 @@ dd_read_chunks("whole-foods-cracker-barrel-code.R")
 ```{r setup, include=FALSE}
 ```
 
-On a Saturday in September 2011, David Wasserman stood in the Cracker Barrel in Manassas, Virginia, and counted the pickup trucks in the parking lot. Then he drove twenty-six miles east to the Whole Foods in Clarendon and counted the Priuses. The column he wrote for the *Washington Post* proposed that the 2012 election would be fought between those two parking lots. It carried a number that has been quoted ever since:
+In September 2011 David Wasserman stood in the Cracker Barrel in Manassas, Virginia, then drove twenty-six miles east to the Whole Foods in Clarendon. The column he wrote for the *Washington Post* proposed that the coming election would be fought between those two parking lots. It carried a number quoted ever since:
 
 > In 2008, candidate Barack Obama carried 81 percent of counties with a Whole
 > Foods and just 36 percent of counties with a Cracker Barrel — a record
 > 45-point gap.
 
-Fifteen years later the metric is a fixture. It appears in election-night commentary, in explainers about the diploma divide, in a hundred versions of the same map. It is easy to state, easy to check, and it sounds like it is about culture.
+Fifteen years later the shorthand is a fixture of election-night commentary. It says you can read a county's politics off its grocery stores. Is that true? The question is worth your time because a stand-in like this one is how many people picture the political divide, and one that is wrong in a particular direction moves the picture with it.
 
-This chapter rebuilds it from nothing, with its own store list, its own returns and its own point-in-polygon, and asks two questions in order. **Does it replicate?** It does, closely. **Does it mean what it is used to mean?** That is a different question with a different answer.
+## The test
 
-## The half of this metric that is not a public fact
+Answering it takes three files joined together. Store locations for both chains, from OpenStreetMap on `r format(as.Date(FV("osm_base")), "%d %B %Y")`. County presidential returns for 2008 through 2024, from Tony McGovern's compilation. And the Census Bureau's county boundaries, populations and area, with a Department of Agriculture count of college-educated adults.
 
-The returns are the easy half. This book has already spent two chapters on where county presidential returns come from and what it costs to assemble them, and this build reads the same compilation the rest of Part II reads.
+The returns and census tables are the easy half. **The store list is the problem: neither company publishes where its stores are.** Cracker Barrel is a public company, so it files a count: `r FV("cb_10k_stores")` stores in `r FV("cb_10k_states")` states as of `r FV("cb_10k_asof")`. A count is not a list, and carries no addresses. Whole Foods has been an Amazon subsidiary since 2017 and files nothing about itself, so the number of its markets in the country is not a published figure at all.
 
-The store list is the problem. **Neither company publishes where its stores are.**
+So the inventory here is OpenStreetMap, queried for every United States object carrying the brand's Wikidata identifier: `r FV("n_wf_osm")` Whole Foods Markets and `r FV("n_cb_osm")` Cracker Barrels, mapped by volunteers. The independent half of a famous political metric is a crowd-sourced guess at a private fact.
 
-Cracker Barrel is a public company, so it files something. Its 2025 annual report says, in one sentence in Item 1:
+The join turns three files into one table. Each store is placed inside a county polygon, which hands it a five-digit county code, and that code is the column the returns and census tables also carry. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) states the rule this section keeps returning to, and explains the crosswalk, a table that translates one set of areas into another. A number built from two sources inherits the assumptions of both, and the join adds one about how they line up. Here that assumption is that a county code means the same ground in the store file and in every year's returns. It does not.
 
-> As of September 12, 2025, we operated `r FV("cb_10k_stores")` Cracker Barrel
-> stores in `r FV("cb_10k_states")` states.
+## The data
 
-That is a count. It is not a list, and it has no addresses in it. Whole Foods does not even produce the count: it has been a subsidiary of Amazon since 2017, it files no separate report, and Amazon's own filings do not break out store locations. The number of Whole Foods Markets in the United States is not a published figure. It is an estimate, and the firms that sell the estimate do not agree with each other.
+The build writes one row per county. `counties.csv` carries `has_wf` and `has_cb`, the four-way `cat` combining them, then `pop`, `land_sqmi`, `density`, `ba_pct`, and `win`, `dem`, `gop`, `total` per election. `gap.csv` reduces that to one row per election, with `wf_counties`, `cb_counties`, `wf_votes`, `cb_votes`, `gap_counties` and `gap_votes`. `categories.csv` reduces it the other way, one row per store category, with `county_share`, `vote_share`, `dem_counties_pct`, `dem_votes_pct`, `med_pop`, `med_density` and `med_ba`.
 
-```{r inventory}
-```
+Stores are matched on the brand's Wikidata identifier rather than on the name. Names are typed by hand by thousands of people, as *Whole Foods*, *Whole Foods Market* or *WholeFoods*, and a name match drops whichever spellings nobody anticipated.
 
-Both chains run a store locator, and both locators are JavaScript applications that a script cannot read. This is not a paywall or a permission problem; it is plumbing, and it is invisible. Four routes were tried on 13 August 2026:
+**Only one brand can be audited, which is itself a finding.** Against Cracker Barrel's own filing the volunteer map holds up: `r FV("n_cb_osm")` of `r FV("cb_10k_stores")` stores, `r FV("cb_coverage")`%. The state count does not. The map places Cracker Barrels in `r FV("cb_osm_states")` states and the company says `r FV("cb_10k_states")`, and the difference is one restaurant: Maine's only Cracker Barrel closed in January 2025 and is still mapped. Nothing equivalent can be done for Whole Foods, because there is no filing to check.
 
-```
-crackerbarrel.com/sitemap.xml       200   a sitemap with no location URLs in it
-crackerbarrel.com/api/store/search  404   whose body is a 220 KB web page
-locations.crackerbarrel.com/<any>   200   the same 267 KB shell for every path
-wholefoodsmarket.com/stores         200   an empty React container
-```
+Four cleaning decisions follow, and each changed a published number.
 
-Three of the four report success. The fourth reports failure and returns a perfectly valid web page anyway. A script that checked the status code would have accepted three of these and a script that checked whether it got HTML back would have accepted all four.
+**Connecticut is two different maps.** The state replaced its counties with nine planning regions; the 2024 returns use the new shapes and the four earlier elections the old ones. Uncorrected, this file showed no Whole Foods county in Connecticut until 2024, and there were four. Stores are now assigned twice, once per vintage.
 
-So the inventory used here is **OpenStreetMap** — every object in the United States tagged with the brand's Wikidata identifier, pulled through Overpass. That is a file maintained by volunteers. It is a real limitation, and it is also the point worth sitting with: *the input to a famous political metric is a crowd-sourced guess at a private fact.* It gives **`r FV("n_wf_osm")` Whole Foods Markets** and **`r FV("n_cb_osm")` Cracker Barrels**.
-
-The query matches on `brand:wikidata` rather than on the name. Names are typed by hand by thousands of people: *Whole Foods*, *Whole Foods Market*, *WholeFoods*, *Whole Foods Market 365*. A name match silently drops whichever spellings nobody anticipated.
-
-### Auditing the volunteers against the filing
-
-One of the two brands can be checked, and only one, which is itself the finding. Against Cracker Barrel's own 10-K the volunteer file holds up: **`r FV("n_cb_osm")` of `r FV("cb_10k_stores")` stores, `r FV("cb_coverage")`%.**
-
-The state count does not. OpenStreetMap places Cracker Barrels in **`r FV("cb_osm_states")` states** and the company says **`r FV("cb_10k_states")`**, so at least one store on the map is not a store. The discrepancy resolves to a specific restaurant. Maine's only Cracker Barrel, on Maine Mall Road in South Portland, **closed permanently in January 2025**, eight months before the filing date. It is still on the map today. Its OSM object is also the only one of the `r FV("cb_n_single_states")` single-store states carrying no `website` tag, which is the sort of tell that is obvious afterwards and invisible before.
-
-Nothing equivalent can be done for Whole Foods, because there is no filing to check it against. The commercial trackers in the table above span `r n(517)` to `r n(570)`, a spread of about ten percent, and none of them shows its work.
-
-## The metric replicates
-
-Before testing a number it is worth establishing that you can produce it. This build's store list was captured in **August 2026**; Wasserman's figures for 2020 were published in **December 2020**, from a store list five and a half years older. Recomputing his four categories with today's stores:
-
-```{r replicate}
-```
-
-**Every category lands within about a point.** The same holds going further back. For 2008 the op-ed reports **`r pc(anach$wf_published, 0)`% and `r pc(anach$cb_published, 0)`%**, a `r pc(anach$gap_published, 0)`-point gap, and this file recomputes `r pc(anach$wf_counties, 1)`% and `r pc(anach$cb_counties, 1)`%, a **`r pc(anach$gap_counties, 1)`-point gap** — a drift of `r FV("drift_gap_2008")` points across fifteen years of store openings and closings.
-
-That is a stronger result than it looks. It means the volunteer store list, the county assignment and the returns are all doing what they should, and it means **nothing that follows can be blamed on the data.** Whatever is wrong with this metric is not a measurement problem.
+**Washington is eight rows in 2024 and one before it.** The compilation reports the District by ward, and no boundary file contains wards, so its `r FV("dc_ward_rows")` Whole Foods are summed back into one row. **Shannon County, South Dakota, does not exist**: renamed Oglala Lakota in 2015 and given a new code, it leaves a naive panel carrying two rows for one place. **And Alaska has no counties at all**, reporting votes by State House district, so every share here is of fifty jurisdictions rather than fifty-one. Each of these fails quietly, because a missing match produces a zero and a zero is a valid store count.
 
 > **Before you read on, commit to two numbers.** In 2024 the Democratic
 > candidate carried some share of counties containing a Whole Foods and some
 > share of counties containing a Cracker Barrel. **How many percentage points
-> apart are those two shares?** Then the same question asked of *people* rather
-> than of counties: take every vote cast in Whole Foods counties and every vote
-> cast in Cracker Barrel counties, and compute the Democratic share of the
-> two-party vote in each. **How many points apart are those?** Write both down
-> before you turn the page.
+> apart are those two shares?** Now ask the same question of *people*: take
+> every vote cast in Whole Foods counties and every vote cast in Cracker
+> Barrel counties, and take the Democratic share of each. **How many points
+> apart are those?** Write both down.
 
-## Fifty points, or eleven
+## What it says about democracy
+
+Start with whether the metric can be reproduced. This store list was captured in `r format(as.Date(FV("osm_base")), "%B %Y")`; Wasserman's 2020 figures came from one five and a half years older. Recomputing his four categories:
+
+```{r replicate}
+```
+
+**Every category lands within about a point.** The same holds further back: for 2008 the column reports a `r pc(anach$gap_published, 0)`-point gap and this file recomputes `r pc(anach$gap_counties, 1)` points, a drift of `r FV("drift_gap_2008")` across fifteen years of openings and closings. **So nothing that follows can be blamed on the data.**
 
 ```{r headline}
 ```
 
-Measured the way the metric is always measured, **one county and one tally**, the divide is enormous and has grown: `r FV("gap08")` points in 2008, **`r FV("gap24")` points in 2024.**
+Measured the way the metric is always measured, one county and one tally, the divide is enormous and has grown: `r FV("gap08")` points in 2008 and `r FV("gap24")` in 2024. Measured in people, the same counties are `r FV("gap24v")` points apart, and that number has barely moved in sixteen years.
 
-Measured in people, the same two groups of counties are **`r FV("gap24v")` points apart**, and that number has barely moved in sixteen years.
-
-```{r gapfig-static, eval=!knitr::is_html_output(), fig.height=5.4}
+```{r gapfig-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
 
 ```{r gapfig-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The same metric on two units.** The top panel is the published version: the share of *counties* carried, which is what every retelling of this statistic reports. The bottom panel is the same counties, the same elections and the same store list, with the Democratic share of the *two-party vote* in place of the count of counties. The shaded band is the gap. It is the difference between the panels that this chapter is about.
+**Figure 1. The same metric on two units.** Both readings are drawn on one axis, because the claim under test is a distance, and a distance split across two panels is one the reader will not measure. The upper line is the published version, the share of *counties* carried. The lower line is the same counties, elections and stores, with the Democratic share of the two-party vote in place of the count of counties.
 
-## Why the two panels disagree
-
-Nothing has been done to the data between the panels. The disagreement comes from a fact about American counties that the metric's arithmetic quietly assumes away.
+Nothing was done to the data between the two lines. The disagreement comes from a fact about American counties the metric's arithmetic assumes away.
 
 ```{r cats}
 ```
 
-Read the third and fifth columns against each other.
+The first reason is a category. **The counties with neither store are `r FV("neither_county_pct")`% of all counties and `r pc(VS("neither"), 0)`% of all votes.** They are the largest block of the electorate and the most Republican group in the table, and the metric has no column for them. Whatever the gap measures, it measures on the `r pc(COVERED, 0)`% of counties where one of two companies opened.
 
-**The counties with neither store are `r FV("neither_county_pct")`% of all counties and `r pc(cats$vote_share[cats$category == "neither"], 0)`% of all votes.** They are the largest single block of the American electorate, they are the most Republican group in the table, and **the metric does not have a column for them.** Whatever the Whole Foods–Cracker Barrel gap is measuring, it is measuring it on the `r pc(100 - as.numeric(FV("neither_county_pct")), 0)`% of counties where one of two specific companies chose to open.
+The second reason is the definition. Wasserman's own rule is that a county with both stores counts in both columns, which is nearly harmless for `r FV("n_both")` counties out of `r n(FV("n_counties"))` when the unit is counties. It is not harmless when the unit is votes: those counties are the big metros, they cast `r pc(VS("both"), 0)`% of the national vote, and they appear at full weight on *both* sides of the subtraction. Take the overlap out and the exclusive categories are `r FV("excl_wf_votes")`% to `r FV("excl_cb_votes")`%, a `r FV("excl_gap_votes")`-point gap. That is a real and large difference, describing `r pc(EXCL_SHARE, 0)`% of the electorate rather than all of it.
 
-The second reason is the definition. Wasserman's own rule, stated explicitly when he published the four categories, is that **a county with both stores counts in both columns.** With `r FV("n_both")` such counties out of `r n(FV("n_counties"))`, that is nearly harmless when the unit is counties. It is not harmless when the unit is votes. Those `r FV("n_both")` counties are the big metros, and they cast `r pc(cats$vote_share[cats$category == "both"], 0)`% of the national vote. They appear at full weight on *both sides* of the subtraction.
-
-Take the overlap out and compare the exclusive categories: **`r FV("excl_wf_votes")`% to `r FV("excl_cb_votes")`%**, a `r FV("excl_gap_votes")`-point gap. That is a real and large difference. It is half the county figure, and it describes `r pc(cats$vote_share[cats$category == "whole foods only"] + cats$vote_share[cats$category == "cracker barrel only"], 0)`% of the electorate rather than all of it.
-
-```{r catfig-static, eval=!knitr::is_html_output(), fig.height=3.0}
+```{r catfig-static, eval=!knitr::is_html_output(), fig.height=3.2}
 ```
 
 ```{r catfig-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. Counties are not people.** The same four categories measured two ways. The dark block is the counties with neither store: about four-fifths of the counties, and about a third of the votes. Counties with only a Cracker Barrel are `r pc(cats$county_share[cats$category == "cracker barrel only"], 0)`% of counties and `r pc(cats$vote_share[cats$category == "cracker barrel only"], 0)`% of votes. Counties with only a Whole Foods are the reverse: `r pc(cats$county_share[cats$category == "whole foods only"], 0)`% of counties and `r pc(cats$vote_share[cats$category == "whole foods only"], 0)`% of votes.
+**Figure 2. Counties are not people.** Each category carries two shares, one of counties and one of votes, and the bar between them is the distance the metric ignores. Cracker Barrel counties are `r pc(CS("cracker barrel only"), 0)`% of counties and `r pc(VS("cracker barrel only"), 0)`% of votes; Whole Foods counties are the reverse.
 
-## Cracker Barrel country is not rural
+The folk reading of the metric is that Whole Foods stands for the urban professional and Cracker Barrel for rural America. The first half is right and the second is wrong. **A median Cracker Barrel county holds `r FV("med_pop_cb")` people; a median county with neither store holds `r FV("med_pop_neither")`.** Cracker Barrels sit on interstate exits outside regional towns, where the traffic is, so Cracker Barrel country is the middle of American county size rather than the bottom. Rural America is the `r n(FV("n_neither"))` counties with neither store, and it is the more Republican: the Democratic candidate carried `r pc(DC("neither"), 1)`% of them against `r pc(DC("cracker barrel only"), 1)`% of Cracker Barrel counties.
 
-The folk reading of the metric is that Whole Foods stands for the urban professional and Cracker Barrel for rural America. The first half is right. The second is wrong, and the file says so plainly.
-
-```{r medians}
-```
-
-**A median Cracker Barrel county has `r FV("med_pop_cb")` people in it.** A median county with neither store has `r FV("med_pop_neither")`. Cracker Barrels are not sited in the countryside; they are sited on interstate exits outside regional towns, which is where the traffic is. In the language of the metric, Cracker Barrel country is the *middle* of American county size, not the bottom.
-
-Rural America is the dark block in Figure 2, the `r n(FV("n_neither"))` counties with neither store, and it is more Republican than Cracker Barrel country is. The Democratic candidate carried `r pc(cats$dem_counties_pct[cats$category == "neither"], 1)`% of those counties, against `r pc(cats$dem_counties_pct[cats$category == "cracker barrel only"], 1)`% of Cracker Barrel counties. The chain that is supposed to symbolise the rural Republican vote marks counties that are *less* Republican than the ones it skipped.
-
-## Does the store tell you anything a census tract would not?
-
-The metric's appeal is that it feels like it is measuring culture — taste, identity, what people eat. A cheaper explanation is available: Whole Foods opens where there are dense, affluent, highly educated customers, and those are the people who vote Democratic. On that account the store is not a cultural signal at all. It is a demographic variable wearing a logo.
-
-The two accounts make different predictions, and they can be told apart. Take the `r FV("n_wf_counties")` counties selected by "has a Whole Foods". Then take the `r FV("n_wf_counties")` counties selected by rules that use no store data at all, matched to the same count, and ask the identical question of each.
+One question is left. The metric feels like a reading of culture, but a cheaper explanation is available: Whole Foods opens where there are dense, affluent, highly educated customers, and those are the people who vote Democratic. Take the `r FV("n_wf_counties")` counties selected by "has a Whole Foods", then the same number selected by rules using no store data, and ask each the identical question.
 
 ```{r alts}
 ```
 
-**On counties the store list wins by about two points.** On votes it loses: density and education both pick a set of counties whose electorate is *more* Democratic than the Whole Foods set. And the last column shows why the contest is so close — `r FV("overlap_dens_pct")`% of the densest `r FV("n_wf_counties")` counties have a Whole Foods in them. The store list is substantially a density list with a brand name on it.
+**On counties the store list wins by about two points. On votes it loses.** Density and education each pick a set of counties whose electorate is *more* Democratic than the Whole Foods set. The last column shows why the contest is close: `r FV("overlap_dens_pct")`% of the densest `r FV("n_wf_counties")` counties already contain a Whole Foods. The store list is substantially a density list with a brand name on it.
 
-This is exactly what the company said in 2011, when the *Post* asked. Cracker Barrel's spokeswoman told Wasserman that **"politics don't play any role in our site selection process."** She was telling the truth, and the truth is the problem: the stores are sited on traffic counts, rooftops and household income. That is *why* they line up with the vote, and it is why they add so little once you have the income and the rooftops.
+Cracker Barrel's spokeswoman told Wasserman in 2011 that "politics don't play any role in our site selection process." She was right, and that is the problem. The stores are sited on traffic counts, rooftops and household income, which is why they line up with the vote and why they add so little once you have the rooftops.
 
-## What had to be decided before any of this could be counted
+## What this brief cannot tell you
 
-Four things in this build are judgements rather than lookups, and each of them changed a published number.
+**It cannot tell you that the store list is complete.** It is a volunteer file audited against one company's filing and against nothing for the other. `r FV("cb_coverage")`% coverage is reassuring, but no guarantee that the missing `r MISSING_CB` are scattered at random. If volunteers map less thoroughly where fewer volunteers live, the gaps sit where the metric is most sensitive.
 
-**Connecticut is two different maps.** The state abolished its counties as statistical units and the census replaced them with nine planning regions. The 2024 returns are published on the new shapes and the four earlier elections on the old ones. Assigning stores against a single vintage put all `r FV("ct_stores")` Connecticut stores in units that four of the five elections have never heard of. It did so silently, because a failed join produces a zero, and a zero is a perfectly valid store count.
+**The matched-count test is a comparison, not a regression**, meaning not a best line drawn through a scatter of points. That density picks a similar set of counties does not prove the store adds nothing, only that whatever it adds is small.
 
-Uncorrected, this file reported that Connecticut contained no Whole Foods county until 2024. It contained four all along.
+**A store is not a shopper.** Every claim here is about counties containing a store, never about people who shop in one. Wasserman's headline was about shoppers; his data, like this data, was about county boundaries. This book makes that argument at length in [levels-of-aggregation](../../03-elections/levels-of-aggregation/levels-of-aggregation-brief.html).
 
-The assignment is now done twice, once per vintage, and `r FV("vintage_differ")` stores land in different units depending on which map you use. **All `r FV("vintage_differ")` are in Connecticut.**
+**And it says nothing about 2028.** Every figure here is retrospective, and the [bellwether](../../03-elections/bellwether/bellwether-brief.html) brief is the warning about pointing a county-level regularity at the future.
 
-**Washington is eight rows in 2024 and one row before it.** The compilation reports the District by ward from 2024 onward. Wards are not counties, the census publishes no county population for them, and no boundary file contains them. So all `r FV("dc_ward_rows") ` of the District's Whole Foods landed in the single county polygon, which the 2024 returns call Ward 1. Left alone, the capital would have entered this chapter as a 40,000-vote county that the Republican candidate nearly carried. The wards are summed back.
+## What you should have learned
 
-**Shannon County, South Dakota, does not exist.** It was renamed Oglala Lakota in 2015 and given a new FIPS code. The earlier file uses the old code and the later ones use the new, so a naive panel carries two rows for one place, each missing the other's elections.
+- The proxy replicates. Rebuilt from a volunteer store list captured fifteen years later, Wasserman's four 2020 categories land within about a point, and the 2008 gap drifts by `r FV("drift_gap_2008")` points.
+- The same metric gives `r FV("gap24")` points measured in counties carried and `r FV("gap24v")` measured in votes cast, from one file in one year.
+- Counties are not people. The `r n(FV("n_neither"))` counties with neither store are `r FV("neither_county_pct")`% of counties and `r pc(VS("neither"), 0)`% of votes, and the metric has no column for them.
+- Cracker Barrel country is not rural: its median county holds `r FV("med_pop_cb")` people against `r FV("med_pop_neither")` where there is no store at all.
+- A proxy is worth only what it adds to the ordinary numbers it stands for, and `r FV("overlap_dens_pct")`% of the densest `r FV("n_wf_counties")` counties already contain a Whole Foods.
 
-**Alaska has no counties at all.** It reports presidential votes by State House district, so there is no county-level return to carry, and every proportion in this chapter is of fifty jurisdictions rather than fifty-one. There are `r FV("stores_in_ak")` stores of either brand in Alaska, so nothing is lost except the denominator, the bottom number each share is divided by.
+## Extensions
 
-None of these is exotic. All four are the ordinary condition of joining two files that were built by different people for different purposes, and all four fail quietly.
+Each can be answered by sorting or grouping in a spreadsheet, and none is answered above.
 
-## What this chapter cannot tell you
+- `gap.csv` has `gap_counties` and `gap_votes` for each election. Follow both down the years. Which one is the metric usually quoted as, and which describes the electorate?
+- `categories.csv` gives `med_density`, `med_pop` and `med_ba` per category. Sort by `med_pop`. Is Cracker Barrel country actually rural, or only not urban?
+- `alternatives.csv` swaps in other rules for picking counties, with `overlap_wf_pct`. Find one that does about as well as the store list. What was the metric really measuring?
+- `inventory_check.csv` sets a company filing's `stores` beside `stores_osm` from the open map. Work out the discrepancy, and decide which source you would cite.
 
-**It cannot tell you that the store list is complete.** It is a volunteer file audited against one company's filing and nothing at all against the other's. `r FV("cb_coverage")`% coverage of Cracker Barrel is reassuring. It is not a guarantee that the missing `r as.integer(FN("cb_10k_stores") - FN("n_cb_osm"))` are scattered at random. If volunteers map less thoroughly where fewer volunteers live, the gaps are exactly where the metric is most sensitive.
-
-The chapter cannot rule that out. It can only report that the categories reproduce Wasserman's published figures to within a point, which would be a coincidence if the gaps were large.
-
-**The matched-count test is a comparison, not a regression**, meaning not a best line drawn through a scatter of points. Showing that density picks a similar set of counties does not establish that the store adds *nothing*. It establishes that whatever it adds is small, compared with the thing everybody already agrees it is standing in for. A proper decomposition would need other columns this file does not carry.
-
-**A store is not a shopper.** Every claim here is about counties containing a store, never about people who shop in one. Wasserman's headline was about shoppers, and his data, like this data, was about county boundaries. A county is not a customer base, and the two Whole Foods counties either side of a state line share a metro area. This book makes this argument at length in [levels-of-aggregation](../levels-of-aggregation/levels-of-aggregation-brief.html), and this chapter is another instance of it.
-
-**The returns are a compilation.** This build reads the same GitHub file the rest of Part II reads rather than the certified assembly, because one publisher across five elections keeps a source change from masquerading as a trend. On 2024 the two agree closely: `r n(FV("cert_matched"))` counties compared, `r FV("cert_win_diff")` disagreement about who carried the county and `r FV("cert_dem_diff")` about the Democratic vote. What that comparison does and does not settle is the subject of [county-returns](../county-returns/county-returns-brief.html).
-
-**And it says nothing about 2028.** Every figure here is retrospective. The [bellwether](../bellwether/bellwether-brief.html) chapter is the standing warning about what happens to a county-level regularity when somebody points it at the future.
-
-## What the metric is good for
-
-The Whole Foods–Cracker Barrel gap is not a fraud and it is not sloppy. It replicates to within a point on a store list assembled fifteen years after the column was written, which is more than most political statistics of its fame would survive. As a piece of arithmetic it is sound.
-
-What it is not is a measurement of the country. Read as intended, as *the two Americas are this far apart*, it does four things wrong at once.
-
-It inflates a `r FV("gap24v")`-point difference into a `r FV("gap24")`-point one, by counting counties instead of people. It double-counts the `r FV("n_both")` metropolitan counties that hold `r pc(cats$vote_share[cats$category == "both"], 0)`% of the vote, by putting them on both sides of the subtraction. It gives the rural Republican role to counties `r FV("pop_ratio_cb_neither")` times more populous than the actually rural ones. And it leaves `r pc(cats$vote_share[cats$category == "neither"], 0)`% of the electorate out of the frame entirely, in the one category it does not name.
-
-The habit worth taking from this is not scepticism about grocery stores. It is a question to ask of any stand-in: **what is it actually made of, and who had to publish it?** Here the answer is that one company files a number with the SEC and the other files nothing, while both hide the addresses. The list everybody uses is maintained by volunteers, who left a closed restaurant in Maine on the map for over a year. The metric survived all of that. The inference did not.
+Two go past the spreadsheet. Pick another chain with a political reputation and see whether it publishes addresses at all. Or rebuild the four categories in `counties.csv` on the 2020 returns, using `has_wf_2020` and `has_cb_2020`, and say which answer you would print.
 
 ## Sources
 
@@ -198,65 +142,43 @@ The habit worth taking from this is not scepticism about grocery stores. It is a
 - OpenStreetMap contributors. Store locations for Whole Foods Market
   (`brand:wikidata=Q1809448`) and Cracker Barrel (`brand:wikidata=Q4492609`),
   all United States objects, retrieved through the Overpass API on
-  `r format(as.Date(FV("osm_base")), "%d %B %Y")`. Licensed under the Open
-  Database Licence. The two query URLs, their retrieval dates and their content
-  hashes are recorded in this chapter's `PROVENANCE.tsv`; the responses
-  themselves are kept, because the same query does not return the same answer
-  twice. The API is open and needs no key.
+  `r format(as.Date(FV("osm_base")), "%d %B %Y")` under the Open Database
+  Licence. The responses are kept, because the same query does not return the
+  same answer twice.
   <https://overpass-api.de/api/interpreter> and <https://www.openstreetmap.org/>
 - Cracker Barrel Old Country Store, Inc. *Annual Report on Form 10-K for the
   fiscal year ended 1 August 2025.* Item 1, store and state counts as of
-  12 September 2025.
+  `r FV("cb_10k_asof")`.
   <https://investor.crackerbarrel.com/static-files/881c3ef3-0a78-4e60-9fc8-6d2a340bdbc8>
-- McGovern, Tony. *US County Level Presidential Results 2008–2024.*
-  <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>. Used for
-  all five elections, and checked for 2024 against the certified state returns
-  assembled in [county-returns](../county-returns/county-returns-brief.html).
-- U.S. Census Bureau. *2024 and 2020 Cartographic Boundary Files*, counties, for
-  the two geographies each election is published on; *2024 Gazetteer Files*,
-  counties, for land area; *Vintage 2024 Population Estimates*, counties.
+- McGovern, Tony. *US County Level Presidential Results 2008–2024*, used for
+  all five elections.
+  <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
+- U.S. Census Bureau. *2024 and 2020 Cartographic Boundary Files*, counties,
+  for the two geographies the elections use; *2024 Gazetteer Files* for land
+  area; *Vintage 2024 Population Estimates*.
   <https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_county_500k.zip>,
   <https://www2.census.gov/geo/tiger/GENZ2020/shp/cb_2020_us_county_500k.zip>,
   <https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2024_Gazetteer/2024_Gaz_counties_national.zip>
   and
   <https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/counties/totals/co-est2024-alldata.csv>
 - U.S. Department of Agriculture, Economic Research Service. *County-level Data
-  Sets: Education*, share of adults 25 and over with a bachelor's degree or
-  higher, 2018–22.
+  Sets: Education*, adults 25 and over with a degree, 2018–22.
   <https://ers.usda.gov/sites/default/files/_laserfiche/DataFiles/48747/Education.csv>
-- The 10-K's two figures and the published percentages transcribed from
-  Wasserman are the only numbers in this chapter typed in by hand.
+- Wasserman, David. "Will the 2012 election be a contest of Whole Foods vs.
+  Cracker Barrel shoppers?" *Washington Post*, 28 September 2011: the 2008
+  figures and the spokeswoman's remark. His four-category breakdown of 2020,
+  posted 8 December 2020, is the published column in the replication table.
+  <https://www.washingtonpost.com/opinions/will-the-2012-election-be-a-contest-of-whole-foods-vs-cracker-barrel-shoppers/2011/09/27/gIQAJdKA5K_story.html>
+- Hoey, Dennis. "Maine's only Cracker Barrel closes in South Portland."
+  *Portland Press Herald*, 21 January 2025, on the closure the map still
+  carries.
+  <https://www.pressherald.com/2025/01/21/maines-only-cracker-barrel-closes-in-south-portland/>
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
+The tables this brief rests on are plain CSV and open in a spreadsheet.
 
-[`alternatives.csv`](data/derived/alternatives.csv), [`anachronism.csv`](data/derived/anachronism.csv), [`categories.csv`](data/derived/categories.csv), [`gap.csv`](data/derived/gap.csv), [`inventory_check.csv`](data/derived/inventory_check.csv), [`published_2020.csv`](data/derived/published_2020.csv)
-
-**Your turn**
-
-None of these is answered above, and every one can be answered from the
-tables you just opened.
-
-- `gap.csv` has `gap_counties` and `gap_votes` for each year. The two tell different stories. Which one is the metric usually quoted as, and which describes the electorate?
-- `categories.csv` gives `med_density`, `med_pop` and `med_ba` for each category of county. Is Cracker Barrel country actually rural, or just not urban?
-- `alternatives.csv` swaps in other rules for classifying counties, with `overlap_wf_pct`. Find a rule that does about as well. What was the original metric really measuring?
-- `inventory_check.csv` compares the store count from a company filing against the count from the open map. Work out the discrepancy. Which source would you cite?
-
-**The journalism this chapter tests**
-
-- Wasserman, David. "Will the 2012 election be a contest of Whole Foods vs.
-  Cracker Barrel shoppers?" *Washington Post*, 28 September 2011. The source of
-  the 2008 figures and of the Cracker Barrel spokeswoman's remark.
-- Wasserman, David [@Redistrict]. Four-category breakdown of the 2020 result,
-  8 December 2020. The source of the published figures in the replication
-  table.
-
-**On the closed restaurant**
-
-- Hoey, Dennis. "Maine's only Cracker Barrel closes in South Portland."
-  *Portland Press Herald*, 21 January 2025.
+[`alternatives.csv`](data/derived/alternatives.csv), [`anachronism.csv`](data/derived/anachronism.csv), [`categories.csv`](data/derived/categories.csv), [`counties.csv`](data/derived/counties.csv), [`gap.csv`](data/derived/gap.csv), [`inventory_check.csv`](data/derived/inventory_check.csv), [`published_2020.csv`](data/derived/published_2020.csv), [`stores.csv`](data/derived/stores.csv)
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```
