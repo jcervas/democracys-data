@@ -54,7 +54,7 @@ sf_use_s2(FALSE)
 
 FETCH_DATE <- "2026-08-11"
 OUT <- "."
-DS  <- file.path("..", "..", "data-sources", "data")
+DS  <- file.path("..", "..", "..", "06-putting-data-together", "data-sources", "data")
 
 say <- function(...) cat(..., "\n", sep = "")
 FACTS <- list()

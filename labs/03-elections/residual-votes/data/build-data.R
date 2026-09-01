@@ -82,7 +82,7 @@ agg <- tapply(ballots[k], e$fips5[k], sum)
 eavs <- data.frame(fips = names(agg), ballots = as.vector(agg),
                    stringsAsFactors = FALSE)
 
-pres <- read.csv(file.path("..", "..", "data-sources", "data", "derived",
+pres <- read.csv(file.path("..", "..", "..", "06-putting-data-together", "data-sources", "data", "derived",
                            "pres2024_counties.csv"), stringsAsFactors = FALSE)
 pres$fips <- sprintf("%05d", as.integer(pres$county_fips))
 

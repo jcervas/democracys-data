@@ -103,7 +103,7 @@ cat("rows backfilled INTO the window it already covered:",
 # can join on it without hunting through other folders, and so the numbers
 # match exactly what they have already seen.
 
-src <- file.path("..", "..", "electoral-map", "data", "derived/pres2024_states.csv")
+src <- file.path("..", "..", "..", "03-elections", "electoral-map", "data", "derived/pres2024_states.csv")
 stopifnot(file.exists(src))
 st <- read.csv(src, stringsAsFactors = FALSE)
 stopifnot(nrow(st) == 51)
