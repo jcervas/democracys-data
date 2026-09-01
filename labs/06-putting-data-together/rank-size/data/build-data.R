@@ -33,9 +33,9 @@ options(scipen = 999, stringsAsFactors = FALSE)
 #   receipts        Federal Election Commission, weball candidate summary, via
 #                   ../../campaign-finance/data/derived/fec_candidates_2024.csv
 #   IE committees   Federal Election Commission, independent expenditures, via
-#                   ../../finance-network/data/derived/committees.csv
+#                   ../../../04-political-actors/finance-network/data/derived/committees.csv
 #   IE targets      the same FEC independent_expenditure file, by candidate, via
-#                   ../../finance-network/data/derived/candidates.csv
+#                   ../../../04-political-actors/finance-network/data/derived/candidates.csv
 #   pageviews       Wikimedia Foundation Pageviews API, English Wikipedia, via
 #                   ../../media-attention/data/derived/wiki_attention_2024.csv
 
@@ -60,11 +60,11 @@ SRC <- list(
        col = "ttl_receipts", who = function(d) d$cand_name,
        label = "Money a candidate raised", short = "Candidate receipts",
        what = "candidate", unit = "dollars", chapter = "campaign-finance"),
-  list(key = "committees", file = "../../finance-network/data/derived/committees.csv",
+  list(key = "committees", file = "../../../04-political-actors/finance-network/data/derived/committees.csv",
        col = "total", who = function(d) d$name,
        label = "Outside money a committee spent", short = "Outside spenders",
        what = "committee", unit = "dollars", chapter = "finance-network"),
-  list(key = "targets",   file = "../../finance-network/data/derived/candidates.csv",
+  list(key = "targets",   file = "../../../04-political-actors/finance-network/data/derived/candidates.csv",
        col = "total", who = function(d) d$name,
        label = "Outside money spent on a candidate", short = "Outside targets",
        what = "candidate", unit = "dollars", chapter = "finance-network"),
