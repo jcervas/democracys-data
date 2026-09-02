@@ -15,6 +15,10 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 options(scipen = 999)
 s <- read.csv("data/derived/strikes.csv", stringsAsFactors = FALSE)
 t <- read.csv("data/derived/trials.csv",  stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("flowers.csv", "strikes.csv", "trials.csv"))
 t$eligible <- t$black_eligible + t$white_eligible
 t$struck   <- t$black_struck   + t$white_struck
 t$p <- phyper(t$black_struck - 1, t$black_eligible, t$white_eligible,

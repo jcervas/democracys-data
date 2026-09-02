@@ -36,6 +36,41 @@ These two are the right instruments because they count the field itself. Every o
 
 ## The data
 
+Twenty-eight tables come out of this chapter, two files' worth of source: the
+2020 Census surname tables, and the Social Security Administration's name-by-year
+registrations back to 1880. Sizes are rows by columns, read off the files.
+
+| Table | What it holds | Size |
+|---|---|---|
+| [`top25.csv`](data/derived/top25.csv) | The most common first names and last names, ranked, with count and share. | `r dd_dim("top25.csv")` |
+| [`cover.csv`](data/derived/cover.csv) | What share of the country the top 10, top N first and last names cover. | `r dd_dim("cover.csv")` |
+| [`curve.csv`](data/derived/curve.csv) | The cumulative-share curve: rank against running percentage of the population, for first and last names. | `r dd_dim("curve.csv")` |
+| [`collision.csv`](data/derived/collision.csv) | Birthday-problem probabilities: how likely two people share a name, from the same counts. | `r dd_dim("collision.csv")` |
+| [`concentration.csv`](data/derived/concentration.csv) | How many names the file actually publishes against how many people that leaves in the unpublished residual, with information-theoretic bounds on what a name still reveals. | `r dd_dim("concentration.csv")` |
+| [`race_info.csv`](data/derived/race_info.csv) | How much a first or last name narrows down a person's race: bits of uncertainty removed, and how many names cross 90% modal accuracy. | `r dd_dim("race_info.csv")` |
+| [`race_extremes.csv`](data/derived/race_extremes.csv) | The single most race-concentrated first name and last name in each of the six published race/ethnicity groups. | `r dd_dim("race_extremes.csv")` |
+| [`explore_first.csv`](data/derived/explore_first.csv) | Every published first name with its full race and sex breakdown -- the table the name-lookup figure reads. | `r dd_dim("explore_first.csv")` |
+| [`explore_last.csv`](data/derived/explore_last.csv) | The same, for last names, without the sex columns the Bureau does not publish for surnames. | `r dd_dim("explore_last.csv")` |
+| [`both_ways.csv`](data/derived/both_ways.csv) | Names that are common as both a first name and a last name, with each count side by side. | `r dd_dim("both_ways.csv")` |
+| [`disagreement_top.csv`](data/derived/disagreement_top.csv) | The names whose count differs most between the Bureau's sex-by-name table and its race-by-name table -- two tables about the same names that do not perfectly agree. | `r dd_dim("disagreement_top.csv")` |
+| [`disagreement.csv`](data/derived/disagreement.csv) | That same sex-table-vs-race-table gap, as a distribution: how many names differ by how much. | `r dd_dim("disagreement.csv")` |
+| [`negatives.csv`](data/derived/negatives.csv) | How often the Bureau's privacy noise pushed a published cell below zero, by table -- the sign of the disclosure-avoidance system at work. | `r dd_dim("negatives.csv")` |
+| [`negatives_top.csv`](data/derived/negatives_top.csv) | The specific names hit hardest by a negative cell: published counts next to the Bureau's own noise-corrected research file. | `r dd_dim("negatives_top.csv")` |
+| [`unisex.csv`](data/derived/unisex.csv) | Names closest to an even sex split, ranked by how close to 50/50 they fall. | `r dd_dim("unisex.csv")` |
+| [`sex_bands.csv`](data/derived/sex_bands.csv) | How many names cross each threshold of sex skew -- the distribution unisex.csv is drawn from. | `r dd_dim("sex_bands.csv")` |
+| [`sex_scatter.csv`](data/derived/sex_scatter.csv) | One row per name: total people and percent female, the scatter the sex-balance figure plots. | `r dd_dim("sex_scatter.csv")` |
+| [`ssa_totals.csv`](data/derived/ssa_totals.csv) | Every name in the Social Security birth-registration file since 1880, against its 2020 census count and rank -- the table linking the two eras. | `r dd_dim("ssa_totals.csv")` |
+| [`ssa_alexa.csv`](data/derived/ssa_alexa.csv) | One name's (Alexa's) year-by-year SSA registrations, rank and cumulative births -- the worked example of a name's rise and fall. | `r dd_dim("ssa_alexa.csv")` |
+| [`ssa_births.csv`](data/derived/ssa_births.csv) | Total SSA-registered births by year and sex, back to 1880 -- the denominator every other SSA table is a share of. | `r dd_dim("ssa_births.csv")` |
+| [`ssa_coverage.csv`](data/derived/ssa_coverage.csv) | How completely SSA birth registration actually covers births, by year -- registered against the true count, where known. | `r dd_dim("ssa_coverage.csv")` |
+| [`ssa_explore.csv`](data/derived/ssa_explore.csv) | Every published name's year-by-year SSA count by sex -- the raw series the browser's name explorer reads. | `r dd_dim("ssa_explore.csv")` |
+| [`ssa_newcomers.csv`](data/derived/ssa_newcomers.csv) | Names with no SSA registrations before a given year: when they first appear, and how many people carry them since. | `r dd_dim("ssa_newcomers.csv")` |
+| [`ssa_risers.csv`](data/derived/ssa_risers.csv) | Names whose frequency has climbed most since an earlier peak, then and now, with the peak year. | `r dd_dim("ssa_risers.csv")` |
+| [`ssa_shock.csv`](data/derived/ssa_shock.csv) | Names whose SSA registrations spiked in a specific year, tied to the event that year is named for. | `r dd_dim("ssa_shock.csv")` |
+| [`ssa_vs_census.csv`](data/derived/ssa_vs_census.csv) | For a name, SSA births carried forward to 2020 against the actual 2020 census count -- how much of a birth cohort the census still finds. | `r dd_dim("ssa_vs_census.csv")` |
+| [`facts.csv`](data/derived/facts.csv) | Every scalar the brief quotes. | `r dd_dim("facts.csv")` |
+| [`checks.csv`](data/derived/checks.csv) | The arithmetic the build verified before anything here was drawn. | `r dd_dim("checks.csv")` |
+
 Each row of a census table is one name with a rank and a count. The first-name table adds `pct_female`; both add six shares, `pct_white`, `pct_black`, `pct_aian`, `pct_asian`, `pct_twoplus` and `pct_hispanic`. That is the whole record: no age, no state, no way to join a first name to a surname.
 
 ```{r sizes}
@@ -167,10 +202,9 @@ None is answered above, and every one can be answered from the tables below.
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they open
-in a spreadsheet, and they are yours to take further.
-
-[`both_ways.csv`](data/derived/both_ways.csv), [`collision.csv`](data/derived/collision.csv), [`cover.csv`](data/derived/cover.csv), [`curve.csv`](data/derived/curve.csv), [`disagreement_top.csv`](data/derived/disagreement_top.csv), [`explore_first.csv`](data/derived/explore_first.csv), [`explore_last.csv`](data/derived/explore_last.csv), [`race_extremes.csv`](data/derived/race_extremes.csv), [`race_info.csv`](data/derived/race_info.csv), [`ssa_alexa.csv`](data/derived/ssa_alexa.csv), [`ssa_totals.csv`](data/derived/ssa_totals.csv), [`top25.csv`](data/derived/top25.csv), [`unisex.csv`](data/derived/unisex.csv)
+All twenty-eight tables are described in [The data](#the-data) at the top of
+this brief. They are plain CSV, they open in a spreadsheet, and they are yours
+to take further: [`top25.csv`](data/derived/top25.csv), [`cover.csv`](data/derived/cover.csv), [`curve.csv`](data/derived/curve.csv), [`collision.csv`](data/derived/collision.csv), [`concentration.csv`](data/derived/concentration.csv), [`race_info.csv`](data/derived/race_info.csv), [`race_extremes.csv`](data/derived/race_extremes.csv), [`explore_first.csv`](data/derived/explore_first.csv), [`explore_last.csv`](data/derived/explore_last.csv), [`both_ways.csv`](data/derived/both_ways.csv), [`disagreement_top.csv`](data/derived/disagreement_top.csv), [`disagreement.csv`](data/derived/disagreement.csv), [`negatives.csv`](data/derived/negatives.csv), [`negatives_top.csv`](data/derived/negatives_top.csv), [`unisex.csv`](data/derived/unisex.csv), [`sex_bands.csv`](data/derived/sex_bands.csv), [`sex_scatter.csv`](data/derived/sex_scatter.csv), [`ssa_totals.csv`](data/derived/ssa_totals.csv), [`ssa_alexa.csv`](data/derived/ssa_alexa.csv), [`ssa_births.csv`](data/derived/ssa_births.csv), [`ssa_coverage.csv`](data/derived/ssa_coverage.csv), [`ssa_explore.csv`](data/derived/ssa_explore.csv), [`ssa_newcomers.csv`](data/derived/ssa_newcomers.csv), [`ssa_risers.csv`](data/derived/ssa_risers.csv), [`ssa_shock.csv`](data/derived/ssa_shock.csv), [`ssa_vs_census.csv`](data/derived/ssa_vs_census.csv), [`facts.csv`](data/derived/facts.csv), [`checks.csv`](data/derived/checks.csv).
 
 **Related work**
 

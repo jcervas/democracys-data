@@ -31,6 +31,10 @@ xl    <- rd("explore_last.csv");  S1 <- xl[xl$rank == 1, ]
 # flow-and-stock figure uses it.
 alx   <- rd("ssa_alexa.csv")
 
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears in derived/ without a line there.
+dd_derived(c("both_ways.csv", "checks.csv", "collision.csv", "concentration.csv", "cover.csv", "curve.csv", "disagreement.csv", "disagreement_top.csv", "explore_first.csv", "explore_last.csv", "facts.csv", "negatives.csv", "negatives_top.csv", "race_extremes.csv", "race_info.csv", "sex_bands.csv", "sex_scatter.csv", "ssa_alexa.csv", "ssa_births.csv", "ssa_coverage.csv", "ssa_explore.csv", "ssa_newcomers.csv", "ssa_risers.csv", "ssa_shock.csv", "ssa_totals.csv", "ssa_vs_census.csv", "top25.csv", "unisex.csv"))
+
 RI <- function(w, col) rinfo[[col]][rinfo$which == w]
 CL <- function(q) coll$one_in[coll$quantity == q]
 
