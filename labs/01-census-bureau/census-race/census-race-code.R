@@ -66,19 +66,9 @@ p2ok <- all(d$hispanic + d$not_hispanic == d$total)
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",")
 
-# The size of each derived table, for the hand-off table at the head of "The
-# data". The links there are written out literally, because check-sources.py
-# proves a chapter hands over its tables by reading the SOURCE rather than the
-# render -- a generated list would be invisible to it. The shapes are measured
-# here so the only part that could drift does not.
-DERIVED <- c("legacy_six_states.csv", "pl94171_counties.csv")
-# A file added to derived/ without a row in that table stops the build, so a
-# table cannot go quietly unreachable from the page.
-stopifnot(setequal(list.files("data/derived", pattern = "[.]csv$"), DERIVED))
-DIM <- function(f) {
-  x <- read.csv(file.path("data/derived", f), stringsAsFactors = FALSE)
-  paste0(n(nrow(x)), " \u00d7 ", ncol(x))
-}
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears here without a line there.
+dd_derived(c("legacy_six_states.csv", "pl94171_counties.csv"))
 
 # Counts under eleven are spelled out in prose, which is the book's habit and
 # the only way a sentence does not open on a numeral. Still computed, so a
