@@ -67,6 +67,10 @@ N <- N[order(N$district), paste0("share_new.", seats$election)]
 # every (old, new) district pair sharing population, from the 2020 census
 # block groups assigned into both plans by build-bg-overlap.R
 overlap <- read.csv("data/derived/tx_overlap_pop.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("district_shares.csv", "district_summary.csv", "facts.csv", "seats_by_election.csv", "tx_overlap_pop.csv"))
 # share of one 2021 district's people that the named 2025 district holds
 ovw <- function(o, n) {
   w <- overlap$weight[overlap$old == o & overlap$new == n]

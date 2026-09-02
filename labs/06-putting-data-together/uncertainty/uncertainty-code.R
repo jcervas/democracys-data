@@ -19,6 +19,10 @@ th <- read.csv("data/derived/thresh.csv",    stringsAsFactors = FALSE)
 cb <- read.csv("data/derived/calib.csv",     stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",     stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("by_decile.csv", "by_group.csv", "calib.csv", "facts.csv", "roc.csv", "thresh.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

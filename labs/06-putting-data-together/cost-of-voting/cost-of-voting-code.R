@@ -23,6 +23,10 @@ tr <- read.csv("data/derived/control_trend.csv",   stringsAsFactors = FALSE)
 cc <- read.csv("data/derived/control_check.csv",   stringsAsFactors = FALSE)
 fa <- read.csv("data/derived/facts.csv",           stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "control_check.csv", "control_panel.csv", "control_trend.csv", "covi_2024.csv", "covi_panel.csv", "facts.csv", "items_2024.csv", "rebuild_2024.csv", "reweight_2024.csv", "year_structure.csv"))
+
 fact <- function(k) fa$value[fa$key == k]
 pc   <- function(x, k = 2) formatC(as.numeric(x), format = "f", digits = k)
 n    <- function(x) format(round(as.numeric(x)), big.mark = ",")

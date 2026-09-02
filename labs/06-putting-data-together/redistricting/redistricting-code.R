@@ -15,6 +15,10 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 options(scipen = 999)
 cd <- read.csv("data/derived/pres_by_cd_2024.csv", stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("deviation.csv", "deviation_states.csv", "pres_by_cd_2024.csv", "seat_rings.csv", "seat_states.csv"))
+
 # ---- the three statistics ---------------------------------------------------
 # All three are computed here from one column, dem_share, so a reader can see
 # exactly what each of them is a function of. Sign convention, held to

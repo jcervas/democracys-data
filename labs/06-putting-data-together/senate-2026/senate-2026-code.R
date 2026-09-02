@@ -21,6 +21,10 @@ FACTS <- read.csv("data/derived/facts.csv",        stringsAsFactors = FALSE)
 CK    <- read.csv("data/derived/checks.csv",       stringsAsFactors = FALSE)
 FCS   <- read.csv("data/derived/forecasters.csv",   stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "class_ratings.csv", "facts.csv", "forecasters.csv", "races.csv", "ratings_long.csv", "seat_math.csv"))
+
 fx <- function(k) {
   v <- FACTS$value[FACTS$key == k]
   if (length(v) != 1L) stop("facts.csv has no single value for '", k, "'")

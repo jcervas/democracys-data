@@ -22,6 +22,10 @@ facts  <- read.csv("data/derived/facts.csv", stringsAsFactors = FALSE)
 fx <- function(k) facts$value[facts$key == k]
 who    <- read.csv("data/derived/who_draws.csv", stringsAsFactors = FALSE)
 whoS   <- read.csv("data/derived/who_draws_states.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("black_by_state.csv", "black_national.csv", "competitive_by_state.csv", "competitive_national.csv", "facts.csv", "who_draws.csv", "who_draws_states.csv"))
 WD <- function(k) who$states[who$who_draws_it == k]
 fxn <- function(k) as.numeric(fx(k))
 # one cell of black_by_state.csv, for walking a row through in the prose

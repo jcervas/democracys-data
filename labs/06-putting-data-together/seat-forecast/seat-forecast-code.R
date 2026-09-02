@@ -32,6 +32,10 @@ joint <- read.csv("data/derived/joint.csv")
 jcmp  <- read.csv("data/derived/joint_compare.csv")
 cloud <- read.csv("data/derived/joint_cloud.csv")
 
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears in derived/ without a line there.
+dd_derived(c("baseline.csv", "calibration.csv", "checks.csv", "curve.csv", "generic_ballot.csv", "joint.csv", "joint_cloud.csv", "joint_compare.csv", "joint_grid.csv", "models.csv", "redistricting.csv", "senate_calibration.csv", "senate_curve.csv", "senate_parse.csv", "senate_sd_by_year.csv", "senate_seats.csv", "senate_sim.csv", "sensitivity.csv", "sim_default.csv", "simulation.csv", "spread.csv"))
+
 avg     <- gb[gb$source == "Average", ]
 aggs    <- gb[gb$source != "Average", ]
 POLL_2P <- avg$two_party_dem

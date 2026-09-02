@@ -23,6 +23,10 @@ sg <- read.csv("data/derived/segregation.csv", stringsAsFactors = FALSE)
 bs <- read.csv("data/derived/block_shapes.csv", colClasses = c(id = "character"))
 ps <- read.csv("data/derived/plan_shapes.csv",  stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("adjacency.csv", "block_shapes.csv", "blocks.csv", "districts.csv", "ga_county_units.csv", "plan_shapes.csv", "seed_sweep.csv", "segregation.csv", "tradeoff.csv"))
+
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
 sv <- function(nm, col) d[[col]][match(nm, d$plan)]

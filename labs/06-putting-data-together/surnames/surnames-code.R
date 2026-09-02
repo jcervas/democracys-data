@@ -26,6 +26,10 @@ F20  <- function(k) f20$value[f20$key == k]
 co <- read.csv("data/derived/county_race.csv", stringsAsFactors = FALSE,
                colClasses = c(fips = "character"))
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("census_surnames.csv", "census_surnames_2010.csv", "county_race.csv", "surnames_2010_vs_2020.csv", "surnames_2020_facts.csv", "surnames_2020_negatives.csv", "surnames_2020_top100.csv", "surnames_vintage_facts.csv"))
+
 grp  <- c("pctwhite", "pctblack", "pctapi", "pctaian", "pct2prace", "pcthispanic")
 grp6 <- c("white", "black", "api", "aian", "twoplus", "hispanic")
 pretty6 <- c("white", "Black", "Asian/PI", "Am. Indian", "two or more",

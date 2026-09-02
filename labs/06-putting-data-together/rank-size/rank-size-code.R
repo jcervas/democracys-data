@@ -19,6 +19,10 @@ ft <- read.csv("data/derived/fits.csv",    stringsAsFactors = FALSE)
 zp <- read.csv("data/derived/zipf.csv",    stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",   stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("facts.csv", "fits.csv", "ranks.csv", "summary.csv", "zipf.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

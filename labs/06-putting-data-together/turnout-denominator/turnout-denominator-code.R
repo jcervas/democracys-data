@@ -21,6 +21,10 @@ tr <- read.csv("data/derived/state_trends.csv", stringsAsFactors = FALSE)
 pr <- read.csv("data/derived/pairs2024.csv",  stringsAsFactors = FALSE)
 ck <- read.csv("data/derived/checks.csv",     stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "mp1948.csv", "national.csv", "overlap.csv", "pairs2024.csv", "state_trends.csv", "states.csv"))
+
 cv <- function(k) ck$value[ck$check == k]
 n  <- function(x) format(round(x), big.mark = ",")
 f1 <- function(x) formatC(x, format = "f", digits = 1)
