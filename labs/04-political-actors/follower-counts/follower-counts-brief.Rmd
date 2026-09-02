@@ -26,7 +26,7 @@ Counting the audience turns out to be the hard half. Nobody publishes the number
 
 The counts here were read off the screen, one profile at a time, on `r FV("scan_date")`. Every one of the `r FV("n_members")` sitting members of Congress was looked for on `r FV("n_platforms")` platforms: X, Instagram and Bluesky. That comes to `r n(FV("n_rows"))` looks at a profile, misses included, and the reading is frozen at that date so the numbers in this text stay checkable.
 
-Why read profile pages, when so much else about Congress arrives as a file? There is no file. The House does not keep one and neither does the Senate. The platforms know each number exactly and either sell access to it or do not sell it at all. X prices the count behind an interface starting at $200 a month (<https://developer.x.com/en/products/x-api>), and Instagram offers no equivalent a reader could use. Bluesky answers a public request with an exact count and asks for no account and no key (<https://public.api.bsky.app>).
+Why read profile pages, when so much else about Congress arrives as a file? There is no file. The House does not keep one and neither does the Senate. The platforms know each number exactly and either sell access to it or do not sell it at all. X sells the exact count through its developer service: a subscription from $200 a month when these profiles were read, and by September 2026 a charge of about a cent for each profile looked up, either way behind a developer account;^[X Developer Platform, "Pricing," <https://docs.x.com/x-api/getting-started/pricing>. The product page cited when the profiles were read, <https://developer.x.com/en/products/x-api>, no longer resolved when last checked.] Instagram offers no equivalent a reader could use. Bluesky answers a public request with an exact count and asks for no account and no key (<https://public.api.bsky.app>).
 
 So the number is taken the way any member of the public gets it. You open the profile signed out, and you write down what is on the screen.
 
@@ -34,15 +34,17 @@ A follower count is a platform's own ledger, kept while the platform was doing s
 
 ## The data
 
-Deciding who counts as Congress comes first, and it is a decision a reader may argue with. The roster used here is unitedstates/congress-legislators (<https://unitedstates.github.io/congress-legislators/>), a list of sitting members kept by volunteers rather than by either chamber. Its Congress is `r FV("n_members")` people rather than 535, because it includes the `r FV("n_delegates")` delegates who sit and speak and vote in committee but not on the floor. Neither figure is wrong. What is wrong is not saying which one you used.
+Deciding who counts as Congress comes first, and it is a decision a reader may argue with. The roster used here is unitedstates/congress-legislators (<https://github.com/unitedstates/congress-legislators>), a list of sitting members kept by volunteers rather than by either chamber. Its Congress is `r FV("n_members")` people rather than 535, because it includes the `r FV("n_delegates")` delegates who sit and speak and vote in committee but not on the floor. Neither figure is wrong. What is wrong is not saying which one you used.
 
 Then the handles. You cannot ask a platform for the account belonging to the senator from Massachusetts. You can only ask about a handle, and no official body publishes the list. The same volunteer project keeps a crosswalk, a table that translates one list into another, here from a member to their accounts on X and Instagram. Bluesky is not in it at all, so those handles were guessed: take the member's name and put it under their own chamber's own domain, as in `schiff.senate.gov`.
 
-That guess has a property worth pausing on. A handle ending in `senate.gov` can only exist if somebody who controls `senate.gov` put it there, because the platform checks the claim against the domain's own records. A hit cannot be an impersonator. Search Bluesky by name instead and the top results for a well-known member include accounts whose own descriptions say *Parody* and *Satirical*.
+That guess has a property worth pausing on. A handle ending in `senate.gov` can only exist if somebody who controls `senate.gov` put it there, because the platform checks the claim against the domain's own records.^[Bluesky lets any web domain serve as an account's handle, and confirms the claim against a record the domain's owner must publish: "How to set your domain as your handle," Bluesky, 28 April 2023, <https://bsky.social/about/blog/4-28-2023-domain-handle-tutorial>.] A hit cannot be an impersonator, which is what **verified** means in this brief: verified by the chamber's own web administrators, not by the platform. Search Bluesky by name instead and the top results for a well-known member include accounts whose own descriptions say *Parody* and *Satirical*.
 
 Two cleaning decisions shape everything below. **Misses are recorded rather than dropped, and recorded by kind.** No handle known means the roster lists no account for that member. No account found means the member appears not to be on the platform. A third kind means the roster names a handle the platform does not have, which is a different failure from either.
 
 **The counts are kept in the form the platform gives them.** X prints `11.5M` rather than a number, and no amount of tidying turns the first into the second.
+
+Take one member with a count on all three. On `r FV("scan_date")` the row for `r EX$member` read `r EX$x` on X, `r EX$instagram` on Instagram and `r EX$bluesky` on Bluesky. The X figure is rounded, and stands for every exact count that rounds to it; the other two are exact. Open the same three profiles today and none of the three will match, because followers arrive and leave every hour, and neither reading is wrong. A count is a fact about a day. That is why the date is part of the number, and why the tables below describe `r FV("scan_date")` and are not refreshed.
 
 `all_members.csv` therefore carries `state`, `chamber`, `member` and `party`, then one column per platform: `x`, `instagram` and `bluesky`, each holding either a count or the named reason there is none. `coverage.csv` carries `platform`, `members`, `handle_on_file`, `count_read`, the three miss columns and `pct_covered`. `party_coverage.csv` splits that coverage by party, and `platform_leaders.csv` names the most-followed member each platform knows about.
 
@@ -61,9 +63,9 @@ Two cleaning decisions shape everything below. **Misses are recorded rather than
 ```{r dist-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. The twelve largest congressional accounts on Instagram, and the middle of the same column.** A ranked bar chart fits this question because the question is about shape: how far the top of a distribution stands above the ordinary case. The bottom bar is the median of the `r IG_N` members whose count was read, drawn on the same axis as the rest, and colour is the chamber the member sits in.
+**Figure 1. The twelve largest congressional accounts on Instagram, and the middle of the same column.** A ranked bar chart fits this question because the question is about shape: how far the top of a distribution stands above the ordinary case. The bottom bar is the median of the `r IG_N` members whose count was read, the member in the exact middle when all `r IG_N` are lined up by count, drawn on the same axis as the rest, and colour is the chamber the member sits in.
 
-**The ten largest accounts hold `r pc(TOP10)`% of all the followers in that column.** The bottom half of the same list holds `r pc(BOT50)`%. The largest single account belongs to `r TOPNAME`, with `r pc(RATIO, 0)` times as many followers as the median member. Measured the way economists measure income, the distribution scores `r pc(IG_GINI, 2)` on a scale where 0 would mean every member had the same audience and 1 that one member had all of it.
+**The ten largest accounts hold `r pc(TOP10)`% of all the followers in that column.** The bottom half of the same list holds `r pc(BOT50)`%. The largest single account belongs to `r TOPNAME`, with `r pc(RATIO, 0)` times as many followers as the median member. Measured the way economists measure income inequality, with the Gini coefficient, the distribution scores `r pc(IG_GINI, 2)` on a scale where 0 would mean every member had the same audience and 1 that one member had all of it.
 
 Now set that shape against the institution. Office is not irrelevant. Senators are `r pc(100 * sum(ig$chamber == "Senate") / IG_N)`% of the members counted and `r SEN_25` of the twenty-five largest accounts, and the median senator here has `r n(MED_SEN)` followers against `r n(MED_HSE)` for the median representative. The more powerful chamber does have the larger audiences.
 
@@ -115,7 +117,7 @@ Where there is no number, the reason is named rather than left blank, because a 
 
 **It cannot rank Congress by followers.** No platform here supports that sentence. Bluesky is missing a party, Instagram is missing about a quarter of the members, and the largest counts on X arrive as `11.5M`.
 
-**It cannot tell you these are constituents, or voters, or even people.** A follower is an account that clicked a button, possibly years ago, possibly from another country, possibly automated. Nothing here separates an engaged voter in the member's district from a dormant account in another hemisphere.
+**It cannot tell you these are constituents, or voters, or even people.** A follower is an account that clicked a button, possibly years ago, possibly from another country, possibly automated, a **bot**, an account run by software rather than by a person. Nothing here separates an engaged voter in the member's district from a dormant account in another hemisphere.
 
 **It cannot tell you anyone is reading.** A follower count measures an audience that accumulated, not one that showed up. Attention paid on a particular day is a different quantity, and it needs a different file.
 
@@ -145,18 +147,22 @@ Where there is no number, the reason is named rather than left blank, because a 
 
 **Data**
 
-**Follower counts.** Read from public profile pages on `r FV("scan_date")`, signed out, one profile at a time. That reading is frozen at that date and never re-fetched, so every table above can be rebuilt with no network at all.
+**Follower counts.** Read from public profile pages on `r FV("scan_date")`, signed out, one profile at a time. That reading is frozen at that date; the tables above describe that day and are not refreshed.
 
-- X — `https://x.com/<handle>`. Rounded counts only. The API that would give
-  exact counts is priced from $200 a month:
-  <https://developer.x.com/en/products/x-api>
+- X — `https://x.com/<handle>`. Rounded counts only. The developer service
+  that would give exact counts was priced from $200 a month when the profiles
+  were read: <https://developer.x.com/en/products/x-api>. That page no longer
+  resolved when last checked; the current price list is at
+  <https://docs.x.com/x-api/getting-started/pricing>.
 - Instagram — `https://www.instagram.com/<handle>/`. A rounded count on the
   screen, a fuller one carried in the page.
 - Bluesky — the free public interface at
   <https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles>. No key, no
   account. Exact counts.
 
-**Who is in Congress, and their handles.** unitedstates/congress-legislators, current members and the social-media crosswalk, retrieved `r FV("scan_date")`: <https://unitedstates.github.io/congress-legislators/legislators-current.csv> and the `legislators-social-media.json` beside it. Both are kept exactly as they arrived.
+**Who is in Congress, and their handles.** unitedstates/congress-legislators, current members and the social-media crosswalk, as published on `r FV("scan_date")`: <https://unitedstates.github.io/congress-legislators/legislators-current.csv> and the `legislators-social-media.json` beside it. The project's home page, <https://unitedstates.github.io/congress-legislators/>, no longer resolved when last checked; the project lives at <https://github.com/unitedstates/congress-legislators>. Both files are used as published.
+- Bluesky's domain handles, and why a `senate.gov` handle cannot be faked:
+  <https://bsky.social/about/blog/4-28-2023-domain-handle-tutorial>
 
 **The data itself**
 

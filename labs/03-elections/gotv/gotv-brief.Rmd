@@ -16,19 +16,19 @@ dd_read_chunks("gotv-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Before the 1998 election, two political scientists divided roughly thirty thousand registered New Haven voters into groups. Some were knocked on, some were telephoned, some were mailed, some were left alone. Afterwards they looked up in the public voter file who had actually turned out; nobody was asked, because the state already knew. Campaigns now spend fortunes on turnout, and that experiment's descendants put a price on what the money buys. **What does one additional vote actually cost?**
+Before the 1998 election, two political scientists divided roughly thirty thousand registered New Haven voters into groups. Some were knocked on, some were telephoned, some were mailed, some were left alone. Afterwards they looked up who had actually turned out in the public voter file, the state's own list of registered voters, which records whether each person voted and never how; nobody was asked, because the state already knew. Campaigns now spend fortunes on turnout, and that experiment's descendants put a price on what the money buys. **What does one additional vote actually cost?**
 
 ## The test
 
-The test is the field-experiment tradition that New Haven started. Gerber and Green (2000) found that door-to-door canvassing raised turnout substantially, direct mail slightly, and phone calls not at all, and hundreds of randomized experiments followed. Their design answers a question no filing or return can: tactics are assigned at random, so the difference between treated and untreated groups is an *effect*, not an association. The outcome is administrative rather than self-reported: turnout is looked up in the voter file, the record the [voter-file chapter](../voter-files-source/voter-files-source-brief.html) describes, so nobody has to be believed.
+The test is the field-experiment tradition that New Haven started; a field experiment is one run on real voters in a real election rather than in a laboratory. Gerber and Green (2000) found that door-to-door canvassing, a conversation on the voter's doorstep, raised turnout substantially, direct mail slightly, and phone calls not at all, and hundreds of randomized experiments followed.^[Alan S. Gerber and Donald P. Green, "The Effects of Canvassing, Telephone Calls, and Direct Mail on Voter Turnout: A Field Experiment," *American Political Science Review* 94, no. 3 (2000): 653–663, <https://doi.org/10.2307/2585837>.] Their design answers a question no filing or return can. Tactics are assigned at random — a coin toss, in effect, decides who is knocked on and who is left alone — so the two groups are alike in every other respect, and the difference in turnout between the treated group and the untreated one, the control group, is an *effect* of the tactic, not an association that something else might explain. The outcome is administrative rather than self-reported: turnout is looked up in the voter file, the record the [voter-file chapter](../voter-files-source/voter-files-source-brief.html) describes, so nobody has to be believed.
 
-What this brief reads is the tradition's own summary. Table 12-1 of Green and Gerber's *Get Out the Vote*, fifth edition, prints cost and effectiveness for the main tactics. Three appendices behind it pool 229 experiments, with a confidence interval on every pooled estimate. The compilers ran a large share of those experiments themselves, which is the best available reason to trust the judgment calls inside the table.
+What this brief reads is the tradition's own summary. Table 12-1 of Green and Gerber's *Get Out the Vote*, fifth edition, prints cost and effectiveness for the main tactics.^[Donald P. Green and Alan S. Gerber, *Get Out the Vote: How to Increase Voter Turnout*, 5th ed. (Brookings Institution Press, 2024), <https://www.brookings.edu/books/get-out-the-vote/>.] Three appendices behind it pool 229 experiments — combine their results into one estimate per tactic — with a confidence interval on every pooled estimate, the range within which the true effect plausibly lies given how many people were studied. The compilers ran a large share of those experiments themselves, which is the best available reason to trust the judgment calls inside the table.
 
 ## The data
 
 There is no raw file. The numbers exist in a printed book and nowhere else, so every value in `gotv_tactics.csv` was typed in by hand from the cited pages. A transcription fails differently from a download: once, silently, until somebody opens the book again. This file's audit found exactly that — volunteer phone calls cost `r d(cpv(VOL))` per vote in the book, and an earlier version carried $46 for four years.
 
-One row is a *tactic*, a category the compilers invented, averaging over experiments that differed in year, place, electorate and script. The columns are `tactic`, `unit`, `contacts_per_vote`, `cost_per_vote`, the book's `reliability` sentence, and an `effective` flag; from the appendices come `effect_pp` with `ci_low` and `ci_high`, and `n_studies`. Two columns are derived: `cost_per_contact` is `cost_per_vote` over `contacts_per_vote`, and `contacts_per_vote_pooled` is 100 over `effect_pp`. Here is the whole dataset — there is no sample:
+One row is a *tactic*, a category the compilers invented, averaging over experiments that differed in year, place, electorate and script. The columns are `tactic`, `unit`, `contacts_per_vote`, `cost_per_vote`, the book's `reliability` sentence, and an `effective` flag; from the appendices come `effect_pp`, the turnout effect in percentage points (the treated group's turnout rate minus the control group's), with `ci_low` and `ci_high` bracketing it, and `n_studies`, the number of experiments pooled. Two columns are derived: `cost_per_contact` is `cost_per_vote` over `contacts_per_vote`, and `contacts_per_vote_pooled` is 100 over `effect_pp`. Here is the whole dataset — there is no sample:
 
 ```{r whole-file}
 ```
@@ -38,9 +38,9 @@ And what the appendices supply for the rows they cover:
 ```{r whole-file-appendix}
 ```
 
-Four decisions shaped the file. **The ineffective tactics were kept**, because a cost-effectiveness table that quietly deletes the options that do not work has answered its own question before asking it. **`unit` was added**, because the book's footnote defines a "contact" differently for every row: a conversation for canvassing, a piece sent for mail, a number dialled for robocalls, a whole precinct for festivals. **The reliability prose was kept beside the boolean**, so the flattening from a sentence to `TRUE`/`FALSE` stays visible. And **one flag is a disagreement**: election festivals are marked `FALSE` here even though the book prints a price, because "results vary widely across seven studies" reports dispersion, not reliability. At `r d(cpv("Election festivals"))` a vote, festivals would otherwise be the cheapest row in the file, so a single reader's judgment about one sentence decides what the table says the cheapest vote is.
+Four decisions shaped the file. **The ineffective tactics were kept**, because a cost-effectiveness table that quietly deletes the options that do not work has answered its own question before asking it. **`unit` was added**, because the book's footnote defines a "contact" differently for every row: a conversation for canvassing, a piece sent for mail, a number dialled for robocalls, which play a recorded message, a whole precinct for festivals. **The reliability prose was kept beside the yes-or-no flag**, so the flattening from a sentence to `TRUE`/`FALSE` stays visible. And **one flag is a disagreement**: election festivals are marked `FALSE` here even though the book prints a price, because "results vary widely across seven studies" reports dispersion, not reliability. At `r d(cpv("Election festivals"))` a vote, festivals would otherwise be the cheapest row in the file, so a single reader's judgment about one sentence decides what the table says the cheapest vote is.
 
-The intervals deserve their own sentence, because the book publishes them and its own summary table drops them. `r cnt(CAN)` contacts per vote arrives in Table 12-1 as a bare integer. Seventeen pages later, appendix A gives 59 canvassing experiments and a pooled effect of 4.0 points, with a 95 percent interval of 2.8 to 5.2. The doubt was never unavailable. It was dropped at the summary step, which is where doubt usually goes missing, so this file carries the appendix columns alongside the printed ones.
+The intervals deserve their own sentence, because the book publishes them and its own summary table drops them. `r cnt(CAN)` contacts per vote arrives in Table 12-1 as a bare integer. Seventeen pages later, appendix A gives `r nst(CAN)` canvassing experiments and a pooled effect of `r pc(eff(CAN))` points, with a 95 percent interval of `r pc(cil(CAN))` to `r pc(cih(CAN))`. The doubt was never unavailable. It was dropped at the summary step, which is where doubt usually goes missing, so this file carries the appendix columns alongside the printed ones.
 
 > **Before you read on, commit to two numbers.** One doorstep conversation is
 > the most persuasive contact anyone has measured. **How many such
@@ -51,6 +51,8 @@ The intervals deserve their own sentence, because the book publishes them and it
 ## What it says about democracy
 
 Read the first row of the table precisely, because almost everyone reads it wrong. One additional vote per `r cnt(CAN)` conversations does not mean one of the `r cnt(CAN)` was persuaded to vote; most were going to vote anyway. It means turnout among people spoken to at the door was higher by one vote per `r cnt(CAN)` **than in an identical group left alone**. The number is a difference between randomized groups, and it exists only because somebody randomized.
+
+Follow the arithmetic once. Suppose `r BASE`% of the people left alone turned out to vote. The appendix's pooled estimate for canvassing is `r pc(eff(CAN))` percentage points, so among the people spoken to at the door, turnout was `r pc(BASE + eff(CAN))`%. Subtract, and there are `r pc(eff(CAN))` extra voters for every hundred people contacted, which is one extra vote for every `r n(cpvp(CAN))` conversations — the figure the file's `contacts_per_vote_pooled` column carries. Table 12-1 prints `r cnt(CAN)` instead. The printed summary and the appendix behind it do not agree, and the file carries both so that the gap stays visible.
 
 Now give the table a budget of `r d(BUDGET)` and let it spend:
 
@@ -68,21 +70,21 @@ Now give the table a budget of `r d(BUDGET)` and let it spend:
 ```{r slope-static, eval=!knitr::is_html_output(), fig.height=4.2}
 ```
 
-**Figure 1. The same `r nrow(ec)` tactics, ranked three ways, and no two orders agree.** A slope chart fits this question because the finding *is* the crossing of the lines: between the first two columns every line crosses every other, a rank correlation of exactly `r pc(cor(ec$contacts_per_vote, ec$cost_per_contact, method = "spearman"), 0)`. The most persuasive contact is reliably the most expensive one to obtain, and the third column, cost per vote, is the one a campaign actually spends against.
+**Figure 1. The same `r nrow(ec)` tactics, ranked three ways, and no two orders agree.** A slope chart fits this question because the finding *is* the crossing of the lines: between the first two columns every line crosses every other, a rank correlation — a measure of whether two orderings agree, +1 when they are identical and −1 when one is the other reversed — of exactly `r pc(cor(ec$contacts_per_vote, ec$cost_per_contact, method = "spearman"), 0)`. The most persuasive contact is reliably the most expensive one to obtain, and the third column, cost per vote, is the one a campaign actually spends against.
 
 The blank cells are a finding of their own:
 
 ```{r ineffective}
 ```
 
-**`r nrow(x)` of `r nrow(g)` tactics have no measurable turnout effect, and most of what arrives in an October mailbox is on the list.** Look at the last two columns, though: these are not missing data. The experiments were run, and they produced small positive estimates whose intervals include zero. Advocacy mail is 0.085 points with an interval from −0.065 to 0.235, which is a much more specific statement than "it does not work." A student who dropped the incomplete rows would delete exactly the findings most likely to change how a campaign spends.
+**`r nrow(x)` of `r nrow(g)` tactics have no measurable turnout effect, and most of what arrives in an October mailbox is on the list.** Look at the last two columns, though: these are not missing data. The experiments were run, and they produced small positive estimates whose intervals include zero: the true effect could be nothing at all or slightly positive, and the experiments cannot say which. Mail from a campaign is `r pc(eff(MAIL), 3)` points with an interval from `r pc(cil(MAIL), 3)` to `r pc(cih(MAIL), 3)`, which is a much more specific statement than "it does not work." A student who dropped the incomplete rows would delete exactly the findings most likely to change how a campaign spends.
 
 One row shows the source contradicting itself, which matters because a compilation has no custodian to ask:
 
 ```{r robo-fork}
 ```
 
-Table 12-1's robocall entry says "without social pressure messages" and prints the contacts-per-vote implied by the estimate that *includes* them. Follow the caption's own scope and the effect drops to 0.143 points, the interval contains zero, and the price rises above commercial telemarketing. If a census table contradicted its appendix you could file a query and get an erratum; here the only remedy is to notice, write it down, and carry both rows, which the file does.
+Table 12-1's robocall entry says "without social pressure messages" — a social-pressure message tells the recipient that whether they vote is a matter of public record^[The tactic's founding experiment used mail rather than the telephone: Alan S. Gerber, Donald P. Green and Christopher W. Larimer, "Social Pressure and Voter Turnout: Evidence from a Large-Scale Field Experiment," *American Political Science Review* 102, no. 1 (2008): 33–48, <https://doi.org/10.1017/S000305540808009X>.] — and prints the contacts-per-vote implied by the estimate that *includes* them. Follow the caption's own scope and the effect drops to `r pc(eff(ROBOX), 3)` points, the interval contains zero, and the price rises above commercial telemarketing. If a census table contradicted its appendix you could file a query and get an erratum; here the only remedy is to notice, write it down, and carry both rows, which the file does.
 
 And the cheapest rate in the table is not a price at all. The `r d(cpv(VOL))` volunteer-phone figure prices the phones and the list; the labor is volunteers, and **you cannot buy a volunteer**. Model it instead as a capacity: so many volunteer hours, at `r CALLS` conversations an hour, with the rest of the budget spent on canvassing. The advertised rate becomes a ceiling:
 
@@ -103,11 +105,11 @@ Below that crossover, which is where essentially every real campaign sits, fifty
 
 **What a vote would cost your campaign, this year, in your state.** The rows carry no dates, no places and no dollar-year; wages, postage and phone charges have all moved since the experiments ran.
 
-**Whether the compilation is complete.** A literature has no sampling frame, and this one has measured publication bias in itself. Gerber, Green and Nickerson (2001) showed that published mobilization effects shrink as sample size grows, the signature of missing null results. The appendices reach for unpublished work deliberately, but the reach cannot be audited from inside the file.
+**Whether the compilation is complete.** A literature has no sampling frame — no list of every experiment ever run, against which the compilers could check what they missed — and this one has measured publication bias in itself, the tendency for studies that find nothing to go unpublished. Gerber, Green and Nickerson (2001) showed that published mobilization effects shrink as sample size grows, the signature of missing null results.^[Alan S. Gerber, Donald P. Green and David Nickerson, "Testing for Publication Bias in Political Science," *Political Analysis* 9, no. 4 (2001): 385–392, <https://doi.org/10.1093/oxfordjournals.pan.a004877>.] The appendices reach for unpublished work deliberately, but the reach cannot be audited from inside the file.
 
-**Whether any of this persuades.** Every number is a turnout effect. Kalla and Broockman (2018), pooling 49 field experiments, put the average persuasive effect of campaign contact in general elections near zero. So the blank-cell tactics may still be rational purchases for fundraising or list-building, just not for turnout.
+**Whether any of this persuades.** Every number is a turnout effect. Kalla and Broockman (2018), pooling 49 field experiments, put the average persuasive effect of campaign contact in general elections near zero.^[Joshua L. Kalla and David E. Broockman, "The Minimal Persuasive Effects of Campaign Contact in General Elections: Evidence from 49 Field Experiments," *American Political Science Review* 112, no. 1 (2018): 148–166, <https://doi.org/10.1017/S0003055417000363>.] So the blank-cell tactics may still be rational purchases for fundraising or list-building, just not for turnout.
 
-**Whether trial effects survive at industrial scale.** Enos and Fowler (2018) estimate that the full weight of two presidential campaigns raised turnout 7 to 8 points where it was concentrated. Whether that is this table multiplied up, or saturation and media, is open.
+**Whether trial effects survive at industrial scale.** Enos and Fowler (2018) estimate that the full weight of two presidential campaigns raised turnout 7 to 8 points where it was concentrated.^[Ryan D. Enos and Anthony Fowler, "Aggregate Effects of Large-Scale Campaigns on Voter Turnout," *Political Science Research and Methods* 6, no. 4 (2018): 733–751, <https://doi.org/10.1017/psrm.2016.21>.] Whether that is this table multiplied up, or saturation and media, is open.
 
 ## What you should have learned
 
@@ -133,7 +135,8 @@ One stretch idea points past the spreadsheet: reprice one row yourself. Find cur
 **Data**
 
 - Green, D. P. and Gerber, A. S. (2024). *Get Out the Vote: How to Increase Voter
-  Turnout*, 5th ed. Brookings Institution Press, ISBN 978-0-8157-4062-9. These
+  Turnout*, 5th ed. Brookings Institution Press, ISBN 978-0-8157-4062-9; the
+  publisher's page is <https://www.brookings.edu/books/get-out-the-vote/>. These
   numbers are in a printed book and nowhere else; there is no file to
   download, which is why everything in `gotv_tactics.csv` was typed in by
   hand. Specifically: **Table 12-1, pp. 172–73** (the tactics, effectiveness,
@@ -146,14 +149,21 @@ One stretch idea points past the spreadsheet: reprice one row yourself. Find cur
 
 - Enos, R. D. and Fowler, A. (2018). "Aggregate Effects of Large-Scale Campaigns
   on Voter Turnout." *Political Science Research and Methods* 6(4): 733–751.
+  <https://doi.org/10.1017/psrm.2016.21>
 - Gerber, A. S. and Green, D. P. (2000). "The Effects of Canvassing, Telephone
   Calls, and Direct Mail on Voter Turnout: A Field Experiment." *American
-  Political Science Review* 94(3): 653–663.
+  Political Science Review* 94(3): 653–663. <https://doi.org/10.2307/2585837>
 - Gerber, A. S., Green, D. P. and Nickerson, D. (2001). "Testing for Publication
   Bias in Political Science." *Political Analysis* 9(4): 385–392.
+  <https://doi.org/10.1093/oxfordjournals.pan.a004877>
 - Kalla, J. L. and Broockman, D. E. (2018). "The Minimal Persuasive Effects of
   Campaign Contact in General Elections: Evidence from 49 Field Experiments."
   *American Political Science Review* 112(1): 148–166.
+  <https://doi.org/10.1017/S0003055417000363>
+- Gerber, A. S., Green, D. P. and Larimer, C. W. (2008). "Social Pressure and
+  Voter Turnout: Evidence from a Large-Scale Field Experiment." *American
+  Political Science Review* 102(1): 33–48.
+  <https://doi.org/10.1017/S000305540808009X>
 
 **The data itself**
 

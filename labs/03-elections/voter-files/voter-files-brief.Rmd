@@ -16,17 +16,17 @@ dd_read_chunks("voter-files-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Register to vote and you become a row in a government file. Every campaign that knocks on your door found you in it, every turnout model is built on it, and most published claims about who votes come out of it. The file is also, in Georgia, a public record that the state sells to anyone who orders it. So the claim is worth turning into a question and answering from the file itself: **what does the state actually know about you as a voter, and what is that knowledge for?**
+Register to vote and you become a row in a government file. Every campaign that knocks on your door found you in it, every turnout model — a campaign's guess at who will actually show up — is built on it, and most published claims about who votes come out of it. The file is also, in Georgia, a public record that the state sells to anyone who orders it. So the claim is worth turning into a question and answering from the file itself: **what does the state actually know about you as a voter, and what is that knowledge for?**
 
 ## The test
 
-The test is to read one county's registration file whole, rather than trusting anyone's summary of one. The file is Houston County, Georgia's: **`r n(VOTERS)` registered voters**, one row each, in the copy the county keeps for its own daily work. Beside it sit the state's separate records of who voted in the 2020, 2022 and 2024 general elections, matched to the registration rows. Both are public records, and this copy arrived as working material in a 2026 county redistricting matter, which is the ordinary route for a file of this kind.
+The test is to read one county's registration file whole, rather than trusting anyone's summary of one. The file is Houston County, Georgia's: **`r n(VOTERS)` registered voters**, one row each, in the copy the county keeps for its own daily work. Beside it sit the state's separate records of who voted in the 2020, 2022 and 2024 general elections — its **voter history** files, one row per person per election — matched to the registration rows. Both are public records, and this copy arrived as working material in a 2026 county redistricting matter, which is the ordinary route for a file of this kind.
 
 A registration file is the right instrument for this question because it is the machinery itself, not a report about it. The [voter-file chapter](../voter-files-source/voter-files-source-brief.html) gives the source its biography: a list kept under federal law so a poll worker can hand each person the correct ballot. Georgia's version has one property that matters beyond the state. It records each voter's **race**, which almost no other state does, so turnout by race can be computed from government records instead of estimated from a survey.
 
 ## The data
 
-The county's extract carries `r NCOL` columns per person. The state's vote-history records arrived separately and were matched to it on the registration number, and that matching needed one repair worth knowing about. Registration numbers are stored as text, with leading zeros, and the two systems write them differently. Read the column as a number and `00002779` becomes `2779`, which matches nothing; the build converts both sides deliberately and drops the duplicate rows the history files carry. Get either step wrong and voters silently vanish from every join.
+The county's extract carries `r NCOL` columns per person. The state's vote-history records arrived separately and were matched to it on the registration number — the **join key**, the one column both files share, so that a row in one can be paired with the row in the other that belongs to the same person. That pairing needed one repair worth knowing about. Registration numbers are stored as text, with leading zeros, and the two systems write them differently. Read the column as a number and `00002779` becomes `2779`, which matches nothing; so both files were read as text, zeros kept, and the history files' duplicate rows — the same voter listed twice for one election — were reduced to one. Get either step wrong and voters silently vanish from the match.
 
 Almost everything below is a count over all `r n(VOTERS)` rows. There is one deliberate exception: five real registrants, drawn at random and printed exactly as the state publishes them. **Nothing is anonymised**, because Georgia's list is a public record and a reader who has never seen a row of one does not really know what this brief is about.
 
@@ -34,6 +34,8 @@ Almost everything below is a count over all `r n(VOTERS)` rows. There is one del
 ```
 
 The file also carries, for each of them, a registration number, a street address, a mailing address, and the district codes that decide which ballot they get. Count the party column carefully. Exactly one of the five has a party ballot on record; one reads `NON-PARTISAN`, which is a value and not a party; three are blank. A reader who counts the non-empty cells as partisans is already wrong, and a later section says why.
+
+Take the one row that does carry a party, and read it the way the poll worker's software does. `r pk("First Name")` `r pk("Last Name")`, born `r pk("Birth Year")`, is `r pk("Status")`, so may vote today without further paperwork. The precinct code `r pk("County Precinct")` names the polling place, `r pk("County Precinct Description")`. Congressional District `r pk("Congressional District")`, State Senate District `r pk("State Senate District")`, State House District `r pk("State House District")`, County Commission District `r pk("County Commission District")` and City Council District `r pk("City Council District")` together pick one ballot style out of the county's many, which is the whole reason those columns exist. `Race` reads `r pk("Race")`: one box ticked on a registration form. And `Last Party Voted` reads `r pk("Last Party Voted")`, beside a `Last Vote Date` of `r substr(pk("Last Vote Date"), 1, 10)`. That is not a party registration. It is the record that this voter asked for that party's ballot at the primary election held on that date, and it is the only partisan fact the state holds about anyone.
 
 Grouped by what each column is for, the `r NCOL` columns look like this:
 
@@ -69,7 +71,7 @@ Here is the record itself: every column the file keeps about one person, drawn i
 
 That is not a description of an electorate. **It is a routing table.** Congressional district, state senate, state house, judicial, school board, water board, fire district: the columns exist so a poll worker can hand one specific person one specific piece of paper. Nobody designed this file to answer a research question. Everything researchers take from it, from who registered when to who turned out to who lives where, is a by-product of that clerical job.
 
-The column that looks most like politics proves the point. It is labeled `Last Party Voted`, and journalists quote it as party registration. **Georgia has no party registration.** The column records only which party's *primary ballot* you last requested, and most rows have nothing in it:
+The column that looks most like politics proves the point. It is labeled `Last Party Voted`, and journalists quote it as party registration. **Georgia has no party registration** — no box on the form where a voter declares a party, as there is in most states.^[The National Conference of State Legislatures lists which states register by party and which, like Georgia, hold primaries open to any registered voter: <https://www.ncsl.org/elections-and-campaigns/state-primary-election-types>.] The column records only which party's *primary ballot* you last requested, and most rows have nothing in it:
 
 ```{r party-share}
 ```
@@ -79,14 +81,14 @@ The column that looks most like politics proves the point. It is labeled `Last P
 ```{r ratios}
 ```
 
-Black voters in this county broke Democratic over Republican by `r pc(rp$DEMOCRAT[rp$race=="BLACK"]/rp$REPUBLICAN[rp$race=="BLACK"], 0)` to one; white voters broke Republican by `r pc(rp$REPUBLICAN[rp$race=="WHITE"]/rp$DEMOCRAT[rp$race=="WHITE"], 1)` to one. It describes only the most engaged three in ten, and it is still a kind of evidence no survey can match.
+Black voters in this county broke Democratic over Republican by `r pc(rp$DEMOCRAT[rp$race=="BLACK"]/rp$REPUBLICAN[rp$race=="BLACK"], 0)` to one; white voters broke Republican by `r pc(rp$REPUBLICAN[rp$race=="WHITE"]/rp$DEMOCRAT[rp$race=="WHITE"], 1)` to one. It describes only the most engaged `r round((100 - NOSIG) / 10)` in ten, and it is still a kind of evidence no survey can match.
 
 Who counts as registered is itself a decision the file records:
 
 ```{r status}
 ```
 
-**`r n(INACTIVE)` people on this list are marked INACTIVE, and none of them did anything.** Every reason in that column is an event in a mail system: a returned letter, a change-of-address match, another state's report. The National Voter Registration Act forbids removing people *for* not voting. Ohio treats a missed election as grounds to send a confirmation letter, and *Husted v. A. Philip Randolph Institute* (2018) upheld that practice five to four. Put as a data question: is a returned envelope evidence about a person, or about the postal system?
+**`r n(INACTIVE)` people on this list are marked INACTIVE, and none of them did anything.** Every reason in that column is an event in a mail system: a returned letter, a change-of-address match (`NCOA` is the Postal Service's list of forwarding requests), a report from another state. The flag is the first step of what the law calls **list maintenance** and its critics call a purge: an inactive registrant who does not answer a mailed notice, and then sits out the next two federal general elections, may be removed from the list. The National Voter Registration Act forbids removing people *for* not voting.^[52 U.S.C. §20507(b)(2) and (d), <https://www.law.cornell.edu/uscode/text/52/20507>.] Ohio treats a missed election as grounds to send a confirmation letter, and *Husted v. A. Philip Randolph Institute* (2018) upheld that practice five to four.^[*Husted v. A. Philip Randolph Institute*, 584 U.S. 756 (2018), <https://www.law.cornell.edu/supremecourt/text/16-980>.] Put as a data question: is a returned envelope evidence about a person, or about the postal system?
 
 ```{r denominator}
 ```
@@ -113,7 +115,7 @@ White `r pc(big$rate24[big$race=="WHITE"])`%, Black `r pc(big$rate24[big$race=="
 
 **`r n(decay$gone[1])` people voted in the 2020 general election and are not in the 2026 file at all** — `r pc(decay$pct_gone[1])`% of everyone who voted here that November, roughly one voter in `r round(100 / decay$pct_gone[1])`, in six years. They died, moved away, or were removed. Even 2024's electorate has lost `r pc(decay$pct_gone[3])`% in under two years. A voter file is a photograph of a system that is still running, not an archive; the list has no past tense, and nothing in it warns you.
 
-The loss is not a random sample, either. Leaving a county is what movers do, and movers are younger, poorer and likelier to rent than the people who stay. So a turnout rate computed backward from a current file is not just noisy. It is wrong in a direction nobody can measure from inside the file, because the people who would settle it are exactly the ones who are gone.
+The loss is not a random sample, either. Leaving a county is what movers do, and movers are younger, poorer and likelier to rent than the people who stay.^[The Census Bureau's Current Population Survey tables on geographic mobility, by age, income and whether the household owns or rents: <https://www.census.gov/topics/population/migration/data/tables.html>.] So a turnout rate computed backward from a current file is not just noisy. It is wrong in a direction nobody can measure from inside the file, because the people who would settle it are exactly the ones who are gone.
 
 ## What this brief cannot tell you
 
@@ -123,7 +125,7 @@ The loss is not a random sample, either. Leaving a county is what movers do, and
 
 **It cannot say whether list maintenance is neutral.** The reasons recorded are postal events, postal reliability is not evenly distributed, and no column here measures who the process reaches hardest.
 
-**And it is one county in one state.** The shape travels; the columns do not. Most states record no race at all, about half record a party registration Georgia lacks, and the commercial files campaigns actually use carry hundreds of modeled columns nobody outside the vendor can inspect.
+**And it is one county in one state.** The shape travels; the columns do not. Most states record no race at all, about half record a party registration Georgia lacks, and the commercial files campaigns actually use carry hundreds of modeled columns nobody outside the vendor can inspect.^[Eitan D. Hersh, *Hacking the Electorate: How Campaigns Perceive Voters* (Cambridge University Press, 2015), <https://doi.org/10.1017/CBO9781316212783>.]
 
 ## What you should have learned
 
@@ -169,12 +171,16 @@ Two stretch ideas point past the spreadsheet. Georgia sells its statewide list t
 
 - Ansolabehere, S. and Hersh, E. (2012). "Validation: What Big Data Reveal
   About Survey Misreporting and the Real Electorate." *Political Analysis*
-  20(4): 437–459.
+  20(4): 437–459. <https://doi.org/10.1093/pan/mps023>
 - Hersh, E. D. (2015). *Hacking the Electorate: How Campaigns Perceive Voters.*
-  Cambridge University Press.
-- National Voter Registration Act of 1993, 52 U.S.C. § 20501 et seq.
+  Cambridge University Press. <https://doi.org/10.1017/CBO9781316212783>
+- National Voter Registration Act of 1993, 52 U.S.C. § 20501 et seq.; the
+  list-maintenance rules are § 20507.
+  <https://www.law.cornell.edu/uscode/text/52/20507>
 - *Husted v. A. Philip Randolph Institute*, 584 U.S. 756 (2018).
-- *Shelby County v. Holder*, 570 U.S. 529 (2013). Section 5 preclearance is
+  <https://www.law.cornell.edu/supremecourt/text/16-980>
+- *Shelby County v. Holder*, 570 U.S. 529 (2013).
+  <https://www.law.cornell.edu/supremecourt/text/12-96> Section 5 preclearance is
   why Georgia collects race at registration; the coverage formula fell, the
   collection remained.
 

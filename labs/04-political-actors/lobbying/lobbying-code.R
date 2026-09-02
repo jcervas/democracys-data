@@ -59,7 +59,7 @@ data.frame(
   quantity = c("Filings in the quarter (Q2 2024)", "Filings retrieved here",
                "Share", "Why not all of them"),
   value = c(n(QTOTAL), n(nrow(fl)), paste0(pc(100*nrow(fl)/QTOTAL), "%"),
-            "API returns 25 records per request to anonymous users"))
+            "The database hands over 25 filings per request"))
 
 ## ---- money
 data.frame(

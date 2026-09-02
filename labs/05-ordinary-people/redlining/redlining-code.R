@@ -28,6 +28,10 @@ gv <- function(g, v) gr[[v]][gr$grade == g]
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",")
 cv <- function(city, v) ct[[v]][ct$city == city]
+# share Black across all of one city's graded tracts, every grade together:
+# the prose sets two cities' overall shares beside each other to show what the
+# pooled table is really comparing
+cityp <- function(city) { s <- tr[tr$city == city, ]; 100 * sum(s$black) / sum(s$total) }
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 # These are front-facing documents. A data.frame printed the ordinary way comes

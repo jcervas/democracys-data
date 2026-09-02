@@ -26,7 +26,7 @@ Race was not standing in for something else on that sheet. **It was the stated c
 
 ## The test
 
-Answering it means putting two files beside each other. The first is *Mapping Inequality*, the digitized residential security maps of the Home Owners' Loan Corporation. It holds `r n(SR$features)` neighborhood areas traced from `r SR$city_surveys` city surveys of 1935 to 1940, `r n(SR$graded)` of them carrying a grade, and it is published by the Digital Scholarship Lab at the University of Richmond (<https://dsl.richmond.edu/panorama/redlining/>). The second is the 2020 Census, which counts every resident of every tract (<https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>).
+Answering it means putting two files beside each other. The first is *Mapping Inequality*, the digitized "residential security maps" of the Home Owners' Loan Corporation, the HOLC, a federal agency created in 1933 to refinance the mortgages of families facing foreclosure in the Depression, which from 1935 to 1940 sent appraisers into American cities to grade each neighborhood for lending risk.^[The corporation and its maps are described in the project's introduction: Robert K. Nelson et al., *Mapping Inequality*, "Introduction," <https://dsl.richmond.edu/panorama/redlining/introduction>; and in Richard Rothstein, *The Color of Law* (New York: Liveright, 2017), <https://wwnorton.com/books/the-color-of-law>.] The file holds `r n(SR$features)` neighborhood areas traced from `r SR$city_surveys` city surveys, `r n(SR$graded)` of them carrying a grade, and it is published by the Digital Scholarship Lab at the University of Richmond (<https://dsl.richmond.edu/panorama/redlining/>). The second is the 2020 Census, which counts every resident of every **tract**, the small areas of a few thousand people each that the Bureau draws in order to publish local counts;^[Census Bureau, geography glossary, "Census tract": <https://www.census.gov/programs-surveys/geography/about/glossary.html>.] the counts are in the redistricting file, the first release of the 2020 count, at <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>.
 
 The 1930s file is the right instrument because it is not a study of the period. It is the working paperwork of the agency that did the sorting, written to be acted on rather than read later. The men who wrote it had no reason to overstate the part race played, because they did not think it needed justifying. A modern index of disfavored neighborhoods would carry its author's theory of what disfavor looks like. Nobody graded on these sheets was asked anything, and most never learned a federal agency had given their street a letter. That is the kind of record [Section III](../admin-records-source/admin-records-source-brief.html) is about.
 
@@ -39,12 +39,14 @@ The table the figures rest on is `tracts.csv`: one row per 2020 census tract, `r
 ```{r one-record}
 ```
 
+Read the first row. Tract `r tr$GEOID[1]` is in `r tr$city[1]`, `r tr$state[1]`. Its center point falls inside an area the corporation graded `r tr$grade[1]` (how a 2020 tract is matched to a 1930s area is explained below), so the row carries a `r tr$grade[1]`. The 2020 census counted `r n(tr$total[1])` people living in it, `r n(tr$black[1])` of them Black, and `r n(tr$black[1])` ÷ `r n(tr$total[1])` = `r pc(tr$pct_black[1], 2)`%. Every figure below is that row, `r n(nrow(tr))` times over.
+
 The letter is the strangest thing in that row. The corporation used four of them:
 
 ```{r grades}
 ```
 
-The D areas were printed in red, which is where the word *redlining* comes from, and the paragraph above is what a D looked like from the inside. Figure 1 is Cleveland's whole sheet.
+The D areas were printed in red, which is where the word *redlining* comes from,^[Nelson et al., *Mapping Inequality*, "Introduction," <https://dsl.richmond.edu/panorama/redlining/introduction>.] and the paragraph above is what a D looked like from the inside. Figure 1 is Cleveland's whole sheet.
 
 ```{r holc-map-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -69,7 +71,7 @@ Getting the census onto that map takes a decision, because the two sets of shape
 
 That cost is worth stating in numbers. The rule grades `r n(nrow(asg))` tracts in Cleveland and Philadelphia, and `r nrow(mis)` of them get a letter that is not the letter covering most of their own land. Another `r n(nrow(drp))` are dropped, because their center falls outside every graded area. It is at least reproducible: re-running it from the polygons returns the grade the file already carries for all but `r nrow(agree) - sum(agree$centre_grade == agree$grade)` of `r n(nrow(agree))` tracts. A crosswalk is a table that translates one set of areas into another, and one weighted by population would grade some of these tracts differently. Choosing between such rules is Section IV's subject, in [Join Keys and Crosswalks](../../06-putting-data-together/data-sources/data-sources-brief.html).
 
-Three cleaning decisions sit under all of it. The grade lives in a field called `grade`; the natural guess, `holc_grade`, exists in other distributions of these maps and returns nothing here, which would produce a complete, plausible, entirely ungraded map. `GEOID` has to be read as text, because the Californian identifiers begin with a zero a numeric read deletes. And the source's own `area` field is in square degrees, so every area here is computed after reprojecting to metres.
+Two details matter to anyone who opens these files. `GEOID` has to be read as text, because the Californian identifiers begin with a zero that a spreadsheet, or any program reading the column as a number, silently deletes, leaving a ten-digit number that names no state. And the areas in square kilometers above were measured on the ground, after converting the map's latitude and longitude to meters; the source's own `area` field is in square degrees, which is not a unit of land.
 
 > **Before you read on, commit to two numbers.** The file holds `r nrow(ct)`
 > cities with both A-graded and D-graded ground. **In the average city, how many
@@ -79,14 +81,14 @@ Three cleaning decisions sit under all of it. The grade lives in a field called 
 
 ## What it says about democracy
 
-Pool all `r n(nrow(tr))` tracts by grade and the obvious comparison appears at once.
+Add up all `r n(nrow(tr))` tracts by grade, every city together, and the obvious comparison appears at once.
 
 ```{r national}
 ```
 
 Areas graded A are `r pc(gv("A","pct"))`% Black today and areas graded D are `r pc(gv("D","pct"))`%, a gap of `r pc(gv("D","pct") - gv("A","pct"))` points. After the appraisal sheet above, that is deflating, and the ordering does not even behave: C areas are `r pc(gv("C","pct"))`% Black, less than the `r pc(gv("B","pct"))`% in B areas.
 
-**The pooled table is not measuring grades. It is measuring cities.** Cleveland's D areas and Oakland's A areas sit in it together, and American cities differ enormously in overall Black population for reasons unconnected to the corporation. San Francisco's D neighborhoods sit in a city about 5% Black; Cleveland's A neighborhoods sit in a city roughly half Black. Differences between cities swamp the difference within them, and only the difference within them is the question.
+**The pooled table is not measuring grades. It is measuring cities.** Cleveland's D areas and Oakland's A areas sit in it together, and American cities differ enormously in overall Black population for reasons unconnected to the corporation. San Francisco's D neighborhoods sit in a city whose graded ground is `r pc(cityp("San Francisco"))`% Black; Cleveland's A neighborhoods sit in one whose graded ground is `r pc(cityp("Cleveland"))`% Black. Differences between cities swamp the difference within them, and only the difference within them is the question. Adding groups together can hide, or even reverse, a pattern that holds inside every one of them; statisticians call it Simpson's paradox, and it is the standing hazard of any pooled table.
 
 So make the comparison inside each city, where the same housing market, the same city government and the same regional history apply to both grades.
 
@@ -116,7 +118,7 @@ So the sentence this evidence will bear is the middle of three. The grade is ass
 
 ## What this brief cannot tell you
 
-**It cannot tell you whether the maps did anything.** The appraisers were describing segregation that already existed, much of it produced by restrictive covenants, by violence and by private lending that predated the corporation. On that reading these maps are an excellent record of 1930s segregation and no evidence about its causes. Separating the two needs a different design, not a bigger version of this one. Aaronson, Hartley and Mazumder (2021) compared cities that just barely were mapped and just barely were not, and found effects that lasted decades.
+**It cannot tell you whether the maps did anything.** The appraisers were describing segregation that already existed, much of it produced by restrictive covenants, by violence and by private lending that predated the corporation. On that reading these maps are an excellent record of 1930s segregation and no evidence about its causes. Separating the two needs a different design, not a bigger version of this one. Aaronson, Hartley and Mazumder (2021) compared blocks on either side of a grade boundary, and cities just above and just below the population cutoff for being mapped at all, and found effects on home ownership, house values and segregation that lasted decades.^[Daniel Aaronson, Daniel Hartley and Bhashkar Mazumder, "The Effects of the 1930s HOLC 'Redlining' Maps," *American Economic Journal: Economic Policy* 13, no. 4 (2021): 355–392, <https://www.aeaweb.org/articles?id=10.1257/pol.20190414>.]
 
 **It cannot speak for the country.** The corporation surveyed only cities above a population threshold, so there was never a national frame, and this file holds `r length(unique(tr$city))` cities in `r length(unique(tr$state))` states.
 
@@ -157,9 +159,11 @@ None of these is answered above, and every one can be answered from the tables b
   `r SR$city_surveys` city surveys, and the area description sheet for
   `r SR$sheet_key` area `r SR$sheet_label`. The maps and forms underneath are
   1930s US federal records.
-- U.S. Census Bureau, 2020 Decennial Census, the P.L. 94-171 redistricting file.
+- U.S. Census Bureau, 2020 Decennial Census, the P.L. 94-171 redistricting file,
+  the first release of the count.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/>
 - U.S. Census Bureau, TIGER/Line 2020 tract boundaries, the outlines in Figure 2.
+  What a tract is: <https://www.census.gov/programs-surveys/geography/about/glossary.html>
 
 **The data itself**
 
@@ -172,8 +176,12 @@ in a spreadsheet, and they are yours to take further.
 
 - Aaronson, D., Hartley, D. and Mazumder, B. (2021). "The Effects of the 1930s
   HOLC 'Redlining' Maps." *American Economic Journal: Economic Policy* 13(4):
-  355–392.
+  355–392. <https://www.aeaweb.org/articles?id=10.1257/pol.20190414>
 - Rothstein, R. (2017). *The Color of Law.* Liveright.
+  <https://wwnorton.com/books/the-color-of-law>
+- Nelson, R. K. et al. *Mapping Inequality*, "Introduction" — the corporation,
+  the surveys and the grading, in the project's own words.
+  <https://dsl.richmond.edu/panorama/redlining/introduction>
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

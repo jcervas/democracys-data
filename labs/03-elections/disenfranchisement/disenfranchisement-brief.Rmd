@@ -16,22 +16,22 @@ dd_read_chunks("disenfranchisement-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A man serving a sentence for a felony in Vermont votes. He votes from inside the prison, by absentee ballot, in the town where he lived before he was sentenced. Vermont has never taken the vote away for a criminal conviction, and neither has Maine. The same man, convicted of the same offense in `r TOP`, does not vote in prison, on parole, on probation, or on the day his sentence ends. No federal rule governs the difference: every other boundary of the American electorate (age, citizenship, residency) was settled nationally, and this one was not. **Who is barred from voting by a felony conviction, and how would anyone even count them?**
+In Vermont, a man serving a sentence for a felony — the graver class of crime, the kind that can carry more than a year in prison — votes. He votes from inside the prison, by absentee ballot, in the town where he lived before he was sentenced. Vermont has never taken the vote away for a criminal conviction, and neither has Maine.^[The National Conference of State Legislatures keeps the state-by-state rules: <https://www.ncsl.org/elections-and-campaigns/felon-voting-rights>.] The same man, convicted of the same offense in `r TOP`, does not vote in prison, on parole, on probation, or on the day his sentence ends. No federal rule governs the difference: every other boundary of the American electorate (age, citizenship, residency) was settled nationally, and this one was not. The Supreme Court held in *Richardson v. Ramirez* (1974) that the Constitution permits a state to take the vote away for a crime, and left the rest to each state.^[*Richardson v. Ramirez*, 418 U.S. 24 (1974), <https://www.law.cornell.edu/supremecourt/text/418/24>.] **Who is barred from voting by a felony conviction — felony disenfranchisement, in the law's phrase — and how would anyone even count them?**
 
 ## The test
 
-The test is to read the one count that exists. There is no federal register of disenfranchised Americans; no agency is required to produce one, and none does. The figure that appears in litigation, journalism and the academic literature is built by a research organization. The Sentencing Project's *Locked Out* series, maintained by four criminologists since the late 1990s, prints one row per state in its 2024 edition. It takes correctional populations from the federal statistical series and reads them against what each state's law says about who in those populations may vote.
+The test is to read the one count that exists. There is no federal register of disenfranchised Americans; no agency is required to produce one, and none does. The figure that appears in litigation, journalism and the academic literature is built by a research organization. The Sentencing Project, a research and advocacy group in Washington, has published the *Locked Out* series since the late 1990s; the 2024 edition, written by the sociologist Christopher Uggen and three colleagues, prints one row per state, and is downloadable at <https://www.sentencingproject.org/reports/locked-out-2024-four-million-denied-voting-rights-due-to-a-felony-conviction/>. It takes the counts of people in prison, in jail, on parole and on probation from the Bureau of Justice Statistics, the federal agency that publishes them every year,^[<https://bjs.ojp.gov/topics/corrections>.] and reads them against what each state's law says about who in those populations may vote.
 
 That is the right evidence, and for a reason worth stating exactly. It is not the only estimate one could build; it is the estimate that *operates* — the one courts cite and legislatures argue about. The subject also completes this cluster's picture of the registration list. The [voter-file chapter](../voter-files-source/voter-files-source-brief.html) reads the file of people the state let in; this brief counts the people state law keeps out, who appear in no file at all.
 
 ## The data
 
-The count is published as a table in a PDF report, with no spreadsheet, no data file and no supplement. To use it at all, the build extracts the report's text and cuts each line at measured character positions, because nothing but position separates one column from the next. That construction is fragile in a specific way: a column boundary two characters off corrupts a row silently. So the build checks itself against a property the report guarantees — the five categories are mutually exclusive and must add to the state total.
+The count is published as a table in a PDF report, with no spreadsheet, no data file and no supplement. The numbers here were read off that table column by column, and reading a table out of a PDF is fragile in a specific way: nothing but position on the page separates one column from the next, so a boundary two characters off corrupts a row silently. So every row is checked against a property the report guarantees — the five categories are mutually exclusive and must add to the state total.
 
 ```{r validate}
 ```
 
-`r sum(st$diff == 0)` states sum exactly and `r sum(abs(st$diff) == 1)` are off by a single person, which is rounding in the published report, not a parsing failure. The check earned its place: an early cut two characters too far right split Texas's figures and produced discrepancies in the tens of thousands.
+`r sum(st$diff == 0)` states sum exactly and `r sum(abs(st$diff) == 1)` are off by a single person, which is rounding in the published report, not a reading error. The check earned its place: a first reading cut Texas's row two characters too far to the right and produced discrepancies in the tens of thousands.
 
 Two cleaning decisions carry meaning. A blank cell is read as `0`, and that is a claim rather than a convenience. It says the category does not exist in that state's law, not that the number is missing, and the report's own text supports it. And the rate column `pct` is taken as printed rather than recomputed, so the brief argues with the report instead of with itself; the two agree to within `r pc(max(abs(100 * st$total / st$voting_eligible_pop - st$pct)), 3)` of a point everywhere.
 
@@ -40,7 +40,9 @@ What comes out is three tables. `states.csv` carries, for each state, the five c
 ```{r one-record}
 ```
 
-The five categories divide by two questions. Prison and jail are people currently held. Parole and probation are people under supervision, living in the community. **Post-sentence** are people who have finished the sentence entirely, every day served and every condition met — and are still barred.
+The five categories divide by two questions. Prison and jail are people currently held. Parole and probation are people under supervision, living in the community: **parole** is release from prison before the sentence is up, on conditions, and **probation** is a sentence served under supervision instead of behind bars. **Post-sentence** are people who have finished the sentence entirely, every day served and every condition met — and are still barred.
+
+Tennessee's row, the top of the table, is built like every other. `r n(sv("Tennessee", "prison"))` people in prison, `r n(sv("Tennessee", "jail"))` in jail, `r n(sv("Tennessee", "parole"))` on parole and `r n(sv("Tennessee", "probation"))` on probation, then `r n(sv("Tennessee", "post_sentence"))` who have finished their sentences: together `r n(sv("Tennessee", "total"))`. Divide by the state's `r n(sv("Tennessee", "voting_eligible_pop"))` adult citizens and the rate is `r pc(sv("Tennessee", "pct"))`%. Pennsylvania's row has the same shape with three zeros in it. The state bars only the `r n(sv("Pennsylvania", "prison") + sv("Pennsylvania", "jail"))` people actually held, so its rate is `r pc(sv("Pennsylvania", "pct"))`%; the zeros are the law, not missing data.
 
 > **Before you read on, commit to a number.** Across the `r nrow(st)` states in
 > this file, the average among those that disenfranchise anyone at all is
@@ -76,7 +78,7 @@ The largest category is the one that is already over. **`r n(na$post_sentence)` 
 ```{r extremes}
 ```
 
-Most readers who took the prompt above wrote down two or three times the average. `r TOP` disenfranchises `r pc(max(st$pct))`% of its adult citizens, `r pc(max(st$pct) / mean(st$pct[st$pct > 0]), 1)` times the average of the states that bar anyone at all — and `r sum(st$total == 0)` states disenfranchise nobody. The same conviction costs a vote in one state and nothing in the state next door.
+A reader who took the prompt above probably wrote down two or three times the average. `r TOP` disenfranchises `r pc(max(st$pct))`% of its adult citizens, `r pc(max(st$pct) / mean(st$pct[st$pct > 0]), 1)` times the average of the states that bar anyone at all — and `r sum(st$total == 0)` states disenfranchise nobody. The same conviction costs a vote in one state and nothing in the state next door.
 
 ```{r cartogram-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -86,14 +88,14 @@ Most readers who took the prompt above wrote down two or three times the average
 
 **Figure 2. Share of adult citizens barred by a felony conviction, by state.** One tile per state in a rough geographic layout, because the finding is regional: the dark tiles are the South plus Arizona, and the `r sum(st$total == 0)` white tiles are `r paste(ZERO, collapse = " and ")`, at exactly zero. Those states face the same criminal law as their neighbours; the variation is a policy choice, not a crime rate.
 
-Every percentage above divides by a **voting-eligible population**, and that denominator is itself an estimate. "Adult citizens" requires knowing who is a citizen, which requires a survey:
+Every percentage above divides by what the report calls a **voting-eligible population**: adult citizens, with the disenfranchised themselves still counted among them. The phrase usually means something stricter — the political scientist Michael McDonald, who coined it, subtracts the people the law bars^[Michael P. McDonald and Samuel L. Popkin, "The Myth of the Vanishing Voter," *American Political Science Review* 95, no. 4 (2001): 963–974, <https://www.jstor.org/stable/3117725>.] — and either way the denominator is itself an estimate. "Adult citizens" requires knowing who is a citizen, which requires a survey:
 
 ```{r denom}
 ```
 
-So `r pc(max(st$pct))`% in `r TOP` means "this share of adult citizens is barred," and both halves of the fraction are estimates rather than counts. The consequences reach past this brief. Turnout is a fraction too, and disenfranchisement changes its denominator, so comparing turnout across states silently compares different electorates. Representation is apportioned by *population*, and prisoners are counted where they are held: a disenfranchised person is counted for apportionment and excluded from the electorate. And because felony conviction rates differ sharply by race, the bar removes Black adults at several times the overall rate. This file cannot show that; the literature, beginning with Uggen and Manza (2002), has documented it repeatedly.
+So `r pc(max(st$pct))`% in `r TOP` means "this share of adult citizens is barred," and both halves of the fraction are estimates rather than counts. The consequences reach past this brief. Turnout is a fraction too, and disenfranchisement changes its denominator, so comparing turnout across states silently compares different electorates. Representation is apportioned by *population*, and the census counts prisoners where they are held:^[The Census Bureau's residence rules for the 2020 count, which place people in prison at the facility: <https://www.federalregister.gov/documents/2018/02/08/2018-02370/final-2020-census-residence-criteria-and-residence-situations>.] a disenfranchised person is counted for apportionment and excluded from the electorate. And because felony conviction rates differ sharply by race, the bar falls on one Black adult in `r LO_BLACK_ONE_IN` — `r pc(LO_BLACK_PCT, 1)`% of Black adults against `r pc(LO_NONBLACK_PCT, 1)`% of everyone else, `r pc(LO_BLACK_PCT / LO_NONBLACK_PCT, 1)` times the rate, by the report's own estimate.^[*Locked Out 2024*, pp. 4 and 15.] This file cannot show that; the literature, beginning with Uggen and Manza (2002), has documented it repeatedly.^[Christopher Uggen and Jeff Manza, "Democratic Contraction? Political Consequences of Felon Disenfranchisement in the United States," *American Sociological Review* 67, no. 6 (2002): 777–803, <https://www.jstor.org/stable/3088970>.]
 
-Florida shows what an uncounted population costs in practice. Amendment 4, passed in 2018 with about 65% of the vote, restored rights to most people who had completed their sentences; the legislature then required outstanding fines and fees to be paid first. **Florida keeps no reliable central record of what any given person owes**, so many affected people cannot establish whether they are eligible, and registering while ineligible is itself a crime. Florida remains the largest post-sentence population in this file, at `r n(sv("Florida","post_sentence"))` people. That is a data problem producing a rights problem.
+Florida shows what an uncounted population costs in practice. Amendment 4, passed in 2018 with `r pc(A4_PCT, 2)`% of the vote, restored rights to most people who had completed their sentences; the legislature then required outstanding fines and fees to be paid first.^[The condition is Fla. Stat. §98.0751, <http://www.leg.state.fl.us/statutes/index.cfm?App_mode=Display_Statute&URL=0000-0099/0098/Sections/0098.0751.html>. The vote, the statute and the state of Florida's records are all set out in *Jones v. Governor of Florida*, 975 F.3d 1016 (11th Cir. 2020) (en banc), <https://media.ca11.uscourts.gov/opinions/pub/files/202012003.enb.pdf>, which quotes the Florida Department of State's own analysis for the legislature that "no single source exists" to confirm what a person owes.] **Florida keeps no reliable central record of what any given person owes**, so many affected people cannot establish whether they are eligible, and registering while ineligible is itself a crime. Florida remains the largest post-sentence population in this file, at `r n(sv("Florida","post_sentence"))` people. That is a data problem producing a rights problem.
 
 ## What this brief cannot tell you
 
@@ -103,7 +105,7 @@ Florida shows what an uncounted population costs in practice. Amendment 4, passe
 
 **How the law actually reads.** Several states attach conditions no five-category table can express. The jail figures are the softest in the file, because jail populations turn over quickly. And the count is one point in time, in a subject that changes every legislative session.
 
-**And how many of these people would vote.** Registration and turnout among restored populations run low, which cuts against the simplest electoral-effect claims; nothing in this file measures it.
+**And how many of these people would vote.** Registration and turnout among restored populations run low, which cuts against the simplest electoral-effect claims; nothing in this file measures it.^[A field experiment in Connecticut found that, left alone, only a small minority of people released from prison had registered and fewer still had voted, and that a letter from the Secretary of State telling them they were eligible raised both by under two percentage points: Alan S. Gerber, Gregory A. Huber, Marc Meredith, Daniel R. Biggers and David J. Hendry, "Can Incarcerated Felons Be (Re)integrated into the Political System? Results from a Field Experiment," *American Journal of Political Science* 59, no. 4 (2015): 912–926, <https://www.sas.upenn.edu/~marcmere/workingpapers/CTFelon.pdf>. See also Marc Meredith and Michael Morse, "Do Voting Rights Notification Laws Increase Ex-Felon Turnout?" *Annals of the American Academy of Political and Social Science* 651 (2014): 220–249, doi:10.1177/0002716213502931 (the publisher refuses automated requests, so the address is given as text).]
 
 ## What you should have learned
 
@@ -130,15 +132,35 @@ Two stretch ideas point past the spreadsheet. Pick one state and list what would
 
 - The Sentencing Project, *Locked Out: Estimates of People Denied Voting Rights
   Due to a Felony Conviction*, 2024 edition — the state table in the published
-  PDF report. The table is extracted from the PDF, the sum check quoted above
-  applied, and the three files every number here is computed from are written
-  out. <https://www.sentencingproject.org/>
+  PDF report, which has no spreadsheet beside it. The three tables every number
+  here is computed from were read off that table, row by row, and checked with
+  the sum test quoted above. <https://www.sentencingproject.org/>; the report
+  itself is Uggen, C., Larson, R., Shannon, S. and Stewart, R. (2024), *Locked
+  Out 2024: Four Million Denied Voting Rights Due to a Felony Conviction*,
+  <https://www.sentencingproject.org/reports/locked-out-2024-four-million-denied-voting-rights-due-to-a-felony-conviction/>,
+  PDF at
+  <https://www.sentencingproject.org/app/uploads/2024/10/Locked-Out-2024-Four-Million-Denied-Voting-Rights-Due-to-a-Felony-Conviction.pdf>
+  (the state table is its Table 2).
+- Bureau of Justice Statistics, the source of the report's prison, jail,
+  parole and probation counts. <https://bjs.ojp.gov/topics/corrections>
 
 **Academic literature**
 
 - Uggen, C. and Manza, J. (2002). "Democratic Contraction? Political
   Consequences of Felon Disenfranchisement in the United States." *American
-  Sociological Review* 67(6): 777–803.
+  Sociological Review* 67(6): 777–803. <https://www.jstor.org/stable/3088970>
+- McDonald, M. P. and Popkin, S. L. (2001). "The Myth of the Vanishing
+  Voter." *American Political Science Review* 95(4): 963–974.
+  <https://www.jstor.org/stable/3117725>
+- Gerber, A. S., Huber, G. A., Meredith, M., Biggers, D. R. and Hendry, D. J.
+  (2015). "Can Incarcerated Felons Be (Re)integrated into the Political
+  System? Results from a Field Experiment." *American Journal of Political
+  Science* 59(4): 912–926.
+  <https://www.sas.upenn.edu/~marcmere/workingpapers/CTFelon.pdf>
+- *Richardson v. Ramirez*, 418 U.S. 24 (1974).
+  <https://www.law.cornell.edu/supremecourt/text/418/24>
+- *Jones v. Governor of Florida*, 975 F.3d 1016 (11th Cir. 2020) (en banc).
+  <https://media.ca11.uscourts.gov/opinions/pub/files/202012003.enb.pdf>
 
 **The data itself**
 

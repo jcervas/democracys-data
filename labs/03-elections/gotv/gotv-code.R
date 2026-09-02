@@ -32,6 +32,15 @@ CALLS   <- 16        # completed volunteer phone conversations per hour.
 
 cpv <- function(t) g$cost_per_vote[g$tactic == t]
 cnt <- function(t) g$contacts_per_vote[g$tactic == t]
+# the appendix columns, for the worked arithmetic in the prose
+eff  <- function(t) g$effect_pp[g$tactic == t]          # pooled effect, points
+cil  <- function(t) g$ci_low[g$tactic == t]
+cih  <- function(t) g$ci_high[g$tactic == t]
+nst  <- function(t) g$n_studies[g$tactic == t]
+cpvp <- function(t) g$contacts_per_vote_pooled[g$tactic == t]
+BASE <- 40           # an illustrative control-group turnout, for that arithmetic
+MAIL  <- "Direct mail, from a campaign"
+ROBOX <- "Robocalls, excluding social-pressure studies"
 VOL <- "Phone calls, volunteer"
 CAN <- "Door-to-door canvassing"
 

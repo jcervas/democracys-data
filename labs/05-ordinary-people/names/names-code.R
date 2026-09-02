@@ -25,6 +25,8 @@ curve <- rd("curve.csv");         top25 <- rd("top25.csv")
 uni   <- rd("unisex.csv");        rinfo <- rd("race_info.csv")
 rext  <- rd("race_extremes.csv"); coll  <- rd("collision.csv")
 bothw <- rd("both_ways.csv");     disat <- rd("disagreement_top.csv")
+# the most common surname, whose six race shares the prose walks through
+xl    <- rd("explore_last.csv");  S1 <- xl[xl$rank == 1, ]
 # The birth file, which is Social Security rather than the census. Only the
 # flow-and-stock figure uses it.
 alx   <- rd("ssa_alexa.csv")

@@ -18,28 +18,30 @@ dd_read_chunks("oral-argument-code.R")
 
 > *"You could tell from the questioning which way it was going."*
 
-Reporters write that sentence every term, and there is research behind it: the side that draws the harder questions tends to lose. Any version of the claim rests on a count, and before anybody can count, somebody has to decide what a question is, whose turn it was, and how long it lasted. This brief asks how much of an apparent fact about nine people survives that decision.
+Reporters write that sentence every term, and there is research behind it: the side that draws the harder questions tends to lose.^[Lee Epstein, William M. Landes and Richard A. Posner, "Inferring the Winning Party in the Supreme Court from the Pattern of Questioning at Oral Argument," *Journal of Legal Studies* 39, no. 2 (2010): 433–467, <https://www.jstor.org/stable/10.1086/651511>; Timothy R. Johnson, Paul J. Wahlbeck and James F. Spriggs, "The Influence of Oral Arguments on the U.S. Supreme Court," *American Political Science Review* 100, no. 1 (2006): 99–113, <https://doi.org/10.1017/S0003055406062034>.] Any version of the claim rests on a count, and before anybody can count, somebody has to decide what a question is, whose turn it was, and how long it lasted. This brief asks how much of an apparent fact about nine people survives that decision.
 
-It matters because oral argument is the only part of the Supreme Court's work an ordinary citizen can watch happen. The Court publishes no video, but it does publish the audio. Every claim about a hot bench or a silenced advocate is a count somebody made from that tape, and the counts get written up as facts about the justices.
+It matters because oral argument is the only part of the Supreme Court's work an ordinary citizen can watch happen. The Court publishes no video, but it does publish the audio.^[The Court's own archive of argument audio: <https://www.supremecourt.gov/oral_arguments/argument_audio.aspx>.] Every claim about a hot bench or a silenced advocate is a count somebody made from that tape, and the counts get written up as facts about the justices.
 
 Most of them are not. Ask who talks the most in `r NMEAS` defensible ways and `r length(FIRSTS)` different justices come first. And the sharpest movement anywhere in the file, a number going from zero to a hundred and a twenty-year silence ending, was not a change in anybody's behaviour at all.
 
 ## The test
 
-Everything below comes from [Oyez](https://api.oyez.org), a free public archive of the Court's audio run by Cornell's Legal Information Institute, Justia and Chicago-Kent College of Law. The build reads `r n(NARG)` arguments across the `r T0` to `r T1` terms, which is every argument the Roberts Court has heard, and `r n(NTURN)` speaking turns inside them.
+Everything below comes from Oyez, a free public archive of the Court's audio run by Cornell's Legal Information Institute, Justia and Chicago-Kent College of Law, at <https://www.oyez.org>. This brief covers `r n(NARG)` arguments across the `r T0` to `r T1` terms — a term is the Court's working year, named for the October in which it opens — which is every argument the Roberts Court, the Court under Chief Justice John Roberts, has heard, and `r n(NTURN)` speaking turns inside them. A turn is one person's uninterrupted stretch of speech, from the moment they start until somebody else does.
 
-This source is the right one for what it is not. The [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) sets out the clean case, a record in which the act is the data, and names the Supreme Court Database as the courts' version of it. Almost nothing in that database is an observation: whether a decision was liberal or conservative is a coder's reading of an opinion. Oral argument is the exception. Oyez publishes the audio lined up with the transcript, one row per speaking turn, with a start and a stop time on every row.
+This source is the right one for what it is not. The [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) sets out the clean case, a record in which the act is the data, and names the Supreme Court Database as the courts' version of it. Almost nothing in that database is an observation: whether a decision was liberal or conservative is a coder's reading of an opinion. Oral argument is the exception. Oyez publishes the audio aligned with the transcript — each turn's words carry the second on the tape at which they began and the second at which they ended — one row per speaking turn, with a start and a stop time on every row.
 
 Nobody had to read anything and reach a conclusion to know that `r EXNAME` first asked a question `r nm(EXT$start, 2)` seconds into the argument in *`r EXCASE`*. Oyez is a teaching archive, built so the public could hear the Court rather than read about it. Using it as a measuring instrument is a repurposing, and a fortunate one: an archive made for listeners keeps exactly the details a count needs.
 
 ## The data
 
-The file is not a table. It arrives as nested text, one turn inside a section inside a case, and this is one turn as it comes down.
+Oyez's record is not a table. Each case holds sections, each section holds turns, and this is one turn with the fields it carries.
 
 ```{r rawturn}
 ```
 
-`start` and `stop` are seconds. **Nobody decided them.** A machine lined the words up against the tape. That is a real difference from a coded column, and it is smaller than it looks.
+`start` and `stop` are seconds, and the arithmetic on them is the whole method. Subtract one from the other and that turn held the floor for `r nm(EXT$stop - EXT$start, 2)` seconds. Do the same for every turn `r EXNAME` took in that argument — `r EXJ_TURNS` of them, counting the courtesy turns the tables below leave out — and they add up to `r nm(EXJ_SECS)` seconds of the argument's `r nm(EXA$minutes)` minutes, carrying `r n(EXJ_WORDS)` words. Those three numbers, turns, seconds and words, for one justice in one argument, are the raw material of every ranking in this brief; the measures below average them over a term.
+
+**Nobody decided the seconds.** A machine lined the words up against the tape. That is a real difference from a coded column, and it is smaller than it looks.
 
 **A turn is a decision, and a person made it.** The timestamps are attached to units a court reporter drew. Somebody decided where one turn stops and the next begins, whether an interruption counts as a turn of its own, and which of two people talking across each other got the words. Oyez then attached a name to every turn, which is a second judgment on top of the first. None of that is sloppiness: there is no way to turn a recording of nine people interrupting each other into rows without deciding what a row is. **The judgments moved upstream**, out of the column you want to analyse and into the definition of the row.
 
@@ -79,7 +81,7 @@ Here are the `r NMEAS` ways of asking who talks the most, over the `r RW[1]` to 
 
 **The ends of the table do not move**, and that matters more. `r sub(",.*", "", TOP3)` is in the top three on every measure, and `r sub(",.*", "", LAST)` is last on every measure. The scrambling is all in the middle, where the differences between justices are small enough that the choice of measure decides the order.
 
-There is an unusually clean outside check on that. Lee Epstein and Eric Posner built the same kind of file from Westlaw transcripts rather than from Oyez. They ran 18 measures rather than `r NMEAS`, and reported the same justice in the top three on 17 of them.
+There is an unusually clean outside check on that. Lee Epstein and Eric Posner built the same kind of file from Westlaw transcripts, a commercial legal database, rather than from Oyez.^[Lee Epstein and Eric A. Posner, *Two Decades of Oral Argument in the Supreme Court, 2005–2025 Terms*, report prepared for the *New York Times*, 12 August 2026, <https://epstein.wustl.edu/s/oralargumentreport.pdf>.] They ran 18 measures rather than `r NMEAS`, and reported the same justice in the top three on 17 of them.
 
 ```{r epcompare}
 ```
@@ -90,7 +92,7 @@ Everything so far has been a fact about nine people. The next number is not.
 
 Start with the sentence everybody writes: the justices are talking more than they used to. It is true. An argument ran `r nm(MIN0)` minutes on average in the `r T0` term and `r nm(MIN1)` in `r T1`. But the justices speak at `r nm(RAT0)` words a minute in `r T0` and `r nm(RAT1)` in `r T1`, and that rate barely moves across the whole `r NTERM` terms. The bench did not get hotter. The container got bigger, by `r nm(GROWTH, 0)`% since the Court stopped meeting in its courtroom.
 
-On 4 May 2020 the Court heard argument by telephone for the first time, and gave itself a rule it had never had. After the advocate's opening, the justices would question one at a time, in order of seniority, with the Chief going first. That rule leaves a mark anybody can measure. If the justices ask their first questions in seniority order, the list of who spoke first, second and third is sorted.
+On 4 May 2020 the Court heard argument by telephone for the first time, and gave itself a rule it had never had.^[The Court's announcement of 13 April 2020 that May's arguments would be heard by telephone conference: <https://www.supremecourt.gov/publicinfo/press/pressreleases/pr_04-13-20>.] After the advocate's opening, the justices would question one at a time, in order of seniority, with the Chief going first. That rule leaves a mark anybody can measure. If the justices ask their first questions in seniority order, the list of who spoke first, second and third is sorted.
 
 ```{r order-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -116,7 +118,7 @@ The red line is Justice Thomas. He asked nothing in `r nm(100 * TH_SILENT_PRE / 
 
 **The bench roster is a period, not a day.** Counting silence needs a roster, and a transcript has none: a justice who says nothing leaves no row in it. The roster here is Oyez's record of who was sitting over a stretch of terms, so a justice recused from one case reads as one who kept quiet in it.
 
-**The seniority measure looks only at first questions.** The Court kept a seniority round when it returned to the courtroom, but put it at the end of each advocate's time rather than the start. A measure reading zero in 2021 and zero in 2015 is not saying the same thing about those two terms.
+**The seniority measure looks only at first questions.** The Court kept a seniority round when it returned to the courtroom, but put it at the end of each advocate's time rather than the start.^[The Court's *Guide for Counsel* says that once an advocate's time has expired, "each Justice will have the opportunity to question that attorney individually," in order of seniority: <https://www.supremecourt.gov/casehand/Guide%20for%20Counsel%202024.pdf>.] A measure reading zero in 2021 and zero in 2015 is not saying the same thing about those two terms.
 
 ## What you should have learned
 
@@ -142,7 +144,8 @@ Two stretch ideas point past the spreadsheet. Oyez covers argument back to 1955,
 **Data**
 
 - **Oyez**, oral argument audio aligned to transcripts, `r T0`-`r T1` terms.
-  <https://api.oyez.org> — keyless and public. Each transcript is broken into
+  <https://www.oyez.org>, free and public; the same records in a form for
+  software are at <https://api.oyez.org>. Each transcript is broken into
   turns, and every turn carries a start and stop time in seconds.
   `r n(NARG)` arguments and `r n(NTURN)` turns are read. The bench roster is
   Oyez's record of the natural court.
@@ -163,9 +166,16 @@ Two stretch ideas point past the spreadsheet. Oyez covers argument back to 1955,
 - Epstein, L., Landes, W. M. and Posner, R. A. (2010). "Inferring the Winning
   Party in the Supreme Court from the Pattern of Questioning at Oral Argument."
   *Journal of Legal Studies* 39(2): 433-467.
+  <https://www.jstor.org/stable/10.1086/651511>
 - Johnson, T. R., Wahlbeck, P. J. and Spriggs, J. F. (2006). "The Influence of
   Oral Arguments on the U.S. Supreme Court." *American Political Science Review*
-  100(1): 99-113.
+  100(1): 99-113. <https://doi.org/10.1017/S0003055406062034>
+- Supreme Court of the United States, press release of 13 April 2020 on
+  argument by telephone,
+  <https://www.supremecourt.gov/publicinfo/press/pressreleases/pr_04-13-20>;
+  *Guide for Counsel* (2024), on the seniority round,
+  <https://www.supremecourt.gov/casehand/Guide%20for%20Counsel%202024.pdf>;
+  argument audio, <https://www.supremecourt.gov/oral_arguments/argument_audio.aspx>
 
 **The data itself**
 

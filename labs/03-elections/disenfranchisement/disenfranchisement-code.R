@@ -25,6 +25,13 @@ TOP  <- st$state[which.max(st$pct)]
 ZERO <- st$state[st$total == 0]
 NOTINC <- na$total - na$prison - na$jail
 
+# Figures borrowed from the report and from the Florida litigation, kept here
+# with their sources so the prose cannot drift from them.
+LO_BLACK_PCT    <- 4.5    # Locked Out 2024, p. 15: share of Black adults disenfranchised
+LO_NONBLACK_PCT <- 1.3    # same sentence: share of all other adults
+LO_BLACK_ONE_IN <- 22     # Locked Out 2024, p. 4: "One in 22 African Americans of voting age"
+A4_PCT          <- 64.55  # Jones v. Governor of Florida, 975 F.3d 1016 (11th Cir. 2020) (en banc): Amendment 4's vote
+
 # --- the five categories as one population, drawn one square at a time ------
 CAT  <- c("Prison", "Jail", "Parole", "Probation", "Post-sentence")
 CVAL <- c(na$prison, na$jail, na$parole, na$probation, na$post_sentence)

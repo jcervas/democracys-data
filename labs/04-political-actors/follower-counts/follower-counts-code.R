@@ -52,6 +52,10 @@ MED_HSE <- median(ig$ig[ig$chamber == "House"])
 SEN_25  <- sum(igo$chamber[1:25] == "Senate")
 TOPNAME <- igo$member[1]
 
+# one member with a count on all three platforms, for the prose to read the
+# three numbers off as the platforms printed them (X's is a rounded string)
+EX <- allm[allm$member == "Schiff, Adam", ][1, ]
+
 knit_print.data.frame <- function(x, ...) {
   nm <- names(x); nm <- gsub("_", " ", nm)
   nm <- sub("^(.)", "\\U\\1", nm, perl = TRUE)

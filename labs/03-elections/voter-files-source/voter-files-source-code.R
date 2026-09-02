@@ -33,6 +33,10 @@ INFILE <- val$in_file[1]
 
 LOST20 <- att$voters_no_longer_in_file[att$election == "2020 general"]
 LOSTP  <- att$pct_of_recorded[att$election == "2020 general"]
+# the attrition arithmetic, walked in the prose: 2020 voters still in the file,
+# and everyone the state's history file names for that election
+REC20N  <- val$recorded_voting[val$election == "2020 general"]
+VOTED20 <- REC20N + LOST20
 
 ACTIVE <- st$voters[st$status == "ACTIVE"][1]
 INACT  <- sum(st$voters[st$status == "INACTIVE"])

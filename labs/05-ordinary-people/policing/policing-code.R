@@ -88,6 +88,12 @@ BX   <- c(DEN, "per stop")
 bfmt <- function(x) formatC(x, format = "f", digits = 2)
 bget <- function(r, dn) bench$ratio[bench$race == r & bench$den == dn]
 
+# ---- the worked example in the prose ----------------------------------------
+# One group's stops over one census count, so the reader can see a ratio in
+# Figure 1 built by hand: the count behind a denominator, and stops per person.
+aget  <- function(rc, dn) acs$count[acs$race == rc & acs$denominator == dn]
+srate <- function(rc, dn) r(rc, "stops") / aget(rc, dn)
+
 ## ---- schema
 data.frame(
   field = c("date, time", "location", "subject_race", "subject_sex, subject_age",

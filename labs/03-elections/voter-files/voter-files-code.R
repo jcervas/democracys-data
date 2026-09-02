@@ -40,6 +40,11 @@ grp   <- rowSums(rp[, -1])
 blank <- rp[, "no primary ballot on record"] + rp[, "NON-PARTISAN"]
 NOSIG <- 100 * sum(blank) / sum(grp)
 
+# The one sampled registrant with a party primary ballot on record, read column
+# by column in the prose. Chosen by rule rather than by row number.
+PK <- peek[peek[["Last Party Voted"]] %in% c("DEMOCRAT", "REPUBLICAN"), ][1, ]
+pk <- function(col) PK[[col]]
+
 to$rate24 <- 100 * to$`2024 general` / to$in_file_2026
 big <- to[to$in_file_2026 > 1000, ]
 

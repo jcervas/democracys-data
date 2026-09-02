@@ -23,6 +23,14 @@ shape  <- rd("page_shape.csv")
 claims <- rd("claimed_downloads.csv")
 rot    <- rd("link_rot.csv")
 
+# One jurisdiction's row of the scan, read column by column in the prose.
+scan   <- rd("scan.csv")
+NC     <- scan[scan$state == "North Carolina", ]
+OH     <- scan[scan$state == "Ohio", ]
+# How old the EAC price table was on the day both price tables were captured.
+EAC_AGE <- as.integer(format(as.Date(FV("price_captured")), "%Y")) -
+           as.integer(format(as.Date(FV("eac_made")), "%Y"))
+
 # What the two published price tables say, side by side. `bp_price` is kept as
 # the prose Ballotpedia prints, because for eight jurisdictions the price is
 # not a single amount; `bp_price_usd` is filled in only where it is.

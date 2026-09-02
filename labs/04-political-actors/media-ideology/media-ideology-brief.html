@@ -1449,7 +1449,7 @@ It</h1>
 <h3 class="subtitle">375,979 shared links, 184 news domains, and the one
 politician holding up the right-hand end of the scale</h3>
 <h4 class="author">Democracy’s Data</h4>
-<h4 class="date">Last updated 1 September 2026</h4>
+<h4 class="date">Last updated 2 September 2026</h4>
 
 
 <div id="TOC">
@@ -1476,15 +1476,18 @@ person’s. So turn the claim into a question with a checkable answer:
 reading a word of it?</strong></p>
 <p>One answer is to stop looking at the outlet and look at who chooses
 to link to it. Between 2016 and 2021, 641 members of the 116th Congress
-and other political actors posted 375,979 links to 184 news domains.
-Every one of those people also carries a position built from a
-completely different behaviour, their votes on the floor. That pairing
-is what makes the file worth having.</p>
+— the one that sat from 2019 to 2021 — and other political actors posted
+375,979 links to 184 news domains on Twitter, the platform now called
+X.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> Every
+one of those people also carries a position built from a completely
+different behaviour, their votes on the floor. That pairing is what
+makes the file worth having.</p>
 <div id="the-test" class="section level2">
 <h2>The test</h2>
-<p>The source is <code>PolShares</code>, the demonstration dataset
-shipped with the R package <code>mediascores</code>, MIT licensed and
-served plainly from a public repository (<a href="https://github.com/SMAPPNYU/mediascores" class="uri">https://github.com/SMAPPNYU/mediascores</a>). One row per
+<p>The source is <code>PolShares</code>, the demonstration dataset that
+the authors of the method ship with their R package
+<code>mediascores</code>, MIT licensed and downloadable by anyone from a
+public repository (<a href="https://github.com/SMAPPNYU/mediascores" class="uri">https://github.com/SMAPPNYU/mediascores</a>). One row per
 political actor, seven columns saying who they are, and then 184 columns
 counting how often each person shared each outlet.</p>
 <p>Why a link-sharing ledger, of all sources? It records an act rather
@@ -1493,34 +1496,45 @@ A platform logged what these people posted while they were doing
 something else, which makes it an administrative record of the kind <a href="../../05-ordinary-people/admin-records-source/admin-records-source-brief.html">this
 section of the book</a> is about.</p>
 <p>The seventh column is what turns a ledger into a test. It carries
-each actor’s <strong>DW-NOMINATE</strong> score, the position recovered
-from their roll-call votes, which this book takes apart in <a href="../dw-nominate/dw-nominate-brief.html">its own brief</a>. Sharing
+each actor’s <strong>DW-NOMINATE</strong> score: a number between −1 and
+1 that places a member of Congress on a liberal-to-conservative line,
+computed from their roll-call votes, the votes on which each member’s
+yes or no is recorded by name. This book takes it apart in <a href="../dw-nominate/dw-nominate-brief.html">its own brief</a>. Sharing
 and voting are different acts by the same people. So an estimate built
 out of one of them can be held up against the other.</p>
 <p>The rule for scoring an outlet is one sentence. <strong>An outlet’s
 score is the average roll-call score of the politicians who shared it,
-weighted by how often each one shared it.</strong> An outlet posted only
-by members who vote conservatively lands where those members sit. One
+weighted by how often each one shared it.</strong> Weighted means that a
+politician’s score is counted once for every link they posted, so
+someone who shared an outlet a hundred times pulls its score a hundred
+times as hard as someone who shared it once. An outlet posted only by
+members who vote conservatively lands where those members sit. One
 posted by everybody lands in the middle. Nobody reads a single article
 to produce the number.</p>
 <p><strong>And this is a simplification of the published method, not the
-method.</strong> Eady, Bonneau, Tucker and Nagler estimate outlet
-positions and politician positions <em>jointly</em>, in a Bayesian
-model, from the sharing alone. The rule above takes DW-NOMINATE as given
-and averages it. That is transparent and it is weaker, and the closing
-sections say what it costs.</p>
+method.</strong> The method is Gregory Eady, Richard Bonneau, Joshua
+Tucker and Jonathan Nagler’s,<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> and it estimates outlet positions and
+politician positions <em>jointly</em>: a statistical model places both
+on the same scale at once, using nothing but who shared what, with no
+roll-call score in it. The rule above takes DW-NOMINATE as given and
+averages it. That is transparent and it is weaker, and the closing
+sections say what it costs. What this brief can reproduce is the paper’s
+ordering of outlets by the politicians who share them, by a cruder rule.
+What it cannot reproduce is the paper’s placement of ordinary citizens
+on the same scale, because the data for them sits behind a wall
+described below.</p>
 </div>
 <div id="the-data" class="section level2">
 <h2>The data</h2>
-<p>The build reduces the source file to two tables.
-<code>outlets.csv</code> has one row per domain: <code>domain</code>,
-<code>shares</code>, <code>score</code>, <code>sharers</code> for how
-many different people posted it, <code>top_sharer_pct</code> for the
-share of its links contributed by its single busiest sharer, and a
-<code>kept</code> flag. <code>politicians.csv</code> has one row per
-actor: <code>name</code>, <code>role</code>, <code>party</code>,
-<code>nominate</code>, <code>shares</code> and <code>media_score</code>,
-the last of these built by running the same arithmetic backwards.</p>
+<p>Two tables are made from the source file. <code>outlets.csv</code>
+has one row per domain: <code>domain</code>, <code>shares</code>,
+<code>score</code>, <code>sharers</code> for how many different people
+posted it, <code>top_sharer_pct</code> for the share of its links
+contributed by its single busiest sharer, and a <code>kept</code> flag.
+<code>politicians.csv</code> has one row per actor: <code>name</code>,
+<code>role</code>, <code>party</code>, <code>nominate</code>,
+<code>shares</code> and <code>media_score</code>, the last of these
+built by running the same arithmetic backwards.</p>
 <p>Two cleaning decisions stand between the source and those tables, and
 both are worth stating before any of it is believed.</p>
 <p>114 of the 641 actors have no roll-call score, because governors and
@@ -1531,10 +1545,12 @@ all. Taking them out removes 62,353 shares, 16.6% of the total.</p>
 other 72 are drawn in gray below rather than dropped, so you can see
 what the cut removed.</p>
 <p><strong>This is not the paper’s replication archive, and the
-difference matters.</strong> The full data behind the published study
-sits on Harvard Dataverse, which answers an automated request with a
-success code and an empty body. A person with a browser gets the file in
-thirty seconds. A script never does, which is the same wall the <a href="../../02-surveys/survey-access/survey-access-brief.html">survey
+difference matters.</strong> A replication archive is the bundle of data
+and code a journal has its authors deposit so that anyone can redo the
+analysis. This paper’s sits on Harvard Dataverse (<a href="https://doi.org/10.7910/DVN/1QMLOV" class="uri">https://doi.org/10.7910/DVN/1QMLOV</a>), which answers an
+automated request with a success code and an empty body. A person with a
+browser gets the file in thirty seconds. A script never does, which is
+the same wall the <a href="../../02-surveys/survey-access/survey-access-brief.html">survey
 access brief</a> measures directly. So what is here is the politician
 half of the object, and nothing below is a claim about ordinary
 citizens.</p>
@@ -1630,6 +1646,107 @@ shares came from one politician.</strong> The typical outlet on this
 scale gets 9.8% of its links from its biggest sharer. The most extreme
 outlet on the scale gets more than four fifths of them from a single
 person’s posting habits.</p>
+<p>Here is where that number comes from, and the outlet’s whole score
+with it. These are the politicians who shared therightscoop.com, each
+with their roll-call score and how many times they posted it:</p>
+<table>
+<colgroup>
+<col width="24%" />
+<col width="15%" />
+<col width="22%" />
+<col width="10%" />
+<col width="27%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="left">Politician</th>
+<th align="right">Party</th>
+<th align="right">Roll call score</th>
+<th align="right">Shares</th>
+<th align="right">Score times shares</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">Ted Cruz</td>
+<td align="right">Republican</td>
+<td align="right">0.817</td>
+<td align="right">339</td>
+<td align="right">277.0</td>
+</tr>
+<tr class="even">
+<td align="left">Billy Long</td>
+<td align="right">Republican</td>
+<td align="right">0.544</td>
+<td align="right">39</td>
+<td align="right">21.2</td>
+</tr>
+<tr class="odd">
+<td align="left">Charles Roy</td>
+<td align="right">Republican</td>
+<td align="right">0.800</td>
+<td align="right">14</td>
+<td align="right">11.2</td>
+</tr>
+<tr class="even">
+<td align="left">Louie Gohmert</td>
+<td align="right">Republican</td>
+<td align="right">0.644</td>
+<td align="right">2</td>
+<td align="right">1.3</td>
+</tr>
+<tr class="odd">
+<td align="left">John Cornyn</td>
+<td align="right">Republican</td>
+<td align="right">0.471</td>
+<td align="right">2</td>
+<td align="right">0.9</td>
+</tr>
+<tr class="even">
+<td align="left">Rand Paul</td>
+<td align="right">Republican</td>
+<td align="right">0.889</td>
+<td align="right">1</td>
+<td align="right">0.9</td>
+</tr>
+<tr class="odd">
+<td align="left">Marsha Blackburn</td>
+<td align="right">Republican</td>
+<td align="right">0.627</td>
+<td align="right">1</td>
+<td align="right">0.6</td>
+</tr>
+<tr class="even">
+<td align="left">Ron Johnson</td>
+<td align="right">Republican</td>
+<td align="right">0.626</td>
+<td align="right">1</td>
+<td align="right">0.6</td>
+</tr>
+<tr class="odd">
+<td align="left">Debbie Lesko</td>
+<td align="right">Republican</td>
+<td align="right">0.615</td>
+<td align="right">1</td>
+<td align="right">0.6</td>
+</tr>
+<tr class="even">
+<td align="left">Matt Gaetz</td>
+<td align="right">Republican</td>
+<td align="right">0.599</td>
+<td align="right">1</td>
+<td align="right">0.6</td>
+</tr>
+</tbody>
+</table>
+<p>Multiply each score by its share count, add the products up, and
+divide by the 401 shares in total: the answer is 0.79, the position of
+therightscoop.com in Figure 1. Ted Cruz alone posted it 339 times, so
+the weighted average is mostly Ted Cruz’s own roll-call score of 0.817
+and a little of everyone else’s. Take Ted Cruz out and the same
+arithmetic over the remaining 62 shares gives 0.61. The outlet holding
+up the right-hand end of the scale is, to a first approximation, one
+politician’s posting habit.</p>
 <p>That is not an error in the data and not a defect of the method. It
 is what a scale looks like at its edges. The middle of Figure 1 rests on
 hundreds of people sharing thousands of links. <strong>The ends rest on
@@ -1650,8 +1767,10 @@ they already had.</p>
 politicians with at least twenty shares to scored outlets, each placed
 by their roll-call score across and their media score up. Blue
 Democrats, red Republicans, with the fitted line through them.</p>
-<p>The correlation is <strong>0.94</strong>. What these people vote for
-and what they link to are close to the same thing, measured two entirely
+<p>The <strong>correlation</strong> — a number between −1 and 1 for how
+tightly two quantities rise and fall together, where 1 means they move
+in lockstep — is <strong>0.94</strong>. What these people vote for and
+what they link to are close to the same thing, measured two entirely
 different ways.</p>
 <p><span class="marginnote">This is not an independent validation, and
 calling it one would be wrong. The outlet scores were built out of
@@ -1684,7 +1803,7 @@ defined by the votes that happened to be held, which is the subject of
 brief inherits every one of those limits and adds two averagings on
 top.</p>
 <p><strong>And it is one platform, one chamber, one stretch of
-years.</strong> 2016 to 2021, the 116th Congress, one social network.
+years.</strong> 2016 to 2021, the 116th Congress, one platform, Twitter.
 Nothing here says how any of it would look in 2026.</p>
 </div>
 <div id="what-you-should-have-learned" class="section level2">
@@ -1741,22 +1860,24 @@ the ordering survives a change of yardstick.</p>
 <ul>
 <li><strong>Link-sharing counts.</strong> <code>PolShares</code>, the
 demonstration dataset in the R package <code>mediascores</code> (MIT
-licence), 641 political actors and 184 news domains, 2016–2021. <a href="https://github.com/SMAPPNYU/mediascores" class="uri">https://github.com/SMAPPNYU/mediascores</a></li>
+licence), 641 political actors and 184 news domains, 2016–2021. <a href="https://github.com/SMAPPNYU/mediascores" class="uri">https://github.com/SMAPPNYU/mediascores</a>; the file’s
+documentation is at <a href="https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd" class="uri">https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd</a></li>
 <li><strong>The method it demonstrates.</strong> Gregory Eady, Richard
 Bonneau, Joshua A. Tucker and Jonathan Nagler, “News Sharing on Social
 Media: Mapping the Ideology of News Media, Politicians, and the Mass
-Public,” <em>Political Analysis</em> (2024). <a href="https://doi.org/10.1017/pan.2024.19" class="uri">https://doi.org/10.1017/pan.2024.19</a>. This brief’s
+Public,” <em>Political Analysis</em> 33(2): 73–90 (2025; published
+online 19 November 2024). <a href="https://doi.org/10.1017/pan.2024.19" class="uri">https://doi.org/10.1017/pan.2024.19</a>. This brief’s
 estimator is a simplification of the model in that paper, not the
 model.</li>
 <li><strong>The replication archive</strong>, which holds the
 mass-public half and could not be obtained. Harvard Dataverse answers
-automated requests with a success code and an empty body. <a href="https://doi.org/10.7910/DVN/1QMLOV" class="uri">https://doi.org/10.7910/DVN/1QMLOV</a></li>
+automated requests with a success code and an empty body (still the case
+when last checked, September 2026). <a href="https://doi.org/10.7910/DVN/1QMLOV" class="uri">https://doi.org/10.7910/DVN/1QMLOV</a></li>
 <li><strong>DW-NOMINATE</strong> arrives inside <code>PolShares</code>,
 sourced from Voteview (<a href="https://voteview.com/" class="uri">https://voteview.com/</a>). This book takes it apart in <a href="../dw-nominate/dw-nominate-brief.html">its own brief</a>.</li>
-<li><strong>Build.</strong> <code>data/build-data.R</code> preserves the
-complete source in <code>raw/</code> and writes the four tables this
-brief reads. Every number above is computed at the moment this document
-was rendered.</li>
+<li>The complete source file is kept in <code>data/raw/</code>, and the
+tables below are what this brief reads. Every number above is computed
+from them when this page is rendered.</li>
 </ul>
 <p><strong>Checks</strong></p>
 <table>
@@ -1845,6 +1966,19 @@ The repository is the archive of a published study; the file should
 not change at all. A difference means the package itself was updated,
 not that you made an error.</pre>
 </div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>The file’s own description: “News Media Domains Tweeted
+by members of the 116th US Congress and other political actors
+(2016–2021),” <a href="https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd" class="uri">https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>Gregory Eady, Richard Bonneau, Joshua A. Tucker and
+Jonathan Nagler, “News Sharing on Social Media: Mapping the Ideology of
+News Media, Politicians, and the Mass Public,” <em>Political
+Analysis</em> 33, no. 2 (2025): 73–90, published online 19 November
+2024, <a href="https://doi.org/10.1017/pan.2024.19" class="uri">https://doi.org/10.1017/pan.2024.19</a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

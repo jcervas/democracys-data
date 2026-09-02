@@ -18,23 +18,23 @@ dd_read_chunks("media-ideology-code.R")
 
 Everybody knows which way a news outlet leans. The claim gets made constantly, in arguments about bias and in complaints about coverage, and it is almost always made by somebody who has read the outlet and formed a view. Reading is slow, and one person's reading is one person's. So turn the claim into a question with a checkable answer: **how would you place a news outlet on a left-right scale without reading a word of it?**
 
-One answer is to stop looking at the outlet and look at who chooses to link to it. Between 2016 and 2021, `r n(FN("n_actors"))` members of the 116th Congress and other political actors posted `r n(FN("n_shares"))` links to `r F("n_domains")` news domains. Every one of those people also carries a position built from a completely different behaviour, their votes on the floor. That pairing is what makes the file worth having.
+One answer is to stop looking at the outlet and look at who chooses to link to it. Between 2016 and 2021, `r n(FN("n_actors"))` members of the 116th Congress — the one that sat from 2019 to 2021 — and other political actors posted `r n(FN("n_shares"))` links to `r F("n_domains")` news domains on Twitter, the platform now called X.^[The file's own description: "News Media Domains Tweeted by members of the 116th US Congress and other political actors (2016–2021)," <https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd>.] Every one of those people also carries a position built from a completely different behaviour, their votes on the floor. That pairing is what makes the file worth having.
 
 ## The test
 
-The source is `PolShares`, the demonstration dataset shipped with the R package `mediascores`, MIT licensed and served plainly from a public repository (<https://github.com/SMAPPNYU/mediascores>). One row per political actor, seven columns saying who they are, and then `r F("n_domains")` columns counting how often each person shared each outlet.
+The source is `PolShares`, the demonstration dataset that the authors of the method ship with their R package `mediascores`, MIT licensed and downloadable by anyone from a public repository (<https://github.com/SMAPPNYU/mediascores>). One row per political actor, seven columns saying who they are, and then `r F("n_domains")` columns counting how often each person shared each outlet.
 
 Why a link-sharing ledger, of all sources? It records an act rather than an opinion about an act. Nobody was asked which outlets they trust. A platform logged what these people posted while they were doing something else, which makes it an administrative record of the kind [this section of the book](../../05-ordinary-people/admin-records-source/admin-records-source-brief.html) is about.
 
-The seventh column is what turns a ledger into a test. It carries each actor's **DW-NOMINATE** score, the position recovered from their roll-call votes, which this book takes apart in [its own brief](../dw-nominate/dw-nominate-brief.html). Sharing and voting are different acts by the same people. So an estimate built out of one of them can be held up against the other.
+The seventh column is what turns a ledger into a test. It carries each actor's **DW-NOMINATE** score: a number between −1 and 1 that places a member of Congress on a liberal-to-conservative line, computed from their roll-call votes, the votes on which each member's yes or no is recorded by name. This book takes it apart in [its own brief](../dw-nominate/dw-nominate-brief.html). Sharing and voting are different acts by the same people. So an estimate built out of one of them can be held up against the other.
 
-The rule for scoring an outlet is one sentence. **An outlet's score is the average roll-call score of the politicians who shared it, weighted by how often each one shared it.** An outlet posted only by members who vote conservatively lands where those members sit. One posted by everybody lands in the middle. Nobody reads a single article to produce the number.
+The rule for scoring an outlet is one sentence. **An outlet's score is the average roll-call score of the politicians who shared it, weighted by how often each one shared it.** Weighted means that a politician's score is counted once for every link they posted, so someone who shared an outlet a hundred times pulls its score a hundred times as hard as someone who shared it once. An outlet posted only by members who vote conservatively lands where those members sit. One posted by everybody lands in the middle. Nobody reads a single article to produce the number.
 
-**And this is a simplification of the published method, not the method.** Eady, Bonneau, Tucker and Nagler estimate outlet positions and politician positions *jointly*, in a Bayesian model, from the sharing alone. The rule above takes DW-NOMINATE as given and averages it. That is transparent and it is weaker, and the closing sections say what it costs.
+**And this is a simplification of the published method, not the method.** The method is Gregory Eady, Richard Bonneau, Joshua Tucker and Jonathan Nagler's,^[Gregory Eady, Richard Bonneau, Joshua A. Tucker and Jonathan Nagler, "News Sharing on Social Media: Mapping the Ideology of News Media, Politicians, and the Mass Public," *Political Analysis* 33, no. 2 (2025): 73–90, published online 19 November 2024, <https://doi.org/10.1017/pan.2024.19>.] and it estimates outlet positions and politician positions *jointly*: a statistical model places both on the same scale at once, using nothing but who shared what, with no roll-call score in it. The rule above takes DW-NOMINATE as given and averages it. That is transparent and it is weaker, and the closing sections say what it costs. What this brief can reproduce is the paper's ordering of outlets by the politicians who share them, by a cruder rule. What it cannot reproduce is the paper's placement of ordinary citizens on the same scale, because the data for them sits behind a wall described below.
 
 ## The data
 
-The build reduces the source file to two tables. `outlets.csv` has one row per domain: `domain`, `shares`, `score`, `sharers` for how many different people posted it, `top_sharer_pct` for the share of its links contributed by its single busiest sharer, and a `kept` flag. `politicians.csv` has one row per actor: `name`, `role`, `party`, `nominate`, `shares` and `media_score`, the last of these built by running the same arithmetic backwards.
+Two tables are made from the source file. `outlets.csv` has one row per domain: `domain`, `shares`, `score`, `sharers` for how many different people posted it, `top_sharer_pct` for the share of its links contributed by its single busiest sharer, and a `kept` flag. `politicians.csv` has one row per actor: `name`, `role`, `party`, `nominate`, `shares` and `media_score`, the last of these built by running the same arithmetic backwards.
 
 Two cleaning decisions stand between the source and those tables, and both are worth stating before any of it is believed.
 
@@ -42,7 +42,7 @@ Two cleaning decisions stand between the source and those tables, and both are w
 
 An outlet needs `r F("min_shares")` shares to be scored here. That keeps `r F("n_kept")` of the `r F("n_domains")` domains, which between them carry `r p1(F("kept_share_pct"))`% of all the sharing. The other `r F("n_cut")` are drawn in gray below rather than dropped, so you can see what the cut removed.
 
-**This is not the paper's replication archive, and the difference matters.** The full data behind the published study sits on Harvard Dataverse, which answers an automated request with a success code and an empty body. A person with a browser gets the file in thirty seconds. A script never does, which is the same wall the [survey access brief](../../02-surveys/survey-access/survey-access-brief.html) measures directly. So what is here is the politician half of the object, and nothing below is a claim about ordinary citizens.
+**This is not the paper's replication archive, and the difference matters.** A replication archive is the bundle of data and code a journal has its authors deposit so that anyone can redo the analysis. This paper's sits on Harvard Dataverse (<https://doi.org/10.7910/DVN/1QMLOV>), which answers an automated request with a success code and an empty body. A person with a browser gets the file in thirty seconds. A script never does, which is the same wall the [survey access brief](../../02-surveys/survey-access/survey-access-brief.html) measures directly. So what is here is the politician half of the object, and nothing below is a claim about ordinary citizens.
 
 > **Before you look at the scale, commit to a number.** Its most conservative
 > outlet is **`r F("right_most")`**, with
@@ -64,6 +64,13 @@ The two ends are where you would put them. `r F("left_most")` sits at `r r2(F("l
 
 Now the number you wrote down. **`r F("worst_top_pct")`% of `r F("worst_domain")`'s shares came from one politician.** The typical outlet on this scale gets `r p1(F("median_top_pct"))`% of its links from its biggest sharer. The most extreme outlet on the scale gets more than four fifths of them from a single person's posting habits.
 
+Here is where that number comes from, and the outlet's whole score with it. These are the politicians who shared `r F("worst_domain")`, each with their roll-call score and how many times they posted it:
+
+```{r worked}
+```
+
+Multiply each score by its share count, add the products up, and divide by the `r n(WK_TOT)` shares in total: the answer is `r r2(WK_SCORE)`, the position of `r F("worst_domain")` in Figure 1. `r WK_TOP` alone posted it `r n(WK_TOPN)` times, so the weighted average is mostly `r WK_TOP`'s own roll-call score of `r WK_TOPNOM` and a little of everyone else's. Take `r WK_TOP` out and the same arithmetic over the remaining `r n(WK_TOT - WK_TOPN)` shares gives `r r2(WK_SCORE_NOTOP)`. The outlet holding up the right-hand end of the scale is, to a first approximation, one politician's posting habit.
+
 That is not an error in the data and not a defect of the method. It is what a scale looks like at its edges. The middle of Figure 1 rests on hundreds of people sharing thousands of links. **The ends rest on the few outlets that only a few people ever post, and the fewer the people, the further out the outlet lands.** Tick the first checkbox in Figure 1 and the right-hand end retracts.
 
 The [overplotting brief](../../01-census-bureau/overplotting/overplotting-brief.html) makes the same point about a scatter plot. The outline of the ink is drawn by the rarest points, the shape of the mass by the common ones, and the eye reads the outline. Here the outline is a ranking, and a ranking invites you to read the top of it.
@@ -75,7 +82,7 @@ An outlet's score came from the politicians who shared it, so run the arithmetic
 
 **Figure 2. The same estimator, run backwards.** `r n(FN("n_pol_scored"))` politicians with at least twenty shares to scored outlets, each placed by their roll-call score across and their media score up. Blue Democrats, red Republicans, with the fitted line through them.
 
-The correlation is **`r r2(F("cor_nominate_media"))`**. What these people vote for and what they link to are close to the same thing, measured two entirely different ways.
+The **correlation** — a number between −1 and 1 for how tightly two quantities rise and fall together, where 1 means they move in lockstep — is **`r r2(F("cor_nominate_media"))`**. What these people vote for and what they link to are close to the same thing, measured two entirely different ways.
 
 `r mnote("This is not an independent validation, and calling it one would be wrong. The outlet scores were built out of DW-NOMINATE, so some agreement is guaranteed by construction. What the figure bounds is how much of one behaviour the other reproduces once the numbers have been through two averagings.")`
 
@@ -91,7 +98,7 @@ The exceptions are where the interest is. `r F("party_overlap")` politicians lan
 
 **DW-NOMINATE is itself an estimate**, on a scale defined by the votes that happened to be held, which is the subject of [its own brief](../dw-nominate/dw-nominate-brief.html). This brief inherits every one of those limits and adds two averagings on top.
 
-**And it is one platform, one chamber, one stretch of years.** 2016 to 2021, the 116th Congress, one social network. Nothing here says how any of it would look in 2026.
+**And it is one platform, one chamber, one stretch of years.** 2016 to 2021, the 116th Congress, one platform, Twitter. Nothing here says how any of it would look in 2026.
 
 ## What you should have learned
 
@@ -119,21 +126,24 @@ Two stretch ideas go past the spreadsheet. Pick one outlet at an end of the scal
 - **Link-sharing counts.** `PolShares`, the demonstration dataset in the R
   package `mediascores` (MIT licence), `r n(FN("n_actors"))` political actors
   and `r F("n_domains")` news domains, 2016–2021.
-  <https://github.com/SMAPPNYU/mediascores>
+  <https://github.com/SMAPPNYU/mediascores>; the file's documentation is at
+  <https://github.com/SMAPPNYU/mediascores/blob/master/man/PolShares.Rd>
 - **The method it demonstrates.** Gregory Eady, Richard Bonneau, Joshua A.
   Tucker and Jonathan Nagler, "News Sharing on Social Media: Mapping the
   Ideology of News Media, Politicians, and the Mass Public," *Political
-  Analysis* (2024). <https://doi.org/10.1017/pan.2024.19>. This brief's
+  Analysis* 33(2): 73–90 (2025; published online 19 November 2024).
+  <https://doi.org/10.1017/pan.2024.19>. This brief's
   estimator is a simplification of the model in that paper, not the model.
 - **The replication archive**, which holds the mass-public half and could not
   be obtained. Harvard Dataverse answers automated requests with a success code
-  and an empty body. <https://doi.org/10.7910/DVN/1QMLOV>
+  and an empty body (still the case when last checked, September 2026).
+  <https://doi.org/10.7910/DVN/1QMLOV>
 - **DW-NOMINATE** arrives inside `PolShares`, sourced from Voteview
   (<https://voteview.com/>). This book takes it apart in
   [its own brief](../dw-nominate/dw-nominate-brief.html).
-- **Build.** `data/build-data.R` preserves the complete source in `raw/` and
-  writes the four tables this brief reads. Every number above is computed at
-  the moment this document was rendered.
+- The complete source file is kept in `data/raw/`, and the tables below are
+  what this brief reads. Every number above is computed from them when this
+  page is rendered.
 
 **Checks**
 

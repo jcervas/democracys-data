@@ -24,7 +24,7 @@ This brief reads the 2024 schedule and asks one question with a checkable answer
 
 ## The test
 
-The record is the Associated Press's log of the 2024 campaign trail. It holds every public appearance by the two presidential nominees, their running mates, and the president who withdrew in July, from `r format(min(v$date), "%d %B")` to `r format(max(v$date), "%d %B %Y")`. AP publishes it as the file behind an interactive graphic at <https://interactives.ap.org/embeds/ziEfd/54/>.
+The record is the Associated Press's log of the 2024 campaign trail. It holds every public appearance by the two presidential nominees, their running mates, and the president who withdrew in July,^[Biden withdrew and endorsed Harris on 21 July 2024: <https://www.npr.org/2024/07/21/nx-s1-5024253/biden-drops-out-2024-presidential-election>.] from `r format(min(v$date), "%d %B")` to `r format(max(v$date), "%d %B %Y")`. AP publishes it as the file behind an interactive graphic at <https://interactives.ap.org/embeds/ziEfd/54/>.
 
 ```{r scope}
 ```
@@ -33,22 +33,22 @@ Why this source and not a government filing? No agency collects candidate itiner
 
 That makes it a record of a familiar kind: something written down by people who were doing another job. Reporters covering a beat noted where the candidates were, and somebody decided the accumulation was worth publishing. [The section introduction](../../05-ordinary-people/admin-records-source/admin-records-source-brief.html) is about that whole family of files, and about what you gain and lose when nobody involved was measuring anything.
 
-Nothing compelled this one. Campaign-finance data exists because federal law requires the filing, and a filer who leaves something out can be penalised. This file exists at AP's discretion, and it carries no codebook, no correction log and no signature.
+Nothing compelled this one. Campaign-finance data exists because federal law requires the filing, and a filer who leaves something out can be penalised. This file exists at AP's discretion, and it carries no codebook (the document that would say what each column means), no correction log and no signature.
 
 ## The data
 
-One row is one public appearance, by one person, in one city, on one day. It is not a day of campaigning, not a state visit, and not an advertising buy.
+One row is one public appearance, by one person, in one city, on one day: a **stop**, in the word this brief uses for it. It is not a day of campaigning, not a state visit, and not an advertising buy.
 
 ```{r one-record}
 ```
 
 That definition does more work than it looks. A rally of twenty thousand people and a fifteen-minute stop at a diner are both exactly one row, and nothing in the file separates them. Every count below is a count of occasions.
 
-`r ncol(rawv)` columns arrive and `r length(kept)` are kept. What goes is telling: `biden-total-visits-city`, `total-state-visits`, `county-text`, `reg-voters`. None of those is a fact about the event on the row. They are the contents of the box AP shows a reader who hovers over a dot on its map. This is a graphic's payload, and the rows are events only incidentally.
+AP's file has `r ncol(rawv)` columns, and `r length(kept)` are kept here. What goes is telling: `biden-total-visits-city`, `total-state-visits`, `county-text`, `reg-voters`. None of those is a fact about the event on the row. They are the contents of the box AP shows a reader who hovers over a dot on its map. This is a graphic's payload, and the rows are events only incidentally.
 
-The columns kept are the ones describing the event: `date`, `city`, `county`, `state`, `postal`, `lat`, `long`, `fips`, `candidate`, `event_type` and `notes`. Dates arrive looking like `r r1[["date"]]`, which sorts as text into an order no calendar recognises, so every one of them is converted to a real date. The build stops outright if a single row fails to convert. One silent missing value is easier to publish than to find.
+The columns kept are the ones describing the event: `date`, `city`, `county`, `state`, `postal`, `lat`, `long`, `fips`, `candidate`, `event_type` and `notes`. Dates arrive looking like `r r1[["date"]]`, which sorts as text into an order no calendar recognises, so every one of them is converted to a real date, and the conversion is checked row by row: a single row that failed to convert would have stopped the table being made, because one silent missing value is easier to publish than to find.
 
-The third decision is the one that makes this brief. **A state that received no attention is not a row in this file.** The log records events, and a place with no events leaves nothing to record. Counted straight, the file holds `r length(unique(v$state))` states, while the country has `r nrow(m)` jurisdictions that cast electoral votes.
+The third decision is the one that makes this brief. **A state that received no attention is not a row in this file.** The log records events, and a place with no events leaves nothing to record. Counted straight, the file holds `r length(unique(v$state))` states, while the country has `r nrow(m)` jurisdictions — fifty states and the District of Columbia — that cast **electoral votes**: the `r sum(m$ev)` votes, shared out among the states roughly by population, that actually elect the President, of which a majority, `r sum(m$ev) %/% 2 + 1`, wins.^[National Archives, "What is the Electoral College?": <https://www.archives.gov/electoral-college/about>.]
 
 The `r nrow(z)` places nobody visited enter here through a second table. `pres2024_states.csv` carries the 2024 presidential result for every state and the District: `state`, `abbrev`, `ev` for electoral votes, `margin`, `winner`, and a grid position for the map below. The two tables are joined so that every state is kept whether or not it matched a visit, and the empty side is filled with zero rather than left blank. Absence does not write itself down.
 
@@ -73,7 +73,7 @@ The `r nrow(z)` places nobody visited enter here through a second table. `pres20
 ```{r top-states}
 ```
 
-**Seven states holding `r pc(100 * sum(t7$ev) / sum(m$ev))`% of the electoral college absorbed `r pc(100 * sum(t7$visits) / nrow(v))`% of the campaign.** Pennsylvania alone took `r m$visits[m$state == "Pennsylvania"]` stops in `r length(unique(v$city[v$state == "Pennsylvania"]))` different towns. That is a stop somewhere in one state every `r pc(as.numeric(max(v$date) - min(v$date)) / m$visits[m$state == "Pennsylvania"], 1)` days, for eight months.
+**Seven states holding `r pc(100 * sum(t7$ev) / sum(m$ev))`% of the electoral college absorbed `r pc(100 * sum(t7$visits) / nrow(v))`% of the campaign.** These are the **battleground** states, the ones close enough that either side could win them, and the label is the campaigns' own: it names the places they chose to fight. Pennsylvania alone took `r m$visits[m$state == "Pennsylvania"]` stops in `r length(unique(v$city[v$state == "Pennsylvania"]))` different towns. That is a stop somewhere in one state every `r pc(as.numeric(max(v$date) - min(v$date)) / m$visits[m$state == "Pennsylvania"], 1)` days, for eight months.
 
 ```{r zeros}
 ```
@@ -96,13 +96,13 @@ A grid shows which states were skipped. It cannot show what they were owed, beca
 ```{r lorenz-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. How the campaign's time was spread across the electoral college.** Each point adds one state, in order of the attention it got per electoral vote. The horizontal axis is the running share of electoral votes and the vertical axis the running share of stops. The dashed diagonal is the country a campaign would visit if it treated every electoral vote alike, and the red segment along the bottom is the `r nrow(z)` states that got nothing.
+**Figure 3. How the campaign's time was spread across the electoral college.** This is a **Lorenz curve**, the picture economists draw to show how unequally income is shared, with campaign stops in place of income and electoral votes in place of people. Each point adds one state, in order of the attention it got per electoral vote. The horizontal axis is the running share of electoral votes and the vertical axis the running share of stops. The dashed diagonal is the country a campaign would visit if it treated every electoral vote alike, and the red segment along the bottom is the `r nrow(z)` states that got nothing.
 
 **The least-visited half of the electoral college received `r pc(100 * half_y)`% of all campaign stops.** Most readers guess somewhere in the teens, reasoning that the states just above the empty ones must have picked up a respectable remainder. They did not. The whole bottom half of the country, weighted the way the Constitution weights it, is worth about `r pc(half_y * nrow(v), 0)` of the `r n(nrow(v))` stops.
 
 The gap between the curve and the diagonal has a standard summary. A Gini coefficient of 0 would mean every electoral vote drew the same attention, and 1 that a single state took everything. Here it is `r r2(gini)`, a figure that would be reported as extreme if the thing being divided were income rather than a candidate's time.
 
-Nothing in the Constitution produces that shape. It comes from one rule, adopted state by state and written nowhere in federal law: the winner of a state takes all of its electoral votes. Under that rule a vote is worth chasing only where it might change which candidate reaches 270.
+Nothing in the Constitution produces that shape. It comes from one rule, adopted state by state and written nowhere in federal law: the winner of a state takes all of its electoral votes.^[Every state but Maine and Nebraska gives all of its electors to the statewide winner; the Constitution leaves the manner of choosing electors to each state's legislature. National Archives, "Distribution of Electoral Votes": <https://www.archives.gov/electoral-college/allocation>.] Under that rule a vote is worth chasing only where it might change which candidate reaches 270.
 
 You can watch the rule work in the file. Start with the obvious guess, that candidates go where the voters are. A correlation is one number between -1 and 1 saying how tightly two quantities rise and fall together, and for stops against electoral votes it is `r r2(cor(m$visits, m$ev))`. That is close to nothing. Closeness does better and in the right direction, at `r r2(cor(m$visits, m$absm))`, and it still leaves most of the map unexplained.
 
@@ -113,11 +113,13 @@ Now multiply the two. Give each state its electoral votes if it finished within 
 
 **`r r2(cor(m$visits, m$prize))`**, from no information that was not already in the two weak measures. Each one is nearly useless alone and powerful once the other is held still. A campaign is not asking where the voters are, and it is not asking where the race is close. It is asking where a day of the candidate's time might change who wins. **That is winner-take-all expressed as a travel schedule.**
 
-Two rows show what the columns still hide. Washington, DC was decided by `r pc(m$absm[m$state == "District of Columbia"], 2)` points and logged `r m$visits[m$state == "District of Columbia"]` stops anyway, none of them about its `r m$ev[m$state == "District of Columbia"]` electoral votes. They were addresses to national conventions of interest groups, in the city where the donors and the press corps already are. Removing that single row moves the correlation between stops and closeness from `r r2(cor(m$visits, m$absm))` to `r r2(cor(mn$visits, mn$absm))`.
+Read two states through the index. Pennsylvania carries `r m$ev[m$state == "Pennsylvania"]` electoral votes and was decided by `r pc(m$absm[m$state == "Pennsylvania"], 2)` points, inside the five-point line, so its prize is the full `r m$ev[m$state == "Pennsylvania"]`; it drew `r m$visits[m$state == "Pennsylvania"]` stops, `r sum(v$state == "Pennsylvania" & v$candidate %in% c("Biden", "Harris", "Walz"))` from the Democratic ticket and `r sum(v$state == "Pennsylvania" & v$candidate %in% c("Trump", "Vance"))` from the Republican. California carries `r m$ev[m$state == "California"]`, `r pc(m$ev[m$state == "California"] / m$ev[m$state == "Pennsylvania"], 1)` times as many, and was decided by `r pc(m$absm[m$state == "California"], 2)` points, so its prize is zero; it drew `r m$visits[m$state == "California"]`. Electoral votes alone would send a candidate to California first. Closeness alone would put New Hampshire, decided by `r pc(m$absm[m$state == "New Hampshire"], 2)` points with `r m$ev[m$state == "New Hampshire"]` electoral votes, close behind Pennsylvania; it got `r m$visits[m$state == "New Hampshire"]` stops. Only the product puts Pennsylvania first, and so did both campaigns.
 
-Nebraska is the opposite mistake. It is a safe state, decided by `r pc(m$absm[m$state == "Nebraska"], 2)` points, and it got `r m$visits[m$state == "Nebraska"]` stops, both of them in Omaha. Nebraska does not award its electoral votes winner-take-all. One goes to the winner of the Omaha-centred district, and that district was genuinely contested, but the results table has a row per state and no row for a district. The prize being chased appears nowhere in the data.
+Two rows show what the columns still hide. Washington, DC was decided by `r pc(m$absm[m$state == "District of Columbia"], 2)` points and logged `r m$visits[m$state == "District of Columbia"]` stops anyway, none of them about its `r m$ev[m$state == "District of Columbia"]` electoral votes. By AP's own notes they were mostly addresses to national gatherings of interest groups, in the city where the donors and the press corps already are. Removing that single row moves the correlation between stops and closeness from `r r2(cor(m$visits, m$absm))` to `r r2(cor(mn$visits, mn$absm))`.
 
-Whether any of this matters to a citizen depends on whether attention does anything, and there is evidence that it does. Enos and Fowler (2018) compared targeted and untargeted states in 2012. They estimated that presidential campaigning raised turnout in the heavily targeted states by about 7 to 8 percentage points, mostly through ordinary ground organising. On that account the `r nrow(z)` blank tiles are not a travel budget. They are a description of where political life is thinner.
+Nebraska is the opposite mistake. It is a safe state, decided by `r pc(m$absm[m$state == "Nebraska"], 2)` points, and it got `r m$visits[m$state == "Nebraska"]` stops, both of them in Omaha. Nebraska does not award its electoral votes winner-take-all. One goes to the winner of the Omaha-centred district, and in 2024 Harris won it while Trump carried the rest of the state,^[The National Archives' record of the 2024 Electoral College vote, which lists Nebraska's split: <https://www.archives.gov/electoral-college/2024>.] but the results table has a row per state and no row for a district. The prize being chased appears nowhere in the data.
+
+Whether any of this matters to a citizen depends on whether attention does anything, and there is evidence that it does. Enos and Fowler (2018) compared targeted and untargeted states in 2012. They estimated that presidential campaigning raised turnout in the heavily targeted states by about 7 to 8 percentage points, mostly through ordinary ground organising.^[Ryan D. Enos and Anthony Fowler, "Aggregate Effects of Large-Scale Campaigns on Voter Turnout," *Political Science Research and Methods* 6, no. 4 (2018): 733–751, <https://doi.org/10.1017/psrm.2016.21>. In the abstract's words, turnout in highly targeted states rose by "7–8 percentage points, on average," and "the predominant mechanism behind this effect is traditional ground campaigning."] On that account the `r nrow(z)` blank tiles are not a travel budget. They are a description of where political life is thinner.
 
 ## What this brief cannot tell you
 
@@ -174,14 +176,19 @@ open in a spreadsheet, and they are yours to take further.
 
 - Enos, R. D. and Fowler, A. (2018). "Aggregate Effects of Large-Scale Campaigns
   on Voter Turnout." *Political Science Research and Methods* 6(4): 733–751.
+  <https://doi.org/10.1017/psrm.2016.21>
 - Chen, L. J. and Reeves, A. (2011). "Turning Out the Base or Appealing to the
   Periphery? An Analysis of County-Level Candidate Appearances in the 2008
   Presidential Campaign." *American Politics Research* 39(3): 534–556.
+  doi:10.1177/1532673X10385286 (the publisher's address answered 403 to a
+  script when last checked)
 - Gimpel, J. G., Kaufmann, K. M. and Pearson-Merkowitz, S. (2007). "Battleground
   States versus Blackout States: The Behavioral Implications of Modern
   Presidential Campaigns." *The Journal of Politics* 69(3): 786–797.
+  <https://www.jstor.org/stable/10.1111/j.1468-2508.2007.00575.x>
 - Shaw, D. R. (2006). *The Race to 270: The Electoral College and the Campaign
   Strategies of 2000 and 2004.* University of Chicago Press.
+  <https://press.uchicago.edu/ucp/books/book/chicago/R/bo4129894.html>
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

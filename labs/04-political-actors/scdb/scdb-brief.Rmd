@@ -26,26 +26,28 @@ The Court is also the easiest place in American politics to put a number behind 
 
 ## The test
 
-Everything here comes from the [Supreme Court Database](http://scdb.wustl.edu/data.php), held at Washington University in St. Louis: every justice's vote in every case the Court has decided since `r min(bt$term)`. This brief reads the justice-centered file organized by citation, 2024 release 01. The agreement counts and the scaling use the `r min(bt$term[bt$term >= 2020])` to `r max(bt$term)` terms, the window with the current nine justices in it.
+Everything here comes from the [Supreme Court Database](http://scdb.wustl.edu/data.php), begun by the political scientist Harold Spaeth and maintained at Washington University in St. Louis, where anyone can download it: every justice's vote in every case the Court has decided since `r min(bt$term)`.^[The project's own account of itself and of the people who keep it: <http://scdb.wustl.edu/about.php>.] This brief reads the version with one row per justice per case (the database also comes with one row per case), 2024 release 01. The agreement counts and the scaling use the `r min(bt$term[bt$term >= 2020])` to `r max(bt$term)` terms — a term is the Court's working year, which opens on the first Monday in October and is named for the year it opens — the window with the current nine justices in it.
 
 The Court keeps the same kind of record Congress does, one flight up, and the [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) sets out what that kind of record permits. Every decision says how each named justice voted. Nobody self-reported it and nobody could opt out, because the vote is the act. Ideal-point scores are then manufactured from the pattern of agreement, exactly as they are for Congress, and a court of nine is small enough that the machinery can be checked by hand.
 
-Choosing this file rather than an easier one is most of the brief's argument. Martin-Quinn scores are published, updated every term, and would answer *where does each justice sit* in a single download. They are not used here, for two reasons. The practical one is that their site sits behind a bot check and will not answer a script. The real one is that **a published score is the answer, and this brief is about how the answer gets made.**
+Choosing this file rather than an easier one is most of the brief's argument. Martin-Quinn scores are published, updated every term, and would answer *where does each justice sit* in a single download.^[Andrew D. Martin and Kevin M. Quinn, "Dynamic Ideal Point Estimation via Markov Chain Monte Carlo for the U.S. Supreme Court, 1953–1999," *Political Analysis* 10, no. 2 (2002): 134–153, <https://doi.org/10.1093/pan/10.2.134>.] They are not used here, for one reason: **a published score is the answer, and this brief is about how the answer gets made.**
 
 ## The data
 
-The file's grain is one justice's vote in one case, and its most important column is not an observation. `direction` records whether a vote came out in the conservative or the liberal direction. That is a coder's reading of a written opinion against a codebook, a rule specifying issue area by issue area which outcome counts as which. In a criminal case a vote for the defendant is liberal, and in an economic case a vote for the government usually is. Where the codebook supplies no rule the field is left blank.
+The file's grain is one justice's vote in one case, and its most important column is not an observation. `direction` records whether a vote came out in the conservative or the liberal direction. That is a coder's reading of a written opinion against a codebook, a rule specifying issue area by issue area which outcome counts as which. In a criminal case a vote for the defendant is liberal, and in an economic case a vote for the government usually is.^[The rule, issue area by issue area, in the database's own documentation: <http://scdb.wustl.edu/documentation.php?var=decisionDirection>.] Where the codebook supplies no rule the field is left blank.
+
+Read one case through the rule. *Borden v. United States*, decided in the `r BOR$term` term by `r BOR$majVotes` votes to `r BOR$minVotes`, asked whether a crime committed recklessly counts as a "violent felony" under a federal sentencing law; the Court said it does not, and Borden's longer sentence fell with it.^[*Borden v. United States*, 593 U.S. ___ (2021), <https://www.law.cornell.edu/supremecourt/text/19-5410>.] The database files the case under criminal procedure, where the codebook's rule is that the side of the accused is the liberal one. So the `r BOR$majVotes` votes for Borden — `r paste(BOR_MAJ, collapse = ", ")` — each enter the file as liberal, and the `r BOR$minVotes` votes against as conservative. The majority is the side that won and the dissent the side that lost, and the rule reads the outcome, not the justice: Thomas and Gorsuch, who sit at the conservative end of every ordering below, each pick up a liberal vote here.
 
 `direction` is not the exception in this file. Issue area, the constitutional provision at stake, which party prevailed, the reason the Court took the case: each is likewise a person's reading of a document, entered against a rule somebody wrote. **The Supreme Court publishes opinions. It publishes no data.** Everything countable about it was made countable by somebody outside it, decades after some of the cases were decided.
 
-The cleaning is short and consequential. The release is downloaded whole and the chosen terms are kept. Every case whose `direction` is blank is dropped from the agreement counts, because "voted the same way" has no meaning when there is no direction to compare.
+The cleaning is short and consequential. Only the chosen terms are kept, and every case whose `direction` is blank is dropped from the agreement counts, because "voted the same way" has no meaning when there is no direction to compare.
 
-The build then writes four small tables. `justices.csv` gives each justice a `cases` count, a `pct_conservative` and a `pct_in_majority`. `agreement.csv` has one row per *pair* of justices, with `a` and `b`, the number of shared `cases`, the number of times they `agree`, and the `pct`. `close_cases.csv` lists the one-vote decisions with the `majority_bloc` named. `by_term.csv` runs `pct_conservative` back to `r min(bt$term)`.
+Four small tables come out of it. `justices.csv` gives each justice a `cases` count, a `pct_conservative` and a `pct_in_majority`. `agreement.csv` has one row per *pair* of justices, with `a` and `b`, the number of shared `cases`, the number of times they `agree`, and the `pct`. `close_cases.csv` lists the one-vote decisions with the `majority_bloc` named. `by_term.csv` runs `pct_conservative` back to `r min(bt$term)`.
 
 ```{r justices}
 ```
 
-**The unit of analysis moved twice** to reach that pair table: from a justice-vote, to a case, to a pair of justices. Nothing in the source file is a pair. The pairs were built by taking every justice against every other, finding the cases in which both cast a directional vote, and counting the matches. Keeping `cases` beside `agree`, rather than reducing the two to a percentage on the spot, is the one build decision that does real work below.
+**The unit of analysis — the thing one row stands for — moved twice** to reach that pair table: from a justice-vote, to a case, to a pair of justices. Nothing in the source file is a pair. The pairs were built by taking every justice against every other, finding the cases in which both cast a directional vote, and counting the matches. Keeping `cases` beside `agree`, rather than reducing the two to a percentage on the spot, is the one build decision that does real work below.
 
 `r NJ` justices sat in this window, and `r NPAIR` pairs can be made from them. One of the `r NPAIR` is not a number. `r nice(HOLE$a)` and `r nice(HOLE$b)` never sat on a case together, because she replaced him, so their agreement rate is undefined rather than high or low. No amount of additional data will fix that, because the data that would fix it was never generated.
 
@@ -80,7 +82,7 @@ The raw material for any ideal-point score is embarrassingly simple. How often d
 
 Two things in that picture were not put there. **There is a block structure**, a set of justices who agree with each other far more than with anybody else. And **there is one cell with nothing in it.**
 
-Now the move that makes every ideal-point score work. Treat agreement as closeness and disagreement as distance, then ask what single line would arrange these `r NJ` people so that people who agree sit near each other.
+Now the move that makes every ideal-point score work. Treat agreement as closeness and disagreement as distance, then ask what single line would arrange these `r NJ` people so that people who agree sit near each other. Follow it for three of them. `r nice(PB)` and `r nice(PA)` agree `r pc(agp(PA, PB))`% of the time, so the distance between them is one minus that, `r nm(1 - agp(PA, PB) / 100)`. `r nice(PB)` and `r nice(PC)` agree `r pc(agp(PB, PC))`%, a distance of `r nm(1 - agp(PB, PC) / 100)`, so on the line `r nice(PC)` has to sit roughly `r pc((1 - agp(PB, PC) / 100) / (1 - agp(PA, PB) / 100), 0)` times further from `r nice(PB)` than `r nice(PA)` does, on one side or the other. The arithmetic that finishes the job is called multidimensional scaling: it looks for the positions on a single line that reproduce all `r NPAIR` distances as nearly as they can be reproduced, and the column below is where those positions fall.
 
 ```{r scaling}
 ```
@@ -89,7 +91,7 @@ Read the order. `r paste(nice(CONS), collapse = ", ")`, then a gap, then `r past
 
 One warning governs every number in that column. The method recovers distances, not coordinates. Multiply every position by −1 and every pairwise distance is unchanged, so the fit is unchanged. **The order and the spacing mean something; the direction does not.** That is equally true of Martin-Quinn, of NOMINATE, and of every ideal-point estimate anybody will ever quote at you.
 
-Set the recovered position beside each justice's share of conservative votes, a column the scaling never touched, and the two line up almost exactly. The correlation is `r nm(abs(R))` in size, and its size is the finding. Its sign, by the paragraph above, is not. Nor is the line evenly filled: the `r length(CONS)` justices on one side span `r nm(SPAN)`, while the single step across the middle is `r nm(CHASM)`, larger than that entire bloc. This is two clusters with a chasm between them, not a spectrum.
+Set the recovered position beside each justice's share of conservative votes, a column the scaling never touched, and the two line up almost exactly. The correlation — a number between −1 and 1 that says how closely two columns move together, with 1 meaning perfectly in step — is `r nm(abs(R))` in size, and its size is the finding. Its sign, by the paragraph above, is not. Nor is the line evenly filled: the `r length(CONS)` justices on one side span `r nm(SPAN)`, while the single step across the middle is `r nm(CHASM)`, larger than that entire bloc. This is two clusters with a chasm between them, not a spectrum.
 
 Now the number you wrote down.
 
@@ -153,16 +155,21 @@ Two stretch ideas point past the spreadsheet. Martin-Quinn scores are published 
   `http` only). Agreement and scaling use the
   `r min(bt$term[bt$term >= 2020])`–`r max(bt$term)` terms; cases where the
   database records no ideological direction are excluded, because "voted the
-  same way" is undefined without a direction to compare.
+  same way" is undefined without a direction to compare. The project's
+  account of itself is at <http://scdb.wustl.edu/about.php>, and the rule that
+  codes each vote's direction at
+  <http://scdb.wustl.edu/documentation.php?var=decisionDirection>.
+- *Borden v. United States*, 593 U.S. ___ (2021), the case read through that
+  rule above. <https://www.law.cornell.edu/supremecourt/text/19-5410>
 
 **Academic literature**
 
 - Martin, A. D. and Quinn, K. M. (2002). "Dynamic Ideal Point Estimation via
   Markov Chain Monte Carlo for the U.S. Supreme Court, 1953–1999." *Political
-  Analysis* 10(2): 134–153.
+  Analysis* 10(2): 134–153. <https://doi.org/10.1093/pan/10.2.134>
 - Segal, J. A. and Cover, A. D. (1989). "Ideological Values and the Votes of
   U.S. Supreme Court Justices." *American Political Science Review* 83(2):
-  557–565.
+  557–565. <https://www.jstor.org/stable/1962405>
 - Epstein, L., Landes, W. M. and Posner, R. A. (2013). *The Behavior of Federal
   Judges: A Theoretical and Empirical Study of Rational Choice.* Harvard
   University Press.

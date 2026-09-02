@@ -20,19 +20,19 @@ Congress is older than it has ever been. That is the sentence everybody says, an
 
 Both halves are testable. **Is Congress at its oldest, and does longer life explain it?**
 
-Age is not a proxy for competence and nothing here treats it as one. It matters for a narrower reason. **Age is a rough guide to how long ago somebody's politics were formed, and to how much of the future they will personally be present for.** The Constitution sets a floor of 25 for a representative, 30 for a senator and 35 for a president, and no ceiling at all.
+Age is not a proxy for competence and nothing here treats it as one. It matters for a narrower reason. **Age is a rough guide to how long ago somebody's politics were formed, and to how much of the future they will personally be present for.** The Constitution sets a floor of 25 for a representative, 30 for a senator and 35 for a president, and no ceiling at all.^[Article I, Section 2 and Section 3, <https://www.law.cornell.edu/constitution/articlei>; Article II, Section 1, <https://www.law.cornell.edu/constitution/articleii>.]
 
 ## The test
 
-The record is Voteview's member table: one row per member per Congress, from the first to the `r n(max(m$congress))`th, maintained at UCLA by Lewis, Poole, Rosenthal, Boche, Rudkin and Sonnet. It carries a `born` column, a permanent numeric identifier for each person, and `r n(nrow(m))` rows in all.
+The record is Voteview's member table, maintained at UCLA by Jeffrey Lewis, Keith Poole, Howard Rosenthal, Adam Boche, Aaron Rudkin and Luke Sonnet and downloadable by anyone at <https://voteview.com/data>: one row per member per Congress, from the first to the `r n(max(m$congress))`th. It carries a `born` column, a permanent numeric identifier for each person (so that one member keeps one number across renames, party switches and returns to Congress), and `r n(nrow(m))` rows in all.
 
-This is the right instrument because it is a complete enumeration rather than a sample. Every member of every Congress is in it, so a median is the actual middle of the chamber and not an estimate of one. The table exists to serve a scaling of roll-call votes, and what that record can bear is the subject of this cluster's [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html).
+This is the right instrument because it is a complete enumeration rather than a sample: every member of every Congress is in it. So a median — line the members up by age and take the one in the middle — is the actual middle of the chamber and not an estimate of one. The table exists to serve a scaling of roll-call votes, and what that record can bear is the subject of this cluster's [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html).
 
-Testing the rebuttal needs a second kind of evidence, from the National Center for Health Statistics. Life expectancy at birth comes from CDC's open-data catalogue as an annual series. Remaining life expectancy at 65 and at 75 had to be read out of Trend Table 4 of *Health, United States, 2019*, a published PDF. Two rows of one government table, about to give two different answers.
+Testing the rebuttal needs a second kind of evidence, from the National Center for Health Statistics, the federal government's health-statistics agency inside the CDC. Life expectancy at birth — the average length of life for a baby born in a given year, if that year's death rates held for its whole life — is published as a year-by-year series since 1900 at <https://data.cdc.gov/NCHS/NCHS-Death-rates-and-life-expectancy-at-birth/w9j2-ggv5>. Remaining life expectancy at 65 and at 75 — the average number of further years for a person who has already reached that age — is printed in Trend Table 4 of *Health, United States, 2019*, the agency's annual report to Congress, and had to be read off the published page. Two rows of one government table, about to give two different answers.
 
 ## The data
 
-One row is one member in one Congress. Here are the first Congress's opening rows, after the build:
+One row is one member in one Congress. Here are three of the first Congress's rows, as this brief holds them:
 
 ```{r cleanrow}
 ```
@@ -43,7 +43,7 @@ Four of those columns are not in the download. `year` is the claim that Congress
 
 Nothing was dropped and nothing was de-duplicated. `r ck$value[ck$check == "Voteview rows"]` rows arrived and `r n(nrow(m))` remain, because **a member who serves twenty years is supposed to appear ten times**. One row is a member in one Congress, not a member. George Washington keeps his row and carries four missing values, which is why `r ck$value[ck$check == "member-Congress rows with no birth year"]` rows still have no age.
 
-The cleaning is otherwise assertion. No person carries two conflicting birth years, a count that comes to `r ck$value[ck$check == "people carrying two different birth years"]`. Exactly `r ck$value[ck$check == "people with a birth year on some rows and not others"]` person has one on some rows and not others, and the build names him rather than patching him: `r ck$value[ck$check == "who that is"]`.
+The rest of the cleaning is a set of checks. No person carries two conflicting birth years, a count that comes to `r ck$value[ck$check == "people carrying two different birth years"]`. Exactly `r ck$value[ck$check == "people with a birth year on some rows and not others"]` person has one on some rows and not others, and he is named rather than patched: `r ck$value[ck$check == "who that is"]`.
 
 Three more tables come out of it. `age_by_congress.csv` collapses `r n(sum(m$chamber %in% c("House", "Senate")))` member-Congress rows into one per chamber per Congress, with `median_age`, `mean_age`, `mean_entry_age`, `mean_years_since_entry` and the shares aged 65, 70 and 80 or over. It also carries a third chamber called `Congress`, the two pooled, which appears nowhere in the download. `entry_tenure.csv` has one row per chamber career, `r n(nrow(et))` of them, with `entry_age` and `years_served`. `life_expectancy.csv` holds `year`, `e0_hus` and `e0_annual` for life expectancy at birth, and `e65` and `e75` for the years remaining at those ages.
 
@@ -65,7 +65,7 @@ The join is the calendar year, stated outright rather than left to a merge, beca
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
 
-**Figure 1. Two and a third centuries of congressional age.** Median age of each chamber at every Congress, with the shaded band covering the middle half of the chamber. A line over time is the right form because the claim is about a trend, and the band is there because a median alone hides how spread out a chamber is. Each green dot is a president at the start of a term.
+**Figure 1. Two and a third centuries of congressional age.** Median age of each chamber at every Congress, with the shaded band covering the middle half of the chamber, from the member a quarter of the way up the age order to the member three quarters of the way up. A line over time is the right form because the claim is about a trend, and the band is there because a median alone hides how spread out a chamber is. Each green dot is a president at the start of a term.
 
 ```{r step2-tab}
 ```
@@ -118,7 +118,7 @@ That is an identity rather than a model, so it survives averaging.
 ```{r step5-tab}
 ```
 
-**For Congress as a whole, `r f0(100 * DC["entry"] / DC["total"])`% of the rise between `r BY` and `r EY` is people arriving older.** The popular explanation, that incumbents cling on, is the smaller half. And the two chambers disagree: in the House `r f0(100 * DH["entry"] / DH["total"])`% of the rise is arrival age, in the Senate `r f0(100 * DS["entry"] / DS["total"])`%. Most of the Senate's ageing really is senators staying, which six-year terms and very high re-election rates would predict.
+**For Congress as a whole, `r f0(100 * DC["entry"] / DC["total"])`% of the rise between `r BY` and `r EY` is people arriving older.** The popular explanation, that incumbents — the members already in office — cling on, is the smaller half. And the two chambers disagree: in the House `r f0(100 * DH["entry"] / DH["total"])`% of the rise is arrival age, in the Senate `r f0(100 * DS["entry"] / DS["total"])`%. Most of the Senate's ageing really is senators staying, which six-year terms and very high re-election rates would predict.
 
 ## What this brief cannot tell you
 
@@ -162,12 +162,17 @@ Two stretch ideas point past the spreadsheet. `members.csv` has `died` as well a
   Congresses 1 to `r max(m$congress)`.
 - National Center for Health Statistics. *Life expectancy at birth, by race and
   sex, 1900-2018.* CDC open data.
-  <https://data.cdc.gov/api/views/w9j2-ggv5/rows.csv?accessType=DOWNLOAD>
+  <https://data.cdc.gov/api/views/w9j2-ggv5/rows.csv?accessType=DOWNLOAD>,
+  described at
+  <https://data.cdc.gov/NCHS/NCHS-Death-rates-and-life-expectancy-at-birth/w9j2-ggv5>
 - National Center for Health Statistics. *Health, United States, 2019*, Trend
   Table 4: life expectancy at birth, at age 65 and at age 75.
   <https://www.cdc.gov/nchs/data/hus/2019/004-508.pdf>
   Read out of the published PDF and checked against the open-data series above
   across the `r ck$value[ck$check == "years where HUS and CDC both give e(0)"]` years they share.
+- U.S. Constitution, Article I, Sections 2 and 3, and Article II, Section 1:
+  the age floors. <https://www.law.cornell.edu/constitution/articlei>,
+  <https://www.law.cornell.edu/constitution/articleii>
 
 **The data itself**
 

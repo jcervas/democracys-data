@@ -18,6 +18,8 @@ ag <- read.csv("data/derived/agreement.csv", stringsAsFactors = FALSE)
 jj <- read.csv("data/derived/justices.csv",  stringsAsFactors = FALSE)
 bt <- read.csv("data/derived/by_term.csv",   stringsAsFactors = FALSE)
 
+cc <- read.csv("data/derived/close_cases.csv", stringsAsFactors = FALSE)
+
 js   <- sort(unique(c(ag$a, ag$b)))
 NJ   <- length(js); NPAIR <- nrow(ag)
 HOLE <- ag[ag$cases == 0, ]
@@ -68,6 +70,17 @@ n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
 nice <- function(x) {                        # ACBarrett -> Barrett
   sub("^[A-Z]+(?=[A-Z][a-z])", "", x, perl = TRUE)
 }
+
+# One case read through the coding rule: Borden, a 5-4 criminal-procedure
+# decision for the accused, so each majority vote is coded liberal.
+BOR     <- cc[grepl("^BORDEN v. UNITED STATES", cc$caseName), ][1, ]
+BOR_MAJ <- nice(strsplit(BOR$majority_bloc, " ")[[1]])
+
+# Three justices for the walk from agreement to distance: the pair that agrees
+# most, and one of them against a justice from the other bloc.
+agp <- function(x, y) ag$pct[(ag$a == x & ag$b == y) | (ag$a == y & ag$b == x)]
+PA  <- ag$a[which.max(ag$pct)]; PB <- ag$b[which.max(ag$pct)]
+PC  <- "SSotomayor"
 
 # describe the swaps as adjacent pairs rather than as loose positions
 swap_txt <- local({

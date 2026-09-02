@@ -24,18 +24,20 @@ So the question splits in two. Can polarization be measured from votes and nothi
 
 ## The test
 
-The measure is DW-NOMINATE, computed for every member of the House and Senate from `r min(nom$year)` to `r max(nom$year)`. It is published by [Voteview](https://voteview.com), a project run by Jeffrey Lewis, Keith Poole, Howard Rosenthal and their colleagues. It arrives as one file, `HSall_members.csv`, with no key and no account: one row per member per Congress, carrying a coordinate on a line running from about −1 to +1.
+The measure is DW-NOMINATE, a score placed on every member of the House and Senate from `r min(nom$year)` to `r max(nom$year)` according to how often they voted with and against every other member. The initials stand for a phrase only its authors use, Dynamic Weighted Nominal Three-step Estimation; what matters is that the number is computed by a method, not recorded by a clerk.^[The method is Keith T. Poole and Howard Rosenthal, "A Spatial Model for Legislative Roll Call Analysis," *American Journal of Political Science* 29, no. 2 (1985): 357–384, <https://doi.org/10.2307/2111172>; the current estimates and their documentation are described at <https://voteview.com/about>.] It is published by [Voteview](https://voteview.com), a project run at UCLA by Jeffrey Lewis, Keith Poole, Howard Rosenthal and their colleagues, and downloadable by anyone, with no account to open, at <https://voteview.com/data>. It arrives as one file, `HSall_members.csv`: one row per member per Congress, carrying a coordinate on a line running from about −1 to +1.
 
-The coordinate is manufactured, and the [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) says what it is manufactured from. Congress records how every member voted on every recorded vote, and for most of two centuries records nothing at all about what the vote was about. A scaling method reads that grid of agreement and disagreement, then arranges members on a line so that members who vote together sit near each other. Nobody reads a bill, and nobody labels a policy as liberal or conservative. That the line falling out of the arithmetic looks like left and right is a finding rather than an assumption, and it is the most remarkable thing about the method.
+The coordinate is manufactured, and the [roll-call chapter](../rollcalls-source/rollcalls-source-brief.html) says what it is manufactured from. Congress records how every member voted on every recorded vote, and for most of two centuries records nothing at all about what the vote was about. A scaling method reads that grid of agreement and disagreement, then arranges members on a line so that members who vote together sit near each other. Nobody reads a bill, and nobody labels a policy as liberal or conservative. That the line falling out of the arithmetic looks like left and right is a finding rather than an assumption, and it is the most remarkable thing about the method. The method also makes choices along the way — how many dimensions to allow, how far a member's position may drift over a career, what to do with the votes a member missed — and those choices are inside every chart built on the scores, including every chart below.
 
-This file is the right evidence here for a reason that is easy to state and hard to satisfy. The question is about change across `r max(nom$year) - min(nom$year)` years, and comparability over that span cannot be added afterwards. Every Congress is scaled in one estimation, so a coordinate from `r min(nom$year)` and a coordinate from `r max(nom$year)` sit on the same ruler. Nothing else in American politics does that. The cost is that no government agency produces the file, and if the project ever stopped there is no other file in the world that would do its job.
+This file is the right evidence here for a reason that is easy to state and hard to satisfy. The question is about change across `r max(nom$year) - min(nom$year)` years, and comparability over that span cannot be added afterwards. Every Congress is scaled in one estimation — the whole record of votes since 1789 goes into the method at once — so a coordinate from `r min(nom$year)` and a coordinate from `r max(nom$year)` sit on the same ruler. Nothing else in American politics does that. The cost is that no government agency produces the file, and if the project ever stopped there is no other file in the world that would do its job.
 
 ## The data
 
-One row is one member in one Congress. `bioname` is the name, `state` and `district_code` the seat, and `party` the party. `congress` is the numbered Congress and `year` the calendar year it convened. `dim1` is the left–right coordinate: negative is liberal, positive is conservative. `dim2` is a second dimension, which for most of the twentieth century carried the split over race and region and now barely moves.
+One row is one member in one Congress. `bioname` is the name, `state` and `district_code` the seat, and `party` the party. `congress` is the numbered Congress and `year` the calendar year it convened. `dim1` is the first dimension, the left–right coordinate: negative is liberal, positive is conservative. `dim2` is a second dimension, a second coordinate the method allows for whatever disagreement the first line cannot capture, which for most of the twentieth century carried the split over race and region and now barely moves.^[The book-length account of both dimensions is Keith T. Poole and Howard Rosenthal, *Congress: A Political-Economic History of Roll Call Voting* (Oxford University Press, 1997).]
 
 ```{r one-row}
 ```
+
+Take the two ends of that table. `r EXL$bioname` sits at `r nm(EXL$dim1)` and `r EXR$bioname` at `r nm(EXR$dim1)`. The method placed them that far apart because, across the recorded votes both answered, they were on opposite sides far more often than two members picked at random would be; a member whose votes split between the two sides lands between them, and one who voted with each of them about equally often lands near the middle. No party label, district or speech went into the placement, only the votes, and the same is true of every coordinate in the file.
 
 That table is the download reduced by five decisions, and each one is a decision rather than a cleanup. Presidents are dropped. They carry coordinates too, but theirs are estimated from announced positions rather than from roll calls, so folding them into a chamber median would average two different measurements together. Only the two major parties are kept, which means every independent in American history leaves, including the ones who caucus with a party and vote with it. Members with no coordinate are dropped rather than carried as blanks, and those are people who served too briefly for the model to place them.
 
@@ -56,7 +58,7 @@ Note what a row is not. It is not a survey answer, a statement of belief, or any
 
 ## What it says about democracy
 
-Take the median member of each party in each Congress and subtract one from the other. That distance is the entire measurement, and it is arithmetic anybody can check.
+Take the median member of each party in each Congress — line the party's members up by their `dim1` and take the one in the middle — and subtract one median from the other. That distance is what this brief means by polarization, and it is the entire measurement, arithmetic anybody can check. In the `r NOWH`th House the median of the `r n(NDEM)` Democrats sits at `r nm(H$dem[H$congress == NOWH])` and the median of the `r n(NREP)` Republicans at `r nm(H$rep[H$congress == NOWH])`; subtract, and the distance is `r nm(g(H, NOWH))`.
 
 ```{r gap-table}
 ```
@@ -97,11 +99,11 @@ Zero overlap is not itself new, and it happened repeatedly between `r min(ZEROH)
 
 **Figure 2. The House of `r YRNOW`, one dot per member.** Position along the axis is the member's first-dimension coordinate; vertical position is random and carries no information, so that overlapping members can be told apart. Two clouds, and nothing between them. The separation is not something anybody put into the method, which never saw a party label. It is what the voting produced.
 
-The two parties both moved, and they did not move equally. Since `r Y67` the Democratic median in the House has moved `r nm(abs(DMOVE))` to the left, and the Republican median `r nm(RMOVE)` to the right, which is `r pc(RMOVE/abs(DMOVE))` times as far. This is the finding called asymmetric polarization, and it is among the most contested claims in the study of Congress. The argument is not about the arithmetic. It is about what the scale is anchored to, which the next section takes up.
+The two parties both moved, and they did not move equally. Since `r Y67` the Democratic median in the House has moved `r nm(abs(DMOVE))` to the left, and the Republican median `r nm(RMOVE)` to the right, which is `r pc(RMOVE/abs(DMOVE))` times as far. This is the finding called asymmetric polarization, and it is among the most contested claims in the study of Congress.^[The claim is set out in Nolan McCarty, Keith T. Poole and Howard Rosenthal, *Polarized America: The Dance of Ideology and Unequal Riches* (MIT Press, 2006), and disputed in the paper the next section cites.] The argument is not about the arithmetic. It is about what the scale is anchored to, which the next section takes up.
 
 ## What this brief cannot tell you
 
-The scale is relative to the votes that were actually held, and that is the limit built into the file. If Congress stops voting on some issues and starts voting on others, a member who never changed their mind can move on the scale. Bateman, Clinton and Lapinski (2017) rebuilt the estimates holding the policy content of votes fixed, and found today's parties less divided than the standard series suggests. "Republicans moved right" and "the agenda moved and Republicans stood still" produce the same picture in this data, and nothing inside it can tell them apart.
+The scale is relative to the votes that were actually held, and that is the limit built into the file. If Congress stops voting on some issues and starts voting on others, a member who never changed their mind can move on the scale. Bateman, Clinton and Lapinski (2017) rebuilt the estimates holding the policy content of votes fixed, and found today's parties less divided than the standard series suggests.^[David A. Bateman, Joshua D. Clinton and John S. Lapinski, "A House Divided? Roll Calls, Polarization, and Policy Differences in the U.S. House, 1877–2011," *American Journal of Political Science* 61, no. 3 (2017): 698–714, doi:10.1111/ajps.12281.] "Republicans moved right" and "the agenda moved and Republicans stood still" produce the same picture in this data, and nothing inside it can tell them apart.
 
 Nothing here is a member changing their mind. In this file every member carries one pair of coordinates for a whole career. Of the `r n(NMEM)` House members here, only `r n(NMOVE)` have more than one value of `dim1`, and those are people who left Congress and later came back. Every movement in a party median is somebody arriving or leaving.
 
@@ -124,7 +126,7 @@ None of these is answered above, and every one can be answered from the table th
 - `dim2` is the second dimension. Compute its spread across House members in each `year`. When did it stop mattering, and what issue left American politics with it?
 - `state` and `bioname` name the seat and the person. Filter to one state and follow its delegation's `dim1` across Congresses. Is the state moving, or are its members being replaced?
 
-Two stretch ideas point past the spreadsheet. Voteview also publishes coordinates re-estimated inside each Congress rather than fixed across a career; download those columns and redo the party medians, then ask whether the widening changes shape once members are allowed to move. And Boris Shor and Nolan McCarty publish comparable scores for all fifty state legislatures — pick your own and ask whether it polarized on the same timetable as Congress.
+Two stretch ideas point past the spreadsheet. Voteview also publishes coordinates re-estimated inside each Congress rather than fixed across a career, the Nokken-Poole columns of the same members file; download those columns and redo the party medians, then ask whether the widening changes shape once members are allowed to move. And Boris Shor and Nolan McCarty publish comparable scores for all fifty state legislatures — pick your own and ask whether it polarized on the same timetable as Congress.
 
 ## Sources
 
@@ -133,7 +135,8 @@ Two stretch ideas point past the spreadsheet. Voteview also publishes coordinate
 - **Voteview** — Lewis, J. B., Poole, K., Rosenthal, H., Boche, A., Rudkin, A.
   and Sonnet, L., *Congressional Roll-Call Votes Database*. `HSall_members.csv`.
   <https://voteview.com/static/data/out/members/HSall_members.csv>, from
-  <https://voteview.com>. Every member of the House and Senate from the
+  <https://voteview.com>; every file the project publishes is listed at
+  <https://voteview.com/data>. Every member of the House and Senate from the
   `r min(nom$congress)`th Congress (`r min(nom$year)`) to the present, with
   DW-NOMINATE coordinates.
 
@@ -141,6 +144,7 @@ Two stretch ideas point past the spreadsheet. Voteview also publishes coordinate
 
 - Poole, K. T. and Rosenthal, H. (1985). "A Spatial Model for Legislative Roll
   Call Analysis." *American Journal of Political Science* 29(2): 357–384.
+  <https://doi.org/10.2307/2111172>
 - Poole, K. T. and Rosenthal, H. (1997). *Congress: A Political-Economic History
   of Roll Call Voting.* Oxford University Press.
 - McCarty, N., Poole, K. T. and Rosenthal, H. (2006). *Polarized America: The
@@ -148,6 +152,7 @@ Two stretch ideas point past the spreadsheet. Voteview also publishes coordinate
 - Bateman, D. A., Clinton, J. D. and Lapinski, J. S. (2017). "A House Divided?
   Roll Calls, Polarization, and Policy Differences in the U.S. House,
   1877–2011." *American Journal of Political Science* 61(3): 698–714.
+  doi:10.1111/ajps.12281
 
 **The data itself**
 

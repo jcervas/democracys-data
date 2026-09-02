@@ -77,6 +77,24 @@ dollars <- function(name) {
   setNames(as.numeric(z[, KEY]), KEY)
 }
 
+# The arrangements at the two ends of the range for the evenly spread profile,
+# and what sits either side of its largest spoke in each. Adjacency is the
+# whole of the area formula, so the prose reads it off areas.csv rather than
+# asserting it.
+SHORT <- c(indiv_contrib = "individuals", pac_contrib = "PACs",
+           party_contrib = "the party", self_funding = "the candidate's own money",
+           trans_from_auth = "transfers in", other = "everything else")
+evo  <- ar[ar$cand_name == EVEN, ]
+EBIG <- names(which.max(shares(EVEN)))
+nbrs <- function(a) {
+  ax <- strsplit(evo$axes[which.min(abs(evo$area - a))], " ")[[1]]
+  i  <- match(EBIG, ax); m <- length(ax)
+  ax[c(if (i == 1) m else i - 1, if (i == m) 1 else i + 1)]
+}
+nbtxt   <- function(k) paste0(SHORT[k], " (", p1(shares(EVEN)[k]), "%)",
+                              collapse = " and ")
+ENB_MAX <- nbtxt(nbrs(EMAX)); ENB_MIN <- nbtxt(nbrs(EMIN))
+
 # --- radar geometry, shared by both figures ----------------------------------
 #
 # n axes at equal angles, clockwise from twelve o'clock. The area of the

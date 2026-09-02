@@ -50,6 +50,12 @@ Y1890 <- H$year[which(H$gap == G1890)]
 
 # Does anybody in this file ever move? The answer decides what a moving party
 # median can possibly mean, and the "cannot tell you" section rests on it.
+# The two ends of the current House, and the size of each party in it, for
+# the worked example beside the one-row table and the median arithmetic.
+HN   <- nom[nom$chamber == "House" & nom$congress == NOWH, ]
+EXL  <- HN[which.min(HN$dim1), ]; EXR <- HN[which.max(HN$dim1), ]
+NDEM <- sum(HN$party == "Democrat"); NREP <- sum(HN$party == "Republican")
+
 hk    <- with(nom[nom$chamber == "House", ], paste(bioname, state, party))
 NMEM  <- length(unique(hk))
 NMOVE <- sum(tapply(nom$dim1[nom$chamber == "House"], hk,

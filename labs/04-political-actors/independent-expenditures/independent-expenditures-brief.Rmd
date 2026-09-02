@@ -17,17 +17,17 @@ dd_read_chunks("independent-expenditures-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Outside money is the least accountable part of an American campaign and the best documented part of it. Every dollar a super PAC spends for or against a candidate has to be reported to the Federal Election Commission. The Commission publishes the whole cycle as one file that anybody can download for nothing. So the obvious questions look answerable. How much was there in 2024, and was it spent promoting candidates or attacking them?
+Outside money is the least accountable part of an American campaign and the best documented part of it. Every dollar a super PAC — a committee allowed to raise unlimited sums on the condition that it spends them without coordinating with any candidate — spends for or against a candidate has to be reported to the Federal Election Commission. The Commission publishes the whole cycle as one file that anybody can download for nothing. So the obvious questions look answerable. How much was there in 2024, and was it spent promoting candidates or attacking them?
 
-Both are questions a citizen has a stake in, because this is the money nobody can be asked about. A campaign that runs a dishonest advertisement can be made to answer for it. A super PAC cannot be voted out, and the candidate it helps can disclaim it truthfully, because coordinating with it would be illegal. *Citizens United v. FEC* (2010) held that such spending cannot be limited, on the reasoning that money spent independently cannot corrupt. Whether it mostly promotes or mostly attacks is one of the few things about it a reader can check.
+Both are questions a citizen has a stake in, because this is the money nobody can be asked about. A campaign that runs a dishonest advertisement can be made to answer for it. A super PAC cannot be voted out, and the candidate it helps can disclaim it truthfully, because coordinating with it — planning or paying for the spending together — would be illegal. *Buckley v. Valeo* (1976) drew the line that makes this possible, allowing limits on what a person gives to a campaign but not on what they spend on their own;^[*Buckley v. Valeo*, 424 U.S. 1 (1976): <https://www.law.cornell.edu/supremecourt/text/424/1>.] *Citizens United v. FEC* (2010) extended it to corporations and unions, on the reasoning that money spent independently cannot corrupt.^[*Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010): <https://www.law.cornell.edu/supremecourt/text/08-205>.] Whether it mostly promotes or mostly attacks is one of the few things about it a reader can check.
 
 So you download the file and add up a column. **Can you?**
 
 ## The test
 
-The data is the Commission's bulk file of independent expenditures for the 2024 cycle: `r n(ROWS)` rows, one per reportable expenditure, published at fec.gov with no key, no account and no request form. An independent expenditure is money spent for or against a candidate by somebody the candidate does not control. Anyone who spends above a threshold on a message urging the election or defeat of a named federal candidate has to report it. In the closing weeks of a campaign they have to report it within a day or two of writing the check.
+The data is the file of independent expenditures the Commission publishes for the 2024 cycle — the two years ending with the November 2024 election — downloadable from its bulk-data page at <https://www.fec.gov/data/browse-data/?tab=bulk-data> with no account and no fee: `r n(ROWS)` rows, one per reportable expenditure. An independent expenditure is money spent for or against a candidate by somebody the candidate does not control. Anyone who spends above a threshold on a message urging the election or defeat of a named federal candidate has to report it, and in the closing weeks of a campaign within a day or two of writing the check.^[52 U.S.C. §30104(c) and (g): $1,000 or more spent in the last twenty days before an election must be reported within 24 hours, and $10,000 or more earlier in the cycle within 48 hours: <https://www.law.cornell.edu/uscode/text/52/30104>. The Commission's plain-language guide: <https://www.fec.gov/help-candidates-and-committees/making-independent-expenditures/>.]
 
-This file can answer the question because of one column. Schedule E makes the spender code every line as **supporting** or **opposing** the candidate it names. Almost no other record of political money in the United States carries that field, and without it the only answerable question is how much, which is the less interesting one. What the file does not carry is any checking. Nobody stands between the filer and the reader: the Commission is a disclosure agency rather than an auditor, for the reasons [this cluster's chapter on campaign finance disclosure](../finance-source/finance-source-brief.html) sets out.
+This file can answer the question because of one column. Schedule E, the page of the Commission's reporting form on which independent expenditures are listed, makes the spender code every line as **supporting** or **opposing** the candidate it names. Almost no other record of political money in the United States carries that field, and without it the only answerable question is how much, which is the less interesting one. What the file does not carry is any checking. Nobody stands between the filer and the reader: the Commission is a disclosure agency rather than an auditor, for the reasons [this cluster's chapter on campaign finance disclosure](../finance-source/finance-source-brief.html) sets out.
 
 The test is to add the column up as the file arrives, look at the largest rows, and add it up again.
 
@@ -51,9 +51,9 @@ Three things in that table are worth stopping on.
 
 Two decisions were made before any of that was counted, and both are written down rather than assumed. **Candidate names were uppercased** so that case variants of one person would merge: `Evans, Gabe` becomes `EVANS, GABE`. The key is a name rather than an identifier, and it does not fully work.
 
-**One exclusion rule was applied, stated as a number:** rows above `r ml(CUT)` are dropped. That is a threshold and not a diagnosis. Every row it removes is committed to `ie_outliers.csv`, so a reader can disagree with the cut and recompute from the discarded rows. Nothing else was touched: no amount corrected, no filer contacted, no obviously false row quietly deleted.
+**One exclusion rule was applied, stated as a number:** rows above `r ml(CUT)` are dropped. That is a threshold and not a diagnosis. Every row it removes is published beside this brief in `ie_outliers.csv`, so a reader can disagree with the cut and recompute from the discarded rows. Nothing else was touched: no amount corrected, no filer contacted, no obviously false row quietly deleted.
 
-One number below cannot be recomputed from the tables. The raw download runs to roughly 19 megabytes and is not committed, so `r n(ROWS)` is the row count the build recorded at the moment it read the file.
+One number below cannot be recomputed from the tables handed over at the end. The Commission's file runs to roughly 19 megabytes and is not among them, so `r n(ROWS)` is the row count it had on the day it was read. A reader who downloads it later may find more, because filings and amendments keep arriving after a cycle closes.
 
 > **Before you read on, commit to a number.** `r NOUT` of those `r n(ROWS)` rows
 > sit above the cut and come out. A count that small, in a file that large,
@@ -89,7 +89,9 @@ One of them can be read in full, because the Commission publishes the submission
 
 **Figure 1. One junk filing, as the Federal Election Commission received and published it.** A facsimile of the record fits this question better than any chart would, because the claim is about what a federal agency published rather than about a quantity. Every value on the card is read out of `ie_filing_1707511.fec` rather than retyped: `r n(FLB)` bytes, three records, fields separated by the ASCII file-separator character. The payee is a fictional lawyer, the treasurer a fictional drug distributor, the candidate the protagonist of a television series, and the amount `r d(FEEAMT)`. The single letter in the support-or-oppose field, shown in blue, decides which side of every total below the money lands on.
 
-These are not errors. They are **junk filings**, sitting in the federal government's official record of campaign spending, published exactly as submitted. That is not an oversight. An agency empowered to decide which political filings are real would hold a power over political speech that nobody would want it to have, exercised by commissioners appointed on a partisan basis. **There is no free version of this**, and the cost of the arrangement we have is a national statistic that is wrong by a factor of ten until somebody reads `r NOUT` rows.
+Read the card from the top. The filing committee, *`r CARD$value[CARD$field == "Filing committee"]`*, is the spender: the entity that says it paid. The payee is who it says it paid, and the stated purpose is what for. The candidate line, `r CARD$value[CARD$field == "Candidate"]`, is who the money was about, and the office line says which seat. The single letter on the support-or-oppose line, `r CARD$value[CARD$field == "Support or oppose"]`, decides whether the `r d(FEEAMT)` counts as money for that candidate or against. Every row in the file has these same fields, and adding that one letter up across `r n(ROWS)` of them is the whole of this brief's arithmetic.
+
+These are not errors. They are **junk filings**, sitting in the federal government's official record of campaign spending, published exactly as submitted. That is not an oversight. An agency empowered to decide which political filings are real would hold a power over political speech that nobody would want it to have, exercised by commissioners appointed on a partisan basis.^[Six commissioners, no more than three from one party, and four votes needed for the Commission to act: 52 U.S.C. §30106, <https://www.law.cornell.edu/uscode/text/52/30106>.] **There is no free version of this**, and the cost of the arrangement we have is a national statistic that is wrong by a factor of ten until somebody reads `r NOUT` rows.
 
 Not every bad row is somebody lying, either.
 
@@ -103,7 +105,7 @@ Now take all `r NOUT` out.
 ```{r cleaned}
 ```
 
-**The total falls from `r bn(RAW)` to `r bn(CLN)`**, which matches what watchdog organizations report for the cycle. **And the headline reverses.** In the raw file, `r pc(100*RAWS/RAW)`% of outside money supports candidates. Once `r NOUT` rows are gone, **`r pc(100*CLNO/CLN)`% of it is spent attacking somebody.** The supportive share does not slip by a point or two. It falls `r pc(100*RAWS/RAW - 100*CLNS/CLN)` points and crosses the halfway line on the way down.
+**The total falls from `r bn(RAW)` to `r bn(CLN)`**, which is about what the Commission's own running summary of independent spending, and the watchdog groups that track it, report for the cycle.^[The Commission's summary, which can be filtered by cycle: <https://www.fec.gov/data/independent-expenditures/>.] **And the headline reverses.** In the raw file, `r pc(100*RAWS/RAW)`% of outside money supports candidates. Once `r NOUT` rows are gone, **`r pc(100*CLNO/CLN)`% of it is spent attacking somebody.** The supportive share does not slip by a point or two. It falls `r pc(100*RAWS/RAW - 100*CLNS/CLN)` points and crosses the halfway line on the way down.
 
 ```{r d3-flip, results='asis', eval=knitr::is_html_output()}
 ```
@@ -137,7 +139,7 @@ The second exception is sharper. Put back **only** the `r FWN` duplicated rows, 
 
 **"Independent" is a legal claim rather than an observed property.** Coordination is decided after the fact if at all, and it is not a field. The constitutional argument that this spending cannot corrupt rests on a factual premise no dataset can check.
 
-**There is no persuasion data anywhere in this.** Dollars and direction are here; effects are not. The obvious next source is the platform advertising libraries, and they are closed: Meta requires identity verification and Google reports spending in ranges. This is also one category of spending in one cycle. Electioneering communications, party spending, and groups that never file at all are elsewhere or nowhere.
+**There is no persuasion data anywhere in this.** Dollars and direction are here; effects are not. The obvious next source is the platform advertising libraries, and they are closed: Meta requires identity verification and Google reports each advertisement's spending only as a range.^[Google's political advertising transparency report: <https://adstransparency.google.com/political>.] This is also one category of spending in one cycle. Electioneering communications (broadcast ads that name a candidate close to an election without urging a vote either way), party spending, and groups that never file at all are elsewhere or nowhere.
 
 ## What you should have learned
 
@@ -164,10 +166,16 @@ Two stretch ideas point past the spreadsheet. Take the largest row in `ie_outlie
 
 - Federal Election Commission bulk downloads, **independent expenditures, 2024
   cycle** — `r n(ROWS)` filings.
-  <https://www.fec.gov/data/browse-data/?tab=bulk-data>
+  <https://www.fec.gov/data/browse-data/?tab=bulk-data>, the file itself at
+  <https://www.fec.gov/files/bulk-downloads/2024/independent_expenditure_2024.csv>,
+  and the Commission's description of its columns at
+  <https://www.fec.gov/campaign-finance-data/independent-expenditures-file-description/>.
   Every row removed by the cleaning rule is kept in `ie_outliers.csv`, so the
   decision can be checked rather than trusted. The `r n(ROWS)` row count is the
-  source file's, recorded by the build; the raw file itself is not committed.
+  file's on the day it was read; the file itself, at roughly 19 megabytes, is
+  not handed over here.
+- Federal Election Campaign Act, reporting requirements, 52 U.S.C. §30104.
+  <https://www.law.cornell.edu/uscode/text/52/30104>
 - Federal Election Commission, **electronic filing `r FLN`**, the Form 24
   reproduced in Figure 1 — `ie_filing_1707511.fec`, `r n(FLB)` bytes,
   retrieved 10 August 2026 from
@@ -180,11 +188,15 @@ Two stretch ideas point past the spreadsheet. Take the largest row in `ie_outlie
 
 - La Raja, R. J. and Schaffner, B. F. (2015). *Campaign Finance and Political
   Polarization: When Purists Prevail.* University of Michigan Press.
+  <https://press.umich.edu/Books/C/Campaign-Finance-and-Political-Polarization2>
 - Ansolabehere, S., de Figueiredo, J. M. and Snyder, J. M. Jr. (2003). "Why Is
   There So Little Money in U.S. Politics?" *Journal of Economic Perspectives*
   17(1): 105–130.
+  <https://www.aeaweb.org/articles?id=10.1257/089533003321164976>
 - *Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010).
+  <https://www.law.cornell.edu/supremecourt/text/08-205>
 - *Buckley v. Valeo*, 424 U.S. 1 (1976).
+  <https://www.law.cornell.edu/supremecourt/text/424/1>
 
 **The data itself**
 

@@ -31,6 +31,18 @@ LOP   <- sum(mar$pct[grepl("^Unanimous|under 10", mar$band)])
 CLOSE <- mar$pct[grepl("^Close", mar$band)]
 
 PASS  <- qs$pct_of_all[qs$question == "On Passage"]
+Q101  <- con$question_recorded_pct[con$era == "101-110"]
+Q111  <- con$question_recorded_pct[con$era == "111-119"]
+
+# One roll call, read field by field: the House vote of 21 March 2010 that
+# passed the Affordable Care Act. The derived tables are counts, and a worked
+# example needs the row itself, so it is picked out of the raw Voteview file.
+rl  <- readLines("data/raw/HSall_rollcalls.csv")
+ACA <- read.csv(text = c(rl[1], grep("^111,House,[0-9]+,2010-03-21,.*,HR3590,Passed,",
+                                     rl, value = TRUE)),
+                stringsAsFactors = FALSE)[1, ]
+rm(rl)
+ACA_PCT <- 100 * ACA$nay_count / (ACA$yea_count + ACA$nay_count)   # the losing side's share
 
 knit_print.data.frame <- function(x, ...) {
   n <- names(x)
@@ -128,6 +140,15 @@ svg.append("rect").attr("x",M.l).attr("y",M.t).attr("width",W-M.r-M.l)
   .on("mouseleave",function(){tip.style("opacity",0);rule.attr("opacity",0);});
 })();
 </script>'))
+
+## ---- aca-row
+data.frame(
+  field = c("congress", "chamber", "rollnumber", "date", "yea_count", "nay_count",
+            "vote_result", "vote_question", "vote_desc", "bill_number"),
+  value = c(ACA$congress, ACA$chamber, ACA$rollnumber, ACA$date, ACA$yea_count,
+            ACA$nay_count, ACA$vote_result, ACA$vote_question, ACA$vote_desc,
+            ACA$bill_number),
+  stringsAsFactors = FALSE)
 
 ## ---- contab
 c2 <- con[con$era != "all", ]

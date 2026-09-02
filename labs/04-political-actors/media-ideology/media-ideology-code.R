@@ -134,3 +134,33 @@ data.frame(Check = CK$check, Passed = ifelse(CK$passed, "yes", "NO"),
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
+
+## ---- worked
+# The arithmetic behind one outlet's score, done in the open. It reads the
+# complete file in raw/, because the derived tables carry the answer and not
+# the sharers behind it. Same rule as the build: people with no roll-call
+# score are left out, and the average is weighted by share count.
+e <- new.env(); load("data/raw/PolShares.RData", envir = e)
+P <- as.data.frame(get("PolShares", envir = e), stringsAsFactors = FALSE)
+wd <- F("worst_domain")
+wk <- P[!is.na(P$nominate) & !is.na(P[[wd]]) & P[[wd]] > 0,
+        c("name", "party", "nominate", wd)]
+names(wk)[4] <- "shares"
+wk <- wk[order(-wk$shares, -wk$nominate), ]
+WK_TOT   <- sum(wk$shares)
+WK_SCORE <- sum(wk$nominate * wk$shares) / WK_TOT
+WK_TOP   <- wk$name[1]; WK_TOPN <- wk$shares[1]
+WK_TOPNOM <- formatC(wk$nominate[1], format = "f", digits = 3)
+WK_SCORE_NOTOP <- with(wk[-1, ], sum(nominate * shares) / sum(shares))
+knit_print.data.frame <- function(x, ...) {
+  nm <- sub("^(.)", "\\U\\1", gsub("_", " ", names(x)), perl = TRUE)
+  knitr::knit_print(knitr::kable(x, col.names = nm, row.names = FALSE,
+                                 align = table_align(x)), ...)
+}
+registerS3method("knit_print", "data.frame", knit_print.data.frame,
+                 envir = asNamespace("knitr"))
+data.frame(Politician = wk$name, Party = wk$party,
+           Roll_call_score = formatC(wk$nominate, format = "f", digits = 3),
+           Shares = as.integer(wk$shares),
+           Score_times_shares = formatC(wk$nominate * wk$shares,
+                                        format = "f", digits = 1))

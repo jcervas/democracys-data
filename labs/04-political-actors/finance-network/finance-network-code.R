@@ -319,3 +319,19 @@ cat('<style>
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
+
+## ---- one-committee-prep
+# One committee's edges, read as a node: every row of edges.csv whose spender
+# is MAGA Inc., with the candidate's name looked up so a reader can see who
+# sits at the other end. Computed before the table because the prose around
+# it quotes mg on both sides.
+mg <- ed[ed$sid == "C00825851", ]
+mg <- mg[order(-mg$amount), ]
+mg$who <- cd$name[match(mg$cid, cd$cid)]
+
+## ---- one-committee
+data.frame(
+  Candidate_id = mg$cid,
+  Name_as_filed = mg$who,
+  Side = ifelse(mg$side == "O", "against", "for"),
+  Amount = usd(mg$amount))

@@ -16,15 +16,18 @@ dd_read_chunks("streamgraph-code.R")
 ```{r setup, include=FALSE}
 ```
 
+```{r band-read, include=FALSE}
+```
+
 A campaign year is usually described as one rising line. Attention built through the spring, the account goes, peaked in November, and fell away. That sentence treats a country's attention as a single quantity. It is not one quantity. It is many stories competing for the same finite days, and the mix changes constantly. So turn the sentence into a question you can check: **over a year, what was the public's attention actually made of, and when did the mix change?**
 
 Answering that means drawing twelve series at once, and the twelve do not share a scale. **The largest is `r n(SRATIO)` times the smallest**, and the busiest day is `r p1(DRATIO)` times the median day. Put all twelve on one ordinary axis and you will see two of them, with a flat line where the other ten are.
 
-Two chart forms exist for exactly this problem. This brief draws the same `r n(NROW)` numbers in both. Neither is a compromise, because they fail in opposite directions, and knowing which failure you are buying is the whole skill.
+Two chart forms exist for exactly this problem: the **streamgraph**, which stacks every series into one flowing ribbon of coloured bands, each band's thickness being that series' count, and the **horizon chart**, which gives every series a thin row of its own and folds the tall parts back down into it. This brief draws the same `r n(NROW)` numbers in both. Neither is a compromise, because they fail in opposite directions, and knowing which failure you are buying is the whole skill.
 
 ## The test
 
-The measure is daily readership of twelve English Wikipedia articles, every day of 2024. The counts are the daily pageviews the Wikimedia Foundation publishes for every article (<https://wikimedia.org/api/rest_v1/#/Pageviews%20data>). They were captured and committed by this book's [media-attention brief](../media-attention/media-attention-brief.html), which documents the capture in full and asks what a pageview is worth.
+The measure is daily readership of twelve English Wikipedia articles, every day of 2024. The counts are the daily pageviews the Wikimedia Foundation publishes for every article, free and in the public domain (<https://wikimedia.org/api/rest_v1/#/Pageviews%20data>), a pageview being one request for one article by a human reader, as counted by the Foundation's servers.^[The definition, and what is filtered out as automated traffic: <https://meta.wikimedia.org/wiki/Research:Page_view>.] They are the same counts this book's [media-attention brief](../media-attention/media-attention-brief.html) reads, and that brief says in full where they come from and asks what a pageview is worth.
 
 Why a pageview log, of all sources? Nobody at Wikimedia set out to measure American politics. These counts are the by-product of running a very large website, tallied because a server tallies what it serves. That makes them an administrative record rather than a survey, which is the kind of file [this section of the book](../../05-ordinary-people/admin-records-source/admin-records-source-brief.html) is about. Nobody was asked anything and nobody had to remember anything.
 
@@ -40,16 +43,16 @@ The record is also daily and unbroken across a whole year, which gives a spike s
 ```{r varmap}
 ```
 
-The table was built by taking the media-attention capture and asserting a complete grid. Twelve articles by `r n(NDAY)` days is `r n(NROW)` cells, and every one of them is present. Nothing was filled in. To impute is to fill in a value nobody recorded, by guessing it from other things, and `r n(IMPC)` cells here are imputed.
+The table is the media-attention brief's counts laid out as a complete grid. Twelve articles by `r n(NDAY)` days is `r n(NROW)` cells, and every one of them is present. Nothing was filled in. To impute is to fill in a value nobody recorded, by guessing it from other things, and `r n(IMPC)` cells here are imputed.
 
-That zero used to be a one, and the reason is worth a sentence. A stacked layout cannot leave a hole, because every day needs a total. The missing cell turned out to be a symptom. The media-attention capture had asked the service for the title the JD Vance article has *now*, so everything before the rename came back as redirect traffic. That capture now requests both titles and sums them, and this build asserts a complete grid rather than repairing an incomplete one.
+That zero was once a one, and the reason is worth a sentence. A stacked layout cannot leave a hole, because every day needs a total. The one missing cell turned out to be a symptom: the counts had been requested under the title the JD Vance article has *now*, so every day before the article was renamed came back with only the trickle of readers who arrived by the new spelling. Both titles are now counted and added together, and the hole is filled by a real number rather than a guess.
 
-The build writes four tables. `series.csv` is the grid itself. `stream.csv` adds `y0` and `y1` for every article-day, which is the stacking decision written down: the layout is computed once here, so the printed figure and the browser's figure draw the same polygons. `articles.csv` carries one row per article, with `total`, `peak`, `peak_date`, `median_day` and `stack_order`. `events.csv` holds the `r NEV` dated campaign events, compiled by hand and kept separate from the pageviews.
+Four tables sit under this brief. `series.csv` is the grid itself. `stream.csv` adds `y0` and `y1` for every article-day — the lower and upper edge of that article's band on that day — which is the stacking decision written down: the layout is computed once, so the printed figure and the browser's figure draw the same polygons. `articles.csv` carries one row per article, with `total`, `peak`, `peak_date`, `median_day` and `stack_order`. `events.csv` holds the `r NEV` dated campaign events, compiled by hand and kept separate from the pageviews.
 
 ```{r arttab}
 ```
 
-The busiest days are not a surprise once you read them. `r nice("Tim_Walz")` peaked at `r n(WPK)` on `r WPKD`, the day he was named to the ticket. Most of the rest peaked on the day after the election.
+The busiest days are not a surprise once you read them. `r nice("Tim_Walz")` peaked at `r n(WPK)` on `r format(as.Date(WPKD), "%e %B")`, the day he was named to the ticket. Most of the rest peaked on the day after the election.
 
 > **Before you look at either figure, commit to a number.** The smallest of
 > these twelve series is `r nice(SMALL)`, and the largest is `r n(SRATIO)`
@@ -64,15 +67,15 @@ The busiest days are not a surprise once you read them. `r nice("Tim_Walz")` pea
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. Twelve articles' daily readership, stacked as a streamgraph.** Bands sit around a centred baseline rather than on zero, so the thickness of the whole ribbon on any day is that day's total and each band is one article's share of it. This is the form to reach for when the question is about composition, because it puts every series in one frame and lets you watch the shares change. The faint vertical lines are the `r NEV` campaign events; move the pointer and the legend fills in with that day's numbers.
+**Figure 1. Twelve articles' daily readership, stacked as a streamgraph.** Bands are stacked around a centred baseline rather than on zero: on each day the ribbon is placed so that half of its thickness lies above the midline and half below, which is why its bottom edge wanders. That edge is not the value of anything; it traces one half of each day's total, downward. The thickness of the whole ribbon on any day is that day's total and each band is one article's share of it. This is the form to reach for when the question is about composition, because it puts every series in one frame and lets you watch the shares change. The faint vertical lines are the `r NEV` campaign events; move the pointer and the legend fills in with that day's numbers.
 
 The shape answers the opening question. The ribbon is thin until late June, swells through the summer, and goes vertical in the first week of November: `r n(PKT)` views on `r PKD` against a median day of `r n(MEDT)`. You can see the campaign happen.
 
-The exceptions are the most useful part. `r nice("Tim_Walz")`'s band has no visible thickness at all until `r WPKD`, when it arrives at `r n(WPK)` views in a single day. A composition chart can show a component appearing from nothing, which a chart of one running total cannot.
+The exceptions are the most useful part. `r nice("Tim_Walz")`'s band has no visible thickness at all until `r format(as.Date(WPKD), "%e %B")`, the day Harris named him her running mate,^[<https://www.npr.org/2024/08/06/nx-s1-5057604/tim-walz-harris-vice-president>.] when it arrives at `r n(WPK)` views in a single day: `r p1(100 * WPK / WD_TOT)`% of everything read that day about all twelve subjects together. A composition chart can show a component appearing from nothing, which a chart of one running total cannot.
 
 You can also watch the range problem come back inside the form meant to solve it. The vertical axis has to reach `r n(PKT)`, so the ten months before September are drawn a few pixels tall. The whole spring is a hairline. A July that was `r p1(sum(se$views[format(se$date, "%m") == "07"]) / sum(se$views[format(se$date, "%m") == "02"]))` times as busy as February looks much like it. A streamgraph rescales nothing: it stacks, and a stack inherits every extreme in the data.
 
-Now try to use it. **Pick a date in September and read how many people were reading about Kamala Harris.** You cannot, and the reason is structural. Her band does not sit on a baseline. Its lower edge is the running total of every band beneath it, and that total is itself moving. The eye is bad at judging the gap between two wandering curves, and it reads the slope of the top edge as though it were the value.
+Now try to use it. **Pick a date in September and read how many people were reading about Kamala Harris.** You cannot, and the reason is structural. Take `r format(as.Date(RD), "%e %B")`, the day of the Harris–Trump debate. The ribbon that day is `r n(RD_TOT)` views thick. Her band's lower edge sits `r n(-RD_Y0)` below the midline and its upper edge `r n(-RD_Y1)` below it, so the band is `r n(RD_V)` thick, and that thickness is her number. But neither edge is on an axis. The lower one is the running total of the `r RD_BELOW` bands stacked beneath hers, and that total moves from day to day; the upper one is the lower one plus her own count. The eye is bad at judging the gap between two wandering curves, and it reads the slope of the top edge as though it were the value. The band for `r nice(SMALL)` that day is `r n(RD_SV)` views thick inside a ribbon of `r n(RD_TOT)`, which is why you cannot find it at all.
 
 That is the streamgraph's trade. **One quantity has a baseline, the day's total, and it is the only quantity the figure states plainly.** Everything else is a thickness. The legend fills in with numbers on hover because the figure cannot answer the question on its own.
 
@@ -131,22 +134,25 @@ Two stretch ideas go past the spreadsheet. Add a thirteenth article's counts for
 
 - Wikimedia Foundation. *Pageviews API*, English Wikipedia, daily,
   all-access, human agents only, 2024. Free, and it needs no key.
-  <https://wikimedia.org/api/rest_v1/#/Pageviews%20data>. Captured and
-  committed by this book's
+  <https://wikimedia.org/api/rest_v1/#/Pageviews%20data>. What a pageview
+  is: <https://meta.wikimedia.org/wiki/Research:Page_view>. The counts are
+  those of this book's
   [media-attention brief](../media-attention/media-attention-brief.html),
-  which documents the capture and the one article that changed its title
-  mid-year. The figures here read that brief's published tables.
-- **Build.** `data/build-data.R` reads those tables, asserts the grid is
-  complete, computes the stacked layout once so print and screen agree, and
-  writes the four tables below. Every number above is computed at the moment
-  this document was rendered.
+  which says where they come from and documents the one article that changed
+  its title mid-year. The figures here read that brief's published tables.
+- The four tables below are what the figures read: the grid, the stacked
+  layout (`y0` and `y1` for every band on every day, computed once so that
+  print and screen draw the same shapes), one row per article, and the
+  events. Every number above is computed from them when this page is
+  rendered.
 
 **Method**
 
 - Byron, Lee and Martin Wattenberg (2008). "Stacked Graphs — Geometry &
   Aesthetics." *IEEE Transactions on Visualization and Computer Graphics*
   14(6): 1245–1252. The paper that named the streamgraph and worked out the
-  ordering used here. <https://doi.org/10.1109/TVCG.2008.166>
+  ordering used here. <https://doi.org/10.1109/TVCG.2008.166>; the paper is
+  also on Byron's own site, <http://leebyron.com/streamgraph/>
 - Few, Stephen (2008). "Time on the Horizon." *Visual Business Intelligence
   Newsletter*, June/July. The clearest short account of why the bands are
   folded.

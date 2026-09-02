@@ -160,6 +160,15 @@ EXROLE <- EXT$speaker$roles[[1]]$role_title
 EXTXT  <- gsub("\\s+", " ", trimws(paste(
   vapply(EXT$text_blocks, function(b) b$text, character(1)), collapse = " ")))
 EXCASE <- ex$case
+# The same justice's whole argument, every turn counted, including the
+# courtesy turns the tables drop: what one row of the six measures is built
+# from before any averaging. And the argument's own row in arguments.csv.
+EXJ <- Filter(function(t) !is.null(t$speaker) && identical(t$speaker$name, EXNAME),
+              allturns)
+EXJ_TURNS <- length(EXJ)
+EXJ_SECS  <- sum(vapply(EXJ, function(t) t$stop - t$start, numeric(1)))
+EXJ_WORDS <- sum(vapply(EXJ, nwords, integer(1)))
+EXA <- ar[ar$docket == ex$docket & ar$term == ex$term, ][1, ]
 
 ## ---- rawturn
 data.frame(

@@ -16,21 +16,21 @@ dd_read_chunks("careers-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Congress is regularly described as a job nobody leaves: safe seats, career politicians, members who stay for decades. Is that true? How long does a congressional career actually last? The obvious way to answer is to take everybody who has ever served, count each person's Congresses, and average — a one-line calculation over `r n(NCAR)` careers.
+Congress is regularly described as a job nobody leaves: safe seats, career politicians, members who stay for decades. Is that true? How long does a congressional career actually last? The obvious way to answer is to take everybody who has ever served, count each person's Congresses — the numbered two-year terms of the legislature, so that a member seated in January `r yr(LASTC)` sits in the `r LASTC`th — and average: a one-line calculation over `r n(NCAR)` careers.
 
 The answer that calculation gives is wrong, and wrong in a direction that reverses the finding. Done that way, the record says careers have been collapsing since the 1990s. Done properly, it says the opposite: careers today are the longest they have ever been. The difference is entirely about what to do with the people who have not finished yet.
 
 ## The test
 
-The data is Voteview's congressional membership file, `HSall_members.csv`, covering the 1st through `r LASTC`th Congresses (1789 to the present), obtained from [Voteview](https://voteview.com/). One row is one member serving in one Congress, compiled from the official rosters with one permanent identifier per person, so a member who leaves and comes back is still one member.
+The data is Voteview's congressional membership file, `HSall_members.csv`: one row for every member in every Congress from the 1st (1789) through the `r LASTC`th, compiled from the official rosters by political scientists at UCLA and downloadable free at <https://voteview.com/data>. Each person carries one permanent identifier, so a member who leaves and comes back is still one member.
 
-This is the right kind of source because a career is a fact about membership, not about elections. The [roster chapter](../rosters-source/rosters-source-brief.html) introduces this cluster's records and the distinction they rest on: a roster says who held the seat and for how long, which is exactly the unit a career is made of. A returns file cannot supply it. `r n(NGAP)` careers in this file are not one continuous stretch, and a file of election results has no way to know those terms belong to the same person.
+This is the right kind of source because a career is a fact about membership, not about elections. The [roster chapter](../rosters-source/rosters-source-brief.html) introduces this cluster's records and the distinction they rest on: a roster says who held the seat and for how long, which is exactly the unit a career is made of. A returns file cannot supply it. `r n(NGAP)` careers in this file are not one continuous stretch — the member served, left, and was later seated again — and a file of election results has no way to know those separate terms belong to the same person.
 
 The test runs in two parts. First, compute career length the obvious way and see what that arithmetic claims. Then count the unfinished careers with a method built for exactly this problem, and see whether the claim survives.
 
 ## The data
 
-The build strings the membership rows into `careers.csv`, one row per career, where a career is one member in one chamber. Its columns, by name:
+Stack each member's rows together and you have `careers.csv`, one row per **career** — one member's whole run of service in one chamber, however many Congresses it spans. Its columns, by name:
 
 ```{r varmap}
 ```
@@ -42,7 +42,7 @@ The column that decides everything is the last one. `r n(NON)` of the `r n(NCAR)
 ```{r one-row}
 ```
 
-Two members of the same entering class. The first served `r e$tenure` Congress`r if (e$tenure > 1) "es"` and left; that career is `r e$tenure` long and always will be. The second has served `r g$tenure` so far and may serve twenty more. **Recording the second as a career of length `r g$tenure` is a claim about the future, not a measurement.**
+Two members of the same entering class, both first seated in the `r ENTRY`th Congress (`r yr(ENTRY)`). The first served `r e$tenure` Congress`r if (e$tenure > 1) "es"` and left; that career is `r e$tenure` long and always will be. The second has served `r g$tenure` so far and may serve twenty more. **Recording the second as a career of length `r g$tenure` is a claim about the future, not a measurement.**
 
 > **Before you read on, write a number down.** Across all `r n(NCAR)` careers
 > in the file, what is the median length, in two-year Congresses? Commit to a
@@ -63,7 +63,7 @@ Start with one entering class, small enough to see whole.
 
 Now the question. What is the average career length of this class? The bars that end can be averaged. The arrows cannot, and they are not a small remainder to be swept up, because they are systematically the *long* ones. A career still running at fifteen years is exactly the kind of career that will be long.
 
-Take every career that began in the 104th Congress or later: `r n(MODN)` careers, of which `r n(MODON)` (`r p1(MODPCT)`%) are still running. Compute the median three ways.
+Take every career that began in the 104th Congress (elected in `r yr(104) - 1`, seated in `r yr(104)`) or later: `r n(MODN)` careers, of which `r n(MODON)` (`r p1(MODPCT)`%) are still running. Compute the median three ways.
 
 ```{r naivetab}
 ```
@@ -77,7 +77,9 @@ That error compounds into a false trend, and the trend is the exception this bri
 
 Read the last column down the page and it looks like a finding: careers grew to about six Congresses by the 1980s and then fell off a cliff, to `r p1(LAST_CO$mean_ended)` in the newest cohort. Read the column beside it and the finding evaporates. **`r p1(LAST_CO$pct_ongoing)`% of that cohort has not finished**, so the only careers available to average are the ones that ended early. The collapse is a measurement artifact: the longer a career runs, the less likely the record has seen it end.
 
-The Kaplan–Meier estimator does one thing, and it fits in a sentence. It walks up the lengths in order, asks at each length how many careers were still running and what share of them ended right there, and multiplies those shares together into a survival curve. An unfinished career counts as evidence exactly as far as it is evidence, then leaves without ever being counted as an ending.
+The Kaplan–Meier estimator does one thing, and it fits in a sentence.^[E. L. Kaplan and Paul Meier, "Nonparametric Estimation from Incomplete Observations," *Journal of the American Statistical Association* 53, no. 282 (1958): 457–481, <https://www.jstor.org/stable/2281868>.] It walks up the lengths in order, asks at each length how many careers were still running and what share of them ended right there, and multiplies those shares together into a survival curve. An unfinished career counts as evidence exactly as far as it is evidence, then leaves without ever being counted as an ending.
+
+Here are its first two steps, from the table `km.csv` holds. All `r n(K1$at_risk)` careers begin, and `r n(K1$ended)` of them end after one Congress, so the share surviving the first is `r p1(100 * K1$surv)`%. Going into the second Congress, `r n(K2$at_risk)` careers are still being watched — not `r n(K1$at_risk - K1$ended)`, because `r n(K1$at_risk - K1$ended - K2$at_risk)` first-term members were still serving in the `r LASTC`th, and the record can say nothing about their second; they leave the count without being counted as endings. Of those `r n(K2$at_risk)`, `r n(K2$ended)` end, so `r p1(100 * (1 - K2$ended / K2$at_risk))`% survive *that* step, and the share surviving two Congresses is `r p1(100 * K1$surv)`% × `r p1(100 * (1 - K2$ended / K2$at_risk))`% = `r p1(100 * K2$surv)`%. Repeat up the lengths and the curve is drawn; the median career is the length at which it first drops below half.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -85,9 +87,9 @@ The Kaplan–Meier estimator does one thing, and it fits in a sentence. It walks
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The share of careers still running, after each number of Congresses.** The dashed line is a half; where a curve crosses it is the median career: `r MH` Congresses for the House, `r MS` for the Senate, `r MKM` overall. Hovering gives the estimate and the number of careers still at risk, which is the honest way to read the right-hand end.
+**Figure 2. The share of careers still running, after each number of Congresses.** The dashed line is a half; where a curve crosses it is the median career: `r MH` Congresses for the House, `r MS` for the Senate, `r MKM` overall. Hovering gives the estimate and the number of careers still at risk — still running at that length, and so still able to end — which is the honest way to read the right-hand end, where the curve rests on a handful of careers.
 
-So Congress is not a lifetime job. Roughly a third of House careers are over after a single Congress — members who arrive in a wave and leave in the next one. The median House career is `r MH` Congresses, about `r 2 * MH` years. The Senate curve starts lower and flattens, because a six-year term is a higher floor.
+So Congress is not a lifetime job. `r p1(100 * (1 - KH1$surv))`% of House careers are over after a single Congress — members who arrive in a wave and leave in the next one. The median House career is `r MH` Congresses, about `r 2 * MH` years. The Senate curve starts higher, with `r p1(100 * KS1$surv)`% surviving the first Congress, and then drops sharply at three, because a senator's six-year term spans three Congresses: the first point at which a Senate career can end at the ballot box.
 
 ```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.4}
 ```
@@ -97,7 +99,7 @@ So Congress is not a lifetime job. Roughly a third of House careers are over aft
 
 **Figure 3. The same estimator, four eras, by the Congress in which the career began.** The legend carries each era's number of careers and how many are unfinished. The newest curve rests on a group that is `r p1(LAST_CO$pct_ongoing)`% incomplete, and a reader is entitled to know that before believing it.
 
-The curves separate in the order the ordinary account of Congress would predict, and the modern one is the *highest*. A career begun since the 104th Congress has a median of **`r MODKM` Congresses**, against `r OLDKM` for one begun between the 50th and the 79th. Careers roughly doubled. Both facts are true at once: the typical career is a few Congresses, not a lifetime, and today's careers are the longest the record has ever held.
+The curves separate in the order the ordinary account of Congress would predict — the House became a career institution over the twentieth century^[The classic statement is Nelson W. Polsby, "The Institutionalization of the U.S. House of Representatives," *American Political Science Review* 62, no. 1 (1968): 144–168, <https://www.jstor.org/stable/1953331>.] — and the modern one is the *highest*. A career begun since the 104th Congress has a median of **`r MODKM` Congresses**, against `r OLDKM` for one begun between the 50th and the 79th. Careers roughly doubled. Both facts are true at once: the typical career is a few Congresses, not a lifetime, and today's careers are the longest the record has ever held.
 
 ## What this brief cannot tell you
 
@@ -132,15 +134,20 @@ Two stretch ideas point past the spreadsheet. When the `r LASTC + 1`st Congress 
 
 - Lewis, Jeffrey B., Keith Poole, Howard Rosenthal, Adam Boche, Aaron Rudkin
   and Luke Sonnet. *Voteview: Congressional Roll-Call Votes Database.*
-  `HSall_members.csv`, 1st–`r LASTC`th Congresses. <https://voteview.com/>
+  `HSall_members.csv`, 1st–`r LASTC`th Congresses. <https://voteview.com/>,
+  downloadable at <https://voteview.com/data>.
 
 **Academic literature**
 
 - Kaplan, E. L. and Paul Meier (1958). "Nonparametric Estimation from
   Incomplete Observations." *Journal of the American Statistical Association*
-  53(282): 457–481. The estimator is written out in four lines of base R and
+  53(282): 457–481. <https://www.jstor.org/stable/2281868>. The estimator is
+  written out in four lines of base R and
   checked against `survival::survfit` every time it runs; it fails rather than
   publishing a curve that disagrees with the reference implementation.
+- Polsby, Nelson W. (1968). "The Institutionalization of the U.S. House of
+  Representatives." *American Political Science Review* 62(1): 144–168.
+  <https://www.jstor.org/stable/1953331>.
 
 **The data itself**
 

@@ -39,6 +39,13 @@ yr <- function(cg) 1789 + 2 * (cg - 1)
 
 LAST_CO <- co[nrow(co), ]      # the newest entering cohort
 
+# The first two steps of the estimator, walked in the prose; and each chamber's
+# first-Congress survival, so the text computes "a third" rather than typing it.
+K1  <- km[km$stratum == "All"    & km$t == 1, ]
+K2  <- km[km$stratum == "All"    & km$t == 2, ]
+KH1 <- km[km$stratum == "House"  & km$t == 1, ]
+KS1 <- km[km$stratum == "Senate" & km$t == 1, ]
+
 ACC <- "#1C4C5C"; ENDC <- "#2c7fb8"; ONC <- "#C41230"
 GRY <- "#8A8F94"; GLD <- "#C08A2E"; GRN <- "#4d9221"
 

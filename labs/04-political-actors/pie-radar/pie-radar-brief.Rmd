@@ -24,13 +24,13 @@ This matters for a reason that has nothing to do with campaign finance. Most peo
 
 ## The test
 
-The evidence is one file drawn twice: in the two forms this brief is about, and as plain bars. The file is the Federal Election Commission's candidate summary for the 2023–24 cycle, `r n(NROWS)` rows, one per candidate who filed, each carrying total receipts and a breakdown by source. It is the file these charts are actually made from every cycle.
+The evidence is one file drawn twice: in the two forms this brief is about, and as plain bars. The file is the summary the Federal Election Commission publishes for every candidate's committee each election cycle, downloadable from its bulk-data page at <https://www.fec.gov/data/browse-data/?tab=bulk-data>; for 2023–24 it is `r n(NROWS)` rows, one per candidate who filed, each carrying total receipts and a breakdown by source. It is the file these charts are actually made from every cycle.
 
 A mandatory disclosure filing is the right evidence for two reasons. It is a complete count rather than a sample, so nothing below is an artifact of who happened to answer. And its categories were drawn by statute, so nobody can say a better analyst would have picked tidier ones. What such a filing is and what it can bear is the subject of this cluster's [campaign-finance chapter](../finance-source/finance-source-brief.html).
 
 ## The data
 
-The table was built from the copy of that filing committed by the [campaign-finance brief](../campaign-finance/campaign-finance-brief.html). One row is one candidacy. Here are the six money columns for a single candidate:
+The table is the same file the [campaign-finance brief](../campaign-finance/campaign-finance-brief.html) reads, with the Commission's column names attached. One row is one candidacy. Here are the six money columns for a single candidate:
 
 ```{r one-row}
 ```
@@ -40,9 +40,9 @@ The table was built from the copy of that filing committed by the [campaign-fina
 
 Three of those columns are not in the download, and each one is a repair a pie chart requires before it can be drawn at all.
 
-**The FEC's categories overlap.** `self_funding` is exactly `cand_contrib` plus `cand_loans`, in all `r n(NROWS)` rows. It is a subtotal sitting beside its own two parts, and the build checks that identity rather than assuming it. Drawn as it comes, a pie counts the candidate's own money twice and shrinks every other slice to make room, so only the subtotal is kept.
+**The FEC's categories overlap.** `self_funding` is exactly `cand_contrib` plus `cand_loans`, in all `r n(NROWS)` rows. It is a subtotal sitting beside its own two parts, and this brief checks that identity in every row rather than assuming it. Drawn as it comes, a pie counts the candidate's own money twice and shrinks every other slice to make room, so only the subtotal is kept.
 
-**The published sources do not add up.** The five remaining fields fall short of `ttl_receipts`, so the build computes a sixth column, `other`. It is a residual: what is left over after you subtract the five named sources from the total. It is usually small, a median of `r p2(MEDOTH)`% of a candidate's receipts, and not always. `r nice(MAXOTHN)` raised `r p1(MAXOTH)`% of everything outside the five. Without that slice the pie would stretch the five it has until they filled the circle.
+**The published sources do not add up.** The five remaining fields fall short of `ttl_receipts`, so a sixth column, `other`, is computed here. It is a residual: what is left over after you subtract the five named sources from the total. It is usually small — for the candidate in the middle of the file, the median, `r p2(MEDOTH)`% of receipts — and not always. `r nice(MAXOTHN)` raised `r p1(MAXOTH)`% of everything outside the five. Without that slice the pie would stretch the five it has until they filled the circle.
 
 **Some of the numbers are negative.** `r n(NEG)` candidates report negative individual contributions, because refunds during the period exceeded receipts. The smallest is `r dl(NEGMIN)`. A bar chart draws that below the axis. A pie cannot draw it at all, because there is no negative angle in a circle that sums to 360 degrees.
 
@@ -72,11 +72,13 @@ Added up as filed, those `r n(DR)` records hold `r bn(DFILED)`. Counted once eac
 
 The two pies are the same picture. No slice differs from its counterpart by more than `r p2(LGAP)` percentage points, a difference no eye can resolve at any size. And one of these campaigns raised `r p1(LRAT)` times as much as the other: `r mn(LAT)` against `r mn(LBT)`.
 
+Take the largest slice in each circle, the money from individual people. In `r nice(LA)`'s pie it is `r p1(shares(LA)["indiv_contrib"])`% of the circle, in `r nice(LB)`'s `r p1(shares(LB)["indiv_contrib"])`%: two wedges of the same angle, which the eye reads as the same amount. Now read the same two numbers off the bars, which are drawn in dollars. `r nice(LA)`'s bar stands for `r mn(dollars(LA)["indiv_contrib"])` and `r nice(LB)`'s for `r mn(dollars(LB)["indiv_contrib"])`, and the first is about `r p1(dollars(LA)["indiv_contrib"] / dollars(LB)["indiv_contrib"])` times as long as the second. The pie did not distort that gap. It threw the number away, because a slice is a share of its own circle and nothing more, and these are shares of two different wholes.
+
 That is not a distortion. It is the pie chart working as designed. A pie is drawn from shares, and its radius carries no information. **Two pies are never comparable unless somebody writes the totals underneath**, and at that point the reader is doing the comparison from the text, with the circles as decoration.
 
 Now press the button, or look at the lower panel. The bars sit on a shared dollar axis and the question answers itself.
 
-The second failure is inside a single pie. Try to rank `r nice(LB)`'s three smallest sources from the circle alone. You cannot, and it is not your fault. Cleveland and McGill (1984) measured how accurately people read graphical encodings, and found a clear order: position along a common scale first, then length, then angle and area near the bottom. **A pie uses two of the worst three.** The bar chart uses the best one.
+The second failure is inside a single pie. Try to rank `r nice(LB)`'s three smallest sources from the circle alone. Together they are `r p2(sum(sort(shares(LB))[1:3]))`% of `r nice(LB)`'s receipts — about `r p1(3.6 * sum(sort(shares(LB))[1:3]))` degrees of the circle's 360, all three of them — and you are being asked to put them in order. You cannot, and it is not your fault. Cleveland and McGill (1984) measured how accurately people read the ways a number can be turned into a mark — a position, a length, an angle, an area, a shade — and found a clear order: position along a common scale first, then length, then angle and area near the bottom.^[William S. Cleveland and Robert McGill, "Graphical Perception: Theory, Experimentation, and Application to the Development of Graphical Methods," *Journal of the American Statistical Association* 79, no. 387 (1984): 531–554, <https://www.jstor.org/stable/2288400>.] **A pie uses two of the worst three.** The bar chart uses the best one.
 
 A radar chart, also called a spider or star chart, looks like the fix. It puts each variable on its own spoke, plots the value along it, and joins the points into a polygon. It can hold several candidates at once, and it shows magnitudes rather than shares. It introduces a worse problem than the one it solves.
 
@@ -92,12 +94,12 @@ Press it a few times. **The area of the shape is a property of the order the axe
 
 $$A \;=\; \tfrac{1}{2}\,\sin\!\left(\tfrac{2\pi}{n}\right)\sum_{i} r_i\, r_{i+1}$$
 
-Every term is a product of **adjacent** radii. Put the two largest values next to each other and the area is large; separate them and it collapses. The axes here are funding sources, and there is no sense in which PAC money comes "after" party money, so all `r n(NORD)` arrangements are equally defensible.
+In words: the polygon is a ring of `r n(NCAT)` triangles, one between each pair of neighbouring spokes, and each triangle's size comes from multiplying the two spoke lengths it sits between. Every term is a product of **adjacent** radii. Put the two largest values next to each other and the area is large; separate them and it collapses. The axes here are funding sources, and there is no sense in which PAC money comes "after" party money, so all `r n(NORD)` arrangements are equally defensible.
 
 ```{r arearange}
 ```
 
-The sparse profiles are the extreme cases, and they should be set aside. `r nice(MAXRN)` raised almost everything from one source, so five of the six radii sit near zero and the polygon is a sliver. **Look instead at `r nice(EVEN)`**, the most evenly spread profile in the file, with money on five of the six axes. That is the case a radar chart is supposed to be good at. The same six numbers make polygons from `r formatC(EMIN, format = "f", digits = 4)` to `r formatC(EMAX, format = "f", digits = 4)`, a factor of **`r p2(ERAT)`**.
+The sparse profiles are the extreme cases, and they should be set aside. `r nice(MAXRN)` raised almost everything from one source, so five of the six radii sit near zero and the polygon is a sliver. **Look instead at `r nice(EVEN)`**, the most evenly spread profile in the file, with money on five of the six axes. That is the case a radar chart is supposed to be good at. The same six numbers make polygons from `r formatC(EMIN, format = "f", digits = 4)` to `r formatC(EMAX, format = "f", digits = 4)`, a factor of **`r p2(ERAT)`**. `r nice(EVEN)`'s largest source is `r SHORT[EBIG]`, `r p1(shares(EVEN)[EBIG])`% of receipts. In the largest arrangement that spoke sits between `r ENB_MAX`, and both of its products in the sum are big. In the smallest it sits between `r ENB_MIN`, and the longest spoke on the chart is multiplied by almost nothing on either side.
 
 The second button in Figure 2 is the other half of the problem. By default each axis is scaled to the largest of the six values, which is what makes the polygon fill the circle. Press it and every axis goes on one dollar scale, and the shape collapses toward the one or two spokes carrying real money. Neither picture is wrong, and they are different pictures of identical numbers. A radar chart cannot tell you which one you are looking at, because a spoke is a direction rather than a scale.
 
@@ -142,13 +144,14 @@ Two stretch ideas point past the spreadsheet. Take a pie chart from a news story
 
 **Data**
 
-- Federal Election Commission. *Candidate summary file*, 2023–2024 cycle, as
-  captured and committed by this book's
-  [campaign-finance brief](../campaign-finance/campaign-finance-brief.html).
-  The build here reads that brief's published output, checks the overlap
-  between `self_funding` and its parts, computes the sixth category,
-  enumerates the duplicate records, and writes the area of every axis
-  ordering. <https://www.fec.gov/data/browse-data/?tab=bulk-data>
+- Federal Election Commission. *Candidate summary file* ("All candidates,"
+  `weball24`), 2023–2024 cycle, published on the Commission's bulk-data page
+  at <https://www.fec.gov/data/browse-data/?tab=bulk-data> and read here in
+  the named-column form this book's
+  [campaign-finance brief](../campaign-finance/campaign-finance-brief.html)
+  hands over. From it this brief checks the overlap between `self_funding`
+  and its parts, computes the sixth category, finds the duplicate records,
+  and works out the area of every axis ordering.
 
 **Method**
 
@@ -156,14 +159,18 @@ Two stretch ideas point past the spreadsheet. Take a pie chart from a news story
   Theory, Experimentation, and Application to the Development of Graphical
   Methods." *Journal of the American Statistical Association* 79(387):
   531–554. The experiments behind the ranking of encodings used above.
+  <https://www.jstor.org/stable/2288400>
 - Spence, Ian and Stephan Lewandowsky (1991). "Displaying Proportions and
   Percentages." *Applied Cognitive Psychology* 5(1): 61–77. The careful
   defence of the pie chart for the narrow task it is good at.
+  doi:10.1002/acp.2350050106.
 - Playfair, William (1801). *The Statistical Breviary.* London. The first
-  published pie chart: two categories, one whole, no comparison.
+  published pie chart: two categories, one whole, no comparison. Scanned at
+  the Internet Archive: <https://archive.org/details/statisticalbrev00playgoog>
 - Saary, M. Joan (2008). "Radar plots: a useful way for presenting multivariate
   health care data." *Journal of Clinical Epidemiology* 61(4): 311–317. A
   sympathetic account, including the axis-order problem.
+  <https://doi.org/10.1016/j.jclinepi.2007.04.021>
 
 **The data itself**
 

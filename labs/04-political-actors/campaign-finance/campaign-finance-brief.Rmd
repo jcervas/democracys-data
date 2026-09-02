@@ -25,11 +25,11 @@ The answer decides what a reform would have to change. If organised money is buy
 
 ## The test
 
-The evidence is one filing, read end to end, and then all `r n(nrow(fec))` of them at once. The file is the Federal Election Commission's "All Candidates" bulk download for the 2023–24 cycle: one row per candidate who filed, covering committee activity through 31 December 2024.
+The evidence is one filing, read end to end, and then all `r n(nrow(fec))` of them at once. The file is the summary the Federal Election Commission publishes for every candidate's committee each election cycle — a cycle being the two years that end with a federal election, here 2023–24. It is downloadable from the FEC's bulk-data page at <https://www.fec.gov/data/browse-data/?tab=bulk-data> under "All candidates" (`weball24` for this cycle): one row per candidate who filed, covering committee activity through 31 December 2024.
 
 A mandatory filing is the right instrument for this question, and for a narrow reason. It is a complete count rather than a sample, so an incumbent's receipts and a challenger's can be set side by side with no sampling assumption in between. The four source categories mean the same thing in both rows, because the same form imposed them on both. What a disclosure filing is, who writes it, and why disclosure is not the same as audit is the subject of this cluster's [campaign-finance chapter](../finance-source/finance-source-brief.html).
 
-One row is one candidate's committee for the whole cycle: everything raised, and a breakdown by source.
+One row is one candidate's committee for the whole cycle — the filer is always a committee, the campaign organisation with a treasurer that raises and spends on the candidate's behalf, never the candidate personally. It holds everything raised, and a breakdown by source: individual people, political action committees (PACs, through which a company, union or interest group pools its members' contributions and passes them to candidates), the party, and the candidate's own pocket.
 
 ```{r one-row}
 ```
@@ -38,12 +38,12 @@ The `ici` column beside each name is the narrowest field in the file. It records
 
 ## The data
 
-The Commission ships a pipe-separated file with no header row. Here is one complete record, laid out one field per row so it fits the page. Nothing else is changed.
+The Commission publishes the file with the fields on each line separated by the `|` character and no header row to name them. Here is one complete record, laid out one field per row so it fits the page. Nothing else is changed.
 
 ```{r fec-raw}
 ```
 
-That is one line of `r format(nraw, big.mark = ",")`, carrying `r length(f)` fields and no names for any of them. The values sit in an order the file never states. The Commission publishes that order in a separate document, on a different page of its website. Shift the layout by one and every dollar in this brief lands in the wrong category, with no error and no warning.
+That is one line of `r format(nraw, big.mark = ",")`, carrying `r length(f)` fields and no names for any of them. The values sit in an order the file never states. The Commission publishes that order in a separate document, on a different page of its website.^[The layout: <https://www.fec.gov/campaign-finance-data/all-candidates-file-description/>.] Shift the layout by one and every dollar in this brief lands in the wrong category, with no error and no warning.
 
 A few of the positions, once that separate document is consulted:
 
@@ -55,13 +55,13 @@ A few of the positions, once that separate document is consulted:
 
 Cleaned, the same candidate is a row you can read, and four things happened to get there.
 
-**Names were attached, and then checked.** The build writes down all `r length(f)` column names and stops unless exactly `r length(f)` columns arrived. That assertion is the whole defence against the layout changing in a future cycle.
+**Names were attached, and then checked.** Each of the `r length(f)` positions was given the name the Commission's layout assigns it, and the count was checked first: had any other number of fields arrived, nothing below would have been computed. That check is the whole defence against the layout changing in a future cycle.
 
 **Two columns were invented.** Neither `office` nor `own money` is in the download. Office is the first character of the candidate ID, so `r pick` is a candidate for `r fec$office[fec$cand_id == pick]` because it begins with `r substr(pick, 1, 1)`. Own money is `cand_contrib`, what the candidate gave their campaign, added to `cand_loans`, what they lent it. That addition is a definition rather than a measurement, and a reader who thinks a loan is not a gift is entitled to a different column.
 
-**Most of the file was thrown away.** Of `r length(f)` columns the build keeps `r ncol(fec)`: `cand_id`, `cand_name`, `office`, `office_st`, `ici`, `party`, `ttl_receipts`, `ttl_disb`, `indiv_contrib`, `pac_contrib`, `party_contrib`, `self_funding`, `cand_contrib`, `cand_loans`, `cash_on_hand`, `debts_owed_by` and `trans_from_auth`. The discarded ones include the coverage end date, which arrives as the text `r f[28]` rather than as a date.
+**Most of the file was thrown away.** Of `r length(f)` columns this brief keeps `r ncol(fec)`: `cand_id`, `cand_name`, `office`, `office_st`, `ici`, `party`, `ttl_receipts`, `ttl_disb`, `indiv_contrib`, `pac_contrib`, `party_contrib`, `self_funding`, `cand_contrib`, `cand_loans`, `cash_on_hand`, `debts_owed_by` and `trans_from_auth`. The discarded ones include the coverage end date, which arrives as the text `r f[28]` rather than as a date.
 
-**Nothing was repaired.** `r n(nrow(fec))` rows went in and `r n(nrow(fec))` came out. The build does not merge candidates who appear more than once, does not fill the `r n(sum(fec$ici == ""))` rows whose incumbency letter is blank, and does not remove the `r n(sum(fec$ttl_receipts == 0))` candidates who reported raising nothing at all. Each of those is a defect somebody would ordinarily clean, and each is evidence about how federal campaign finance is recorded.
+**Nothing was repaired.** `r n(nrow(fec))` rows went in and `r n(nrow(fec))` came out. Candidates who appear more than once were not merged, the `r n(sum(fec$ici == ""))` rows whose incumbency letter is blank were not filled, and the `r n(sum(fec$ttl_receipts == 0))` candidates who reported raising nothing at all were not removed. Each of those is a defect somebody would ordinarily clean, and each is evidence about how federal campaign finance is recorded.
 
 Notice what the raw record does not contain. Fields `r paste(21:25, collapse = ", ")` are the election results, and here they are empty. They are empty in most records.
 
@@ -80,7 +80,7 @@ Start with the whole House, where there are enough candidates for a pattern to e
 ```{r typical}
 ```
 
-The median House candidate raised `r d(MEDH)`. The average raised `r d(MNH)`, which is `r pc(MNH/MEDH, 0)` times more. Whenever a mean sits that far above a median, a few cases are carrying nearly everything and the average has stopped describing anybody. So every figure below is a median or a share, never an average.
+The median House candidate — the one in the middle, with as many candidates above as below — raised `r d(MEDH)`. The average, every total added up and divided by the number of candidates, is `r d(MNH)`, which is `r pc(MNH/MEDH, 0)` times more. Whenever a mean sits that far above a median, a few cases are carrying nearly everything and the average has stopped describing anybody. So every figure below is a median or a share, never an average.
 
 ```{r mosaic-prep, include=FALSE}
 ```
@@ -93,7 +93,7 @@ The median House candidate raised `r d(MEDH)`. The average raised `r d(MNH)`, wh
 
 **Figure 1. Individuals pay for most of every kind of campaign; what differs is what covers the rest.** Serious House campaigns only. A mosaic is the right form because the question has two parts at once. Bar height is composition and bar width is total dollars raised, so the area of a coloured block is real money rather than a share of a share. The PAC block in the incumbent bar is `r dm(GT["I"] * MOS["PACs","I"] / 100)` against `r dm(GT["C"] * MOS["PACs","C"] / 100)` in the challenger bar. "Other" is receipts that are none of the four named sources, mostly transfers from the candidate's own other committees, which is why it is largest for incumbents.
 
-So the slogan is wrong in its first clause. **Individuals supply the majority of every group's money**, `r pc(src["Individuals","I"])`% for incumbents, `r pc(src["Individuals","C"])`% for challengers and `r pc(src["Individuals","O"])`% for open-seat candidates. Organised money is the minority partner everywhere in this file.
+So the slogan is wrong in its first clause. **Individuals supply the majority of every group's money**, `r pc(src["Individuals","I"])`% for incumbents, `r pc(src["Individuals","C"])`% for challengers and `r pc(src["Individuals","O"])`% for open-seat candidates. Organised money is the minority partner everywhere in this file. That is the pattern Ansolabehere, de Figueiredo and Snyder found across decades of these filings, and the reason they asked why there is so *little* money in American politics rather than so much: most of it is given by individuals, in amounts that look more like a consumer's purchase than an investor's bet.^[Stephen Ansolabehere, John M. de Figueiredo and James M. Snyder Jr., "Why Is There So Little Money in U.S. Politics?" *Journal of Economic Perspectives* 17, no. 1 (2003): 105–130, <https://www.aeaweb.org/articles?id=10.1257/089533003321164976>.]
 
 Where it is not wrong is in the pattern. Look at what fills the gap when PACs do not.
 
@@ -127,9 +127,9 @@ The file will break the tie without any research design. Ask not *how much* each
 
 Most readers write down a number near the incumbent's, and many write down a larger one, because that is where money would go if money were trying to decide elections. The open-seat figure is `r pc(pacm(ser,"O"))`%, essentially the same as a challenger's `r pc(pacm(ser,"C"))`%. **PAC money is not sorted by competitiveness. It is sorted by who currently holds the seat.**
 
-That is enough to break the tie. Whatever organised money is buying, it is not the outcome of an election, because it is demonstrably not going where outcomes are decided. Fouirnaies and Hall (2014) reach the same conclusion causally, by comparing candidates who barely won against candidates who barely lost, and find the effect concentrated in access-oriented donors.
+That is enough to break the tie. Whatever organised money is buying, it is not the outcome of an election, because it is demonstrably not going where outcomes are decided. Fouirnaies and Hall (2014) reach the same conclusion by a stronger route, comparing candidates who barely won against candidates who barely lost — two groups alike in everything but the office — and find that holding the seat itself raises a candidate's share of contributions, with the rise concentrated among donors who want access to whoever wins rather than a particular winner.^[Alexander Fouirnaies and Andrew B. Hall, "The Financial Incumbency Advantage: Causes and Consequences," *Journal of Politics* 76, no. 3 (2014): 711–724, doi:10.1017/S0022381614000139.]
 
-There is one more thing to say about the biggest block in Figure 1. **The largest source is the least identified one.** Federal law requires a committee to itemise a contributor by name, address, occupation and employer only once that person's giving passes $200. Below that line the money is reported as a lump sum. That threshold is the Commission's rule rather than a finding of this brief, and it is cited in the sources. So the `r pc(src["Individuals","I"])`% marked "Individuals" in the incumbent bar is a sum over two populations, and the public record names only one of them.
+There is one more thing to say about the biggest block in Figure 1. **The largest source is the least identified one.** Federal law requires a committee to itemise a contributor by name, address, occupation and employer only once that person's giving passes $200. Below that line the money is reported as a lump sum. That threshold is set by statute and the Commission's rules rather than found by this brief.^[52 U.S.C. §30104(b)(3)(A) (<https://www.law.cornell.edu/uscode/text/52/30104>) and 11 CFR 104.3(a)(4)(i) (<https://www.ecfr.gov/current/title-11/chapter-I/subchapter-A/part-104/section-104.3>).] So the `r pc(src["Individuals","I"])`% marked "Individuals" in the incumbent bar is a sum over two populations, and the public record names only one of them.
 
 ## What this brief cannot tell you
 
@@ -144,7 +144,7 @@ So the most obvious question in the subject, whether the candidate who raises mo
 
 **It cannot name small donors.** The itemisation threshold above means the individual-contribution column mixes named givers with an anonymous remainder, and this summary file reports only the sum.
 
-**It covers candidate committees only.** Independent expenditures, party spending and undisclosed money are somewhere else or nowhere. Since *Citizens United v. FEC* (2010) a large share of what is spent on a competitive race never passes through the candidate's hands.
+**It covers candidate committees only.** Independent expenditures (money spent for or against a candidate by a group the candidate does not control), party spending and undisclosed money are somewhere else or nowhere. Since *Citizens United v. FEC* (2010) a large share of what is spent on a competitive race never passes through the candidate's hands.^[*Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010): <https://www.law.cornell.edu/supremecourt/text/08-205>.]
 
 **It is one cycle**, so there is no trend in it, and the $50,000 threshold used for every share above is a choice this brief made rather than found.
 
@@ -174,12 +174,17 @@ Two stretch ideas go past the spreadsheet. Download the previous cycle's "All Ca
 - Federal Election Commission, bulk download, "All Candidates" file for the
   2023–24 cycle, covering every candidate committee's activity through 31
   December 2024. <https://www.fec.gov/data/browse-data/?tab=bulk-data>
+- Federal Election Commission, "All candidates file description," the layout
+  that names the file's `r length(f)` positions.
+  <https://www.fec.gov/campaign-finance-data/all-candidates-file-description/>
 
 **The rule behind the form**
 
 - Itemisation threshold: a committee reports a contributor's name, address,
   occupation and employer only when that person's contributions exceed $200 in
-  the calendar year or election cycle. 11 CFR 104.3(a)(4)(i).
+  the calendar year or election cycle. 52 U.S.C. §30104(b)(3)(A) and
+  11 CFR 104.3(a)(4)(i).
+  <https://www.law.cornell.edu/uscode/text/52/30104>
   <https://www.ecfr.gov/current/title-11/chapter-I/subchapter-A/part-104/section-104.3>
 
 **Academic literature**
@@ -187,9 +192,12 @@ Two stretch ideas go past the spreadsheet. Download the previous cycle's "All Ca
 - Ansolabehere, S., de Figueiredo, J. M. and Snyder, J. M. Jr. (2003). "Why Is
   There So Little Money in U.S. Politics?" *Journal of Economic Perspectives*
   17(1): 105–130.
+  <https://www.aeaweb.org/articles?id=10.1257/089533003321164976>
 - Fouirnaies, A. and Hall, A. B. (2014). "The Financial Incumbency Advantage:
   Causes and Consequences." *Journal of Politics* 76(3): 711–724.
+  doi:10.1017/S0022381614000139.
 - *Citizens United v. Federal Election Commission*, 558 U.S. 310 (2010).
+  <https://www.law.cornell.edu/supremecourt/text/08-205>
 
 **The data itself**
 

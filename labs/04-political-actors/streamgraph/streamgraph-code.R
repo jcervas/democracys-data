@@ -70,7 +70,7 @@ data.frame(
   Column = c("date", "article", "views"),
   What_it_holds = c("the day, in 2024",
                     "one of twelve English Wikipedia articles",
-                    "how many people the API says opened it that day"),
+                    "how many human readers opened it that day"),
   Measurement = c("discrete", "categorical", "count"))
 
 ## ---- arttab
@@ -300,3 +300,17 @@ btn.on("click",function(){
 draw();
 })();
 </script>'))
+
+## ---- band-read
+# One band read at one date, by the numbers the figure was drawn from: the
+# debate day, Harris's band edges and thickness, how many bands sit beneath
+# hers, and the smallest series' thickness the same day. Also the total on
+# the day Walz was named, for his band's share of the ribbon.
+RD <- "2024-09-10"
+rd <- sm[sm$date == as.Date(RD), ]; rd <- rd[order(rd$y0), ]
+RD_TOT <- sum(se$views[se$date == as.Date(RD)])
+hz <- rd[rd$article == "Kamala_Harris", ]
+RD_Y0 <- hz$y0; RD_Y1 <- hz$y1; RD_V <- hz$views
+RD_BELOW <- sum(rd$y0 < hz$y0)
+RD_SV <- rd$views[rd$article == SMALL]
+WD_TOT <- sum(se$views[se$date == as.Date(WPKD)])
