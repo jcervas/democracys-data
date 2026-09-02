@@ -20,6 +20,10 @@ di  <- read.csv("data/derived/dist.csv",     stringsAsFactors = FALSE)
 cov <- read.csv("data/derived/coverage.csv", stringsAsFactors = FALSE)
 fx  <- read.csv("data/derived/facts.csv",    stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("answers.csv", "by_party.csv", "checks.csv", "coverage.csv", "dist.csv", "facts.csv", "heaping.csv", "items.csv", "perception_benchmarks.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 n  <- function(x) format(round(as.numeric(x)), big.mark = ",", trim = TRUE)

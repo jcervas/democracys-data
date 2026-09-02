@@ -20,6 +20,10 @@ FN    <- function(k) as.numeric(FV(k))
 
 status  <- rd("status.csv")
 refusal <- rd("refusal.csv")
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "client_dependent.csv", "facts.csv", "refusal.csv", "status.csv"))
 probe   <- read.csv("data/raw/probe-2026-08-13.csv", stringsAsFactors = FALSE)
 
 n  <- function(x) format(as.numeric(x), big.mark = ",")

@@ -19,6 +19,10 @@ Z  <- read.csv("data/derived/out_party_zero.csv",       stringsAsFactors = FALSE
 FA <- read.csv("data/derived/facts.csv",                stringsAsFactors = FALSE)
 CK <- read.csv("data/derived/checks.csv",               stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "facts.csv", "out_party_zero.csv", "thermometers_by_year.csv"))
+
 F  <- function(k) FA$value[FA$key == k]
 FN <- function(k) as.numeric(F(k))
 n  <- function(x) format(x, big.mark = ",")
