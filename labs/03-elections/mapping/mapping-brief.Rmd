@@ -16,24 +16,24 @@ dd_read_chunks("mapping-code.R")
 ```{r setup, include=FALSE}
 ```
 
-San Bernardino County, California covers `r nn(big$aland_km2)` square kilometers. It is larger than `r n_small` of the `r length(starea)` jurisdictions this brief maps, larger than Costa Rica, and on any map of the United States it is an unmissable slab of the desert southwest. In November 2024 it cast `r nn(big$two)` votes for the two major presidential candidates. New York County, New York, the island of Manhattan, covers `r pc(sml$aland_km2, 1)` square kilometers, `r nn(g("pair_area_ratio"))` times less, and cast `r nn(sml$two)` votes.
+San Bernardino County, California covers `r nn(big$aland_km2)` square kilometers. It is larger than `r n_small` of the `r length(starea)` jurisdictions this brief maps, larger than Costa Rica,^[Costa Rica's land area is about 51,000 square kilometers: Central Intelligence Agency, *The World Factbook*, "Costa Rica," <https://www.cia.gov/the-world-factbook/countries/costa-rica/>.] and on any map of the United States it is an unmissable slab of the desert southwest. In November 2024 it cast `r nn(big$two)` votes for the two major presidential candidates. New York County, New York, the island of Manhattan, covers `r pc(sml$aland_km2, 1)` square kilometers, `r nn(g("pair_area_ratio"))` times less, and cast `r nn(sml$two)` votes. Divide votes by land and the two counties are `r nn(big$two / big$aland_km2)` and `r nn(sml$two / sml$aland_km2)` votes per square kilometer.
 
-Now recall the map you saw on election night: nearly the whole country red, with blue at the edges and in specks. It is probably the single most reproduced graphic in American politics, and it is the reason a great many Americans believe the 2024 election was a landslide. The two candidates finished `r pc(g("gop_share_two"), 1)` to `r pc(g("dem_share_two"), 1)` in the two-party vote, a gap of `r pc(g("national_margin"), 1)` points. So the question this brief asks is the one the map plants in every viewer: **when a county map is almost all one color, what exactly has been measured?**
+Now recall the map you saw on election night: nearly the whole country red, with blue at the edges and in specks. It is probably the single most reproduced graphic in American politics, and it is the reason a great many Americans believe the 2024 election was a landslide. The two candidates finished `r pc(g("gop_share_two"), 1)` to `r pc(g("dem_share_two"), 1)` in the two-party vote — the votes cast for the Republican and the Democrat, leaving every other candidate aside — a gap of `r pc(g("national_margin"), 1)` points. So the question this brief asks is the one the map plants in every viewer: **when a county map is almost all one color, what exactly has been measured?**
 
 ## The test
 
-The map needs three things in the same rows: votes, boundaries, and land. The votes are county-level 2024 presidential returns from Tony McGovern's compilation (<https://github.com/tonmcg/US_County_Level_Election_Results_08-24>). **The federal government does not publish county-level presidential returns**, so every national county map rests on somebody's private reconciliation of fifty-one state publications, and this compiler's own README says the numbers are not authoritative. Why that is the ordinary condition of American election data is the [returns-source chapter's](../returns-source/returns-source-brief.html) subject. The boundaries and the land areas are federal: the Census Bureau's 2024 cartographic boundary file, whose `ALAND` field is the Bureau's own measurement in square meters, stored beside the outline rather than derived from it.
+The map needs three things in the same rows: votes, boundaries, and land. The votes are the county-by-county 2024 presidential returns compiled by the researcher Tony McGovern and downloadable at <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>. **The federal government does not publish county-level presidential returns**, so every national county map rests on somebody's private reconciliation of fifty-one state publications. This compiler's README — the note a person who publishes a data file writes to explain what is in it and where it came from — says his 2024 figures were copied from Fox News's results pages and are not authoritative. Why that is the ordinary condition of American election data is the [returns-source chapter's](../returns-source/returns-source-brief.html) subject. The boundaries and the land areas are federal: the Census Bureau's 2024 cartographic boundary file, the Bureau's simplified outline of every county, drawn for making maps rather than for surveying and downloadable from its cartographic boundary files page.^[U.S. Census Bureau, "Cartographic Boundary Files," <https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html>.] Its `ALAND` field is the Bureau's own measurement of each county's land in square meters, stored beside the outline rather than derived from it.
 
 Counties are the right unit because they are the only one that works. States are too few and too internally mixed to show that color tracks acreage; precincts are not published nationally, and no federal file measures their land. Land, votes and boundaries meet at the county or nowhere. And because the [county-returns brief](../county-returns/county-returns-brief.html) has since assembled the same election from the fifty-one chief election offices, the compilation can now be measured against the certified record rather than merely doubted.
 
 ## The data
 
-The build joins the returns to the boundaries on the five-digit county FIPS code, read as **text, never as a number**. About a seventh of the codes begin with a zero, and a numeric read turns Autauga County, Alabama into a county in Georgia. Three places refuse the join, and each was settled by a documented decision:
+The returns are matched to the boundaries row by row on the county's five-digit FIPS code, the number the federal government assigns to every county so that files from different agencies can be lined up,^[U.S. Census Bureau, "Understanding Geographic Identifiers (GEOIDs)," <https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html>.] read as **text, never as a number**. About a seventh of the codes begin with a zero, and a numeric read drops it: `01001`, Autauga County, Alabama, becomes `1001`, a county in Georgia. Three places refuse the match, and each was settled by a documented decision:
 
 ```{r units}
 ```
 
-The District is the dangerous one, because it fails silently. `11001` is present in both files, meaning Ward 1 in the returns and the whole District in the geography, so the join *succeeds* and quietly discards `r nn(g("dc_ward_error"))` votes. The repair, summing the `r nn(g("dc_wards"))` wards back into one District, is one line. Knowing the line is needed is the whole job. Alaska cannot be repaired that way, so it is dropped whole, with Hawaii, which is outside the frame:
+The District is the dangerous one, because it fails silently. `11001` is present in both files, meaning Ward 1 in the returns and the whole District in the geography, so the match *succeeds* and quietly discards `r nn(g("dc_ward_error"))` votes. The repair, summing the `r nn(g("dc_wards"))` wards back into one District, is one line. Knowing the line is needed is the whole job. Alaska cannot be repaired that way, so it is dropped whole, with Hawaii, which is outside the frame:
 
 ```{r excluded}
 ```
@@ -43,9 +43,9 @@ Every excluded unit is named individually, `r nn(nrow(ex))` rows carrying `r nn(
 ```{r clean-mapping}
 ```
 
-Each row carries the identifiers, the two vote columns and their total, the `winner`, the `margin`, the Bureau's `aland_km2`, and `density`, votes per square kilometer. A `pop` column from the Bureau's 2020 population file covers `r nn(g("pop_units"))` of the `r nn(nrow(d))` units, because that file predates Connecticut's `r nn(g("ct_units"))` planning regions. Every headline number below is land, counties or votes, which exist for all of them. The outlines were thinned to `r pc(g("points_pct"), 1)`% of their `r nn(g("points_before"))` corner points for drawing; every share quoted below was recomputed from the thinned outlines and moved by `r max(abs(pa$difference))`, because no headline number ever reads a boundary.
+Each row carries the identifiers, the two vote columns and their total, the `winner`, the `margin`, the Bureau's `aland_km2`, and `density`, votes per square kilometer. A `pop` column from the Bureau's 2020 population file covers `r nn(g("pop_units"))` of the `r nn(nrow(d))` units, because that file predates Connecticut's `r nn(g("ct_units"))` planning regions. Every headline number below is land, counties or votes, which exist for all of them. The outlines were simplified for drawing, keeping `r pc(g("points_pct"), 1)`% of their `r nn(g("points_before"))` corner points. That changes how the map looks and nothing it reports: every number below comes from the Bureau's `ALAND` field rather than from the drawn outline, and `parity.csv` confirms it by recomputing each share from the simplified outlines, where the largest difference is `r max(abs(pa$difference))`.
 
-One more check, because the vote column is a press reconstruction. Put the mapped units against the certified assembly in the [county-returns brief](../county-returns/county-returns-brief.html): `r nn(n_chk)` of `r nn(nrow(d))` can be compared, and `r nn(n_diff)` disagree on a major-party count. One of those is a boundary dispute about Kansas City rather than an error. The ratio this brief turns on moves from `r pc(ink_cmp, 2)` to `r pc(ink_off, 2)` depending on which file you believe, which is to say it does not move. The doubt is measured now, not merely declared.
+One more check, because the vote column is a press reconstruction. Put the mapped units against the certified assembly in the [county-returns brief](../county-returns/county-returns-brief.html): `r nn(n_chk)` of `r nn(nrow(d))` can be compared, and `r nn(n_diff)` disagree on a major-party count. One of those is a boundary dispute about Kansas City rather than an error. The land-per-vote ratio this brief turns on, introduced below, moves from `r pc(ink_cmp, 2)` to `r pc(ink_off, 2)` depending on which file you believe, which is to say it does not move. The doubt is measured now, not merely declared.
 
 > **Before you read on, commit to a number.** Trump carried
 > `r nn(g("n_R"))` of the `r nn(nrow(d))` counties on the map below --
@@ -63,23 +63,23 @@ One more check, because the vote column is a press reconstruction. Put the mappe
 ```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.7}
 ```
 
-**Figure 1. The 2024 presidential result, one color per county.** A choropleth, a map that fills each area with a color, fits the question *who carried the ground you are standing on*, which is the question this figure answers and the only one. All `r nn(nrow(d))` counties are filled with the color of the candidate who carried them, on an equal-area projection, so a square centimeter of paper is the same number of square kilometers everywhere on the page. Trump carried `r nn(g("n_R"))` counties, `r pc(g("pct_counties_R"), 1)`%, covering `r pc(g("pct_land_R"), 1)`% of the land; Harris carried `r nn(g("n_D"))`, covering `r pc(g("pct_land_D"), 1)`%.
+**Figure 1. The 2024 presidential result, one color per county.** A choropleth, a map that fills each area with a color, fits the question *who carried the ground you are standing on*, which is the question this figure answers and the only one. All `r nn(nrow(d))` counties are filled with the color of the candidate who carried them, on an equal-area projection — a way of flattening the round earth onto a page that keeps every area in true proportion — so a square centimeter of paper is the same number of square kilometers everywhere on the page. Trump carried `r nn(g("n_R"))` counties, `r pc(g("pct_counties_R"), 1)`%, covering `r pc(g("pct_land_R"), 1)`% of the land; Harris carried `r nn(g("n_D"))`, covering `r pc(g("pct_land_D"), 1)`%.
 
 **Every county in Figure 1 is the correct color.** No boundary is wrong, no result is misreported, and no projection trick has been played. The mechanism is not subtle once it is stated. A map that fills areas with color encodes **area**, and the eye adds it up whether or not you asked it to. Area is a property of the ground, not of the people standing on it. Here is the same election as a ledger instead of a picture:
 
 ```{r ledger}
 ```
 
-Read the second and third rows together. Trump's counties are `r pc(g("pct_land_R"), 1)`% of the land and hold `r pc(g("pct_pop_R"), 1)`% of the people. The map is not misdrawn; **it is drawing the land row while the reader is reading the people row.** Put it as a rate: every vote Trump won sits on an average of `r pc(g("km2_per_vote_R"), 3)` square kilometers of map, and every vote Harris won sits on `r pc(g("km2_per_vote_D"), 3)`. **A Trump vote is drawn `r pc(g("ink_ratio"), 1)` times larger than a Harris vote.** No chart anywhere may distort the size of its marks by `r pc(g("ink_ratio"), 1)` to 1 without saying so in the legend, and this one never says so.
+Read the second and third rows together. Trump's counties are `r pc(g("pct_land_R"), 1)`% of the land and hold `r pc(g("pct_pop_R"), 1)`% of the people. The map is not misdrawn; **it is drawing the land row while the reader is reading the people row.** Put it as a rate. Trump's counties cover `r nn(g("land_R_km2"))` square kilometers and cast `r nn(g("votes_R_counties"))` two-party votes; divide the first by the second and every vote Trump won sits on an average of `r pc(g("km2_per_vote_R"), 3)` square kilometers of map. Harris's counties cover `r nn(g("land_total_km2") - g("land_R_km2"))` square kilometers and cast `r nn(g("votes_D_counties"))` votes, so every vote she won sits on `r pc(g("km2_per_vote_D"), 3)`. Divide the two rates and **a Trump vote is drawn `r pc(g("ink_ratio"), 1)` times larger than a Harris vote.** No chart anywhere may distort the size of its marks by `r pc(g("ink_ratio"), 1)` to 1 without saying so in the legend, and this one never says so.
 
-The answer to the prompt above follows from where people live. Sorting the counties from emptiest to fullest and adding as you go:
+The answer to the prompt above follows from where people live. Sorting the counties from the fewest votes to the most and adding as you go:
 
 ```{r conc}
 ```
 
 The emptier half of the counties hold `r pc(g("land_at_half_counties"), 1)`% of the country's land and `r pc(g("votes_at_half_counties"), 1)`% of its votes. `r nn(g("counties_for_half"))` counties cast half of every ballot on this map, on `r pc(g("land_for_half"), 1)`% of its surface. So the answer is: `r pc(g("pct_counties_R"), 1)`% of the counties, `r pc(g("pct_land_R"), 1)`% of the land — and **`r pc(g("pct_votes_R_counties"), 1)`% of the votes.** Most readers write down something in the seventies or eighties, and the gap between that guess and `r pc(g("pct_votes_R_counties"), 1)` is this brief's entire subject. The `r nn(g("n_D"))` blue counties are `r pc(g("pct_votes_D_counties"), 1)`% of the electorate sitting on `r pc(g("pct_land_D"), 1)`% of the ground.
 
-Now draw the same table so that the ink tells the truth about votes. Each county becomes a circle whose **area is proportional to the votes cast there**; circles keep their positions as nearly as they can and are pushed apart until they stop overlapping. This is a Dorling cartogram — a cartogram is a map that sizes places by a quantity instead of by their ground. Not one vote has been added, removed or recounted.
+Now draw the same table so that the ink tells the truth about votes. Each county becomes a circle whose **area is proportional to the votes cast there**; circles keep their positions as nearly as they can and are pushed apart until they stop overlapping. This is a Dorling cartogram — a cartogram is a map that sizes places by a quantity instead of by their ground, and Danny Dorling's version, from 1996, is the one that replaces each place with a circle.^[Danny Dorling, *Area Cartograms: Their Use and Creation*, Concepts and Techniques in Modern Geography 59 (Norwich: University of East Anglia, 1996), <https://www.dannydorling.org/wp-content/files/dannydorling_publication_id1448.pdf>.] Not one vote has been added, removed or recounted.
 
 ```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -87,9 +87,9 @@ Now draw the same table so that the ink tells the truth about votes. Each county
 ```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.7}
 ```
 
-**Figure 2. The same `r nn(nrow(d))` counties, with area proportional to votes.** The radius is one constant times the square root of the county's two-party vote, so one square unit of circle is `r nn(g("dorling_votes_per_unit2"))` votes anywhere on the page. The largest circle is `r gs("dorling_biggest")` County, `r gs("dorling_biggest_state")`, at `r nn(max(d$two))` votes. Red now covers `r pc(g("gop_share_two"), 1)`% of the ink because Trump won `r pc(g("gop_share_two"), 1)`% of the two-party vote. **You cannot look at this map and think the election was a landslide, because the ink is reporting the result rather than the terrain.**
+**Figure 2. The same `r nn(nrow(d))` counties, with area proportional to votes.** The radius is one constant times the square root of the county's two-party vote — the square root because a circle's area grows with the square of its radius, and it is the area, not the width, that must track the votes — so one square unit of circle is `r nn(g("dorling_votes_per_unit2"))` votes anywhere on the page. The largest circle is `r gs("dorling_biggest")` County, `r gs("dorling_biggest_state")`, at `r nn(max(d$two))` votes. Red now covers `r pc(g("gop_share_two"), 1)`% of the ink because Trump won `r pc(g("gop_share_two"), 1)`% of the two-party vote. **You cannot look at this map and think the election was a landslide, because the ink is reporting the result rather than the terrain.**
 
-Figure 2 is not a better map than Figure 1. It is a map of a different quantity, and the quantity happens to be the one an election is decided by. The price is real and measurable: the nudging moved the middle county `r pc(g("dorling_shift_median_km"), 1)` km from its true position and the furthest `r pc(g("dorling_shift_max_km"), 0)` km, and it stopped with `r nn(g("dorling_overlaps"))` of `r nn(g("dorling_pairs"))` tested pairs still touching. Shape, adjacency and the ability to find your own county are gone. And the eye judges area badly, which is a century-old finding in graphical perception. Figure 2 is defensible only because the alternative is an encoding that is off by a factor of `r pc(g("ink_ratio"), 1)`, not because area is a good channel.
+Figure 2 is not a better map than Figure 1. It is a map of a different quantity, and the quantity happens to be the one an election is decided by. The price is real and measurable: the nudging moved the middle county `r pc(g("dorling_shift_median_km"), 1)` km from its true position and the furthest `r pc(g("dorling_shift_max_km"), 0)` km, and it stopped with `r nn(g("dorling_overlaps"))` of `r nn(g("dorling_pairs"))` tested pairs still touching. Shape, adjacency and the ability to find your own county are gone. And the eye judges area badly: shown one circle with twice the area of another, viewers reliably underestimate the difference, a result that experiments in graphical perception have confirmed for decades.^[William S. Cleveland and Robert McGill, "Graphical Perception: Theory, Experimentation, and Application to the Development of Graphical Methods," *Journal of the American Statistical Association* 79, no. 387 (1984): 531–554, <https://www.jstor.org/stable/2288400>.] Figure 2 is defensible only because the alternative is an encoding that is off by a factor of `r pc(g("ink_ratio"), 1)`, not because area is a good channel.
 
 **Neither map is the repair for the other.** A cartogram does not remove distortion; it chooses a different one. All the drawings are true, and none of them is *the* map. Which one gets published is a decision about what the reader will believe, and in most newsrooms it is made by whoever happens to own the template.
 
@@ -118,7 +118,7 @@ Figure 2 is not a better map than Figure 1. It is a map of a different quantity,
 - `excluded.csv` lists the units that could not be mapped, each with a `reason` and its `votes`. Add them up. How many real voters vanish from a map of the country?
 - `parity.csv` compares, in `difference`, the headline numbers before and after the outlines were thinned. Nothing moved. Work out what a difference there would have meant.
 - **Stretch.** The compilation carries every election back to 2008. Download 2020, rebuild the ledger, and see whether the land-versus-votes gap is growing.
-- **Stretch.** Redraw Figure 1 with a diverging margin scale instead of the binary fill, and decide which of this brief's sentences would need rewriting.
+- **Stretch.** Redraw Figure 1 with a diverging margin scale — shades running from deep blue through white to deep red with the size of the margin — instead of the binary fill, and decide which of this brief's sentences would need rewriting.
 
 ## Sources
 
@@ -128,9 +128,10 @@ Figure 2 is not a better map than Figure 1. It is a map of a different quantity,
   Election Results 2008-2024*,
   <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>, held in
   this book's `pres2024_counties.csv`
-  (`r nn(g("returns_rows"))` rows). Compiled from Fox News, Politico and New
-  York Times reporting; **the compilation's own README states that the figures
-  are not authoritative.** There is no federal publisher of county-level
+  (`r nn(g("returns_rows"))` rows). The compiler's README says the 2024
+  figures were copied from Fox News's results pages, the 2020 figures from
+  Fox News, Politico and the New York Times, and that **the figures are not
+  authoritative.** There is no federal publisher of county-level
   presidential returns. This is the file every figure in this brief is drawn
   from.
 - Official county-level presidential returns, as published by the
@@ -147,10 +148,14 @@ Figure 2 is not a better map than Figure 1. It is a map of a different quantity,
 - U.S. Census Bureau, 2024 cartographic boundary file, counties, 1:5,000,000:
   `r gs("geo_url")` — retrieved `r gs("fetch_date")`,
   `r nn(g("geo_bytes"))` bytes, `r nn(g("geo_features"))` features. Supplies
-  both the outlines and the `ALAND` land areas.
+  both the outlines and the `ALAND` land areas. The Bureau describes the
+  series at
+  <https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html>.
 - U.S. Census Bureau, 2020 centers of population by county:
   `r gs("cen_url")` — retrieved `r gs("fetch_date")`,
-  `r nn(g("cen_rows"))` rows. Supplies the population column only.
+  `r nn(g("cen_rows"))` rows. Supplies the population column only. The
+  Bureau describes the series at
+  <https://www.census.gov/geographies/reference-files/time-series/geo/centers-population.html>.
 
 **The data itself**
 
@@ -164,11 +169,14 @@ open in a spreadsheet, and they are yours to take further.
 - Dorling, D. (1996). *Area Cartograms: Their Use and Creation.* Concepts and
   Techniques in Modern Geography 59. University of East Anglia. — the circle
   cartogram of Figure 2.
+  <https://www.dannydorling.org/wp-content/files/dannydorling_publication_id1448.pdf>
 - Monmonier, M. (1991). *How to Lie with Maps.* University of Chicago Press.
+  <https://press.uchicago.edu/ucp/books/book/chicago/H/bo27400568.html>
 - Cleveland, W. S. and McGill, R. (1984). "Graphical Perception: Theory,
   Experimentation, and Application to the Development of Graphical Methods."
   *Journal of the American Statistical Association* 79(387): 531-554. — the
   finding that area is a poor channel, cited against Figure 2 above.
+  <https://www.jstor.org/stable/2288400>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

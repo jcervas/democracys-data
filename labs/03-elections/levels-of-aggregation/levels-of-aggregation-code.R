@@ -40,6 +40,12 @@ sq <- function(k) V(sv, k, key = "measure")
 LS <- function(k, col) lst[[col]][lst$level == k]
 EE <- function(k, col) ee[[col]][ee$level == k]
 
+# One rung climbed by hand in the prose: Appling County's precincts, whose
+# first three rows the clean-levels table shows, summed against the county row.
+ap  <- gl[gl$level == "precinct" & grepl("^Appling\\|", gl$unit), ]
+apc <- gl[gl$level == "county" & gl$unit == "Appling", ]
+ap_top <- sub("^Appling\\|", "", ap$unit[which.max(ap$dem_share)])
+
 PAL <- c("ballot" = "#C41230", "precinct" = "#2c7fb8",
          "election jurisdiction" = "#8856a7", "county" = "#4d9221",
          "congressional district" = "#e08214", "state" = "#999999",

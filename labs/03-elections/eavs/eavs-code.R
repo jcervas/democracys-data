@@ -30,6 +30,11 @@ PRATE <- 100 * g("E1d") / g("E1a")
 st$rate  <- 100 * st$mail_rejected / st$mail_returned
 big      <- st[st$mail_returned > 100000, ]
 OK <- big$rate[big$state == "OK"]; VT <- big$rate[big$state == "VT"]
+# the two rows the prose walks through, numerator and denominator by name
+OKR <- big$mail_returned[big$state == "OK"]; OKJ <- big$mail_rejected[big$state == "OK"]
+VTR <- big$mail_returned[big$state == "VT"]; VTJ <- big$mail_rejected[big$state == "VT"]
+# how many counties the residual-votes brief finds the survey and the canvass disagreeing in
+RVAN <- nrow(read.csv("../residual-votes/data/derived/anomalies.csv"))
 
 hole  <- st[st$mail_returned == 0, ]
 NOJOIN <- rb("C9a") - rb("C1b")

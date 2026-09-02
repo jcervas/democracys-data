@@ -35,6 +35,8 @@ NR   <- nrow(NM)
 NRES <- sum(NM$anchor_form_source == "left over: stated in no table and no sentence")
 NERR <- sum(nzchar(NM$errata))
 NDIS <- sum(NM$tables_disagree)
+W1 <- NM[NM$race == "PA-13D", ]           # backing named in table 5.2
+W2 <- NM[NM$race == "MI-12D", ]           # backing stated nowhere: left over
 INS  <- "insurgent"; PBK <- "establishment (party-backed)"; BBK <- "establishment (business-backed)"
 
 # ---- render every data.frame in this document as a TABLE, not code output ----

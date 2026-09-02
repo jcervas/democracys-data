@@ -29,6 +29,10 @@ hits   <- function(kind, yy = YRS)
 h_ec <- hits("ec")
 h_pv <- hits("pv")
 
+# county-elections compared against MEDSL, 2000-2016; the disagreements are
+# the rows of crosscheck.csv, so the rate is nrow(xc) / NCMP
+NCMP <- 15562
+
 # --- the Wall Street Journal's nineteen -------------------------------------
 WIN80 <- seq(1980, 2016, 4)
 h80   <- hits("ec", WIN80)
@@ -188,8 +192,8 @@ data.frame(
             "Against 26 states' own certified 2024 returns, from county-returns/",
             "Reproducing the Wall Street Journal's list from scratch"),
   result = c(
-    paste0("15,562 county-elections compared, ", nrow(xc),
-           " disagreements about the winner (0.077%)"),
+    paste0(format(NCMP, big.mark = ","), " county-elections compared, ", nrow(xc),
+           " disagreements about the winner (", pc(100 * nrow(xc) / NCMP, 3), "%)"),
     "1,909 counties compared, every vote total identical",
     paste0("searched for counties perfect over 1980-2016: found ", nrow(p19),
            ", and they are the same 19")))

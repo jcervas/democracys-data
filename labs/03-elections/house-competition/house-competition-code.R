@@ -32,6 +32,11 @@ JY1   <- b$year[JUMP]; JY2 <- b$year[JUMP + 1]
 # Uncontested races, and how many had a sitting member in them.
 un <- sum(d$uncontested, na.rm = TRUE)
 iw <- sum(d$uncontested & d$incwin == 1, na.rm = TRUE)
+# The worked example: the latest year's races, how many had one name on the
+# ballot, and the one Alabama row the prose reads off the Clerk's table.
+N24 <- sum(d$year == Y2)
+U24 <- sum(d$uncontested[d$year == Y2], na.rm = TRUE)
+al3 <- ch[ch$year == 2024 & ch$state == "Alabama" & ch$district == 3, ]
 
 # ---- the Clerk excerpts ----------------------------------------------------
 # Both verbatim blocks below are read from the extracted text at render time.

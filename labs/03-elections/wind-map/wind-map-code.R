@@ -45,6 +45,16 @@ sg <- function(x, k = 1) {                       # signed, R+ / D+ labeled
 
 usf <- us[us$in_frame == "TRUE" | us$in_frame == TRUE, ]
 
+# One county walked through by hand in the prose: Fulton County, Georgia,
+# chosen because it is deeply Democratic in both years and still moved right,
+# which is exactly the movement a red-and-blue map cannot show, and because it
+# is neither cap-limited in angle nor in length. Every figure quoted about it
+# is read off its own row, so the worked example cannot drift from the map.
+EX <- usf[usf$county_fips == "13121", ]
+stopifnot(nrow(EX) == 1, !EX$capped_len %in% c(TRUE, "TRUE"),
+          !EX$capped_angle %in% c(TRUE, "TRUE"))
+EX_two_24 <- EX$votes_dem_24 + EX$votes_gop_24
+
 DEGPP <- F("deg_per_point")
 RED <- "#C41230"; BLU <- "#2c7fb8"; GRY <- "#8c8c8c"
 

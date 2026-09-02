@@ -16,24 +16,24 @@ dd_read_chunks("house-competition-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Competitive elections are the mechanism by which voters control officeholders. That is the claim every civics class makes about the House: a member who serves badly can be voted out, so members behave. Mayhew (1974) argued that this single incentive, the perpetual pursuit of re-election, explains much of how Congress is organized. The claim assumes something it never states — that there is a contest to lose. So turn it into a question the record can answer: how often does an American voter actually get a choice for the House?
+Competitive elections are the mechanism by which voters control officeholders. That is the claim every civics class makes about the House: a member who serves badly can be voted out, so members behave. Mayhew argued that this single incentive, the perpetual pursuit of re-election, explains much of how Congress is organized.^[David R. Mayhew, *Congress: The Electoral Connection* (New Haven: Yale University Press, 1974), <https://yalebooks.yale.edu/book/9780300105872/congress/>.] The claim assumes something it never states — that there is a contest to lose. So turn it into a question the record can answer: how often does an American voter actually get a choice for the House?
 
 The answer, more often than most readers guess, is never. In `r pc(UNALL)`% of the `r n(nrow(d))` district-elections held between `r Y1` and `r Y2`, about one in seven, a single name sat in the box for *Representative in Congress*. Not a weak challenger who lost by forty points. Nobody at all, `r n(un)` times.
 
 ## The test
 
-Using every House general election from `r Y1` through `r Y2`, coded the same way throughout. The series is spliced from two sources. Gary Jacobson's House elections dataset covers 1946–2014: one political scientist's file, built and corrected across a career, and the standard dataset for studying congressional elections. The Clerk of the House's *Statistics of the Presidential and Congressional Election*, the official returns Congress publishes about itself, extends it through 2024 (<https://clerk.house.gov/Votes/ElectionStatistics>).
+Using every House general election from `r Y1` through `r Y2`, coded the same way throughout. The series is spliced from two sources. Gary Jacobson's House elections dataset covers 1946–2014: one political scientist's file, built and corrected across a career, and the standard dataset for studying congressional elections. The Clerk of the House's *Statistics of the Presidential and Congressional Election*, the official returns Congress publishes about itself, extends it through 2024; every volume is downloadable from the Office of the House Historian (<https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>).
 
 This is the right source because the question is about change across seventy years, and answering it needs seventy years measured the same way. No agency maintains such a series; the Clerk's volumes are authoritative and begin again each cycle. Jacobson's file is one hand and one convention across decades, which is the shape the question needs, and the splice exists only because his file stops in 2014 and the question does not. The brief sits in the cluster [the roster chapter](../rosters-source/rosters-source-brief.html) leads, on the records Congress and its scholars keep about its own seats; this is the election-statistics half of that record.
 
 ## The data
 
-The table is `races.csv`, one row per district in one election year, `r n(nrow(d))` rows. Each row carries `year`, `state`, and `stcd`, a state-district code, plus `south`, flagging the eleven former Confederate states. `dv` is the Democratic share of the two-party vote, `incwin` says whether the sitting member won, and `margin` is the winner's distance from 50. `uncontested` flags the races this brief is about, and `source` names which side of the splice the row came from. Here are four rows from 2014, two ordinary and two not:
+The table is `races.csv`, one row per district in one election year, `r n(nrow(d))` rows. Each row carries `year`, `state`, and `stcd`, a state-district code, plus `south`, flagging the eleven former Confederate states. `dv` is the Democratic share of the **two-party vote** — Democratic votes divided by Democratic plus Republican votes, everyone else set aside; `incwin` says whether the sitting member, the **incumbent**, won; and `margin` is the winner's distance from 50, so a winner with 62% of the two-party vote has a margin of 12. `uncontested` flags the races this brief is about, and `source` names which side of the splice the row came from. Here are four rows from 2014, two ordinary and two not:
 
 ```{r one-record}
 ```
 
-Look at the vote-share column in the bottom two rows. **It is `NA` — missing, not zero and not 100.** When only one candidate runs there is no two-party share to compute, so the uncontested marker in this file is defined as exactly that: the vote share is missing. Jacobson's file documents no uncontested flag anywhere; treating the missing share as one is a guess about a coding habit, well supported and still a guess. Anyone who opened the file and dropped the empty cells as bad rows would delete every race where competition failed completely, then report on how competitive American elections are.
+Look at the vote-share column in the bottom two rows. **It is `NA` — missing, not zero and not 100.** When only one candidate runs there is no two-party share to compute, so the uncontested marker in this file is defined as exactly that: the vote share is missing. Jacobson's file documents no uncontested flag anywhere; treating the missing share as one is a guess about a coding habit, well supported and still a guess. Anyone who opened the file and dropped the empty cells as bad rows would delete every race where competition failed completely, then report on how competitive American elections are. Here is what that does to the number. In `r Y2` the file holds `r n(N24)` races, `r U24` of them with a single name on the ballot, so the uncontested share is `r U24` divided by `r n(N24)`, or `r pc(100 * U24 / N24)`%. Open the same file in a spreadsheet, delete the rows with a blank vote share as if they were errors, and `r n(N24 - U24)` races remain, every one of them contested: the share is now zero, and the thing this brief measures has vanished from the file.
 
 Two other decisions matter. The source file arrives padded: 14,777 of its 30,005 rows carry no year and no data, and they are dropped before anything is counted. And the vocabulary is fixed before the counting starts, because thresholds are choices and choices move answers:
 
@@ -42,24 +42,26 @@ Two other decisions matter. The source file arrives padded: 14,777 of its 30,005
 
 ### The Clerk's typeset record
 
-After 2014 the only source is the Clerk's volume, and it is a **document, not a dataset**. It is the one exception to this section's governing fact that no federal agency counts votes: official congressional returns, district by district, for the whole country, in one free publication. But it is issued as a PDF typeset for a person holding a book, and eleven of them, 2004 through 2024, had to be read by a program. Here is the top of Alabama's House results in the 2024 volume, as extracted:
+After 2014 the only source is the Clerk's volume, and it is a **document, not a dataset**. It is the one exception to this section's governing fact that no federal agency counts votes: official congressional returns, district by district, for the whole country, in one free publication. But it is issued as a PDF typeset for a person holding a book, and eleven of them, 2004 through 2024, had to be turned into a table by a program reading the page. Here is the top of Alabama's House results in the 2024 volume, as the text comes off the page:
 
 ```{r raw-clerk, results='asis'}
 ```
 
-Notice what is not in it. There is no column called `district`; a district begins where a line begins with a number and a full stop, and the lines beneath belong to it because they are indented. There is no party column; the party is spelled out after the comma in each candidate's name. The structure is a typesetting convention, so every property that makes the page readable is a place a parser can go wrong. Here is the same state after the parse:
+Notice what is not in it. There is no column called `district`; a district begins where a line begins with a number and a full stop, and the lines beneath belong to it because they are indented. There is no party column; the party is spelled out after the comma in each candidate's name. The structure is a typesetting convention, so every property that makes the page readable to a person is a place the reading can go wrong. Here is the same state as a table:
 
 ```{r clean-clerk}
 ```
 
-Two reading hazards are worth meeting, because both produced wrong numbers before they were caught. The Clerk prints footnote references as superscripts, which the text extraction drops to the end of the line — exactly where the vote total belongs:
+Read the 3rd district's row. No Democrat filed, so it carries `r n(al3$rep_votes)` Republican votes, no Democratic votes, and a dash where the Democratic share of the two-party vote would go: with one party on the ballot there is no two-party vote to take a share of. That dash is the uncontested marker, in the Clerk's volumes exactly as in Jacobson's file.
+
+Two reading hazards are worth meeting, because both produced wrong numbers before they were caught. The Clerk prints footnote references as raised numbers, which, once the page is reduced to plain text, land at the end of the line — exactly where the vote total belongs:
 
 ```{r raw-footnote, results='asis'}
 ```
 
-Read literally, that line says the winner received `r n(MARK)` votes rather than `r n(REAL)`. The row looked fine: real candidate, real district, plausible state total. The repair fired on 24 rows across five volumes, and nothing in any aggregate would have shown it. The second hazard ran in the worse direction: Florida keeps unopposed candidates off the ballot entirely, and the volumes print a mark where their vote total would go. Those districts were dropped at first, which undercounted uncontested races — the very thing this brief exists to measure.
+Read literally, that line says the winner received `r n(MARK)` votes rather than `r n(REAL)`. The row looked fine: real candidate, real district, plausible state total. The correction applied to 24 rows across five volumes, and nothing in any aggregate would have shown it. The second hazard ran in the worse direction: Florida keeps unopposed candidates off the ballot entirely,^[Fla. Stat. § 101.151(7): the names of unopposed candidates do not appear on the general-election ballot. <https://www.flsenate.gov/Laws/Statutes/2024/101.151>.] and the volumes print a mark where their vote total would go. Those districts were dropped at first, which undercounted uncontested races — the very thing this brief exists to measure.
 
-The parse can be trusted only because there is a second file. Over 2004–2014 the two sources overlap on 2,260 districts, and they agree to a median of 0.03 points. Every disagreement above a point was run down. Three were bugs in this parse, now fixed; in two districts (Nebraska's 3rd in 2004, Utah's 1st in 2006) the official document disagrees with Jacobson in two separate places. Neither file was right; each was necessary to find what was wrong with the other. One thing is flagged rather than fixed: Louisiana's November all-party ballot and December runoffs mix two elections into one printed row, so its rows carry a marker in `clerk_house.csv` and their shares are advisory.
+The table read from the volumes can be trusted only because there is a second file. Over 2004–2014 the two sources overlap on 2,260 districts, and they agree to a median of 0.03 points of vote share — in half the districts the two files differ by less than that. Every disagreement above a point was run down. Three were errors in the reading, since corrected; in two districts (Nebraska's 3rd in 2004, Utah's 1st in 2006) the official document disagrees with Jacobson in two separate places. Neither file was right; each was necessary to find what was wrong with the other. One thing is flagged rather than fixed: Louisiana's November all-party ballot and December runoffs mix two elections into one printed row, so its rows carry a marker in `clerk_house.csv` and their shares are advisory.
 
 > **Before you read on, commit to two lines.** The file flags the eleven former
 > Confederate states, and the uncontested share will be computed separately for
@@ -86,9 +88,9 @@ It is not one thing, in two ways. First, the races: `r pc(100*iw/un)`% of uncont
 
 **Figure 1. The share of House races with one candidate, nationally and by region, `r Y1`–`r Y2`.** Lines on a time axis, because the quantity is one share measured `r nrow(b)` times at even intervals and the finding is the shape: two lines travelling in opposite directions until they meet. In `r Y1` the South ran `r pc(v(Y1,"pct_uncontested_south"))`% of its House races unopposed against `r pc(v(Y1,"pct_uncontested_non_south"))`% everywhere else; by `r Y2` the two lines stand at `r pc(v(Y2,"pct_uncontested_south"))`% and `r pc(v(Y2,"pct_uncontested_non_south"))`%.
 
-The South falls as the Voting Rights Act and the eventual arrival of Republican candidates dismantle a one-party system. The rest of the country rises, drifting toward one-party seats of its own. **Two countries converging — and the flat national average describes neither of them at any point along the way.** It is an average computed correctly from groups that are moving, faithfully reporting a middle position no part of the country occupied.
+The South falls as the Voting Rights Act of 1965 — the federal law that put Black Southerners on the voter rolls — and the eventual arrival of Republican candidates dismantle a one-party system.^[52 U.S.C. § 10301 and following: <https://www.law.cornell.edu/uscode/text/52/10301>.] The rest of the country rises, drifting toward one-party seats of its own. **Two countries converging — and the flat national average describes neither of them at any point along the way.** It is an average computed correctly from groups that are moving, faithfully reporting a middle position no part of the country occupied.
 
-A challenger on the ballot is also a low bar, and the contested races have their own trend. Genuinely close races thinned from `r pc(v(Y1,"pct_competitive"))`% of races in `r Y1` to `r pc(v(Y2,"pct_competitive"))`% in `r Y2`, touching `r pc(min(b$pct_competitive))`% in `r b$year[which.min(b$pct_competitive)]`; landslides peaked at `r pc(max(b$pct_landslide))`% in `r b$year[which.max(b$pct_landslide)]`. Figure 2 shows the whole distribution those thresholds were cut from.
+A challenger on the ballot is also a low bar, and the contested races have their own trend. Genuinely close races — a winner within five points of an even split — thinned from `r pc(v(Y1,"pct_competitive"))`% of races in `r Y1` to `r pc(v(Y2,"pct_competitive"))`% in `r Y2`, touching `r pc(min(b$pct_competitive))`% in `r b$year[which.min(b$pct_competitive)]`; landslides peaked at `r pc(max(b$pct_landslide))`% in `r b$year[which.max(b$pct_landslide)]`. Figure 2 shows the whole distribution those thresholds were cut from.
 
 ```{r margins-prep, include=FALSE}
 ```
@@ -99,7 +101,7 @@ A challenger on the ballot is also a low bar, and the contested races have their
 ```{r margins-static, eval=!knitr::is_html_output(), fig.height=5.2}
 ```
 
-**Figure 2. The margin of victory in contested House races, by decade.** One curve per decade, drawn only from races that had a challenger, all scaled to the same height. The green band is the five-point definition of competitive, and the dashed line the twenty-point definition of a landslide. The share of contested races inside five points fell from `r pc(D5FIRST, 0)`% in the `r DEC[1]` to `r pc(D5LAST, 0)`% in the `r DEC[length(DEC)]`. The gray figures at the right count each decade's races with no challenger at all, which appear in no curve.
+**Figure 2. The margin of victory in contested House races, by decade.** One curve per decade, showing where that decade's margins pile up, drawn only from races that had a challenger, all scaled to the same height. The green band is the five-point definition of competitive, and the dashed line the twenty-point definition of a landslide. The share of contested races inside five points fell from `r pc(D5FIRST, 0)`% in the `r DEC[1]` to `r pc(D5LAST, 0)`% in the `r DEC[length(DEC)]`. The gray figures at the right count each decade's races with no challenger at all, which appear in no curve.
 
 The exceptions in that figure are worth telling. The thinnest near-tie zone belongs to the `r DEC[which.min(P5)]`, at `r pc(min(P5), 0)`%, so the least competitive decade on this measure is not the most recent one. And the curves stay broad: every decade has races at every margin, which is exactly why a single cut point can be made to say almost anything.
 
@@ -140,9 +142,11 @@ None of these is answered above, and every one can be answered from the tables t
   among researchers; it has no public address, and obtaining it means asking.
 - Office of the Clerk, U.S. House of Representatives, *Statistics of the
   Presidential and Congressional Election*, 2004–2024.
-  <https://clerk.house.gov/Votes/ElectionStatistics>, with the pre-2016
-  volumes served by the Office of the Historian at
-  <https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>
+  Every volume is served by the Office of the House Historian at
+  <https://history.house.gov/Institution/Election-Statistics/Election-Statistics/>;
+  the Clerk's own address for the series,
+  <https://clerk.house.gov/Votes/ElectionStatistics>, no longer resolved when
+  this was last checked.
 - The Downballot (formerly Daily Kos Elections), presidential election results
   by congressional district, which no government calculates.
   <https://www.the-downballot.com/p/the-downballots-calculations-of-presidential>
@@ -159,7 +163,7 @@ open in a spreadsheet, and they are yours to take further.
 - Mayhew, D. R. (1974). "Congressional Elections: The Case of the Vanishing
   Marginals." *Polity* 6(3): 295–317.
 - Mayhew, D. R. (1974). *Congress: The Electoral Connection.* Yale University
-  Press.
+  Press. <https://yalebooks.yale.edu/book/9780300105872/congress/>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

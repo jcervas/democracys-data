@@ -41,6 +41,10 @@ BAD <- BR[!BR$closes, ]
 # North Carolina, cycle by cycle, with the width of each year's own bracket.
 NCE <- NC[NC$state == "NC", ]
 NCE$w <- NCE$lowest_share_no_runoff - NCE$highest_share_still_runoff
+# The opening case and the worked example: Ralph Hall's 2014 runoff, and
+# Georgia, the state whose outcomes pin its rule most tightly.
+HALL <- RO[RO$year == 2014 & RO$st == "TX" & RO$district == 4, ]
+GA   <- BR[BR$state == "GA", ]
 
 # ---- render every data.frame in this document as a TABLE, not code output ----
 # These are front-facing documents. A data.frame printed the ordinary way comes

@@ -16,7 +16,7 @@ dd_read_chunks("ga-precinct-returns-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Georgia decided the 2020 presidential election by `r n(MARGIN)` votes out of `r n(TOTV)` — about a quarter of one percent. Then it counted the ballots again, twice: a full hand-count audit, and after that a machine recount. Three official counts of the same five million ballots exist, and the state published the first and the last as public data archives.
+Georgia decided the 2020 presidential election by `r n(MARGIN)` votes out of `r n(TOTV)` — about a quarter of one percent. Then it counted the ballots again, twice: a full hand-count audit, and after that a machine recount.^[The hand count was the state's first statewide audit of paper ballots, finished 19 November 2020: NPR, "Georgia Releases Hand Recount Results Affirming Biden's Lead," <https://www.npr.org/2020/11/19/936647882/georgia-releases-hand-recount-results-affirming-bidens-lead>. The machine recount, requested by the Trump campaign, ended with the state recertifying the result on 7 December 2020: CNN, "Georgia reaffirms Biden's victory for 3rd time after recount," <https://www.cnn.com/2020/12/07/politics/georgia-recount-recertification-biden>.] Three official counts of the same five million ballots exist, and the state published the first and the last as public data archives.
 
 You have heard what came next as two opposite claims. One side says the recounts confirmed the result, so the count can be trusted. The other side says the numbers changed between counts, so it cannot. Both are claims about numbers Georgia itself published. **Do the counts agree — and what does the difference between them measure?**
 
@@ -24,7 +24,7 @@ The record that can answer is built from **precincts**. A precinct is the small 
 
 ## The test
 
-The data is the Georgia Secretary of State's own publication of the November 2020 general election. That is one tabulation export per county, all `r NCO` of them, plus a separate archive for the recount, from the state's historical results page (<https://sos.ga.gov/page/historical-elections-results>). The state's export of the 2024 general election appears once below, to show what four years does to a format. These are the counties' own tabulation exports, published by the state — the primary source, not anybody's reconstruction of one.
+The data is the Georgia Secretary of State's own publication of the November 2020 general election. That is one tabulation export — the results file a county's counting equipment writes — per county, all `r NCO` of them, plus a separate archive for the recount, from the state's historical results page (<https://sos.ga.gov/page/historical-elections-results>). The state's export of the 2024 general election appears once below, to show what four years does to a format. These are the counties' own tabulation exports, published by the state — the primary source, not anybody's reconstruction of one.
 
 Why this source, of all sources: a certified return is the official record of an election's outcome, and [the returns chapter](../returns-source/returns-source-brief.html) explains what that record can and cannot bear. A question about whether counts agree has to be asked of the counts as the state published them, not of a national compilation assembled from them later. Georgia's exports also carry a column almost no other precinct data anywhere has: *how* each ballot was cast. In 2020 that column is half the story.
 
@@ -33,15 +33,15 @@ Why this source, of all sources: a certified return is the official record of an
 ```{r vintage-setup, include=FALSE}
 ```
 
-Nothing in the archives arrives as a table. Inside each county's export the votes are the leaves of a tree: the county at the top, then the contest, then the candidate, then the vote method, and at the bottom a number per precinct. To learn that one precinct cast sixty election-day votes for one candidate, four levels above the number have to be carried down and written beside it. Flattening all `r NCO` trees produces the tables this brief reads.
+Nothing in the archives arrives as a table. Inside each county's export the votes are the leaves of a tree: the county at the top, then the contest, then the candidate, then the vote method, and at the bottom a number per precinct. To learn that one precinct cast sixty election-day votes for one candidate, four levels above the number have to be carried down and written beside it. Writing every number out with its four labels beside it — one row per precinct, candidate and method — is what turns the `r NCO` files into the tables this brief reads.
 
-Three decisions in that flattening are worth knowing, because each could have gone wrong silently. **The contest was found by searching, not matching**: the office kept is the one whose name contains the word President. The two years spell the office differently (`r g(sx, "contest")` against `r g(s24, "contest")`), so an exact match would have returned every precinct in 2020 and nothing at all in 2024.
+Three decisions in that rewriting are worth knowing, because each could have gone wrong silently. **The contest was found by searching, not matching**: the office kept is the one whose name contains the word President. The two years spell the office differently (`r g(sx, "contest")` against `r g(s24, "contest")`), so an exact match would have returned every precinct in 2020 and nothing at all in 2024.
 
-**`(I)` means incumbent, not Independent**: each candidate's party is read off the end of the name string the county typed, as in `Donald J. Trump (I) (Rep)`, and the last parenthesis wins. Read the first one instead and every sitting officeholder in Georgia changes party. **The key is county and precinct together, never the precinct name alone**. `Baker` is a county in south Georgia and also the first word of a precinct inside Cobb County; precinct names repeat, so any join on the name alone silently merges distant places.
+**`(I)` means incumbent, not Independent**: each candidate's party is read off the end of the name string the county typed, as in `Donald J. Trump (I) (Rep)`, and the last parenthesis wins. Read the first one instead and every sitting officeholder in Georgia changes party. **The key is county and precinct together, never the precinct name alone**. `Baker` is a county in south Georgia and also the first word of a precinct inside Cobb County; precinct names repeat, so any join on the name alone — matching two tables by a label they share — silently merges distant places.
 
 Nothing was imputed, meaning no missing figure was filled in by guessing, and no total was adjusted. The check that the flattening worked is internal: the `r n(nrow(vm))` method rows add to `r n(sum(vm$votes))` votes, and the precinct file's presidential total is `r n(TOTV)`, the same number reached down two different branches of the tree. There is no outside authority to check against — only the file, checked against itself.
 
-One row of `precincts.csv` is one precinct in one county — `registered`, `ballots_cast`, one column of votes per candidate, `total`, and `dem_two_party_pct`:
+One row of `precincts.csv` is one precinct in one county — `registered`, `ballots_cast`, one column of votes per candidate, `total`, and `dem_two_party_pct`, the Democratic two-party share: Biden's votes as a percentage of the votes cast for Biden or Trump, leaving the Libertarian aside:
 
 ```{r one-row}
 ```
@@ -89,7 +89,7 @@ Now the column no other state's precinct file carries. Only `r pc(100 * mtot[ED]
 ```{r method-split}
 ```
 
-This is the arithmetic behind the "red mirage": counties that report election-day ballots first show one result, and the same counties reporting mail ballots later show another. Nothing in that sequence is irregular. It is the same voters, sorted by the route their ballot took, and this file is where you can see it directly.
+This is the arithmetic behind the "red mirage":^[The phrase came from the Democratic data firm Hawkfish in the weeks before the 2020 election; NBC News, "Beware the 'blue mirage' and the 'red mirage' on election night," November 2020, <https://www.nbcnews.com/politics/2020-election/beware-blue-mirage-red-mirage-election-night-n1245925>.] counties that report election-day ballots first show one result, and the same counties reporting mail ballots later show another. Nothing in that sequence is irregular. It is the same voters, sorted by the route their ballot took, and this file is where you can see it directly.
 
 Then the recount. Georgia published its November 2020 count and its recount as two separate archives. Compare them:
 
@@ -108,7 +108,7 @@ Whether that movement is alarming depends on the denominator, the bottom number 
 
 Fulton County alone accounts for `r pc(100 * abs(rc$change[rc$county=="Fulton" & rc$candidate==DEM]) / sum(abs(rc$change[rc$candidate==DEM])))`% of all the change in `r sub(" .*", "", DEM)`'s vote. The largest movements sit in the largest counties, which is what a roughly constant rate of ordinary handling error per ballot looks like, and the opposite of what a concentrated problem would look like.
 
-So the answer to the opening question is precise. The counts agree to within about a thousandth of the electorate, they disagree in documented detail, and the state itself published the disagreement. **"The count" is not a fact the data carries. It is a procedure the state performed, and it performed more than one.** One consequence reaches far past Georgia: the recount archive carries precinct detail for exactly one county, so the certified result exists only at county resolution. Every precinct-level analysis of this election, including the racially polarized voting estimates that courts read, rests on the superseded count, because it is the only count published at that grain.
+So the answer to the opening question is precise. The counts agree to within about a thousandth of the electorate, they disagree in documented detail, and the state itself published the disagreement. **"The count" is not a fact the data carries. It is a procedure the state performed, and it performed more than one.** One consequence reaches far past Georgia: the recount archive carries precinct detail for exactly one county, so the certified result exists only at county resolution. Every precinct-level analysis of this election, including the racially polarized voting estimates that courts read — estimates of whether white and Black voters chose different candidates, the subject of [their own chapter](../../06-putting-data-together/rpv/rpv-brief.html) — rests on the superseded count, because it is the only count published at that grain.
 
 ## What this brief cannot tell you
 
@@ -116,7 +116,7 @@ So the answer to the opening question is precise. The counts agree to within abo
 
 **It cannot tell you anything about fraud, and nothing here suggests any.** These are among the most audited numbers in American public life. The differences shown are between counting procedures, of the size ordinary ballot handling produces across five million pieces of paper.
 
-**It carries no boundaries and no demographics.** Precincts are identified by the names counties typed, not by stable codes, so comparing a precinct with itself across elections is its own problem — the subject of the [precinct-geography brief](../precinct-geography/precinct-geography-brief.html). And census blocks do not nest inside precincts, so joining these returns to census demographics requires a splitting rule the data does not contain (Amos, McDonald and Watkins 2017).
+**It carries no boundaries and no demographics.** Precincts are identified by the names counties typed, not by stable codes, so comparing a precinct with itself across elections is its own problem — the subject of the [precinct-geography brief](../precinct-geography/precinct-geography-brief.html). And census blocks — the smallest areas the Census Bureau reports, often a single city block — do not nest inside precincts, so joining these returns to census demographics requires a splitting rule the data does not contain (Amos, McDonald and Watkins 2017).^[Brian Amos, Michael P. McDonald and Russell Watkins, "When Boundaries Collide: Constructing a National Database of Demographic and Voting Statistics," *Public Opinion Quarterly* 81, no. S1 (2017): 385–400, doi:10.1093/poq/nfx001; the authors' copy is at <https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf>.]
 
 **It cannot separate preference from access.** Mail and election-day electorates differed by about `r pc(mshare[MB] - mshare[ED], 0)` points, and nothing in a tabulation export distinguishes who chose to vote by mail from who was unable to vote in person.
 
@@ -139,7 +139,7 @@ None of these is answered above, and every one can be answered from the tables t
 - `precincts.csv` has `registered` and `ballots_cast`. Compute turnout per precinct and sort it. Are the extremes plausible places, or artifacts of how a county keeps its lists?
 - `counties.csv` has a `precincts` column. How many counties report the whole county as a single precinct, and how many votes do those counties carry between them?
 
-Two stretch ideas point past the spreadsheet. The 2024 export named in the AI box below downloads by script; pull it and compute the 2024 method split, and see whether the mail gap survived four years and a rules change. And find another state's published 2020 recount, such as Wisconsin's two recounted counties, and compare its rate of movement per ballot with Georgia's.
+Two stretch ideas point past the spreadsheet. The state's 2024 export sits on the same historical-results page; download it and compute the 2024 method split, and see whether the mail gap survived four years and a rules change. And find another state's published 2020 recount, such as Wisconsin's two recounted counties, and compare its rate of movement per ballot with Georgia's.
 
 ## Sources
 
@@ -149,8 +149,8 @@ Two stretch ideas point past the spreadsheet. The 2024 export named in the AI bo
   3rd General Election Recount* — the counties' tabulation exports, all `r NCO`
   counties, and the recount archive the certified totals come from.
   <https://sos.ga.gov/page/historical-elections-results>
-  The archives are one manual browser download each; every table above is
-  parsed out of them.
+  Each archive is downloaded through a browser from that page; every table
+  above is drawn from them.
 
 **The data itself**
 
@@ -163,7 +163,8 @@ open in a spreadsheet, and they are yours to take further.
 
 - Amos, B., McDonald, M. P. and Watkins, R. (2017). "When Boundaries Collide:
   Constructing a National Database of Demographic and Voting Statistics."
-  *Public Opinion Quarterly* 81(S1): 385–400.
+  *Public Opinion Quarterly* 81(S1): 385–400. doi:10.1093/poq/nfx001;
+  <https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -47,6 +47,17 @@ CROSSS <- fn("n_crossover_strict")
 HCROSS <- fn("h_crossover")
 NHOUSE <- fn("n_house")
 
+# Two cases walked through by hand in the prose, picked by rule rather than by
+# eye: the Senate crossover whose winner ran furthest from the presidential
+# ticket, and the House crossover whose winner did the same. Every figure
+# quoted about them is read off their own rows.
+hse <- read.csv("data/derived/house.csv", stringsAsFactors = FALSE)
+xs  <- sen[sen$crossover, ]
+xs  <- xs[which.max(abs(xs$ran_ahead)), ]
+hx  <- hse[hse$crossover, ]
+hx  <- hx[which.max(abs(hx$ran_ahead)), ]
+hx_pres <- ifelse(hx$pres_winner == "D", "Harris", "Trump")
+
 # Figure 2 is drawn in order of the presidential vote, which is what the label
 # placement below alternates along.
 sen$key <- ifelse(sen$pres_winner == "R", 0, 1)

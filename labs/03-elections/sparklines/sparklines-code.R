@@ -41,6 +41,13 @@ FLIPMAX <- fn("flips_max"); FLIPST <- f("flips_max_state")
 NEVER <- fn("never_flipped")
 RELDN <- f("reldn_state"); RELDNC <- fn("reldn_change")
 
+# The state that fell furthest, walked through by hand in the prose: its own
+# share and the country's in the first and last elections, read off its rows
+# so the arithmetic on the page is the arithmetic in the table.
+dz <- se[se$state_abbrev == DN & se$year %in% c(FROM, TO), ]
+dz <- dz[order(dz$year), ]
+stopifnot(nrow(dz) == 2)
+
 YEARS <- sort(unique(se$year))
 ACC <- "#1C4C5C"; DEMC <- "#2c7fb8"; REPC <- "#A33B2A"
 GRY <- "#8A8F94"; WARN <- "#C41230"

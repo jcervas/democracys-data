@@ -41,6 +41,11 @@ ck <- function(k) {
 by <- function(yr, col) BY[[col]][BY$year == yr]
 
 Y1 <- min(BY$year); Y2 <- max(BY$year)
+
+# The one row the prose walks through: Cantor's last primary. With one rival
+# on the ballot, the rival's vote is the total less Cantor's own.
+CN <- IN[IN$last == "Cantor" & IN$stab == "VA" & IN$denied, ]
+CN <- CN[which.max(CN$year), ]
 NINC  <- sum(BY$incumbents)      # incumbent candidacies in the FEC files
 NRAN  <- sum(BY$ran_primary)     # of those, stood on a primary ballot
 NCON  <- sum(BY$contested)       # of those, had at least one rival

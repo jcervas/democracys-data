@@ -24,23 +24,25 @@ The form that answers it is a wind map, which draws **change** instead of **leve
 
 The question needs the same places observed twice, and the county is the right unit mostly by elimination. States are too coarse to show where movement happened, precincts are not published nationally at all, and counties are the only level in between with national coverage in both years.
 
-**No federal source publishes county returns.** The Federal Election Commission publishes official results by state and by congressional district and not by county, and no agency assembles what the states publish. So every national county map anyone has drawn rests on somebody's private compilation. The one here is Tony McGovern's repository of county presidential returns for 2020 and 2024 (<https://github.com/tonmcg/US_County_Level_Election_Results_08-24>), whose own README says the figures were read off news organizations' results pages and **"are not authoritative."** A file that admits what it is makes an honest foundation, and the limits section below takes the admission seriously.
+**No federal source publishes county returns.** The Federal Election Commission publishes official results by state and by congressional district and not by county,^[Federal Election Commission, "Election Results and Voting Information," <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>.] and no agency assembles what the states publish. So every national county map anyone has drawn rests on somebody's private compilation. The one here is the county presidential returns for 2020 and 2024 compiled by the researcher Tony McGovern and downloadable at <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>. His README — the note that accompanies a published data file and says what it holds and where it came from — says the 2024 figures were copied from Fox News's results pages, the 2020 figures from Fox News, Politico and the New York Times, and that the figures **"are not authoritative."** A file that admits what it is makes an honest foundation, and the limits section below takes the admission seriously.
 
 What a certified return is, who writes it and what it can bear is the subject of this cluster's [returns chapter](../returns-source/returns-source-brief.html). What it costs to assemble the fifty-one states' own files instead is the [county-returns brief's](../county-returns/county-returns-brief.html).
 
-Two more sources anchor the picture. Each arrow starts at the Census Bureau's population-weighted center of population for its county — where the county's people actually are, not the middle of its shape. For a western county the difference can be a hundred kilometers of empty desert. There are `r n(F("centroid_rows"))` of these centers, built from the whole census rather than a sample. And Georgia is drawn a second time from the Georgia Secretary of State's own certified returns for both years. One map from a compilation nobody certifies, one from a state's legal record, the same encoding on both: that comparison is part of the test.
+Two more sources anchor the picture. Each arrow starts at the Census Bureau's population-weighted center of population for its county: the point you would reach by averaging the home locations of everyone counted there in the 2020 census, which is where the county's people actually are, not the middle of its shape.^[U.S. Census Bureau, "Centers of Population," <https://www.census.gov/geographies/reference-files/time-series/geo/centers-population.html>.] For a western county the difference can be a hundred kilometers of empty desert. There are `r n(F("centroid_rows"))` of these centers, built from the whole census rather than a sample, and the Bureau publishes them as one small file. And Georgia is drawn a second time from the Georgia Secretary of State's own certified returns for both years. One map from a compilation nobody certifies, one from a state's legal record, the same encoding on both: that comparison is part of the test.
 
 ## The data
 
-The build joins the two years of returns by county code, attaches each county's center point, and writes `wind_us.csv`, one row per county drawn. The columns that matter carry the analysis: `margin_20` and `margin_24` are the two-party margins, Republican votes minus Democratic votes divided by the sum of the two. `swing` is the difference between them, in points, positive toward the Republican. `net_votes` is the swing multiplied by the county's two-party vote — the net number of ballots that changed hands. `pop` is the county's census population, and `x`, `y`, `dx`, `dy` are the arrow's position and shape, computed once by the build so every figure draws the identical geometry.
+`wind_us.csv` holds one row per county drawn, with both years' returns and the county's center point side by side. The columns that matter carry the analysis: `margin_20` and `margin_24` are the two-party margins, Republican votes minus Democratic votes divided by the sum of the two, so that a county the Democrat carried by ten points reads −10. `swing` is the difference between them, in points, positive toward the Republican. `net_votes` is the swing multiplied by the county's two-party vote — the net number of ballots that changed hands. `pop` is the county's census population, and `x`, `y`, `dx`, `dy` are where the arrow starts on the page and which way and how far it goes, stored once so every figure draws the identical arrow.
 
-The identifier decides everything, so `county_fips` is read and stored as text. Read `01001` as a number and it becomes `1001`, which matches nothing, and every state whose code begins with zero silently drops out of the join. A join that matches nothing does not complain; it just returns fewer rows.
+Follow one row through. Fulton County, Georgia — Atlanta — cast `r n(EX$votes_dem_20)` Democratic and `r n(EX$votes_gop_20)` Republican votes in 2020, a margin of `r sg(EX$margin_20)`; in 2024 it cast `r n(EX$votes_dem_24)` and `r n(EX$votes_gop_24)`, a margin of `r sg(EX$margin_24)`. Subtract the first margin from the second and the swing is `r sg(EX$swing)`: the county moved toward the Republican while staying one of the most Democratic in the South, which is exactly the movement a red-and-blue map cannot show. Its net votes are that swing applied to its `r n(EX_two_24)` two-party ballots of 2024, `r n(EX$net_votes)` ballots' worth of movement.
 
-Cleaning here meant refusing to let the join decide anything on its own. Three places are not the same unit in the two files, and each got a decision. **Alaska** reports presidential votes by State House District, under codes that differ between the files and boundaries redrawn after the 2020 census, so it is dropped. **Connecticut** appears as eight counties in the 2020 file and, in the 2024 file, as the nine planning regions the Census Bureau adopted as county-equivalents in 2022. The two sets of units cannot be compared, so its `r n(F("ct_votes_lost"))` votes are dropped. **The District of Columbia** is one row in 2020 and eight wards in 2024, under invented codes, so the wards are summed back into one city.
+The identifier decides everything, so `county_fips` is read and stored as text. Read `01001` as a number and it becomes `1001`, which matches nothing, and every state whose code begins with zero silently drops out when the two years are matched up. A match that finds nothing does not complain; it just returns fewer rows.
+
+Cleaning here meant refusing to let the matching decide anything on its own. Three places are not the same unit in the two files, and each got a decision. **Alaska** reports presidential votes by State House District, under codes that differ between the files and boundaries redrawn after the 2020 census, so it is dropped. **Connecticut** appears as eight counties in the 2020 file and, in the 2024 file, as the nine planning regions the Census Bureau adopted as county-equivalents in 2022.^[The change is recorded in the Federal Register: U.S. Census Bureau, "Change to County-Equivalents in the State of Connecticut," 87 FR 34235 (June 6, 2022), <https://www.federalregister.gov/documents/2022/06/06/2022-12063/change-to-county-equivalents-in-the-state-of-connecticut>.] The two sets of units cannot be compared, so its `r n(F("ct_votes_lost"))` votes are dropped. **The District of Columbia** is one row in 2020 and eight wards in 2024, under invented codes, so the wards are summed back into one city.
 
 Hawaii lies outside the map's frame, and `r n(F("us_arrows"))` counties survive to be drawn. Nothing was imputed (no missing value was filled in by guessing it from something else), and no vote total was adjusted.
 
-`wind_ga.csv` holds the same columns for Georgia alone, built from the state's own returns. Georgia has had exactly `r n(F("ga_counties"))` counties since 1945, so no unit changed and every join key can be checked by eye.
+`wind_ga.csv` holds the same columns for Georgia alone, built from the state's own returns. Georgia has had the same `r n(F("ga_counties"))` counties since 1932, when its last two mergers folded Milton and Campbell counties into Fulton,^[New Georgia Encyclopedia, "Peach County," which records the 1932 mergers that left the state at `r n(F("ga_counties"))` counties, <https://www.georgiaencyclopedia.org/articles/counties-cities-neighborhoods/peach-county/>.] so no unit changed between the two elections and every county code can be checked by eye.
 
 > **Before you look, commit to a share.** The map below draws
 > `r n(F("us_arrows"))` county arrows for 2020 to 2024. **How many lean
@@ -63,7 +65,7 @@ First, the code the arrows are written in. It is fixed once, and every map below
 
 **Figure 1. One arrow, seven swings — the key to every map in this brief.** An arrow fits this question because one mark carries both of the question's parts. Direction is the rate: the arrow rotates `r pc(DEGPP, 0)` degrees per point of margin change, clockwise toward the Republican in red, counter-clockwise toward the Democrat in blue, and flat at `r pc(90/DEGPP, 0)` points. Length is the quantity: the net votes that changed hands, reaching full extension at `r n(NVFUS)` votes on the national map. A `r pc(100*LMINF, 0)`% floor keeps a small county visible, and the ceiling stops one giant county setting the scale for three thousand.
 
-Ten points in a county of nine hundred and ten points in a county of nine hundred thousand are not the same event. That is why angle and length carry different measurements rather than saying one thing twice. Both constants are printed in each map's legend. Here is the country.
+Ten points in a county of nine hundred and ten points in a county of nine hundred thousand are not the same event. That is why angle and length carry different measurements rather than saying one thing twice. Both constants are printed in each map's legend. Read Fulton County's arrow by the key: its swing of `r sg(EX$swing)` turns the arrow `r pc(DEGPP, 0)` × `r pc(abs(EX$swing), 1)` = `r pc(EX$angle_deg, 1)` degrees clockwise from straight up, so it points a little right of vertical; its `r n(EX$net_votes)` net votes give it a length of `r pc(EX$len_km, 0)` km on a scale whose full `r n(LMAXUS)` km is reached at `r n(NVFUS)` votes. Here is the country.
 
 ```{r us-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -73,7 +75,7 @@ Ten points in a county of nine hundred and ten points in a county of nine hundre
 
 **Figure 2. How every county moved between 2020 and 2024.** One arrow per county, starting at the county's population-weighted center. Arrows lean right where the Republican two-party margin grew and left where it shrank, at `r pc(DEGPP, 0)` degrees per point; length is the net votes moved. `r pc(F("us_share_R"))`% of the `r n(F("us_arrows"))` arrows lean right: this is what a national swing looks like when it is close to national.
 
-The first answer is unambiguous. **`r pc(F("us_share_R"))`% of counties moved toward the Republican candidate**, the median county by `r sg(F("us_swing_median"))`, and the whole field leans one way. The swing was broad. It reached counties that vote Democratic and counties that vote Republican, dense places and empty ones, both coasts and the middle.
+The first answer is unambiguous. **`r pc(F("us_share_R"))`% of counties moved toward the Republican candidate**, the median county — the one in the middle when all `r n(F("us_arrows"))` are sorted by swing — by `r sg(F("us_swing_median"))`, and the whole field leans one way. The swing was broad. It reached counties that vote Democratic and counties that vote Republican, dense places and empty ones, both coasts and the middle.
 
 ```{r us-summary}
 ```
@@ -85,7 +87,7 @@ Which raises the second question you committed to. Every arrow on that map is th
 ```{r weighting}
 ```
 
-**The typical county moved `r sg(F("us_swing_median"))`. The country moved `r sg(F("us_agg_swing"))` — roughly twice as far.** Both numbers are correct; they answer different questions. The gap between them means the biggest counties swung harder than the small ones, and it is why a wind map has to be read with care.
+**The typical county moved `r sg(F("us_swing_median"))`. The country moved `r sg(F("us_agg_swing"))` — roughly twice as far.** "The country" here is every mapped vote added together: the two-party margin of that total went from `r sg(F("us_agg_margin_20"))` in 2020 to `r sg(F("us_agg_margin_24"))` in 2024. Both numbers are correct; they answer different questions. The gap between them means the biggest counties swung harder than the small ones, and it is why a wind map has to be read with care.
 
 One arrow per county gives rural America several times the visual weight it has in the electorate. Newspapers make that choice constantly, usually without saying so. This brief makes it too, and the difference is that it is being said, with the vote-counted number printed beside the county-counted one.
 
@@ -97,7 +99,7 @@ The national map is drawn from a compilation nobody certifies. Here is the same 
 ```{r ga-static, eval=!knitr::is_html_output(), fig.height=4.7}
 ```
 
-**Figure 3. Georgia between 2020 and 2024, from the state's own returns.** `r n(F("ga_counties_drawn"))` counties, Secretary of State returns on both ends, on units unchanged since 1945, so no arrow here can be an artifact of a broken join. With `r n(F("ga_counties"))` arrows on a state-sized frame there is room to read each angle: rotation is the same `r pc(DEGPP, 0)` degrees per point, recoverable with a protractor, and length reaches full extension at `r n(NVFGA)` net votes.
+**Figure 3. Georgia between 2020 and 2024, from the state's own returns.** `r n(F("ga_counties_drawn"))` counties, Secretary of State returns on both ends, on units unchanged since 1932, so no arrow here can be an artifact of two files that disagree about what a county is. With `r n(F("ga_counties"))` arrows on a state-sized frame there is room to read each angle: rotation is the same `r pc(DEGPP, 0)` degrees per point, recoverable with a protractor, and length reaches full extension at `r n(NVFGA)` net votes.
 
 ```{r ga-summary}
 ```
@@ -110,7 +112,7 @@ Georgia tells the national story in miniature, from certified numbers. `r pc(F("
 
 **It cannot certify a single count.** The national file is a press compilation that calls itself not authoritative, and there is no federal county file to check it against. The fifty-one state canvasses can be read one at a time, and the [county-returns brief](../county-returns/county-returns-brief.html) does exactly that, but no arrow here carries a certification.
 
-**It cannot draw the places its join lost.** Alaska, Connecticut and Hawaii are simply absent, for the reasons given in The data, and an absence on a map does not look like a warning. It looks like nothing happened there.
+**It cannot draw the places it could not match.** Alaska, Connecticut and Hawaii are simply absent, for the reasons given in The data, and an absence on a map does not look like a warning. It looks like nothing happened there.
 
 **It cannot express doubt.** An arrow computed from `r n(F("us_smallest_votes"))` votes is drawn exactly as crisply as one computed from `r n(F("us_biggest_votes"))`, and there is no obvious way to put an error bar on a direction. The direction itself is a metaphor: nothing traveled north-east, and the form borrows its persuasiveness from weather maps, where the arrows mean a thing really is moving.
 
@@ -121,8 +123,8 @@ Georgia tells the national story in miniature, from certified numbers. `r pc(F("
 - Between 2020 and 2024, `r pc(F("us_share_R"))`% of `r n(F("us_arrows"))` counties moved toward the Republican candidate: the swing was broad, and the `r n(P2$cnt_D)` counties that moved the other way are the exceptions, not the rule.
 - The median county moved `r sg(F("us_swing_median"))` while the country moved `r sg(F("us_agg_swing"))` — counting counties and counting voters are different operations, and only one of them elects anybody.
 - A wind-map arrow encodes two measurements at once: `r pc(DEGPP, 0)` degrees of rotation per point of margin change, and length for the `r n(NVFUS)`-vote scale of ballots that changed hands.
-- Georgia's certified returns, on `r n(F("ga_counties"))` counties unchanged since 1945, show the same direction as the national compilation: a statewide move of `r sg(F("ga_state_swing"))`, with `r pc(F("ga_share_R"))`% of counties leaning right.
-- A join across two elections is only as good as its units: Alaska, Connecticut and the District of Columbia were not the same units in both files, and `r n(F("ct_votes_lost"))` Connecticut votes are missing from the map because of it.
+- Georgia's certified returns, on `r n(F("ga_counties"))` counties unchanged since 1932, show the same direction as the national compilation: a statewide move of `r sg(F("ga_state_swing"))`, with `r pc(F("ga_share_R"))`% of counties leaning right.
+- Matching two elections is only as good as its units: Alaska, Connecticut and the District of Columbia were not the same units in both files, and `r n(F("ct_votes_lost"))` Connecticut votes are missing from the map because of it.
 
 ## Extensions
 
@@ -142,13 +144,16 @@ Two stretch ideas point past the spreadsheet. The MIT Election Data and Science 
 - County presidential returns, 2020 and 2024 — Tony McGovern, *US County
   Level Election Results 08-24*.
   <https://github.com/tonmcg/US_County_Level_Election_Results_08-24>
-  **Not authoritative, by its own account** — the README states the figures
-  were copied by a program from news organizations' results pages. Every arrow on the
+  **Not authoritative, by its own account** — the README states the 2024
+  figures were copied from Fox News's results pages and the 2020 figures
+  from Fox News, Politico and the New York Times. Every arrow on the
   national map is drawn from it, on purpose: no federal file exists to
   replace it with.
-- U.S. Census Bureau, *Centers of Population by County: 2020*, downloaded
+- U.S. Census Bureau, *Centers of Population by County: 2020*, retrieved
   `r F("centroid_fetch")`.
-  <https://www2.census.gov/geo/docs/reference/cenpop2020/county/CenPop2020_Mean_CO.txt>
+  <https://www2.census.gov/geo/docs/reference/cenpop2020/county/CenPop2020_Mean_CO.txt>,
+  described by the Bureau at
+  <https://www.census.gov/geographies/reference-files/time-series/geo/centers-population.html>
 - Georgia Secretary of State, *Election Results*. November 3 2020 general
   election archive and the November 2024 results export.
   <https://sos.ga.gov/page/historical-elections-results> and
@@ -157,12 +162,11 @@ Two stretch ideas point past the spreadsheet. The MIT Election Data and Science 
   official federal returns, published by state and congressional district
   and **not by county**, which is why the compilation above has to exist.
   <https://www.fec.gov/introduction-campaign-finance/election-results-and-voting-information/>
-- **Build.** `data/build-data.R` downloads the sources and writes the tables
-  below. The encoding constants (`r pc(DEGPP, 0)` degrees per point, full
-  length at `r n(NVFUS)` net votes nationally and `r n(NVFGA)` in Georgia,
-  a `r pc(100*LMINF, 0)`% length floor) are declared once in
-  `data/encoding.R` and consumed by every figure, so none is derived from
-  the data it draws.
+- **The arrow code.** The encoding constants (`r pc(DEGPP, 0)` degrees per
+  point, full length at `r n(NVFUS)` net votes nationally and `r n(NVFGA)`
+  in Georgia, a `r pc(100*LMINF, 0)`% length floor) are declared once in
+  `data/encoding.R` and used by every figure, so none is derived from the
+  data it draws.
 
 **The data itself**
 

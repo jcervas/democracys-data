@@ -22,19 +22,19 @@ The method is called **vote targeting**, and at the county level it is arithmeti
 
 ## The test
 
-The test is to run the standard county-targeting method on a real case, and then to press on each of its assumptions. The case is the North Carolina governor's race, 2012 through 2024, and it is rebuilt rather than copied. A standard campaigns textbook works a vote-targeting example on exactly these four elections; rather than retype its tables, this book rebuilt them from the source the textbook cites, and rebuilding lets you check.
+The test is to run the standard county-targeting method on a real case, and then to press on each of its assumptions. The case is the North Carolina governor's race, 2012 through 2024, and it is rebuilt rather than copied. A standard campaigns textbook works a vote-targeting example on exactly these four elections;^[John Sides, Daron Shaw, Matt Grossmann and Keena Lipsitz, *Campaigns and Elections* (New York: W. W. Norton), publisher's page at <https://wwnorton.com/books/9781324046912>.] rather than retype its tables, this book rebuilt them from the source the textbook cites, and rebuilding lets you check.
 
 The five counties the book prints reproduce exactly. Two of its statewide totals do not: the returns give `r n(sw$rep[sw$year == 2016])` for 2016 and `r n(sw$rep[sw$year == 2020])` for 2020, where the book's printed figures carry one transposed digit and one off-by-one. Two typos in a published table are not a scandal. They are the reason you go to the source.
 
-The source is the North Carolina State Board of Elections, which publishes the precinct-level results of every general election as a zip file on a public server, with no key and no account. A certified return is the complete, official record of who won, and [the returns chapter](../returns-source/returns-source-brief.html) explains what such a record can and cannot bear. This one suits the method because it contains exactly what targeting arithmetic needs and nothing else: votes, by county, by election.
+The source is the North Carolina State Board of Elections, which publishes the precinct-level results of every general election — one row per precinct per candidate — free to anyone, on its results-data page at <https://www.ncsbe.gov/results-data/election-results/historical-election-results-data>. A certified return is the complete, official record of who won, and [the returns chapter](../returns-source/returns-source-brief.html) explains what such a record can and cannot bear. This one suits the method because it contains exactly what targeting arithmetic needs and nothing else: votes, by county, by election.
 
 ## The data
 
 `nc_gov_county.csv` is the whole dataset: `r n(nrow(nc))` rows, one per county per election, covering `r n(length(unique(nc$county)))` counties in each of `r length(unique(nc$year))` governor's races. Its columns are `year`, `county`, `dem`, `rep`, `oth` and `total`, and every one of them is a count of votes.
 
-Four state releases, about 110 MB of precinct rows, became those `r n(nrow(nc))`. Every precinct in a county was added up, every contest but the governor's race was discarded, and every candidate was folded into `dem`, `rep` or `oth`. The four vote-method columns (election day, early, mail and provisional) were summed into one total, so the file cannot say *how* anyone voted, only how many did.
+Four state releases, about 110 MB of precinct rows, became those `r n(nrow(nc))`. Every precinct in a county was added up, every contest but the governor's race was discarded, and every candidate was folded into `dem`, `rep` or `oth`. The four vote-method columns (election day, early in-person, by mail, and provisional — ballots set aside until the voter's eligibility is confirmed) were summed into one total, so the file cannot say *how* anyone voted, only how many did.
 
-The cleaning had one problem in it that would have failed silently. The 2012 release is a quoted CSV with lowercase headers; the three later releases are tab-separated, with a different column set entirely. A script written for one layout does not crash on the other — it returns zero rows and hands back a tidy table missing an entire election. So the build reads each release on its own terms, treats a blank vote cell as zero, and refuses to finish unless it has all `r n(length(unique(nc$county)))` counties in all `r length(unique(nc$year))` years. It also re-derives the statewide totals against the certified canvass on every run, which is how the textbook's two stray figures came to be noticed at all.
+The four releases do not share a layout. The 2012 file is a comma-separated table with lowercase column names; the three later ones are tab-separated, with a different set of columns entirely. Read one as if it were laid out like the other and you get no error — you get zero rows, and a tidy table quietly missing an election. So each release was read on its own terms, a blank vote cell was taken as zero, and the result was accepted only once all `r n(length(unique(nc$county)))` counties appeared in all `r length(unique(nc$year))` years. The county sums were then set against the state's certified canvass — the official statewide tally the board signs off on — which is how the textbook's two stray figures came to be noticed at all.
 
 One row is one county in one election:
 
@@ -48,7 +48,7 @@ The four statewide totals, one of them not like the others:
 ```{r statewide}
 ```
 
-Republicans won in 2012 and lost the next three, and 2024 is not a normal loss. The Republican share falls to `r pc(sw$rep_pct[sw$year == 2024])`% while the `oth` share more than triples, from `r pc(sw$oth_pct[sw$year == 2020], 2)`% to `r pc(sw$oth_pct[sw$year == 2024], 2)`%. The Republican nominee's campaign collapsed late, after a news investigation, and voters who would not support him went somewhere other than the Democratic line. That election comes back below.
+Republicans won in 2012 and lost the next three, and 2024 is not a normal loss. The Republican share falls to `r pc(sw$rep_pct[sw$year == 2024])`% while the `oth` share more than triples, from `r pc(sw$oth_pct[sw$year == 2020], 2)`% to `r pc(sw$oth_pct[sw$year == 2024], 2)`%. The Republican nominee's campaign collapsed late, after a news investigation,^[The nominee was Lieutenant Governor Mark Robinson; the investigation, published by CNN on 19 September 2024, reported comments he had posted on a pornography site's message board years earlier: <https://www.cnn.com/2024/09/19/politics/kfile-mark-robinson-black-nazi-pro-slavery-porn-forum/index.html>.] and voters who would not support him went somewhere other than the Democratic line. That election comes back below.
 
 > **Before you read on, make a prediction.** The method below ranks counties by
 > their *contribution* to the party's statewide vote. Counties could instead be
@@ -61,6 +61,8 @@ Republicans won in 2012 and lost the next three, and 2024 is not a normal loss. 
 
 The method takes three steps. For each election, compute each county's share of the party's statewide vote. Average those shares across the four elections. Multiply each average by a statewide target, and the products are the county quotas.
 
+Wake County shows the arithmetic. In 2020 Wake cast `r n(a20["WAKE", "rep"])` Republican votes for governor out of `r n(sw$rep[sw$year == 2020])` statewide, a share of `r pc(100 * a20["WAKE", "rs"], 2)`%. Its shares in the other three elections average with that one to `r pc(100 * ar["WAKE"], 2)`%, and `r pc(100 * ar["WAKE"], 2)`% of a `r n(TARGET)`-vote target is `r n(tgt["WAKE"])` votes: Wake's quota.
+
 ```{r concentration}
 ```
 
@@ -70,7 +72,7 @@ The method takes three steps. For each election, compute each county's share of 
 ```{r conc-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 1. How concentrated each party's vote is.** Cumulative curves over ranked counties, because the question is how few places hold half of each party's vote, and a running total answers it directly. The Democratic curve reaches half the party's vote in **`r half_d` counties**; the Republican curve needs **`r half_r`**. The curves stay close over most of their length: concentration is largely a fact about where people live, not about which party they vote for.
+**Figure 1. How concentrated each party's vote is.** Running totals over counties ranked from the largest contributor down — the first county's share, then the first two together, and so on — because the question is how few places hold half of each party's vote, and a running total answers it directly. The Democratic curve reaches half the party's vote in **`r half_d` counties**; the Republican curve needs **`r half_r`**. The curves stay close over most of their length: concentration is largely a fact about where people live, not about which party they vote for.
 
 `r half_d` counties against `r half_r` is a different campaign, not a different emphasis: fewer field offices, denser media buys, and far more exposure to one bad night in one metro. The Republican coalition is more spread out, which is more expensive to organize and more robust to a local collapse.
 
@@ -111,7 +113,7 @@ Most readers write down "most of it," on the reasoning that a party's biggest co
 
 **Figure 3. The two questions a campaign might be asking, on two axes.** One dot per county: across, the Republican share of votes cast there, which is where the party is liked; up, the county's share of the party's statewide vote, which is where its votes are. Almost nothing sits in the top-right corner, and that empty corner is why the two rankings share nothing.
 
-If the job is banking raw votes, go to `r tt(names(ar)[1])`, where the party wins about `r pc(100 * bp[names(ar)[1]])`% of the vote cast. If the job is finding a friendly audience, go to `r tt(names(bp)[1])`, at `r pc(100 * bp[1])`% — which supplies `r pc(100 * ar[names(bp)[1]], 2)`% of the party's statewide total. Neither ranking mentions margin or persuadability. Both locate existing supporters, so both silently treat the election as a turnout problem rather than a persuasion problem, and that is a strategic assumption the arithmetic never states.
+If the job is banking raw votes, go to `r tt(names(ar)[1])`, where the party wins about `r pc(100 * bp[names(ar)[1]])`% of the vote cast. If the job is finding a friendly audience, go to `r tt(names(bp)[1])`, at `r pc(100 * bp[1])`% — which supplies `r pc(100 * ar[names(bp)[1]], 2)`% of the party's statewide total. Neither ranking mentions margin — how close the two parties are in a county — or persuadability. Both locate existing supporters, so both silently treat the election as a turnout problem rather than a persuasion problem, and that is a strategic assumption the arithmetic never states.
 
 One more assumption hides in the word "average." Averaging four elections treats them as interchangeable, and 2024 was not interchangeable. Drop it and recompute every share:
 
@@ -124,7 +126,7 @@ Only `r n_gain` of the 100 counties gain share when 2024 is dropped, and they ar
 
 **It cannot say whether any county is reachable.** The file carries votes only: no registration, no turnout, no population. Nothing in it separates a county at its ceiling from one with slack, and that ratio is the first thing a real targeting operation computes.
 
-**It cannot say anything about persuasion.** Hersh (2015) shows that what campaigns know about individual voters comes mostly from public records whose contents vary by state law. Nickerson and Rogers (2014) describe the industry scoring individuals on persuadability, precisely because turnout-only arithmetic runs out of room. The county arithmetic here is the ancestor of both, with the same blind spots at a scale you can check by hand.
+**It cannot say anything about persuasion.** Hersh (2015) shows that what campaigns know about individual voters comes mostly from public records whose contents vary by state law.^[Eitan D. Hersh, *Hacking the Electorate: How Campaigns Perceive Voters* (New York: Cambridge University Press, 2015).] Nickerson and Rogers (2014) describe the industry scoring individuals on persuadability,^[David W. Nickerson and Todd Rogers, "Political Campaigns and Big Data," *Journal of Economic Perspectives* 28, no. 2 (2014): 51–74, <https://www.aeaweb.org/articles?id=10.1257/jep.28.2.51>.] precisely because turnout-only arithmetic runs out of room. The county arithmetic here is the ancestor of both, with the same blind spots at a scale you can check by hand.
 
 **Four elections is a small average, and one of the four is an outlier.** Whether past shares predict future shares at all, while a coalition is moving, is the deepest open question here, and 2024 is evidence that sometimes they do not.
 
@@ -155,8 +157,8 @@ Two stretch ideas point past the spreadsheet. Download another state's certified
 
 - North Carolina State Board of Elections, precinct-level returns for the
   gubernatorial elections of 2012, 2016, 2020 and 2024, summed to counties
-  here. The statewide totals are re-checked against the published canvass
-  every time they are assembled.
+  here. The statewide totals were checked against the board's certified
+  canvass.
   <https://www.ncsbe.gov/results-data/election-results/historical-election-results-data>
 
 **Academic literature**
@@ -165,9 +167,10 @@ Two stretch ideas point past the spreadsheet. Download another state's certified
   New York: Cambridge University Press.
 - Nickerson, D. W. and Rogers, T. (2014). "Political Campaigns and Big Data."
   *Journal of Economic Perspectives* 28(2): 51–74.
+  <https://www.aeaweb.org/articles?id=10.1257/jep.28.2.51>
 - Sides, J., Shaw, D., Grossmann, M. and Lipsitz, K. *Campaigns and Elections.*
   New York: W. W. Norton — whose worked example this brief rebuilds from
-  primary returns.
+  primary returns. <https://wwnorton.com/books/9781324046912>
 
 **The data itself**
 

@@ -24,6 +24,7 @@ an <- read.csv("data/derived/anomalies.csv", stringsAsFactors = FALSE,
 un <- read.csv("data/derived/unusable_states.csv", stringsAsFactors = FALSE)
 u  <- co[co$state_usable, ]
 an$gap <- an$total_votes - an$ballots
+cook <- an[an$fips == "17031", ]     # the one impossible row the prose walks through
 pc <- function(x, k = 2) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",")
 ex <- u[u$state_name == "Pennsylvania" & u$county_name == "Allegheny County", ]

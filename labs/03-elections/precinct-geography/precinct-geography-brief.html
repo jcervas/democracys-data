@@ -1493,19 +1493,23 @@ finding.</p>
 <p>Three files answer it, from three different publishers. The precinct
 boundaries belong to Georgia’s Legislative and Congressional
 Reapportionment Office, which posts a statewide precinct map for each
-general election (<a href="https://www.legis.ga.gov/joint-office/reapportionment" class="uri">https://www.legis.ga.gov/joint-office/reapportionment</a>).
-The two read here are the 2,684-precinct map of 2020 and the map that
-replaced it in 2024. The population belongs to the Census Bureau:
-232,717 Georgia census blocks from TIGER/Line 2020, carrying the 2020
-census count. The votes belong to the Secretary of State’s certified
-precinct returns for November 2020.</p>
+general election (<a href="https://www.legis.ga.gov/joint-office/reapportionment" class="uri">https://www.legis.ga.gov/joint-office/reapportionment</a>)
+as a shapefile — the standard computer-readable map format, in which
+each precinct is a shape with a row of data attached.<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> The two read here are
+the 2,684-precinct map of 2020 and the map that replaced it in 2024. The
+population belongs to the Census Bureau: 232,717 Georgia census blocks —
+the smallest areas the Bureau reports, often a single city block — from
+TIGER/Line 2020, the Bureau’s own map files, carrying the 2020 census
+count.<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>
+The votes belong to the Secretary of State’s certified precinct returns
+for November 2020.</p>
 <p>Why this data can answer: the precinct sits at the bottom of the
 ladder of election reporting, the finest rung published statewide, and
 <a href="../levels-of-aggregation/levels-of-aggregation-brief.html">the
 levels-of-aggregation chapter</a> walks that ladder. This brief asks the
 question that chapter leaves open — whether the bottom rung holds still
 between elections. Georgia is the test state because one office
-publishes both vintages in one format, across the interval coverage
+publishes both years’ maps in one format, across the interval coverage
 actually compares.</p>
 </div>
 <div id="the-data" class="section level2">
@@ -1727,11 +1731,12 @@ key</td>
 </table>
 <p>13 columns and not one of them is a vote. Neither file carries a
 field pointing at the other — no prior name, no successor code. The only
-shared handle is county name plus precinct name, so the build
-manufactures a key that exists in no source file:
-<code>HOUSTON|ROZR</code>. About thirty rows a year carry neither name
-and collapse to a single non-precinct, <code>NA|NA</code>, which is
-dropped everywhere before anything is counted.</p>
+shared handle is county name plus precinct name, so the key — the label
+on which rows of two tables are matched — has to be manufactured, and it
+exists in no source file: <code>HOUSTON|ROZR</code>. About thirty rows a
+year carry neither name and collapse to a single non-precinct,
+<code>NA|NA</code>, which is dropped everywhere before anything is
+counted.</p>
 <p>One more caution sits upstream. The counties hold the official lines
 and may redraw them at any time; the office itself calls its statewide
 file a “best fit” of the 159 county maps, snapped to census
@@ -1741,7 +1746,9 @@ carries <code>GEOID20</code>, a fifteen-digit identifier the Bureau
 maintains and does not reuse — a real key. Each block is reduced to a
 point guaranteed to lie inside it, and that point is asked two
 questions: which 2020 precinct contains you, and which 2024 precinct?
-Three of ROZR’s blocks:</p>
+The answers are the <strong>block assignment</strong>: every block, with
+the precinct it falls in under each year’s map. Three of ROZR’s
+blocks:</p>
 <table>
 <thead>
 <tr class="header">
@@ -1776,7 +1783,7 @@ Three of ROZR’s blocks:</p>
 finding, written out once. Grouping the 232,717 blocks by their pair of
 precincts and summing population turns the assignments into a
 <strong>crosswalk</strong>, a table that translates one set of areas
-into another, with a weight on every pair.
+into another, with a weight on every pair.<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a>
 <code>crosswalk_pop.csv</code> holds <code>from_2020</code>,
 <code>to_2024</code>, the <code>weight</code>, and the <code>pop</code>
 behind it; <code>block_assign.csv</code> holds every block’s
@@ -1841,8 +1848,8 @@ certified returns:</p>
 </tbody>
 </table>
 <p>On every precinct where the two publications could be compared, they
-agreed to the vote. An earlier build had joined the votes on by precinct
-name instead, and silently lost 489,876 votes (9.8% of Georgia) to
+agreed to the vote. Matching the votes on by precinct name instead, as a
+first attempt here did, silently lost 489,876 votes (9.8% of Georgia) to
 spelling differences. The data was never wrong. The labels were.</p>
 <blockquote>
 <p><strong>Before you read on, commit to a number.</strong> Between 2020
@@ -2150,11 +2157,11 @@ more than one successor, in what proportion — by land, or by people?</p>
 </table>
 <p>The two rules disagree even about how many precincts split at all.
 Most of area’s extra “splits” are slivers: hairline overlaps where the
-two files digitized the same road a meter apart. Raise the floor to 1%
-of a precinct and area’s Houston figure falls from 93.8% to 6.2%,
-exactly matching population. Statewide, a residue of 3.9 points survives
-the correction: boundaries clipping empty farmland, a split in land that
-no vote can come from. Where the choice bites is a real split:</p>
+two files traced the same road a meter apart. Raise the floor to 1% of a
+precinct and area’s Houston figure falls from 93.8% to 6.2%, exactly
+matching population. Statewide, a residue of 3.9 points survives the
+correction: boundaries clipping empty farmland, a split in land that no
+vote can come from. Where the choice bites is a real split:</p>
 <div id="wnd" style="position:relative;margin:1em 0">
 
 </div>
@@ -2225,7 +2232,8 @@ precinct, and the 10,035 ballots that have to be divided.</strong>
 ROZR’s 561 census blocks, each dot sized by population and colored by
 where its interior point landed in 2024. The western half is big and
 thinly settled, so land gives PEC 55.6% of ROZR while people give it
-42.9%. The gap is 1,270 ballots, moved from one precinct to another by a
+42.9%. In ballots: 10,035 × 55.6% = 5,575, against 10,035 × 42.9% =
+4,305. The gap is 1,270 ballots, moved from one precinct to another by a
 methodological choice, with nothing miscounted.</p>
 <script>// dd-charts.js -- the shared chart library for the book's D3 figures.
 //
@@ -3467,6 +3475,9 @@ they open in a spreadsheet, and they are yours to take further.</p>
 <p><strong>Method</strong></p>
 <ul>
 <li>Cervas, J. <code>assignPolys</code>, <em>R-Functions</em>. <a href="https://github.com/jcervas/R-Functions/tree/main/assignPolys" class="uri">https://github.com/jcervas/R-Functions/tree/main/assignPolys</a></li>
+<li>Amos, B., McDonald, M. P. and Watkins, R. (2017). “When Boundaries
+Collide: Constructing a National Database of Demographic and Voting
+Statistics.” <em>Public Opinion Quarterly</em> 81(S1): 385–400. <a href="doi:10.1093/poq/nfx001" class="uri">doi:10.1093/poq/nfx001</a>; <a href="https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf" class="uri">https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf</a></li>
 </ul>
 <style>
 #hou text[fill="#444" i]
@@ -3484,6 +3495,21 @@ stroke-linejoin:round; }
 { stroke:var(--paper); }
 }
 </style>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>The format is Esri’s, and its specification is public:
+<em>ESRI Shapefile Technical Description</em> (1998), <a href="https://www.esri.com/content/dam/esrisites/sitecore-archive/Files/Pdfs/library/whitepapers/pdfs/shapefile.pdf" class="uri">https://www.esri.com/content/dam/esrisites/sitecore-archive/Files/Pdfs/library/whitepapers/pdfs/shapefile.pdf</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>The Bureau’s description of its TIGER/Line files is at
+<a href="https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html" class="uri">https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html</a>,
+and of the census block at <a href="https://www.census.gov/programs-surveys/geography/about/glossary.html" class="uri">https://www.census.gov/programs-surveys/geography/about/glossary.html</a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>The same block-based construction, applied nationally,
+is described in Brian Amos, Michael P. McDonald and Russell Watkins,
+“When Boundaries Collide: Constructing a National Database of
+Demographic and Voting Statistics,” <em>Public Opinion Quarterly</em>
+81, no. S1 (2017): 385–400, <a href="doi:10.1093/poq/nfx001" class="uri">doi:10.1093/poq/nfx001</a>; the authors’ copy is at <a href="https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf" class="uri">https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf</a>.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

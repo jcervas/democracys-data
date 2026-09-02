@@ -24,9 +24,9 @@ The stakes are larger than one county's bookkeeping. The precinct is the smalles
 
 ## The test
 
-Three files answer it, from three different publishers. The precinct boundaries belong to Georgia's Legislative and Congressional Reapportionment Office, which posts a statewide precinct map for each general election (<https://www.legis.ga.gov/joint-office/reapportionment>). The two read here are the `r n(ts$shapefile_precincts[ts$scope == "Georgia"])`-precinct map of 2020 and the map that replaced it in 2024. The population belongs to the Census Bureau: `r n(nrow(ba))` Georgia census blocks from TIGER/Line 2020, carrying the 2020 census count. The votes belong to the Secretary of State's certified precinct returns for November 2020.
+Three files answer it, from three different publishers. The precinct boundaries belong to Georgia's Legislative and Congressional Reapportionment Office, which posts a statewide precinct map for each general election (<https://www.legis.ga.gov/joint-office/reapportionment>) as a shapefile — the standard computer-readable map format, in which each precinct is a shape with a row of data attached.^[The format is Esri's, and its specification is public: *ESRI Shapefile Technical Description* (1998), <https://www.esri.com/content/dam/esrisites/sitecore-archive/Files/Pdfs/library/whitepapers/pdfs/shapefile.pdf>.] The two read here are the `r n(ts$shapefile_precincts[ts$scope == "Georgia"])`-precinct map of 2020 and the map that replaced it in 2024. The population belongs to the Census Bureau: `r n(nrow(ba))` Georgia census blocks — the smallest areas the Bureau reports, often a single city block — from TIGER/Line 2020, the Bureau's own map files, carrying the 2020 census count.^[The Bureau's description of its TIGER/Line files is at <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html>, and of the census block at <https://www.census.gov/programs-surveys/geography/about/glossary.html>.] The votes belong to the Secretary of State's certified precinct returns for November 2020.
 
-Why this data can answer: the precinct sits at the bottom of the ladder of election reporting, the finest rung published statewide, and [the levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html) walks that ladder. This brief asks the question that chapter leaves open — whether the bottom rung holds still between elections. Georgia is the test state because one office publishes both vintages in one format, across the interval coverage actually compares.
+Why this data can answer: the precinct sits at the bottom of the ladder of election reporting, the finest rung published statewide, and [the levels-of-aggregation chapter](../levels-of-aggregation/levels-of-aggregation-brief.html) walks that ladder. This brief asks the question that chapter leaves open — whether the bottom rung holds still between elections. Georgia is the test state because one office publishes both years' maps in one format, across the interval coverage actually compares.
 
 ## The data
 
@@ -40,16 +40,16 @@ A shapefile is not a picture: beside the geometry sits an attribute table, one r
 ```{r raw24}
 ```
 
-`r n(D24[2])` columns and not one of them is a vote. Neither file carries a field pointing at the other — no prior name, no successor code. The only shared handle is county name plus precinct name, so the build manufactures a key that exists in no source file: `HOUSTON|ROZR`. About thirty rows a year carry neither name and collapse to a single non-precinct, `NA|NA`, which is dropped everywhere before anything is counted.
+`r n(D24[2])` columns and not one of them is a vote. Neither file carries a field pointing at the other — no prior name, no successor code. The only shared handle is county name plus precinct name, so the key — the label on which rows of two tables are matched — has to be manufactured, and it exists in no source file: `HOUSTON|ROZR`. About thirty rows a year carry neither name and collapse to a single non-precinct, `NA|NA`, which is dropped everywhere before anything is counted.
 
 One more caution sits upstream. The counties hold the official lines and may redraw them at any time; the office itself calls its statewide file a "best fit" of the 159 county maps, snapped to census geography.
 
-The census blocks are what make comparison possible. Each block carries `GEOID20`, a fifteen-digit identifier the Bureau maintains and does not reuse — a real key. Each block is reduced to a point guaranteed to lie inside it, and that point is asked two questions: which 2020 precinct contains you, and which 2024 precinct? Three of ROZR's blocks:
+The census blocks are what make comparison possible. Each block carries `GEOID20`, a fifteen-digit identifier the Bureau maintains and does not reuse — a real key. Each block is reduced to a point guaranteed to lie inside it, and that point is asked two questions: which 2020 precinct contains you, and which 2024 precinct? The answers are the **block assignment**: every block, with the precinct it falls in under each year's map. Three of ROZR's blocks:
 
 ```{r cleanblocks}
 ```
 
-Two blocks stayed and one moved; that third row is this brief's whole finding, written out once. Grouping the `r n(nrow(ba))` blocks by their pair of precincts and summing population turns the assignments into a **crosswalk**, a table that translates one set of areas into another, with a weight on every pair. `crosswalk_pop.csv` holds `from_2020`, `to_2024`, the `weight`, and the `pop` behind it; `block_assign.csv` holds every block's `GEOID20`, `pop`, and two precinct keys. The running example:
+Two blocks stayed and one moved; that third row is this brief's whole finding, written out once. Grouping the `r n(nrow(ba))` blocks by their pair of precincts and summing population turns the assignments into a **crosswalk**, a table that translates one set of areas into another, with a weight on every pair.^[The same block-based construction, applied nationally, is described in Brian Amos, Michael P. McDonald and Russell Watkins, "When Boundaries Collide: Constructing a National Database of Demographic and Voting Statistics," *Public Opinion Quarterly* 81, no. S1 (2017): 385–400, doi:10.1093/poq/nfx001; the authors' copy is at <https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf>.] `crosswalk_pop.csv` holds `from_2020`, `to_2024`, the `weight`, and the `pop` behind it; `block_assign.csv` holds every block's `GEOID20`, `pop`, and two precinct keys. The running example:
 
 ```{r cleanxwalk}
 ```
@@ -59,7 +59,7 @@ The votes are read straight off the 2020 map's own attribute table rather than j
 ```{r twosource}
 ```
 
-On every precinct where the two publications could be compared, they agreed to the vote. An earlier build had joined the votes on by precinct name instead, and silently lost 489,876 votes (9.8% of Georgia) to spelling differences. The data was never wrong. The labels were.
+On every precinct where the two publications could be compared, they agreed to the vote. Matching the votes on by precinct name instead, as a first attempt here did, silently lost 489,876 votes (9.8% of Georgia) to spelling differences. The data was never wrong. The labels were.
 
 > **Before you read on, commit to a number.** Between 2020 and 2024, Houston
 > County's `r n(length(h20))` precincts produced
@@ -109,7 +109,7 @@ Then the choice that moves votes: when a precinct's ballots travel to more than 
 ```{r weights}
 ```
 
-The two rules disagree even about how many precincts split at all. Most of area's extra "splits" are slivers: hairline overlaps where the two files digitized the same road a meter apart. Raise the floor to 1% of a precinct and area's Houston figure falls from `r pc(sp_arH)`% to `r pc(sp1(arH))`%, exactly matching population. Statewide, a residue of `r pc(sp1(ar) - sp1(po))` points survives the correction: boundaries clipping empty farmland, a split in land that no vote can come from. Where the choice bites is a real split:
+The two rules disagree even about how many precincts split at all. Most of area's extra "splits" are slivers: hairline overlaps where the two files traced the same road a meter apart. Raise the floor to 1% of a precinct and area's Houston figure falls from `r pc(sp_arH)`% to `r pc(sp1(arH))`%, exactly matching population. Statewide, a residue of `r pc(sp1(ar) - sp1(po))` points survives the correction: boundaries clipping empty farmland, a split in land that no vote can come from. Where the choice bites is a real split:
 
 ```{r rozr-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -117,7 +117,7 @@ The two rules disagree even about how many precincts split at all. Most of area'
 ```{r rozr-static, eval=!knitr::is_html_output(), fig.height=4.0}
 ```
 
-**Figure 2. The one piece of Houston ground that changed precinct, and the `r n(WBAL)` ballots that have to be divided.** ROZR's `r n(nrow(wp))` census blocks, each dot sized by population and colored by where its interior point landed in 2024. The western half is big and thinly settled, so land gives PEC `r pc(100 * PECA)`% of ROZR while people give it `r pc(100 * PECP)`%. The gap is `r n(PECB)` ballots, moved from one precinct to another by a methodological choice, with nothing miscounted.
+**Figure 2. The one piece of Houston ground that changed precinct, and the `r n(WBAL)` ballots that have to be divided.** ROZR's `r n(nrow(wp))` census blocks, each dot sized by population and colored by where its interior point landed in 2024. The western half is big and thinly settled, so land gives PEC `r pc(100 * PECA)`% of ROZR while people give it `r pc(100 * PECP)`%. In ballots: `r n(WBAL)` × `r pc(100 * PECA)`% = `r n(wm$ballots_area[wm$target == "PEC"])`, against `r n(WBAL)` × `r pc(100 * PECP)`% = `r n(wm$ballots_pop[wm$target == "PEC"])`. The gap is `r n(PECB)` ballots, moved from one precinct to another by a methodological choice, with nothing miscounted.
 
 ```{r d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -196,6 +196,10 @@ open in a spreadsheet, and they are yours to take further.
 
 - Cervas, J. `assignPolys`, *R-Functions*.
   <https://github.com/jcervas/R-Functions/tree/main/assignPolys>
+- Amos, B., McDonald, M. P. and Watkins, R. (2017). "When Boundaries Collide:
+  Constructing a National Database of Demographic and Voting Statistics."
+  *Public Opinion Quarterly* 81(S1): 385–400. doi:10.1093/poq/nfx001;
+  <https://election.lab.ufl.edu/data-downloads/census-crosswalk/2020/when_boundaries_collide.pdf>
 
 ```{r on-mark, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

@@ -51,6 +51,12 @@ pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 sg <- function(x, k = 1) paste0(ifelse(x >= 0, "+", "−"), pc(abs(x), k))
 
 REG <- c("Panhandle", "Big Bend / north central", "rest of Florida")
+
+# Two county vote totals the prose states in passing, read from benchmark.csv
+# rather than typed: Gadsden's Republican primary ballots for governor, and
+# Okaloosa and Santa Rosa together.
+GADS <- bm$county_votes[bm$county == "Gadsden"]
+OKSR <- sum(bm$county_votes[bm$county %in% c("Okaloosa", "Santa Rosa")])
 BLUE <- "#2C7FB8"; ORANGE <- "#D95F0E"; PURPLE <- "#4F2E83"; GREY <- "#C2C5CC"
 
 # ---- render every data.frame in this document as a TABLE, not code output ----

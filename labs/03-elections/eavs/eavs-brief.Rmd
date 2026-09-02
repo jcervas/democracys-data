@@ -18,21 +18,21 @@ dd_read_chunks("eavs-code.R")
 
 Americans say their elections are run by "the states," and the sentence is already wrong. Elections are run by `r n(JUR)` local offices — county clerks, township boards, city commissions, each receiving the ballots and deciding what to count. So who actually runs American elections, and what does the machinery report about itself? There is exactly one table in which every one of those offices answers the same questions in the same words. It exists because after every federal election, somebody in each office sits down with a questionnaire from Washington and starts filling in boxes.
 
-Two of those boxes carry the stakes. Item C1b asks how many mail ballots came back; item C9a asks how many were rejected. Add C9a up across the country and the answer is `r n(g("C9a"))` mail ballots that a voter filled in, sealed, and sent, and that were not counted — more people than live in Wyoming. A ballot that is cast and not counted is a distinct kind of failure. The voter did everything that was asked, the system did not complete the transaction, and in most states nobody is required to tell them.
+Two of those boxes carry the stakes. Item C1b asks how many mail ballots came back; item C9a asks how many were rejected. Add C9a up across the country and the answer is `r n(g("C9a"))` mail ballots that a voter filled in, sealed, and sent, and that were not counted — about as many people as live in Wyoming.^[U.S. Census Bureau, state population totals, 2020–2024: <https://www.census.gov/data/tables/time-series/demo/popest/2020s-state-total.html>.] A ballot that is cast and not counted is a distinct kind of failure. The voter did everything that was asked, the system did not complete the transaction, and in most states nobody is required to tell them.
 
 This brief reads the questionnaire's answers for 2024. The finding runs in two layers. The machinery varies enormously — the same mailed ballot faces a many-fold difference in rejection risk from state to state. And the survey's own missing answers are not noise around that finding; in places they *are* the finding, deciding which states can be compared at all.
 
 ## The test
 
-The data is the **Election Administration and Voting Survey**: the [U.S. Election Assistance Commission's](https://www.eac.gov/research-and-data/datasets-codebooks-and-surveys) census of every election office in the United States, taken after each federal election since 2004. This brief uses the 2024 edition, Version 2, released 12 February 2026 — Version 2 rather than Version 1, because the Commission corrected the first release and published an errata note saying what changed. The survey exists because the Help America Vote Act obliged the Commission to report on how federal election law works on the ground. Congress gave it no power to make any office answer accurately, or at all.
+The data is the **Election Administration and Voting Survey**, the EAVS: a questionnaire the U.S. Election Assistance Commission sends to every election office in the United States after each federal election, and has since 2004, asking each office how it ran the election — how many voters were registered, how many ballots went out by mail and came back, how many were rejected and why. The Commission publishes every office's answers as one table, downloadable at <https://www.eac.gov/research-and-data/datasets-codebooks-and-surveys>. This brief uses the 2024 edition, Version 2, released 12 February 2026 — Version 2 rather than Version 1, because the Commission corrected the first release and published an errata note saying what changed. The survey exists because the Help America Vote Act of 2002, the law Congress passed after the Florida recount, obliged the Commission to report on how federal election law works on the ground.^[52 U.S.C. § 20901 and following: <https://www.law.cornell.edu/uscode/text/52/20901>.] Congress gave it no power to make any office answer accurately, or at all.
 
-Why this source? Every other election dataset records the *output* of an election. Certified returns say who won and are permanently silent about the machinery that took the ballots in; [the returns chapter](../returns-source/returns-source-brief.html) sets out that limit. A rejected mail ballot leaves no trace in the returns, which count what was counted. Only a handful of states publish ballot-level rejection records, which is why the research literature leans so heavily on Florida and North Carolina. The EAVS is the one table where all `r nrow(st)` states and territories answer the same question in the same words — the only service record American elections have.
+Why this source? Every other election dataset records the *output* of an election. Certified returns — the **canvass**, the official count each state signs off on in the weeks after election day — say who won and are permanently silent about the machinery that took the ballots in; [the returns chapter](../returns-source/returns-source-brief.html) sets out that limit. A rejected mail ballot leaves no trace in the returns, which count what was counted. Only a handful of states publish ballot-level rejection records, which is why the research literature leans so heavily on Florida^[Anna Baringer, Michael C. Herron and Daniel A. Smith, "Voting by Mail and Ballot Rejection: Lessons from Florida for Elections in the Age of the Coronavirus," *Election Law Journal* 19, no. 3 (2020): 289–320, doi:10.1089/elj.2020.0658.] and North Carolina.^[Thessalia Merivaki and Daniel A. Smith, "A Failsafe for Voters? Cast and Rejected Provisional Ballots in North Carolina," *Political Research Quarterly* 73, no. 1 (2020): 65–78, doi:10.1177/1065912919875816.] The EAVS is the one table where all `r nrow(st)` states and territories answer the same question in the same words — the only service record American elections have.
 
-The test is to compute the failure rates the survey supports: mail-ballot rejection nationally, by state, and by stated reason, with provisional-ballot rejection beside them. And it is to keep one eye on a second column the whole way — how many offices actually answered each item.
+The test is to compute the failure rates the survey supports: mail-ballot rejection nationally, by state, and by stated reason, with **provisional-ballot** rejection beside them — a provisional ballot being the one a voter casts when something is wrong at the polling place, held aside and counted only if the problem checks out. And it is to keep one eye on a second column the whole way — how many offices actually answered each item.
 
 ## The data
 
-The public release is a ZIP opening to a single CSV: `r n(JUR)` rows by 535 columns, one row per election office and one column per box on the form. Figure 1 is the form itself, at the two boxes everything below rests on.
+The public release is one table: `r n(JUR)` rows by 535 columns, one row per election office and one column per box on the form. Figure 1 is the form itself, at the two boxes everything below rests on.
 
 ```{r instrument, out.width="100%", fig.align="center"}
 ```
@@ -47,7 +47,7 @@ Here are three rows, sliced to six of the 535 columns:
 | 0100300000 | BALDWIN COUNTY | … | AL | … | 8902 | -99 | … | 187 | … |
 | 1314500000 | HARRIS COUNTY | … | GA | … | 1153 | 1037 | … | 10 | … |
 
-Read the Autauga row as arithmetic and it says the county sent 1,822 mail ballots, got back minus ninety-nine of them, and rejected 14. **The −99 is not a number.** It is the survey's code for "did not answer," and −88 means "the question does not apply"; both sit in the same numeric columns as the counts. The file also carries line breaks inside its free-text comment fields, so counting lines says it holds seventeen thousand records when parsing it properly finds `r n(JUR)`.
+Read the Autauga row as arithmetic and it says the county sent 1,822 mail ballots, got back minus ninety-nine of them, and rejected 14. **The −99 is not a number.** It is the survey's code for "did not answer," and −88 means "the question does not apply"; both sit in the same numeric columns as the counts. The file also carries line breaks inside its free-text comment fields, so a program that counts lines says it holds seventeen thousand records where reading it properly finds `r n(JUR)`.
 
 Four cleaning decisions produce the tables this brief reads. Negative codes become missing, never zero — turned into zero they would silently deflate every total. The numerator and denominator of each rate are counted separately, because the offices answering C1b and C9a are not the same set. Rows are rolled up to states, since the file's row is an office and the questions worth asking are about states and the country. And nothing is dropped for looking wrong: an office reporting more rejections than returns keeps its row, because no independent record exists to correct it against.
 
@@ -81,7 +81,7 @@ The derived tables are four. `national.csv` holds each headline item's `total`, 
 
 **Figure 2. What happens to a mail ballot, drawn to one scale, with the failure magnified.** Widths are exact shares of the `r n(SENT)` ballots transmitted, because the point is proportion. The `r n(REJ)` rejected ballots are a sliver, `r pc(MRATE)`% of the `r n(RET)` returned, and the sliver has to be blown up about `r pc(MAG, 0)` times before anyone can see inside it. The bottom bar splits it by the reason recorded, largest first: **`r top$reason[1]`** alone accounts for `r pc(100 * top$ballots[1] / REJ, 0)`% of every mail ballot rejected in the country.
 
-The national `r pc(MRATE)`% is the number most often quoted, and it hides the actual finding. Do the same arithmetic state by state, among the `r nrow(big)` states that handled more than 100,000 returned mail ballots:
+The national `r pc(MRATE)`% is the number most often quoted, and it hides the actual finding. Do the same arithmetic state by state. Oklahoma's row says `r n(OKR)` mail ballots came back and `r n(OKJ)` of them were rejected; `r n(OKJ)` divided by `r n(OKR)` is `r pc(OK)`%. Vermont's row says `r n(VTR)` came back and `r n(VTJ)` were rejected, which is `r pc(VT)`%. Here are the extremes among the `r nrow(big)` states that handled more than 100,000 returned mail ballots:
 
 ```{r by-state}
 ```
@@ -94,7 +94,7 @@ The national `r pc(MRATE)`% is the number most often quoted, and it hides the ac
 
 **Figure 3. The chance that a mailed ballot is thrown away, by state.** The `r nrow(big)` states handling more than 100,000 returned mail ballots, ranked by the share rejected; the dashed line is the national `r pc(MRATE)`%. Oklahoma sits at `r pc(OK)`% and Vermont at `r pc(VT)`%, a `r pc(OK/VT, 0)`-fold difference in the same act performed in two states.
 
-That spread is not voters behaving differently in Oklahoma. It is rules — witness requirements, signature matching, postmark deadlines, and above all whether the state lets a voter fix a problem after the fact. Baringer, Herron and Smith (2020), reading Florida's ballot-level records, found rejection concentrated among younger voters, voters outside the major parties, and first-time mail voters. A procedural failure that lands harder on particular people is a franchise problem, not a clerical one.
+That spread is not voters behaving differently in Oklahoma. It is rules — witness requirements, signature matching, postmark deadlines, and above all whether the state lets a voter fix a problem after the fact.^[The National Conference of State Legislatures catalogues these rules state by state: <https://www.ncsl.org/elections-and-campaigns/voting-outside-the-polling-place>.] Baringer, Herron and Smith (2020), reading Florida's ballot-level records, found rejection concentrated among younger voters, voters outside the major parties, and first-time mail voters. A procedural failure that lands harder on particular people is a franchise problem, not a clerical one.
 
 Now the answer to the prompt. **No** — and most readers write yes, because scattering is what missing data usually does. This missing data pushes in one direction, and then it removes whole states from the comparison.
 
@@ -119,7 +119,7 @@ The reasons column carries the same lesson in a finer grain:
 ```{r reasons-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 4. How many ballots each reason accounts for, against how well it is known.** A scatter, because the finding is the relationship between two columns of `reasons.csv`. Up the page is ballots rejected for that reason, on a log scale; across is the share of the country's `r n(JUR)` jurisdictions reporting it. The three reasons an office's systems record automatically are reported by `r pc(COVA, 0)`% of jurisdictions on average; the three that need a person to write down a judgment, by `r pc(COVJ, 0)`%. Signature mismatch, the largest category of all at `r n(rs$ballots[1])` ballots, is reported by `r pc(rs$cov[1], 0)`% — we know least about the reason where human discretion matters most.
+**Figure 4. How many ballots each reason accounts for, against how well it is known.** A scatter, because the finding is the relationship between two columns of `reasons.csv`. Up the page is ballots rejected for that reason, on a log scale, where each step up the axis multiplies the count by ten; across is the share of the country's `r n(JUR)` jurisdictions reporting it. The three reasons an office's systems record automatically are reported by `r pc(COVA, 0)`% of jurisdictions on average; the three that need a person to write down a judgment, by `r pc(COVJ, 0)`%. Signature mismatch, the largest category of all at `r n(rs$ballots[1])` ballots, is reported by `r pc(rs$cov[1], 0)`% — we know least about the reason where human discretion matters most.
 
 One more failure is larger and less discussed. A provisional ballot is the safety net for a voter who turns up and something is wrong — not on the list, wrong ID, wrong place.
 
@@ -134,7 +134,7 @@ About one provisional ballot in four is rejected, against `r pc(MRATE)`% of retu
 
 **It cannot say who was rejected.** There are no demographics anywhere in the survey. The file counts ballots, not people, which is why the who-gets-rejected findings come from the few states publishing ballot-level records.
 
-**It cannot audit itself.** Every number is a self-report by the office being measured, gathered under a mandate to publish rather than a mandate to comply. No independent record exists to check most answers against.
+**It cannot audit itself.** Every number is a self-report by the office being measured, gathered under a mandate to publish rather than a mandate to comply. The canvass is a different act from the survey: it is a count of votes, certified within weeks under state law, while the survey form is filled in months later from whatever records the office kept, and nothing obliges the two to agree. Where an answer can be set beside the canvass — [the residual-votes brief](../residual-votes/residual-votes-brief.html) puts the survey's ballots-cast figure next to the certified presidential vote, county by county — the two disagree in `r n(RVAN)` counties. For most items no independent record exists at all.
 
 **And it cannot arrive in time.** The survey covering an election appears more than a year later, so the country receives its election's service record after the argument about that election is over.
 
@@ -175,14 +175,17 @@ Two stretch ideas point past the spreadsheet. The Commission publishes the 2022 
 
 - Baringer, A., Herron, M. C. and Smith, D. A. (2020). "Voting by Mail and
   Ballot Rejection: Lessons from Florida for Elections in the Age of the
-  Coronavirus." *Election Law Journal* 19(3): 289–320.
+  Coronavirus." *Election Law Journal* 19(3): 289–320. doi:10.1089/elj.2020.0658
 - Merivaki, T. and Smith, D. A. (2020). "A Failsafe for Voters? Cast and
   Rejected Provisional Ballots in North Carolina." *Political Research
-  Quarterly* 73(1): 65–78.
+  Quarterly* 73(1): 65–78. doi:10.1177/1065912919875816
 - Hasen, R. L. (2020). *Election Meltdown: Dirty Tricks, Distrust, and the
   Threat to American Democracy.* Yale University Press.
+  <https://yalebooks.yale.edu/book/9780300248197/election-meltdown/>
 - Burden, B. C. and Stewart, C. III, eds. (2014). *The Measure of American
   Elections.* Cambridge University Press.
+- Help America Vote Act of 2002, 52 U.S.C. § 20901 and following.
+  <https://www.law.cornell.edu/uscode/text/52/20901>
 
 **The data itself**
 

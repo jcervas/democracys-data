@@ -25,6 +25,13 @@ shapes <- rd("unit_shapes.csv")
 gaps   <- rd("largest_gaps.csv")
 tpz    <- rd("third_party_zero.csv")
 
+# The one disagreement the prose walks row by row: Missouri's certified return
+# lists Jackson County and Kansas City on separate lines; the compilation has
+# only Jackson. Both lines are read from the certified assembly itself.
+off24 <- rd("pres2024_counties_official.csv")
+JAX <- off24[which(off24$state_name == "Missouri" & off24$county_fips == 29095), ]
+KCM <- off24[which(off24$state_name == "Missouri" & off24$county_name == "Kansas City"), ]
+
 n  <- function(x) format(as.numeric(x), big.mark = ",")
 pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
 

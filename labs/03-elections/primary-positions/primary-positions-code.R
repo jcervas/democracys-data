@@ -44,6 +44,16 @@ WON   <- BO$mean_silent[BO$prim_result == "won"]
 LOST  <- BO$mean_silent[BO$prim_result == "lost"]
 NUNDOC <- sum(FA$candidates[!FA$documented])
 
+# The one candidate the prose walks through: Dave Brat, the challenger who
+# beat Eric Cantor in Virginia's seventh. The issue columns share their names
+# with by_issue.csv, so the codes can be read off his row by name.
+ISS <- BI$issue
+BRT <- CA[CA$last == "Brat" & CA$state == "VA", ]
+BRT <- BRT[1, ]
+BRC <- unlist(BRT[make.names(ISS)])     # his fourteen codes, by issue
+                                        # (read.csv dots the spaces in names)
+BRS <- ISS[BRC == 4]                    # the issues he said nothing about
+
 # ---- render every data.frame in this document as a TABLE, not code output ----
 # These are front-facing documents. A data.frame printed the ordinary way comes
 # out as a "##"-prefixed code block, which reads as machinery rather than as a

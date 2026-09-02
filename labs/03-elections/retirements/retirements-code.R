@@ -39,6 +39,13 @@ era <- function(a, b) mean(DP$pct_left[DP$year >= a & DP$year <= b])
 # The two ends of the range, named once so the prose and the captions cannot
 # drift apart from each other.
 HI <- DP[which.max(DP$pct_left), ]
+
+# The one member the prose walks through: Mike Rogers of Michigan, re-elected
+# in 2012 and absent from the 2014 candidate file. Two rows, kept in one place
+# so the table and the sentences about it cannot disagree.
+RG <- EX[EX$bioname == "ROGERS, Mike" & EX$state_abbrev == "MI" &
+         EX$year %in% c(2011, 2013), ]
+RG <- RG[order(RG$year), ]
 LO <- DP[DP$year >= 1900, ][which.min(DP$pct_left[DP$year >= 1900]), ]
 
 # Pooled 2004-2022. The four routes out collapse into two: a member either
@@ -133,9 +140,8 @@ data.frame(Congress = cg,
            Share_of_House_rows_with_occupancy_filled = sprintf("%.3f", sv))
 
 ## ---- cleanexit
-EX[EX$bioname == "ROGERS, Mike Dennis" & EX$year %in% c(2015, 2017),
-   c("congress", "state_abbrev", "district_code", "election_year",
-     "on_house_ballot", "denied", "ge_win", "outcome")]
+RG[, c("congress", "state_abbrev", "district_code", "election_year",
+       "on_house_ballot", "denied", "ge_win", "outcome")]
 
 ## ---- era-table
 E <- data.frame(

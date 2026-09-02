@@ -33,6 +33,7 @@ TARGET  <- 3200000
 tgt     <- ar * TARGET
 best    <- max(sw$rep); best_yr <- sw$year[which.max(sw$rep)]
 a24     <- nc[nc$year == 2024, ]; rownames(a24) <- a24$county
+a20     <- nc[nc$year == 2020, ]; rownames(a20) <- a20$county   # the worked example
 
 # drop 2024 and recompute
 sub  <- nc[nc$year != 2024, ]

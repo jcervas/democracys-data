@@ -108,6 +108,8 @@ R1   <- rd[["Round 1"]]; R2 <- rd[["Round 2"]]; R3 <- rd[["Round 3"]]
 TOT  <- sum(R1)
 e1   <- setdiff(names(R1), names(R2))
 e2   <- setdiff(names(R2), names(R3))
+# the worked example: ballots that ranked the second-eliminated candidate alone
+HOWE1 <- sum(s$ballots[s$rank1 == e2 & ru == 1])
 ORD  <- c(names(sort(R1, decreasing = TRUE)), OUTN)
 dst  <- function(x) ifelse(x %in% c("Exhausted", "Overvotes"), OUTN, x)
 t1   <- tr[tr$eliminated == e1, ]; t2 <- tr[tr$eliminated == e2, ]

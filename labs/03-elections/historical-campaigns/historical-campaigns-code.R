@@ -31,6 +31,13 @@ lead <- dr2[!duplicated(dr2$year), c("year", "candidate")]
 nm   <- merge(nm, lead, by = "year")
 mg   <- function(y) nm$margin[match(y, nm$year)]
 
+# the most recent election, walked through by hand in the prose so a reader
+# can see how a two-party margin is made from two vote totals
+nn  <- function(x) format(round(x), big.mark = ",")
+t24 <- nm[nm$year == max(nm$year), ]
+t24_rep_share <- 100 * t24$rep / (t24$rep + t24$dem)
+t24_dem_share <- 100 * t24$dem / (t24$rep + t24$dem)
+
 # the streaks the argument turns on: runs of elections without a
 # double-digit winner, and the count of sub-five-point elections
 runs <- rle(nm$margin < 10)

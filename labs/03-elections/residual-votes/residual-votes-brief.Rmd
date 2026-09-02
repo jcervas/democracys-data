@@ -26,15 +26,15 @@ A ballot is just paper, and paper is not supposed to decide elections. Does the 
 
 **Figure 1. The Palm Beach County presidential ballot, November 2000.** A sketch, not a facsimile: only the arrangement the U.S. Commission on Civil Rights recorded is drawn. The tickets sit on two facing pages with the punch holes down the centre, Bush and Gore first and second on the left page, and the Reform Party hole second in the column. A voter who counted names down the left page and punched the matching hole voted for a candidate they had not read.
 
-That sheet of paper produced two failures, and only one leaves a trace. A voter who took Gore's position in the list and punched the second hole cast a counted vote, for Buchanan, and no arithmetic will ever find it. A voter who caught the mistake and punched Gore as well spoiled the ballot; by the Commission's count, roughly 19,000 Palm Beach ballots carried more than one presidential punch. Those ballots were counted as ballots and contain no president. The presidency turned on 537 votes in Florida that year.
+That sheet of paper produced two failures, and only one leaves a trace. A voter who took Gore's position in the list and punched the second hole cast a counted vote, for Buchanan, and no arithmetic will ever find it. A voter who caught the mistake and punched Gore as well spoiled the ballot — an **overvote**, two marks in a race that allows one, which no counting machine can read as a choice. By the Commission's count, roughly 19,000 Palm Beach ballots carried more than one presidential punch.^[U.S. Commission on Civil Rights, *Voting Irregularities in Florida During the 2000 Presidential Election* (2001), chapter 9: <https://www.usccr.gov/files/pubs/vote2000/report/ch9.htm>.] Those ballots were counted as ballots and contain no president. The presidency turned on 537 votes in Florida that year.^[The certified Florida margin, as reported in Federal Election Commission, *Federal Elections 2000* (Washington, 2001).]
 
-The second failure is a thing you can count. Take the ballots cast, subtract the votes counted in the top race, and what is left over after you subtract is the **residual vote**: ballots that entered the system without a usable choice for president. After 2000, Ansolabehere and Stewart computed exactly that and showed that residual rates varied by voting technology in a patterned way. Punch cards were worst; hand-counted paper and optical scan far better. That evidence helped drive the Help America Vote Act and the end of punch-card voting.
+The second failure is a thing you can count. Take the ballots cast, subtract the votes counted in the top race, and what is left over is the **residual vote**: ballots that entered the system without a usable choice for president, whether left blank (an **undervote**), marked twice (an overvote), or spoiled in some other way the machine could not read. After 2000, Ansolabehere and Stewart computed exactly that for every county they could and showed that residual rates varied with the **voting equipment** in use — punch cards, lever machines, hand-counted paper, paper ballots read by an optical scanner, electronic touch screens — in a patterned way.^[Stephen Ansolabehere and Charles Stewart III, "Residual Votes Attributable to Technology," *Journal of Politics* 67, no. 2 (2005): 365–389, <https://www.jstor.org/stable/10.1111/j.1468-2508.2005.00321.x>.] Punch cards were worst; hand-counted paper and optical scan far better. That evidence, and the report of the Caltech/MIT Voting Technology Project that grew out of the same recount,^[Caltech/MIT Voting Technology Project, *Voting: What Is, What Could Be* (2001), <https://vote.caltech.edu/reports/1>.] helped drive the Help America Vote Act of 2002 — the federal law that paid states to replace their old machines — and the end of punch-card voting.^[52 U.S.C. § 20901 and following: <https://www.law.cornell.edu/uscode/text/52/20901>.]
 
 Design moves votes measurably, and the residual-vote rate is how you see it. So this brief computes that rate for the whole country in 2024 — and finds that the harder problem is now the record itself.
 
 ## The test
 
-The measure needs two numbers per place: ballots cast and presidential votes counted. No agency publishes both, which is why nobody publishes the residual vote. The ballots come from the [U.S. Election Assistance Commission's](https://www.eac.gov/research-and-data/datasets-codebooks-and-surveys) *Election Administration and Voting Survey 2024*, Version 2, item F1a — a federal questionnaire every election office answers about itself. The votes come from a public county-level compilation of the fifty-one state canvasses, [Tony McGovern's returns file](https://github.com/tonmcg/US_County_Level_Election_Results_08-24), as prepared by this book's [data-sources chapter](../../06-putting-data-together/data-sources/data-sources-brief.html).
+The measure needs two numbers per place: ballots cast and presidential votes counted. No agency publishes both, which is why nobody publishes the residual vote. The ballots come from the *Election Administration and Voting Survey*, the questionnaire the U.S. Election Assistance Commission sends to every election office in the country after each federal election, asking each office to report on the election it just ran; the 2024 answers, Version 2, are downloadable from the [Commission](https://www.eac.gov/research-and-data/datasets-codebooks-and-surveys), and item F1a is the box marked *total ballots cast*. The votes come from the fifty-one state **canvasses** — the official count each state certifies after election day — gathered county by county into one public file by [Tony McGovern](https://github.com/tonmcg/US_County_Level_Election_Results_08-24), which this book's [data-sources chapter](../../06-putting-data-together/data-sources/data-sources-brief.html) describes.
 
 ```{r sources}
 ```
@@ -45,12 +45,12 @@ The subtraction also has a property most measures lack. You cannot count more pr
 
 ## The data
 
-The survey arrives as one CSV, one row per election jurisdiction — 6,461 of them. Jurisdictions are counties in most states, but Wisconsin, Michigan and most of New England run elections by township. Those township rows are summed into counties using the first five digits of the FIPS code, which are the county code. The returns arrive one row per county. The two are joined on the FIPS code, carried as text throughout, because `r n(sum(substr(co$fips, 1, 1) == "0"))` of the `r n(nrow(co))` county codes begin with a zero that a numeric column would silently drop. One joined row looks like this:
+The survey is one table, one row per election jurisdiction — the office that runs an election, 6,461 of them. Jurisdictions are counties in most states, but Wisconsin, Michigan and most of New England run elections by township. Those township rows are summed into counties using the first five digits of the **FIPS code**, the number the federal government assigns every place, whose first two digits name the state and first five the county. The returns come one row per county. The two are joined on the FIPS code, carried as text throughout, because `r n(sum(substr(co$fips, 1, 1) == "0"))` of the `r n(nrow(co))` county codes begin with a zero that a numeric column would silently drop. One joined row looks like this:
 
 ```{r one-row}
 ```
 
-Allegheny County took in `r n(ex$ballots)` ballots and counted `r n(ex$total_votes)` presidential votes. The difference, `r n(ex$residual)` ballots, is the residual vote: `r pc(ex$residual_rate)`% of everything cast.
+Allegheny County took in `r n(ex$ballots)` ballots and counted `r n(ex$total_votes)` presidential votes. Subtract the second from the first and `r n(ex$residual)` ballots are left over that recorded no president: that is the residual vote. Divide it by the ballots cast — `r n(ex$residual)` out of `r n(ex$ballots)` — and the **residual-vote rate** is `r pc(ex$residual_rate)`% of everything cast. Every county in the file gets the same two steps.
 
 Two cleaning decisions matter enough to state. First, the survey writes "did not answer" and "does not apply" as negative codes in the same columns as the counts. Every negative value is therefore set to missing before anything is added up; summed as they stand, those codes subtract real ballots from real counties. Second, where the join produced an impossible answer, more presidential votes than ballots, the row was not dropped. A disagreement between two official sources is a finding, and tidying it away would destroy it.
 
@@ -67,7 +67,7 @@ The result is four tables. `counties.csv` holds one row per county: `fips`, `bal
 ```{r summary}
 ```
 
-A median county has a residual vote rate of `r pc(median(u$residual_rate))`% — about one ballot in a hundred arriving without a usable presidential vote. Half of all counties sit between `r pc(quantile(u$residual_rate,.25))`% and `r pc(quantile(u$residual_rate,.75))`%. One percent sounds small. In a state decided by twenty thousand votes it is not. And it is the size of number that design moves: one bad butterfly pushed one county's spoiled ballots into the tens of thousands.
+The **median** county — the one in the middle when every county is ranked by its rate, with as many above it as below — has a residual vote rate of `r pc(median(u$residual_rate))`%: about one ballot in a hundred arriving without a usable presidential vote. The middle half of counties, setting aside the quarter with the lowest rates and the quarter with the highest, sit between `r pc(quantile(u$residual_rate,.25))`% and `r pc(quantile(u$residual_rate,.75))`%. One percent sounds small. In a state decided by twenty thousand votes it is not. And it is the size of number that design moves: one bad butterfly pushed one county's spoiled ballots into the tens of thousands.
 
 Most readers write down zero for the prompt above; an official count is not the sort of thing one expects to come out impossible. **`r nrow(an)` counties report more presidential votes than ballots cast.** Figure 2 puts them on the same axis as everybody else.
 
@@ -80,12 +80,12 @@ Most readers write down zero for the prompt above; an official count is not the 
 ```{r floor-static, eval=!knitr::is_html_output(), fig.height=3.7}
 ```
 
-**Figure 2. The arithmetic floor, and `r nrow(an)` counties on the wrong side of it.** A histogram with the floor drawn in, because this measure's defining property is a boundary: nothing can sit left of the heavy black line and still be a measurement. The blue bars are the `r n(nrow(u))` counties whose two sources are at least consistent, with the median marked in red at `r pc(median(u$residual_rate))`%. Each red dot is a county reporting more presidential votes than ballots, spread vertically so overlapping cases stay countable. `r ffar` fall left of the frame entirely, the worst at `r pc(an$residual_rate[fwi], 1)`% in `r an$county_name[fwi]`, `r an$state_name[fwi]`.
+**Figure 2. The arithmetic floor, and `r nrow(an)` counties on the wrong side of it.** A histogram — bars counting how many counties fall in each narrow band of rate — with the floor drawn in, because this measure's defining property is a boundary: nothing can sit left of the heavy black line and still be a measurement. The blue bars are the `r n(nrow(u))` counties whose two sources are at least consistent, with the median marked in red at `r pc(median(u$residual_rate))`%. Each red dot is a county reporting more presidential votes than ballots, spread vertically so overlapping cases stay countable. `r ffar` fall left of the frame entirely, the worst at `r pc(an$residual_rate[fwi], 1)`% in `r an$county_name[fwi]`, `r an$state_name[fwi]`.
 
 ```{r anomalies}
 ```
 
-The largest gap is Cook County, Illinois, off by `r n(max(an$gap))` votes — and it is diagnosable. Chicago runs its own elections separately from suburban Cook County, so the survey row and the returns row describe different administrative units. The township-to-county summing assumed that smaller units nest cleanly inside counties, and here they do not, in the second most populous county in America. Which source is wrong cannot be determined from here; that one of them is wrong can be, and that is more than either source discloses about itself.
+The largest gap is Cook County, Illinois, and it is diagnosable. The survey row for Cook County reports `r n(cook$ballots)` ballots cast; the returns give the county `r n(cook$total_votes)` presidential votes, which is `r n(cook$gap)` more votes than there were ballots to carry them. The reason is that the City of Chicago runs its own elections, through a board separate from the Cook County Clerk, who runs them for the suburbs.^[The Illinois State Board of Elections lists Cook County and the City of Chicago as separate election authorities: <https://www.elections.il.gov/ElectionOperations/ElectionAuthorities.aspx>. The Clerk describes its own role as election authority for suburban Cook County at <https://www.cookcountyclerkil.gov/elections>.] The survey therefore has two rows where the returns have one: its county row is the suburbs alone, while the canvass counts the whole county, city included. The summing of smaller units into counties assumed that every smaller unit sits inside a county code, and here one does not, in the second most populous county in America. Which source is wrong cannot be determined from here; that one of them is wrong can be, and that is more than either source discloses about itself.
 
 ```{r map-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -93,7 +93,7 @@ The largest gap is Cook County, Illinois, off by `r n(max(an$gap))` votes — an
 ```{r map-static, eval=!knitr::is_html_output(), fig.width=7.2, fig.height=5.4}
 ```
 
-**Figure 3. Every county in the United States, colored by residual vote rate.** A map, because the audit's last question is *where*: `r n(nrow(ma))` counties from Census TIGER 2020 boundaries, the blue ones passing the arithmetic test and shaded by rate. The `r n(MIM)` in red report more presidential votes than ballots; they fall in `r mn("impossible_states")` states, most heavily in `r mv("top_impossible_state")` with `r mn("top_impossible_n")`, a clustering that looks like reporting practice rather than like voters. The `r n(MSE)` in mid gray belong to the three states set aside below. The `r n(MNO)` in pale gray never entered the join at all, including every county in `r knitr::combine_words(mb$state)` and `r mn("n_va_nodata")` of Virginia's independent cities.
+**Figure 3. Every county in the United States, colored by residual vote rate.** A map, because the audit's last question is *where*: `r n(nrow(ma))` counties drawn from the Census Bureau's published 2020 county boundaries (its TIGER map files), the blue ones passing the arithmetic test and shaded by rate. The `r n(MIM)` in red report more presidential votes than ballots; they fall in `r mn("impossible_states")` states, most heavily in `r mv("top_impossible_state")` with `r mn("top_impossible_n")`, a clustering that looks like reporting practice rather than like voters. The `r n(MSE)` in mid gray belong to the three states set aside below. The `r n(MNO)` in pale gray never entered the join at all, including every county in `r knitr::combine_words(mb$state)` and `r mn("n_va_nodata")` of Virginia's independent cities.
 
 The exceptions have their own stories, and each was found by the arithmetic failing rather than by any documentation.
 
@@ -160,12 +160,15 @@ Two stretch ideas point past the spreadsheet. The survey this brief takes its ba
 
 - Ansolabehere, S. and Stewart, C. III (2005). "Residual Votes Attributable
   to Technology." *Journal of Politics* 67(2): 365–389.
+  <https://www.jstor.org/stable/10.1111/j.1468-2508.2005.00321.x>
 - Caltech/MIT Voting Technology Project (2001). *Voting: What Is, What Could
   Be.* <https://vote.caltech.edu/reports/1>
 - U.S. Commission on Civil Rights (2001). *Voting Irregularities in Florida
   During the 2000 Presidential Election.* The Palm Beach ballot's arrangement
   in Figure 1 is drawn from its account.
   <https://www.usccr.gov/files/pubs/vote2000/report/main.htm>
+- Help America Vote Act of 2002, 52 U.S.C. § 20901 and following.
+  <https://www.law.cornell.edu/uscode/text/52/20901>
 
 **The data itself**
 

@@ -51,6 +51,8 @@ PCTWORST <- max(exc$pct)
 YRWORST  <- exc$year[which.max(exc$pct)]
 PCTLAST  <- exc$pct[which.max(exc$year)]
 YRLAST   <- exc$year[which.max(exc$year)]
+# the worked example in the prose: the Congress elected in 2020
+c117 <- exc[exc$congress == 117, ]
 
 ACC <- "#1C4C5C"
 
