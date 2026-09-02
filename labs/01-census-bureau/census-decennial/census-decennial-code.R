@@ -24,6 +24,7 @@ use  <- rd("census-use.csv"); adjm <- rd("adjustments.csv")
 nn <- function(x) format(round(as.numeric(x)), big.mark = ",")
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)
 p2 <- function(x) formatC(as.numeric(x), format = "f", digits = 2)
+p4 <- function(x) formatC(as.numeric(x), format = "f", digits = 4)
 N  <- function(q) nat$value[nat$quantity == q]
 R  <- function(g) race$people[race$group == g]
 CV <- function(g, col) cov[[col]][cov$group == g]

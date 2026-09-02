@@ -1499,9 +1499,9 @@ it?</p>
 <p>The test is to collect every population figure the Bureau currently
 publishes for one county and lay them side by side. Allegheny County,
 the county around Pittsburgh, is the example, and nothing about it is
-special. Every figure was read from the Bureau’s own download server in
-August 2026, and every one is current: nothing here has been
-withdrawn.</p>
+special. Every figure is as the Bureau published it on its own download
+server, www2.census.gov, in August 2026, and every one is current:
+nothing here has been withdrawn.</p>
 <p>The figures come from the Bureau’s three population programs.
 <strong>The decennial census counts.</strong> Every household in the
 country is asked, once a decade, and the answer is a head count for one
@@ -1515,7 +1515,8 @@ Its <a href="https://www2.census.gov/programs-surveys/acs/summary_file/">one-yea
 and five-year releases</a> for 2021 through 2024 are all here.
 <strong>The Population Estimates Program calculates.</strong> It carries
 the last count forward with births, deaths and moves, and its <a href="https://www2.census.gov/programs-surveys/popest/datasets/">county
-files</a> for vintages 2021 through 2025 are here too, with the newest
+files</a> for each yearly release from 2021 through 2025 — the Bureau
+calls each release a <em>vintage</em> — are here too, with the newest
 answer at <strong>1,225,035</strong>.</p>
 <p>Only this source can answer this question, because the question is
 about the source itself: what the Bureau has in print, under which
@@ -1527,14 +1528,14 @@ which none of the Bureau’s own pages ever does.</p>
 <div id="the-data" class="section level2">
 <h2>The data</h2>
 <p>The shelf itself is <code>catalog.csv</code>: one row per published
-figure for Allegheny County, built by pulling the county’s row out of
-each program’s current files. Each row names its <code>program</code>,
-its <code>product</code> (the exact release, down to the table name),
-and what it <code>counts</code> — everybody, or only adults. The
-<code>refers_to</code> column holds the date or period the figure
-describes, <code>refers_mid</code> repeats that date as a decimal year
-so a chart can plot it, and <code>population</code> holds the figure
-itself.</p>
+figure for Allegheny County, each one the county’s own row from one of
+the three programs’ current files. Each row names its
+<code>program</code>, its <code>product</code> (the exact release, down
+to the table name), and what it <code>counts</code> — everybody, or only
+adults. The <code>refers_to</code> column holds the date or period the
+figure describes, <code>refers_mid</code> repeats that date as a decimal
+year so a chart can plot it, and <code>population</code> holds the
+figure itself.</p>
 <p>One construction decision matters more than the rest. The 2020 census
 publishes its county numbers in a redistricting file holding four
 tables, named P1 through P4, and the four tables hold two populations
@@ -1556,9 +1557,12 @@ columns <code>window</code>, <code>compared_with</code>,
 <code>counties</code> and <code>exact_matches</code>.
 <code>routes.csv</code> and <code>api_vintages.csv</code> describe the
 three addresses the Bureau serves everything from and what each one
-carries. The only cleaning was joining files on the county’s FIPS code,
-the five-digit federal ID every product shares, and every number below
-is computed from these tables as the page is built.</p>
+carries. The only cleaning was matching the files up by the county’s
+FIPS code, the five-digit federal ID number that every product uses for
+the same county, so that a row from the census, a row from the survey
+and a row from the estimates could be recognised as the same place.
+Every number below is computed from these tables as the page is
+built.</p>
 <blockquote>
 <p><strong>Before you read on, commit to two numbers.</strong> The
 Bureau currently has several separate figures in print for the
@@ -1749,9 +1753,11 @@ the left edge and is left out to keep the recent figures readable.</div>
 </div>
 <p>Read the picture rather than the numbers. The figures do not scatter
 at random. They fall in step with the date each one describes, because
-the county has been losing people. The correlation between the two is
--0.89, where -1 would be a perfect straight line down. <strong>The
-spread is mostly not disagreement. It is time.</strong></p>
+the county has been losing people. The correlation between date and
+value — a number between -1 and 1 that says how closely two things move
+together — is -0.89, where -1 would be a perfect straight line down and
+0 would be no pattern at all. <strong>The spread is mostly not
+disagreement. It is time.</strong></p>
 <p>That is the first practical rule. When two Census figures differ, ask
 what date each refers to before asking which is right.</p>
 </div>
@@ -1919,8 +1925,8 @@ both 1,231,814. That is not a coincidence, and it is not rounding.</p>
 the calculated estimate for that year.</strong> Not close to it. The
 same number, in 3,356 of 3,360 comparisons across four years of files.
 The Bureau forces its survey totals to agree with the estimates before
-publishing them, so asking the survey for a county’s population returns
-the calculation wearing a survey’s label.</p>
+publishing them,<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> so asking the survey for a county’s
+population returns the calculation wearing a survey’s label.</p>
 <p>One county in the whole country is an exception. The two figures for
 Maui County, Hawaii differ in every year tested, by at most 61 people.
 Why that county and no other is not something the files say.</p>
@@ -2000,8 +2006,10 @@ dropped</td>
 </tr>
 </tbody>
 </table>
-<p>The interface publishes an index of its own holdings, and that index
-is public and needs no key. It is the honest way to ask a route what it
+<p>The second of those, the API — an address a program can ask for a
+table at, instead of a person clicking through a website — publishes an
+index of its own holdings at <a href="https://api.census.gov/data.json" class="uri">https://api.census.gov/data.json</a>, and that index is
+public and needs no key. It is the honest way to ask a route what it
 carries, and it also shows what a route is missing.</p>
 <table>
 <colgroup>
@@ -2053,15 +2061,15 @@ carries, and it also shows what a route is missing.</p>
 </table>
 <p><strong>County population estimates stop at vintage 2021
 there.</strong> The 4 newer vintages exist, and they are the ones in the
-tables above, but they are published as files and not through the
-interface. A program that reaches for the newest estimates by that route
-will quietly get an old one.</p>
+tables above, but they are published as files and not through the API. A
+program that reaches for the newest estimates by that route will quietly
+get an old one.</p>
 <p>Two more gaps are worth knowing about before you go looking.
 <strong>There is no 2020 one-year survey.</strong> Response rates during
 the pandemic were too low for the Bureau to publish the standard series,
-so it did not. The address for that file answers 404, the year is
-missing from the index as well, and a gap in a series is not always
-somebody’s mistake.</p>
+so it did not.<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> The address for that file answers 404 — the
+web’s code for “no such page” — the year is missing from the index as
+well, and a gap in a series is not always somebody’s mistake.</p>
 <p><strong>And the one-year survey does not cover most
 counties.</strong> It publishes 861 county rows against the five-year
 file’s 3,222, so 2,361 counties appear in one and not the other. A
@@ -2184,9 +2192,11 @@ through 2025, and the 2010–2020 series that carries the 2010 count. <a href="h
 public catalog of every dataset the interface serves. <a href="https://api.census.gov/data.json" class="uri">https://api.census.gov/data.json</a></li>
 <li>The control relationship that makes a one-year survey total equal to
 a population estimate is documented by the Bureau in <em>Understanding
-and Using American Community Survey Data</em>, and taken apart from the
-survey’s side in the <a href="../census-acs/census-acs-brief.html">ACS
-chapter</a>.</li>
+and Using American Community Survey Data</em> (<a href="https://www.census.gov/programs-surveys/acs/library/handbooks/general.html" class="uri">https://www.census.gov/programs-surveys/acs/library/handbooks/general.html</a>),
+and taken apart from the survey’s side in the <a href="../census-acs/census-acs-brief.html">ACS chapter</a>.</li>
+<li>U.S. Census Bureau. “Census Bureau Announces Changes for 2020
+American Community Survey 1-Year Estimates,” 27 July 2021 — why there is
+no standard 2020 one-year release. <a href="https://www.census.gov/newsroom/press-releases/2021/changes-2020-acs-1-year.html" class="uri">https://www.census.gov/newsroom/press-releases/2021/changes-2020-acs-1-year.html</a></li>
 </ul>
 <p><strong>The data itself</strong></p>
 <p>Every figure above is drawn from these tables. They are plain CSV,
@@ -2270,6 +2280,16 @@ A new vintage lands each spring and a new survey release each winter,
 so a rebuild done later will find more rows and different values. The
 pattern is the finding; the particular numbers are dated.</pre>
 </div>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>The Bureau describes the practice in its handbook
+<em>Understanding and Using American Community Survey Data: What All
+Data Users Need to Know</em>: <a href="https://www.census.gov/programs-surveys/acs/library/handbooks/general.html" class="uri">https://www.census.gov/programs-surveys/acs/library/handbooks/general.html</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>The Bureau’s announcement, and the experimental
+estimates it released instead: <a href="https://www.census.gov/newsroom/press-releases/2021/changes-2020-acs-1-year.html" class="uri">https://www.census.gov/newsroom/press-releases/2021/changes-2020-acs-1-year.html</a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

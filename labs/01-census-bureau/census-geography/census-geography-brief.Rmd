@@ -25,31 +25,31 @@ The string is called a **GEOID**, and the Census Bureau builds one for every uni
 
 Almost every claim anybody makes about an American place depends on this machinery. Turnout *in* a county. Segregation *in* a neighborhood. A ballot rejection rate *in* a jurisdiction. Each requires knowing what the place is and where its edges are. Each also requires, crucially, that two different datasets agree about it.
 
-For some places they do. For others there is no identifier that could make them agree, and this chapter is about which is which. The short version: the country is covered by two systems of geography. One is a **spine** of boxes that nest exactly — block, block group, tract, county, state. The other is everything drawn by somebody else for some other job: city limits, school districts, ZIP codes, districts, precincts. Only the first system joins cleanly, and the second is the one people actually ask about.
+For some places they do. For others there is no identifier that could make them agree, and this chapter is about which is which. The short version: the country is covered by two systems of geography. One is a **spine** of boxes that nest exactly, each sitting wholly inside the next: the **census block**, the smallest unit the Bureau publishes and often a single city block bounded by streets; the **block group**, a cluster of neighboring blocks; the **census tract**, a group of block groups holding a few thousand people and meant to stand in for a neighborhood; the county; the state. The other is everything drawn by somebody else for some other job: city limits, school districts, ZIP codes, districts, voting precincts (the areas that share a polling place). Only the first system **joins** cleanly, meaning that two tables about the same ground can be matched row to row, and the second is the one people actually ask about.
 
 The stakes are not clerical. Where the lines are drawn decides what the numbers say. That is obvious for districts, where it has a name and a body of law: gerrymandering. It is just as true, and far less noticed, of the units used to *measure* anything. Federal money, representation, and civil-rights enforcement are all allocated using these units. Getting the geography wrong is not a technicality; it is the mechanism.
 
 ## Where the data comes from, and what it is for
 
-Everything counted or drawn in this chapter is the Census Bureau's own definition of American places. The counts, identifiers and areas come from the Bureau's **Gazetteer Files**, 2024 vintage: one flat file per geography type, one line per unit. The boundaries come from the Bureau's **TIGER/Line shapefiles**, 2020 vintage, along with the block-assignment and ZCTA relationship files that record which block sits in which municipality and how ZIP approximations divide among tracts.
+Everything counted or drawn in this chapter is the Census Bureau's own definition of American places. The counts, identifiers and areas come from the Bureau's **Gazetteer Files** for 2024, a gazetteer being a directory of places: one plain text file per geography type, one line per unit, giving its name, its identifier and its land area, downloadable at the address in the sources below. The boundaries come from the Bureau's **TIGER/Line shapefiles**, the digital outlines every census map is drawn from, in their 2020 edition. Two further Bureau tables record how units relate: the block-assignment file, which says which municipality each block sits in, and the relationship file for **ZIP Code Tabulation Areas** (ZCTAs), the Bureau's drawn approximations of ZIP codes, which says how each of them divides among tracts.
 
 There is something odd about calling this a dataset at all. **A gazetteer does not measure anything.** It has no estimate in it, no margin of error saying how far off a number could be, no respondent, and nobody counting. It is a declaration: these `r n(g("census tract","count"))` strings are the census tracts, and a tract is whatever the Bureau's file says a tract is. You cannot ask whether it is accurate, because there is nothing outside it to be accurate about. What you can ask is whether the declaration agrees with itself, and whether the identifiers do what their shape implies.
 
-**Who is in it, and how they got there.** Units, not people: seven geography types are read here, `r n(sum(lv$count))` units in all, and each is in the file because the Bureau declared or recorded it. They are counties, tracts, county subdivisions, places, two kinds of school district, and ZCTAs. The spine's units are the Bureau's own drawing. The crosscutting ones are borrowed: a place is a municipality some state incorporated, a ZCTA approximates ZIP codes the Postal Service runs, and neither was drawn with the census in mind. Voting precincts are absent entirely: states draw them, and the Bureau tabulates them only once a decade, only for states that volunteer them under its Redistricting Data Program.
+**Who is in it, and how they got there.** Units, not people: seven geography types are read here, `r n(sum(lv$count))` units in all, and each is in the file because the Bureau declared or recorded it. They are counties, tracts, county subdivisions (townships and the like), places, two kinds of school district, and ZCTAs. The spine's units are the Bureau's own drawing. The crosscutting ones are borrowed: a place is a municipality some state incorporated, a ZCTA approximates ZIP codes the Postal Service runs, and neither was drawn with the census in mind. Voting precincts are absent entirely: states draw them, and the Bureau tabulates them only once a decade, only for states that volunteer them under its [Redistricting Data Program](https://www.census.gov/programs-surveys/decennial-census/about/rdo/program-management.html).
 
 **Who it was made for.** The Bureau itself. Every table the Bureau publishes must say what area each row refers to, and these are the areas. That is a bookkeeping obligation, not a mapping one, which is why the file records identifiers, names and areas and says nothing whatever about *why* any boundary is where it is.
 
-**What it costs to get.** Nothing. One flat file per geography type, one shapefile per geography type, no key, no account, no rate limit. Most American public data arrives with friction: the interface that needs a key, the repository that needs a guestbook. The layer that defines what a place *is* turns out to be the one thing that is genuinely, frictionlessly open.
+**What it costs to get.** Nothing. One text file per geography type, one shapefile per geography type, no key, no account. Much American public data asks something of you first, a registration or a key; the layer that defines what a place *is* turns out to be the one thing that is genuinely, frictionlessly open.
 
-**What has already been done to it.** The cleaning was slight and two details of it are load-bearing. Every identifier is held as text from beginning to end: `01001` is a county in Alabama, `1001` is nothing, and there is no error message between the two. And every line of every gazetteer file is padded on the right with spaces, so names and values are trimmed before anything is compared. The next section shows exactly where that bites. Nothing was imputed, meaning no missing value was filled in by guessing, and no row was dropped.
+**What has already been done to it.** Little, and two details of that little matter for anyone who opens these files. Every identifier is held as text from beginning to end: `01001` is a county in Alabama, `1001` is nothing, and there is no error message between the two. And every line of every gazetteer file is padded on the right with spaces, so names and values are trimmed before anything is compared. The next section shows exactly where that bites. Nothing was imputed, meaning no missing value was filled in by guessing, and no row was dropped.
 
-One splice runs through the build, and the seam should be visible. The counts are from the 2024 gazetteer; the shapes are from the 2020 TIGER release. For the spine that is harmless, because tracts and block groups are redrawn once a decade and did not move between those dates. For city limits and ZIP approximations, which are revised every year, it is not harmless at all.
+One mismatch of dates runs through everything below, and it should be visible. The counts are from the 2024 gazetteer; the shapes are from the 2020 TIGER release. For the spine that is harmless, because tracts and block groups are redrawn once a decade and did not move between those dates. For city limits and ZIP approximations, which are revised every year, it is not harmless at all.
 
-That is the general lesson about vintage. **A GEOID names a boundary as of a particular release.** Tracts are redrawn every ten years, so a 2024 tract file will not join cleanly to 2010 tract data even where the digits match.
+That is the general lesson about **vintage**, the Bureau's word for the edition of a file. **A GEOID names a boundary as of a particular release.** Tracts are redrawn every ten years, so a 2024 tract file will not join cleanly to 2010 tract data even where the digits match.
 
 ## Seven files, and the one missing a column
 
-The Bureau publishes one gazetteer file per geography type, tab-separated, one line per unit, revised annually. Here are three of the seven, opened at the top: each table below is the file's own header line turned into rows, with two of its data lines beside it.
+The Bureau publishes one gazetteer file per geography type, as plain text with the columns separated by tabs, one line per unit, revised annually. Here are three of the seven, opened at the top: each table below is the file's own header line, the first line, which names the columns, turned into rows, with two of its data lines beside it.
 
 ```{r geo-raw-setup, include=FALSE}
 ```
@@ -94,7 +94,7 @@ And the full set, one row per geography type:
 ```{r tests}
 ```
 
-**All `r n(ne$n_total[1])` tracts match a real county by prefix. Zero orphans.** The same holds for all `r n(ne$n_total[2])` county subdivisions. That is the spine: block → block group → tract → county → state. Each level nests inside the next, exactly, and the nesting is written into the identifier. Because it nests, you can add up along it with no assumptions at all — a county's population *is* the sum of its tracts, by construction.
+**All `r n(ne$n_total[1])` tracts match a real county by prefix. Zero orphans**, no tract whose first five digits name a county that does not exist. Take the tract from the opening string, `r CHV("tract","geoid")`: its first five digits are `r CHV("county","geoid")`, and the county file has a row for `r CHV("county","name")`. The same holds for all `r n(ne$n_total[2])` county subdivisions. That is the spine: block → block group → tract → county → state. Each level nests inside the next, exactly, and the nesting is written into the identifier. Because it nests, you can add up along it with no assumptions at all — a county's population *is* the sum of its tracts, by construction.
 
 Now the same test on the other two geography types.
 
@@ -147,9 +147,9 @@ Every one of those is this fact. Four investigations, four apparently unrelated 
 
 **It cannot check the assumption a crosswalk makes.** Land area is not population: when you split a ZCTA's people among tracts by shared area, you are guessing where inside the ZCTA the people live, and nothing in these files can score that guess.
 
-**It cannot tell you which unit is right for your question.** Statistics computed over area-based units depend on the units chosen — on their size, and on how they are drawn at a given size. Openshaw (1984) named this the **modifiable areal unit problem** and showed correlations ranging across nearly the whole possible interval as the same map was recut. There is no correct zoning, because the units are choices rather than features of the world. The [areal-units brief](../areal-units/areal-units-brief.html) runs that demonstration on this same county's blocks.
+**It cannot tell you which unit is right for your question.** Statistics computed over area-based units depend on the units chosen — on their size, and on how they are drawn at a given size. Openshaw (1984) named this the **modifiable areal unit problem** and showed correlations ranging across nearly the whole possible interval as the same map was recut.^[Stan Openshaw, *The Modifiable Areal Unit Problem*, Concepts and Techniques in Modern Geography 38 (Norwich: Geo Books, 1984), <https://www.uio.no/studier/emner/sv/iss/SGO9010/openshaw1983.pdf>.] There is no correct zoning, because the units are choices rather than features of the world. The [areal-units brief](../areal-units/areal-units-brief.html) runs that demonstration on the blocks of another Georgia county, Fulton.
 
-**It cannot carry a group-level pattern down to people.** Robinson (1950) showed that a relationship holding across areas need not hold across the people in them, and can run backwards. In his 1930 example, states with more immigrants had *higher* literacy, while the immigrants themselves were *less* likely to be literate. Aggregate data will support a confident and exactly wrong conclusion, and nothing internal to the data announces it.
+**It cannot carry a group-level pattern down to people.** Robinson (1950) showed that a relationship holding across areas need not hold across the people in them, and can run backwards.^[W. S. Robinson, "Ecological Correlations and the Behavior of Individuals," *American Sociological Review* 15, no. 3 (1950): 351–357, <https://doi.org/10.2307/2087176>.] In his 1930 example, states with more immigrants had *higher* literacy, while the immigrants themselves were *less* likely to be literate. Aggregate data will support a confident and exactly wrong conclusion, and nothing internal to the data announces it.
 
 **And it is one vintage, mapped in one county.** The national counts are national, but `r n(FV("tracts_split_place"))` of `r n(FV("n_tracts"))` tracts cut is a fact about `r sub(",.*", "", FV("county_name"))`, not a national rate. Tracts are redrawn every decade, so none of the tests here says anything about joining across censuses. And precincts, the unit election data arrives on, are in no gazetteer at all — which is itself the reason precinct data is the hardest American election data to source.
 
@@ -184,7 +184,7 @@ This chapter anchors the census-geography cluster; two briefs take its themes fu
   among tracts and counties.
   <https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/>
 
-All keyless.
+All open downloads: no key, no account.
 
 **The data itself**
 
@@ -210,6 +210,7 @@ tables you just opened.
   their own voting districts for tabulation. The voting-district submission is
   voluntary, which is why a precinct is a unit the Bureau publishes without
   defining.
+  <https://www.census.gov/programs-surveys/decennial-census/about/rdo/program-management.html>
 - National Conference of State Legislatures, *Redistricting Law 2020* (Denver:
   NCSL, October 2019), ch. 1 and Exhibit 1.3, for that programme and the list
   of geographies P.L. 94-171 delivers.
@@ -218,8 +219,10 @@ tables you just opened.
 
 - Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* Concepts and
   Techniques in Modern Geography 38. Norwich: Geo Books.
+  <https://www.uio.no/studier/emner/sv/iss/SGO9010/openshaw1983.pdf>
 - Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
   Individuals." *American Sociological Review* 15(3): 351–357.
+  <https://doi.org/10.2307/2087176>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -21,27 +21,27 @@ The Census Bureau publishes its data free, to everyone. That is the standard boa
 ```{r doors}
 ```
 
-All three doors return the same published counts, and **which one you use decides what you can do**. Only one door is built for a program: the API, an interface that answers a typed web address with data rather than a page. It is also the only door that asks who you are. Since 2026, asking it for a number without a registered key returns nothing.
+All three doors return the same published counts, and **which one you use decides what you can do**. Only one door is built for a program: the API, short for *application programming interface* — an address a program can ask for a table at, instead of a person clicking through a website, and which answers with the numbers themselves rather than a page to read. It is also the only door that asks who you are. Since 2026, asking it for a number without a registered key — a free, password-like code the Bureau issues to anyone who gives a name and an email address — returns nothing.
 
-The gate matters because some questions cannot be asked by hand. A person can click through fifty counties on the website. Nobody can click through eight million census blocks, and blocks are the unit district maps are drawn from. So the practical capacity to check a redistricting plan lives behind the door that wants a name and an email address.
+The gate matters because some questions cannot be asked by hand. A person can click through fifty counties on the website. Nobody can click through eight million [census blocks](https://www.census.gov/programs-surveys/geography/about/glossary.html), the smallest areas the Bureau publishes counts for, often a single city block — and blocks are the unit district maps are drawn from. So the practical capacity to check a redistricting plan lives behind the door that wants a name and an email address.
 
 That raises the question this brief answers. The Bureau publishes everything, so who is the publication actually built for — the curious citizen, or somebody else? The answer turns out to be readable from an unlikely piece of evidence: the API's own table of contents, the half of the service that still answers anybody.
 
 ## The test
 
-The evidence is the two catalog files the API publishes about itself, fetched in August 2026 from the open metadata addresses at [api.census.gov](https://api.census.gov/data/2020/dec/pl.html). One lists every variable, meaning every published column, of the 2020 census redistricting release. The other lists every geographic level the service will answer for. Neither needs a key, and neither is a sample: a catalog either lists a column or it does not, so the count of what the census measures is settled outright.
+The evidence is the two catalog files the Bureau publishes about the API itself — it calls them metadata, data about the data — at open addresses listed at [api.census.gov](https://api.census.gov/data/2020/dec/pl.html), as they stood in August 2026. One lists every variable, meaning every published column, of the 2020 census redistricting release. The other lists every geographic level the service will answer for. Neither needs a key, and neither is a sample: a catalog either lists a column or it does not, so the count of what the census measures is settled outright.
 
-Why this product, out of everything the Bureau serves? Because the redistricting release is the census at its most obligatory. A 1975 law, Public Law 94-171, requires the Bureau to hand every state the small-area counts it needs to redraw its districts, on a deadline. Nothing requires the Bureau to run an API at all; that is a service it chose to build and could withdraw. So the catalog is a voluntary description of a compulsory product, and reading it closely reads the law rather than the agency's taste. [What a census can and cannot do](../census-source/census-source-brief.html) introduces the census itself; this brief reads its table of contents.
+Why this product, out of everything the Bureau serves? Because the redistricting release is the census at its most obligatory. A 1975 law, Public Law 94-171, requires the Bureau to hand every state the small-area counts it needs to redraw its districts, on a deadline.^[Now 13 U.S.C. § 141(c): <https://www.law.cornell.edu/uscode/text/13/141>.] Nothing requires the Bureau to run an API at all; that is a service it chose to build and could withdraw. So the catalog is a voluntary description of a compulsory product, and reading it closely reads the law rather than the agency's taste. [What a census can and cannot do](../census-source/census-source-brief.html) introduces the census itself; this brief reads its table of contents.
 
 A catalog is also the right instrument for a question about who the data is for. If the columns exist out of curiosity, the list should read like an encyclopedia. If they exist out of obligation, the obligations should be visible in its shape.
 
 ## The data
 
-`api_variables.csv` holds one row for each of the `r nrow(v)` columns the 2020 redistricting release publishes. Three columns were kept from the response: `variable` (the code a query would name), `label` (where the column sits inside its table), and `concept` (the table's full name). `api_geography.csv` holds one row for each of the `r nrow(g)` geographic levels the same service will serve those columns at, with a numeric `level` code and a `name`.
+`api_variables.csv` holds one row for each of the `r nrow(v)` columns the 2020 redistricting release publishes. Three columns are kept from the Bureau's file: `variable` (the code a query would name), `label` (where the column sits inside its table), and `concept` (the table's full name). `api_geography.csv` holds one row for each of the `r nrow(g)` geographic levels the same service will serve those columns at, with a numeric `level` code and a `name`.
 
-Both were built by two keyless requests to the open metadata addresses. The raw responses are kept beside the CSVs, unmodified, so anyone can check what actually came back. Nothing was dropped and nothing was renamed. No live data query was made, and no key exists anywhere in this brief.
+Both come from the Bureau's open catalog addresses, which need no key, and the Bureau's files are kept beside the two CSVs (comma-separated values: plain-text tables any spreadsheet opens) exactly as published, so anyone can compare. Nothing was dropped and nothing was renamed. No population count was requested, and no key exists anywhere in this brief.
 
-Two construction decisions are worth knowing about. The `label` field arrives as a table position flattened into a string, with `!!` marking the levels, and it is kept exactly as sent; everything below about hierarchy is recovered by splitting that string. And each geography row lost one field on the way to CSV — the one saying what a query at that level requires you to name first. For how far down the hierarchy goes, which is this brief's question, the loss is harmless. For anybody actually requesting eight million blocks it was the field that mattered, and it is still waiting in the raw file.
+Two construction decisions are worth knowing about. The `label` field arrives as a table position flattened into one line of text, with `!!` marking the levels, and it is kept exactly as sent; everything below about hierarchy is recovered by splitting that line. And each geography row lost one field on the way to CSV — the one saying what a query at that level requires you to name first. For how far down the hierarchy goes, which is this brief's question, the loss is harmless. For anybody actually requesting eight million blocks it was the field that mattered, and it is still waiting in the raw file.
 
 > **Before you read on, commit to two numbers.** Once the geographic
 > identifiers are set aside, six tables carry the `r n_data` substantive
@@ -90,9 +90,9 @@ Two of those tables are copies, and the claim can be checked directly. Count how
 ```{r adult}
 ```
 
-Most readers put the duplication somewhere around a tenth, on the reasonable assumption that a statistical agency does not publish the same table twice. **`r n_adult` of the `r n_data` substantive variables are duplicates, or `r pc(100*n_adult/n_data, 0)`%.** P3 is P1 restricted to adults, and P4 is P2 restricted to adults. Nobody was asked a second time; the Bureau ran the same cross-tabulations twice and published both.
+Most readers put the duplication somewhere around a tenth, on the reasonable assumption that a statistical agency does not publish the same table twice. **`r n_adult` of the `r n_data` substantive variables are duplicates, or `r pc(100*n_adult/n_data, 0)`%.** P3 is P1 restricted to adults, and P4 is P2 restricted to adults. Nobody was asked a second time; the Bureau ran the same cross-tabulations — the same counts of race by Hispanic origin — twice, once for everybody and once for adults, and published both.
 
-That is not redundancy. **The Voting Rights Act is about voters, and voters are adults.** A vote-dilution claim under the Act's Section 2 turns on whether a minority group is numerous enough to form a majority in a district, and the population that matters is voting-age. Without P3 and P4, the central quantity in American voting-rights litigation could not be computed from the census at all. Nearly half the substantive file exists because of a law, and you can read the law off the column list.
+That is not redundancy. **The Voting Rights Act is about voters, and voters are adults.** A vote-dilution claim under the Act's Section 2^[52 U.S.C. § 10301: <https://www.law.cornell.edu/uscode/text/52/10301>.] — a claim that a district map, without barring anyone from the polls, still leaves a minority group unable to elect anyone — turns on whether that group is numerous enough to form a majority in a district, and the population that matters is voting-age.^[The Supreme Court set out that test in *Thornburg v. Gingles*, 478 U.S. 30 (1986): <https://www.law.cornell.edu/supremecourt/text/478/30>.] Without P3 and P4, the central quantity in American voting-rights litigation could not be computed from the census at all. Nearly half the substantive file exists because of a law, and you can read the law off the column list.
 
 ### The geography file is mostly bookkeeping, and partly the states
 
@@ -101,11 +101,11 @@ The same move works on the geography file.
 ```{r geo}
 ```
 
-**`r nrow(g)` rows collapse to `r length(lvl)` distinct levels.** The other `r n_part` are the same levels again, sliced by whatever larger unit they happen to straddle, as "county (or part)", because most American boundaries refuse to nest inside each other. `r n_below` of the `r length(lvl)` levels sit below the county, and one of them is **`voting district`**: a precinct.
+**`r nrow(g)` rows collapse to `r length(lvl)` distinct levels.** The other `r n_part` are the same levels again, sliced by whatever larger unit they happen to straddle, as "county (or part)", because most American boundaries refuse to nest inside each other. `r n_below` of the `r length(lvl)` levels sit below the county, and one of them is **`voting district`**: a precinct, the small area whose voters all report to the same polling place.
 
 That row is the point of the whole file. The Bureau publishes population inside precinct lines, which is exactly the join a voting-rights analysis needs. The government publishes the data required to challenge the maps that governments draw, and a statute arranged it that way on purpose.
 
-With one qualification, and it is the most surprising fact here. The Bureau does not know where a precinct is unless a state tells it, because precinct lines are state and county creations. Before each census the states are invited to submit their voting districts for inclusion in the file, and the submission is voluntary. A state that took part gets population totals inside its precincts. A state that did not, does not. So parts of this compulsory product were supplied voluntarily, by the same states whose maps the file is used to challenge.
+With one qualification, and it is the most surprising fact here. The Bureau does not know where a precinct is unless a state tells it, because precinct lines are state and county creations. Before each census the states are invited to submit their voting districts for inclusion in the file, and the submission is voluntary.^[The Bureau's Redistricting Data Program, through which states submit their voting districts: <https://www.census.gov/programs-surveys/decennial-census/about/rdo/program-management.html>. The National Conference of State Legislatures' *Redistricting Law 2020* says plainly that taking part is optional: <https://www.ncsl.org/redistricting-and-census/redistricting-law-2020>.] A state that took part gets population totals inside its precincts. A state that did not, does not. So parts of this compulsory product were supplied voluntarily, by the same states whose maps the file is used to challenge.
 
 ### What the catalog is made of
 
@@ -125,7 +125,7 @@ The way the door is locked deserves a sentence of its own. A keyless request doe
 
 A key is free and arrives by email in about a minute. It is also a password: it identifies you, and it does not belong in any file you share. That is not hypothetical — a live Census API key once sat in plain text in a teaching handout for a year, and had to be flagged for revocation.
 
-Should public data require registration at all? The Bureau's answer is operational: keys allow rate-limiting and abuse prevention, and the catalog stays open precisely so discovery is unimpeded. The objection is that the gate falls on the automatable door and leaves casual lookup untouched. So it burdens exactly the systematic checking the file exists to make possible: the redistricting plan, the lending pattern. Both descriptions are accurate. What the catalog adds is a fact about who carries the burden: the gated door is the only one that can reach the blocks and precincts.
+Should public data require registration at all? The Bureau's answer is operational: a key lets it cap how many requests one user can make in a day and trace anyone abusing the service,^[The Bureau's user guide sets out the key and the daily limit: <https://www.census.gov/data/developers/guidance/api-user-guide.html>.] and the catalog stays open precisely so discovery is unimpeded. The objection is that the gate falls on the automatable door and leaves casual lookup untouched. So it burdens exactly the systematic checking the file exists to make possible: the redistricting plan, the lending pattern. Both descriptions are accurate. What the catalog adds is a fact about who carries the burden: the gated door is the only one that can reach the blocks and precincts.
 
 ## What this brief cannot tell you
 
@@ -133,7 +133,7 @@ Should public data require registration at all? The Bureau's answer is operation
 
 **It cannot measure who is shut out by the key.** That would take the request logs, which nobody publishes, or a survey of the people who gave up, which nobody has run. This brief reads an architecture and argues from it, and that is a weaker kind of claim than a measurement.
 
-**It describes a day.** The catalog was fetched in August 2026, and the key requirement itself is recent. The 2030 release will list different columns: a 2024 federal revision merges the race and Hispanic-origin questions into one, which will change the shape of P1 through P4 and every trend computed across them.
+**It describes a day.** The catalog is as the Bureau published it in August 2026, and the key requirement itself is recent. The 2030 release will list different columns: a 2024 federal revision merges the race and Hispanic-origin questions into one,^[Office of Management and Budget, revisions to Statistical Policy Directive No. 15, *Federal Register*, 29 March 2024: <https://www.federalregister.gov/documents/2024/03/29/2024-06469/revisions-to-ombs-statistical-policy-directive-no-15-standards-for-maintaining-collecting-and-presenting-federal-data-on-race-and-ethnicity>.] which will change the shape of P1 through P4 and every trend computed across them.
 
 **And the columns are the closest measurable thing, not the thing the law asks for.** For many voting-rights claims the right denominator (the bottom number of the fraction, the population you divide by) is citizens of voting age. The census does not publish that. It comes from the American Community Survey instead, with a margin of error attached: a stated range for how far off each estimate could be.
 
@@ -157,7 +157,7 @@ Every question below can be answered by sorting or grouping the two tables hande
 Two stretch extensions, beyond the spreadsheet:
 
 - Request a free key at <https://api.census.gov/data/key_signup.html> and ask the gated half for one number: total population, `P1_001N`, for your own county. Treat the key like the password it is while you do it.
-- Fetch the same two catalog files for the American Community Survey's five-year release, which carries tens of thousands of variables. Does its shape read like curiosity, or like another stack of obligations?
+- Download the same two catalog files for the American Community Survey's five-year release, which carries tens of thousands of variables. Does its shape read like curiosity, or like another stack of obligations?
 
 ## Sources
 
@@ -166,26 +166,38 @@ Two stretch extensions, beyond the spreadsheet:
 - U.S. Census Bureau, Census Data API, open metadata endpoints for the 2020
   Decennial Census P.L. 94-171 Redistricting Data: `variables.json` and
   `geography.json`, listed at <https://api.census.gov/data/2020/dec/pl.html>.
-  Fetched August 2026 and converted to the two CSVs below; the raw responses
-  are kept beside them, unmodified.
+  As published in August 2026, converted to the two CSVs below; the Bureau's
+  files are kept beside them, unmodified.
+- U.S. Census Bureau, *Census Data API User Guide* — how a key is issued and
+  what it permits.
+  <https://www.census.gov/data/developers/guidance/api-user-guide.html>
 
 **Statute and literature**
 
 - Public Law 94-171 (1975), codified at 13 U.S.C. §141(c), requiring delivery of
   redistricting tabulations to the states.
+  <https://www.law.cornell.edu/uscode/text/13/141>
 - U.S. Census Bureau, 2020 Census Redistricting Data Program — the decade-long
   program through which states suggest block boundaries and submit their voting
-  districts for tabulation. National Conference of State Legislatures,
+  districts for tabulation.
+  <https://www.census.gov/programs-surveys/decennial-census/about/rdo/program-management.html>
+  National Conference of State Legislatures,
   *Redistricting Law 2020* (Denver: NCSL, October 2019), ch. 1, states plainly
   that the voting-district submission is voluntary.
+  <https://www.ncsl.org/redistricting-and-census/redistricting-law-2020>
+- Voting Rights Act, Section 2, 52 U.S.C. § 10301.
+  <https://www.law.cornell.edu/uscode/text/52/10301>
 - *Thornburg v. Gingles*, 478 U.S. 30 (1986) — the case whose first precondition
   makes voting-age population by race the operative quantity.
+  <https://www.law.cornell.edu/supremecourt/text/478/30>
 - Office of Management and Budget (2024). "Revisions to OMB's Statistical Policy
   Directive No. 15: Standards for Maintaining, Collecting, and Presenting
   Federal Data on Race and Ethnicity." *Federal Register* 89: 22182 (29 March
   2024).
+  <https://www.federalregister.gov/documents/2024/03/29/2024-06469/revisions-to-ombs-statistical-policy-directive-no-15-standards-for-maintaining-collecting-and-presenting-federal-data-on-race-and-ethnicity>
 - Prewitt, K. (2013). *What Is Your Race? The Census and Our Flawed Efforts to
   Classify Americans.* Princeton: Princeton University Press.
+  <https://press.princeton.edu/books/hardcover/9780691157030/what-is-your-race>
 
 **The data itself**
 

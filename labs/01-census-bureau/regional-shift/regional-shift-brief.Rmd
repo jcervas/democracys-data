@@ -18,13 +18,13 @@ dd_read_chunks("regional-shift-code.R")
 
 Everyone says American political power is moving south and west. The Sun Belt rises, the Rust Belt empties; every election-night broadcast carries some version of the claim. This brief asks whether it is true, how fast it has run, and since when, and it answers from the one record in which the movement of power is not a metaphor.
 
-That record exists because of a procedure. Every ten years the country is counted, and the `r n(sum(sc$reps_2020))` seats of the House of Representatives are divided among the states by a formula fixed in law. States that grew faster than the country take seats from states that did not. No bill is introduced, no legislature approves the transfer, and no voter anywhere casts a ballot on the question. A seat is a vote on legislation, and because a state's electors are its seats plus two, it is an Electoral College vote as well. Gaines and Jenkins (2009) point out that the choices buried in this hand-out attract almost no public attention, because they arrive looking like arithmetic.
+That record exists because of a procedure. Every ten years the country is counted, and the `r n(sum(sc$reps_2020))` seats of the House of Representatives are divided among the states by a formula fixed in law. States that grew faster than the country take seats from states that did not. No bill is introduced, no legislature approves the transfer, and no voter anywhere casts a ballot on the question. A seat is a vote on legislation, and because a state's electors are its seats plus two, it is an Electoral College vote as well. Gaines and Jenkins point out that the choices buried in this hand-out attract almost no public attention, because they arrive looking like arithmetic.^[Brian J. Gaines and Jeffery A. Jenkins, "Apportionment Matters: Fair Representation in the US House and Electoral College," *Perspectives on Politics* 7, no. 4 (2009): 849–857, <https://doi.org/10.1017/S1537592709991861>.]
 
 How many seats the procedure has moved altogether is the number this brief is built around, and it is held back on purpose. You will be asked to guess it first.
 
 ## The test
 
-The answer comes from the Census Bureau's own apportionment time series: every state's population and House seats at every census from 1910 to `r max(nat$year)`, in one published file at <https://www.census.gov/data/tables/time-series/dec/apportionment-data-text.html>. Seats are compared from `r Y1` to `r Y2`, because `r Y1` is the first census after which the United States had fifty states. Population shares are traced back to 1910 and labelled as such. The House itself has been fixed at `r n(sum(sc$reps_2020))` seats since 1913, made permanent by the Permanent Apportionment Act of 1929, so seats can only move between states, never multiply.
+The answer comes from the Census Bureau's own apportionment time series: every state's population and House seats at every census from 1910 to `r max(nat$year)`, in one published file at <https://www.census.gov/data/tables/time-series/dec/apportionment-data-text.html>. Seats are compared from `r Y1` to `r Y2`, because `r Y1` is the first census after which the United States had fifty states. Population shares are traced back to 1910 and labelled as such. The House itself has been fixed at `r n(sum(sc$reps_2020))` seats since 1913, made permanent by the Permanent Apportionment Act of 1929,^[46 Stat. 21, now 2 U.S.C. § 2a: <https://www.law.cornell.edu/uscode/text/2/2a>.] so seats can only move between states, never multiply.
 
 This is the right source because a House seat is not an indicator of political power. It **is** political power, in the currency the Constitution uses: employment series and housing starts would describe the rise of the Sun Belt better, but none of them is what a state actually received. The file is also self-checking in a way that is rare. The Bureau publishes its own region and nation totals beside the state rows, so the state-to-region assignment that carries the whole argument below was verified against the source rather than trusted.
 
@@ -32,11 +32,11 @@ The count behind every number here is the decennial census. [The decennial censu
 
 ## The data
 
-The download is a single CSV of about a hundred kilobytes with one row per geography per census. A `Geography Type` column stacks three kinds of row, State, Region, and Nation, so a reader who summed the population column unfiltered would count the country three times. The build splits the stack into the tables this brief reads: `states.csv`, `regions.csv`, `nation.csv`, plus `seatchange.csv` and `southdefs.csv` built from them.
+The Bureau's file is a single small CSV, a plain-text table that opens in any spreadsheet, with one row per geography per census. A `Geography Type` column stacks three kinds of row, State, Region, and Nation, so a reader who summed the population column unfiltered would count the country three times. The tables this brief reads pull that stack apart: `states.csv`, `regions.csv`, `nation.csv`, plus `seatchange.csv` and `southdefs.csv` built from them.
 
-Three cleaning decisions matter. Every population arrives as a quoted string with commas in it, like `"4,951,560"`, which the obvious read turns into a missing value for every number over 999; the build strips the separators first. Puerto Rico is typed `State` and sits *outside* the national total. The District of Columbia is typed `State`, sits *inside* the total, and has no seat, so it belongs in every population figure below and in none of the seat figures.
+Three features of the file matter to anyone opening it. Every population is written with thousands separators, like `"4,951,560"`, which software reads as words rather than as a number unless told to strip the commas. Puerto Rico is typed `State` and sits *outside* the national total. The District of Columbia is typed `State`, sits *inside* the total, and has no seat, so it belongs in every population figure below and in none of the seat figures.
 
-`states.csv` carries, for each state and year: `pop`, `reps`, `repchg` (the Bureau's own change-this-decade column, carried through untouched), and `region` and `division` from the Bureau's published hierarchy. It also carries four rival definitions of the South (`south_census`, `south_confed`, `sunbelt`, `border_south`), side by side rather than resolved. `regions.csv` carries each region's `share` of population and `seat_share`. `seatchange.csv` reduces the window to one row per state: `reps_1960`, `reps_2020`, `change`. Here is one state, twice, six decades apart.
+`states.csv` carries, for each state and year: `pop`, `reps`, `repchg` (the Bureau's own change-this-decade column, carried through untouched), and `region` and `division` from the Bureau's published hierarchy: four Census regions (Northeast, Midwest, South and West), each split into two or three divisions.^[The Bureau's definitions: *Geographic Areas Reference Manual*, ch. 6, <https://www2.census.gov/geo/pdfs/reference/GARM/Ch6GARM.pdf>.] It also carries four rival definitions of the South (`south_census`, `south_confed`, `sunbelt`, `border_south`), side by side rather than resolved. `regions.csv` carries each region's `share` of population and `seat_share`. `seatchange.csv` reduces the window to one row per state: `reps_1960`, `reps_2020`, `change`. Here is one state, twice, six decades apart.
 
 ```{r one-record}
 ```
@@ -91,7 +91,7 @@ The electoral-vote table is arithmetic about states, not a claim about parties: 
 
 There is an obvious objection. Seats bounce, and a state that gains three in one decade and returns three in the next has moved nothing in the end. If that is the story, `r n(gross)` is churn rather than direction. The file answers cleanly.
 
-Sum the per-decade columns, counting every seat any state gained at any reapportionment: `r n(sumdec)`. The sixty-year total is `r n(gross)`. The two can only differ by a state that gains a seat and later hands it back, so the gap is a count of reversals, and it is `r n(sum(GAPS))`.
+Sum the per-decade columns, counting every seat any state gained at any reapportionment: `r n(sumdec)`. The sixty-year total is `r n(gross)`. The two can only differ by a state that gains a seat and later hands it back, so the gap is a count of reversals, and it is `r n(sum(GAPS))`. Take `r GAPST[1]`, the first row below. Its delegation ran `r paste(sp[[GAPST[1]]]$reps[order(sp[[GAPST[1]]]$year)], collapse = " → ")`. Adding up only the decades in which it gained gives `r n(POSDEC[GAPST[1]])` seats, but it ended `r n(NETCHG[GAPST[1]])` above where it started, so its gap is `r n(GAPS[GAPST[1]])`: a seat gained in one decade and given back in another.
 
 ```{r reversals}
 ```
@@ -128,9 +128,9 @@ The most common objection to a regional finding is that the region is a choice, 
 
 **This file cannot say why anybody moved.** It has population and seats and nothing else: no births, no migration, no incomes, no housing costs, no party labels. It cannot distinguish a family arriving in Phoenix from Michigan from a family arriving from abroad, or either from Arizona families simply being larger.
 
-Nor can it certify the counts. The populations are printed as exact whole numbers, and the Supreme Court's 1999 sampling decision makes them exact as a matter of law. The Bureau's own published coverage estimates say they are not exact in fact. The margins here are large enough that coverage error does not threaten them, since `r n(abs(ny$change))` seats is not an error bar.
+Nor can it certify the counts. The populations are printed as exact whole numbers, and the Supreme Court's 1999 sampling decision makes them exact as a matter of law.^[*Department of Commerce v. U.S. House of Representatives*, 525 U.S. 316 (1999): <https://www.law.cornell.edu/supremecourt/text/525/316>.] The Bureau's own published coverage estimates, read in the [coverage brief](../census-coverage/census-coverage-brief.html), say they are not exact in fact. The margins here are large enough that coverage error does not threaten them, since `r n(abs(ny$change))` seats is not an error bar.
 
-And the file is coarse. Twelve observations, one per decade, so anything that happened between two censuses is invisible; four regions for fifty states, with the South the most contested of them. Testing three definitions of the South measures how much the finding depends on that choice. It does not make the category natural.
+And the file is coarse. One observation per decade, `r n(length(unique(nat$year)))` in all, so anything that happened between two censuses is invisible; four regions for fifty states, with the South the most contested of them. Testing three definitions of the South measures how much the finding depends on that choice. It does not make the category natural.
 
 ## What you should have learned
 
@@ -160,6 +160,7 @@ And the file is coarse. Twelve observations, one per decade, so anything that ha
 - U.S. Census Bureau, *Statistical Groupings of States and Counties*
   (Geographic Areas Reference Manual, ch. 6), for the four regions and nine
   divisions.
+  <https://www2.census.gov/geo/pdfs/reference/GARM/Ch6GARM.pdf>
 
 **The data itself**
 
@@ -173,10 +174,13 @@ open in a spreadsheet, and they are yours to take further.
 - *Department of Commerce v. United States House of Representatives*, 525 U.S.
   316 (1999), holding that the Census Act forbids the use of statistical
   sampling to produce the population figures used for apportionment.
-- Permanent Apportionment Act of 1929, 46 Stat. 21.
+  <https://www.law.cornell.edu/supremecourt/text/525/316>
+- Permanent Apportionment Act of 1929, 46 Stat. 21 (now 2 U.S.C. § 2a).
+  <https://www.law.cornell.edu/uscode/text/2/2a>
 - Gaines, B. J. and Jenkins, J. A. (2009). "Apportionment Matters: Fair
   Representation in the US House and Electoral College." *Perspectives on
   Politics* 7(4): 849–857.
+  <https://doi.org/10.1017/S1537592709991861>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -39,6 +39,12 @@ ok435 <- identical(as.integer(base[ap$state]), as.integer(ap$seats))
 # and the recomputation against the Bureau's published priority column
 pv_ok <- max(abs(pv$priority[pv$house_seat <= 435] - b435$priority)) < 1e-6
 
+# The first three seats of the queue, followed by hand in the brief. The prose
+# names California, Texas and Florida, so the file had better agree.
+stopifnot(pv$state[1:4] == c("California", "Texas", "California", "Florida"))
+ca <- pop[["California"]]; tx <- pop[["Texas"]]; fl <- pop[["Florida"]]
+d2 <- sqrt(2 * 1); d3 <- sqrt(3 * 2)      # the divisors for a 2nd and a 3rd seat
+
 mn <- ap[ap$state == "Minnesota", ]
 ny <- ap[ap$state == "New York",  ]
 win_pri <- mn$app_pop / sqrt(mn$seats * (mn$seats - 1))   # the price of seat 435

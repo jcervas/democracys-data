@@ -18,21 +18,21 @@ dd_read_chunks("migration-code.R")
 
 Every few months a headline announces that Americans are fleeing one state for another. Fleeing California for Texas, fleeing New York for Florida, fleeing taxes, rents, and each other. The claim arrives with maps full of confident arrows. Is it true? Who actually moves, between which states, and how would anyone know?
 
-The United States does not record moves. There is no register that learns your address when you change it, because the country has repeatedly declined to build one. What stands in its place is a single question on the American Community Survey: **Where did you live one year ago?** Cross the answers against where each household lives now, scale the sample up, and out comes a `r nrow(st)` × `r nrow(st)` table — `r n(mn("n_pairs"))` ordered pairs of places, a number printed in every cell.
+The United States does not record moves. No government register learns your address when you change it. What stands in its place is a single question on the American Community Survey: **Where did you live one year ago?** Cross the answers against where each household lives now, weight the sample up so that it adds to the whole population, and out comes a `r nrow(st)` × `r nrow(st)` table — `r n(mn("n_pairs"))` ordered pairs of places, a number printed in every cell.
 
-One of those cells is `r mv("largest_fail_pair")`. It reads `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`. The second number is the Bureau's published 90 percent margin of error: how far off the estimate could be and still be doing its job. Read the two together and the federal government is saying that the number of people who made that move was somewhere between nobody at all and about `r n(mn("largest_fail_est") + mn("largest_fail_moe"))`. **The estimate is smaller than its own uncertainty.** Every figure in this brief carries a margin like that, and almost none of them is ever printed with it.
+One of those cells is `r mv("largest_fail_pair")`. It reads `r pm(mn("largest_fail_est"), mn("largest_fail_moe"))`. The second number is the Bureau's published 90 percent margin of error: how far off the estimate could be and still be doing its job, set so that nine times in ten the true figure lies within that distance of the estimate.^[U.S. Census Bureau, *Understanding and Using American Community Survey Data: What All Data Users Need to Know* (2020), on the 90 percent margins, <https://www.census.gov/programs-surveys/acs/library/handbooks/general.html>.] Read the two together and the federal government is saying that the number of people who made that move was somewhere between nobody at all and about `r n(mn("largest_fail_est") + mn("largest_fail_moe"))`. **The estimate is smaller than its own uncertainty.** Every figure in this brief carries a margin like that, and almost none of them is ever printed with it.
 
 ## The test
 
-The test is the Census Bureau's own flow table: *State-to-State Migration Flows* from the `r mv("acs_year")` American Community Survey one-year estimates, downloadable from the address in the sources below; the copy read here is from `r format(as.Date(mv("fetched")), "%d %B %Y")`. For the long view it is joined by the Current Population Survey's mover series, which has asked the same question every year since `r mn("cps_first")`. The ACS is a survey, and the [American Community Survey chapter](../census-acs/census-acs-brief.html) is its biography: roughly 3.5 million addresses a year, weighted up to the country, a margin of error published beside every estimate.
+The test is the Census Bureau's own flow table: *State-to-State Migration Flows* from the `r mv("acs_year")` American Community Survey one-year estimates, downloadable from the address in the sources below; the copy read here is from `r format(as.Date(mv("fetched")), "%d %B %Y")`. For the long view it is joined by the [Current Population Survey](https://www.census.gov/data/tables/time-series/demo/geographic-mobility/historic.html), the Bureau's monthly household survey best known for producing the unemployment rate, which has asked the same question every year since `r mn("cps_first")`. The ACS is a survey, and the [American Community Survey chapter](../census-acs/census-acs-brief.html) is its biography: roughly 3.5 million addresses a year, weighted up to the country, a margin of error published beside every estimate.
 
-It is the right source because there is no better one, and the near misses are instructive. The Internal Revenue Service builds county-to-county migration from the addresses on consecutive tax returns, an administrative record with no margin of error at all. But it covers only tax filers and the people claimed on their returns, which leaves out the poor and the young, and they are the most mobile people in the country. The Postal Service knows every forwarding order and publishes no flow table. A survey with honest margins is what remains, and the margins turn out to be the story.
+It is the right source because there is no better one, and the near misses are instructive. The [Internal Revenue Service](https://www.irs.gov/statistics/soi-tax-stats-migration-data) builds county-to-county migration from the addresses on consecutive tax returns, an administrative record with no margin of error at all. But it covers only tax filers and the people claimed on their returns, which leaves out the poor and the young, and they are the most mobile people in the country. The Postal Service knows every forwarding order and publishes no flow table. A survey with honest margins is what remains, and the margins turn out to be the story.
 
 ## The data
 
 The workbook the Bureau publishes was built to be looked at, not computed with. Its first eight rows are headers, one of which explains in a sentence where the headers are. Column names arrive with footnote markers welded on, so `Residence 1 year ago2` is a name carrying a footnote. And every state-to-itself cell holds the letter `X` in a numeric column: people who did not leave their state are suppressed, not counted.
 
-The build script parses that workbook into `flows.csv`, one row per ordered pair of states. Its columns are `from_state`, `to_state`, the estimate `est`, its margin `moe`, the interval ends `lo` and `hi`, and a flag `sig`. Here is the top of it:
+The table handed over below, `flows.csv`, reshapes that workbook into one row per ordered pair of states. Its columns are `from_state`, `to_state`, the estimate `est`, its margin `moe`, the interval ends `lo` and `hi`, and a flag `sig`. Here is the top of it:
 
 ```{r clean-mig}
 ```
@@ -81,7 +81,7 @@ Start with the state with the biggest gap between arrivals and departures. The d
 ```{r arcmap-static, eval=!knitr::is_html_output(), fig.width=7.2, fig.height=2.8}
 ```
 
-**Figure 1. Interstate migration into and out of `r FOCUS`, drawn between population-weighted state centers.** An arc map fits because the data is pairs of places: each arc is one pair, its width the number of people, on an absolute square-root scale keyed at lower right. Color carries a separate fact — blue means the estimate clears its own margin of error, gray means the survey cannot tell the flow apart from zero. In the browser the buttons switch direction; in print the two directions sit side by side.
+**Figure 1. Interstate migration into and out of `r FOCUS`, drawn between population-weighted state centers, the point on which each state's population would balance.** An arc map fits because the data is pairs of places: each arc is one pair, its width the number of people, on an absolute square-root scale keyed at lower right. Color carries a separate fact — blue means the estimate clears its own margin of error, gray means the survey cannot tell the flow apart from zero. In the browser the buttons switch direction; in print the two directions sit side by side.
 
 The heaviest arc runs both ways, and it is the same arc. `r FOCUS` and `r PART` exchange more people than any other pair of states in the country: `r n(OUTMX)` one way, `r n(INMX)` back. A net migration figure is a small difference between two very large numbers, which is exactly the situation where a margin of error matters most.
 
@@ -186,6 +186,9 @@ Every argument about Americans sorting themselves across the country is taking p
 - U.S. Census Bureau, *Geographical Mobility*, CPS historical Table A-1,
   `r min(mo$year)` to `r max(mo$year)`.
   <https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/time-series/historic/tab-a-1.xls>
+- Internal Revenue Service, *SOI Tax Stats — Migration Data*, the
+  county-to-county series built from tax returns that the text sets beside
+  the survey. <https://www.irs.gov/statistics/soi-tax-stats-migration-data>
 - U.S. Census Bureau, *Centers of Population by State*, 2020 Census; and
   *Cartographic Boundary Files*, 2020.
   <https://www2.census.gov/geo/docs/reference/cenpop2020/CenPop2020_Mean_ST.txt> and

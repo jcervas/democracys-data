@@ -26,7 +26,7 @@ That matrix is the cleanest flow data in American demography, and it is almost i
 
 The flows are the Census Bureau's *State-to-State Migration Flows* table, from the `r YR` American Community Survey one-year estimates. The ACS reaches roughly 3.5 million addresses a year and asks each household where it lived one year ago; that one question is the country's entire measurement of moving. The [American Community Survey chapter](../census-acs/census-acs-brief.html) is the survey's biography: who is in it, how it is weighted up to the country, and why a margin of error stands beside every estimate it publishes.
 
-This brief does not re-parse the Bureau's workbook. It reads the tables the [migration brief](../migration/migration-brief.html) built from it, suppressed cells and all, so the two documents cannot silently disagree about a number. The test itself is the one the exodus story begs for. Group the states, add up the flow in each direction between every pair of groups, and measure how much is net and how much cancels.
+The numbers here are the same tables the [migration brief](../migration/migration-brief.html) hands over, suppressed cells and all, so the two documents cannot silently disagree about a number. The test itself is the one the exodus story begs for. Group the states, add up the flow in each direction between every pair of groups, and measure how much is net and how much cancels.
 
 ## The data
 
@@ -40,7 +40,7 @@ After grouping, the working table keeps six columns:
 ```{r varmap}
 ```
 
-The states are grouped into the Census Bureau's own **nine divisions**, with Puerto Rico carried as a tenth group. The Bureau's divisions cover only the fifty states and the District of Columbia, and `r n(PROUT)` people left Puerto Rico for a state that year. The assignment is read from this book's [regional-shift brief](../regional-shift/regional-shift-brief.html) rather than retyped; that brief refuses to build unless its map reproduces the Bureau's published region totals for every decade since 1910.
+The states are grouped into the Census Bureau's own **nine divisions**, the clusters of neighbouring states — New England, the Middle Atlantic, the Pacific and so on — that the Bureau uses to summarise the country, with Puerto Rico carried as a tenth group.^[The regions and divisions are defined in chapter 6 of the Bureau's *Geographic Areas Reference Manual*, <https://www2.census.gov/geo/pdfs/reference/GARM/Ch6GARM.pdf>.] The Bureau's divisions cover only the fifty states and the District of Columbia, and `r n(PROUT)` people left Puerto Rico for a state that year. The list of which state belongs to which division is the one this book's [regional-shift brief](../regional-shift/regional-shift-brief.html) uses, checked there against the Bureau's published region totals for every decade since 1910.
 
 ```{r grouptab}
 ```
@@ -49,7 +49,7 @@ The grouping is a decision, not a fact about the country. **The Bureau fixed the
 
 Two cleaning decisions travel with the grouping, and both push in a known direction. First, **`r n(NSUPP)` of the `r n(NPAIR)` state pairs are not published at all**: the Bureau releases no estimate when too few sampled households made a move. Aggregation adds them as zeros, because there is nothing else to add, so the group totals run slightly low. `matrix.csv` therefore carries a count of suppressed pairs in every cell, and `r n(DSUPP)` of the `r n(DCELL)` division-to-division cells contain at least one. A cell assembled mostly out of suppressed pairs cannot pass itself off as a measurement.
 
-Second, **margins of error on the grouped cells are added in quadrature**, which is the Bureau's own instruction for a sum of published estimates. The margin on a total is the square root of the sum of the squared margins. That rule assumes the errors are independent, and cells from a single survey are not quite independent. So the margins below are approximate, and if they are wrong they are too small.
+Second, **margins of error on the grouped cells are added in quadrature**, which is the Bureau's own instruction for a sum of published estimates:^[U.S. Census Bureau, *Understanding and Using American Community Survey Data: What All Data Users Need to Know* (2020), appendix 3, <https://www.census.gov/programs-surveys/acs/library/handbooks/general.html>.] square each margin, add the squares, and take the square root of the total. The largest exchange in the country shows the arithmetic. `r BA` to `r BB` carries a margin of ±`r n(MAB)`, and the return flow ±`r n(MBA)`. The net between them is the difference of the two estimates, and its margin is the square root of `r n(MAB)`² plus `r n(MBA)`², which comes to ±`r n(sqrt(MAB^2 + MBA^2))` — less than the two added outright, because two errors are unlikely to both fall the same way. That rule assumes the errors are independent, and cells from a single survey are not quite independent. So the margins below are approximate, and if they are wrong they are too small.
 
 > **Before you read on, commit to a number.** Roughly `r mil(BETWEEN)` Americans
 > changed state in a year. **What share of them do you think crossed a Census
@@ -88,7 +88,7 @@ The typical case cancels harder. **Across all `r n(DP)` pairs of divisions the m
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same matrix, as a matrix.** Thousands of people moving from the row's division to the column's, shaded on a log scale; the diagonal is moves that changed state without leaving the division. Hover any cell for the estimate, its margin of error, and how many suppressed state pairs are inside it. The button switches to net flow, and blanks every pair whose net is smaller than its own margin of error.
+**Figure 2. The same matrix, as a matrix.** Thousands of people moving from the row's division to the column's, shaded on a log scale, so each step of shading is a tenfold increase rather than a fixed number of people; the diagonal is moves that changed state without leaving the division. Hover any cell for the estimate, its margin of error, and how many suppressed state pairs are inside it. The button switches to net flow, and blanks every pair whose net is smaller than its own margin of error.
 
 Press it. **Most of the matrix goes blank**, and what is left is a small number of genuinely directional exchanges sitting in a field of churn. That is the honest picture of American migration, and no chord diagram can draw it, because a ribbon has no way to say *this taper is not distinguishable from parallel*. The trade runs the other way too: the matrix cannot show at a glance that the Pacific division sends people almost everywhere while East South Central mostly trades with its neighbours. Figure 1 hands you that in a second and will not surrender a single value.
 
@@ -159,8 +159,7 @@ The `r n(LDIV)` divisions losing people on net hold `r n(LSEAT)` House seats bet
 - U.S. Census Bureau. *State-to-State Migration Flows*, American Community
   Survey `r YR` one-year estimates, table T13. The figures here read the
   tables this book's [migration brief](../migration/migration-brief.html)
-  built and committed from it, which documents the download and the
-  `r n(NSUPP)` suppressed pairs.
+  hands over, which describes the `r n(NSUPP)` suppressed pairs.
   <https://www2.census.gov/programs-surveys/demo/tables/geographic-mobility/2024/state-to-state-migration/State_to_State_Migration_Table_2024_T13.xlsx>
 - U.S. Census Bureau. *Geographic Areas Reference Manual*, chapter 6, on the
   four regions and nine divisions. The state-to-division assignment is read
@@ -183,7 +182,7 @@ The `r n(LDIV)` divisions losing people on net hold `r n(LSEAT)` House seats bet
 - Krzywinski, Martin et al. (2009). "Circos: an information aesthetic for
   comparative genomics." *Genome Research* 19(9): 1639–1645. The paper that
   made the chord diagram a standard form, and the source of the layout in
-  Figure 1.
+  Figure 1. <https://pmc.ncbi.nlm.nih.gov/articles/PMC2752132/>
 
 **The data itself**
 

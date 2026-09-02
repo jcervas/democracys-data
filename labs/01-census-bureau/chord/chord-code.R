@@ -89,6 +89,12 @@ gd$seats <- as.numeric(tapply(sa$seats_2020, sa$division, sum)[gd$group])
 gd$per1k <- 1000 * gd$net / gd$pop
 pd <- pr[pr$grouping == "division", ]
 
+# The two published margins under the largest division exchange, for the
+# worked quadrature example in the brief; pairs.csv holds their combination.
+mxd <- mx[mx$grouping == "division", ]
+MAB <- mxd$moe[mxd$from == BA & mxd$to == BB]
+MBA <- mxd$moe[mxd$from == BB & mxd$to == BA]
+
 # --- one chord ribbon, as a polygon ------------------------------------------
 #
 # The same path d3.ribbon draws, and the same one the HTML figure draws: an arc

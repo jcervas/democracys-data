@@ -22,7 +22,7 @@ The Census Bureau answers that question about itself. After each census it runs 
 
 ## The test
 
-The data is the Bureau's evaluation of the 2020 census: the **Post-Enumeration Survey**, published in two reports in 2022 — the [national estimates by demographic group](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/national-census-coverage-estimates-by-demographic-characteristics.pdf) in March and the [estimates by state](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/census-coverage-estimates-for-people-in-the-united-states-by-state-and-census-operations.pdf) in May. After the count, interviewers went back to a sample of about `r nn(FN("pes_blocks"))` blocks and counted the people living there from scratch, without reference to what the census had found. The two lists were then matched person by person, across roughly `r nn(FN("pes_interviews"))` completed household interviews. Someone the survey found and the census did not is evidence of an omission; someone the census has twice is evidence of a duplicate. The gap between the estimated true population and the published count is **net coverage error**.
+The data is the Bureau's evaluation of the 2020 census: the **Post-Enumeration Survey**, a second and much smaller count taken after the main one (an enumeration is a head count), published in two reports in 2022 — the [national estimates by demographic group](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/national-census-coverage-estimates-by-demographic-characteristics.pdf) in March and the [estimates by state](https://www2.census.gov/programs-surveys/decennial/coverage-measurement/pes/census-coverage-estimates-for-people-in-the-united-states-by-state-and-census-operations.pdf) in May. After the count, interviewers went back to a sample of about `r nn(FN("pes_blocks"))` census blocks, the smallest areas the Bureau publishes and often a single city block, and counted the people living there from scratch, without reference to what the census had found. The two lists were then matched person by person, across roughly `r nn(FN("pes_interviews"))` completed household interviews. Someone the survey found and the census did not is evidence of an omission; someone the census has twice is evidence of a duplicate. The gap between the estimated true population and the published count is **net coverage error**.
 
 This is the right source because it is the only one there is. No independent register of American residents exists to check a census against, so the only instrument that can grade a count is another count, done carefully on a sample and matched name by name. What an enumeration is, and why nothing else can stand in for one, is the subject of the [census chapter](../census-source/census-source-brief.html).
 
@@ -30,11 +30,11 @@ Three properties of the design decide everything below. **It is a sample**, so e
 
 ## The data
 
-Both reports exist only as PDF. No spreadsheet or data file anywhere on the Bureau's site carries these numbers, so every table here was taken out of the text layer of a printed report. Two details of that work matter to anyone repeating it. The reports set minus as an en dash, so every undercount fails to read as a number until that is undone. And the indentation of a row label is the only thing recording that "On Reservation" is a subdivision of the American Indian or Alaska Native row rather than a category beside it.
+Both reports exist only as PDF. The Bureau publishes no spreadsheet or data file of these numbers, so every table here was transcribed from the reports' own printed tables, at the two addresses above. Two features of those printed tables matter to anyone reading them. The minus signs are set as dashes, so an undercount does not look like a negative number until you know that. And "On Reservation" is indented beneath the American Indian or Alaska Native row, which is the only thing recording that it is a subdivision of that row rather than a category beside it.
 
-The state table, `states.csv`, holds one row per state plus the District of Columbia: the certified `census_count`, the 2020 estimate `est_2020`, the margin `se_2020`, and the people the rate implies, `implied_people`. The column `bureau_states_it` records the Bureau's own mark. In the report it is an asterisk meaning the agency will say which way that state's count went; `direction` says which way. Each row also carries `self_response`, the share of housing units that answered on their own, merged in from the Bureau's response-rate file.
+The state table, `states.csv`, holds one row per state plus the District of Columbia: the certified `census_count`, the 2020 estimate `est_2020`, the margin `se_2020`, and the people the rate implies, `implied_people`. The column `bureau_states_it` records the Bureau's own mark. In the report it is an asterisk meaning the agency will say which way that state's count went; `direction` says which way. Each row also carries `self_response`, the share of housing units that answered on their own, taken from the Bureau's response-rate file, listed in the sources.
 
-The demographic tables (`race.csv`, `age.csv`, `age_sex.csv` and `tenure.csv`) carry the same three columns for national groups: the estimate, the margin, and the mark. `components.csv` breaks the national count into correct enumerations, duplicates and the rest. Before anything was written, the build checked what it read:
+The demographic tables (`race.csv`, `age.csv`, `age_sex.csv` and `tenure.csv`) carry the same three columns for national groups: the estimate, the margin, and the mark. `components.csv` breaks the national count into correct enumerations, duplicates and the rest. Before anything was drawn from them, the tables were checked against the reports and against each other:
 
 ```{r checks}
 ```
@@ -73,7 +73,7 @@ Cut the same survey by demographic group instead of by state and it stops being 
 
 **Figure 2. Every national demographic estimate in this brief, with the margin the Bureau prints beside it drawn to scale.** Filled circles are rows the Bureau characterises; hollow circles are rows where it says nothing. The bars are short, a median of `r p2(FN("se_demo_median"))` points here against `r p2(FN("se_state_median"))` for a state, because a national group is measured with the whole sample while a state gets only its own slice.
 
-This is the differential undercount, and four rows of it are worth saying out loud. **Children under five are undercounted by `r p2(abs(G(age, "0 to 4")))`%**, one of the largest rates in the survey and one of the most persistent across censuses; children aged 5 to 9 come in at `r sg(G(age, "5 to 9"))`, unmarked. **Men aged 30 to 49 are undercounted `r p2(abs(G(A20, "30-to-49 males")))`%** while women the same age come in near zero, a gap that age alone would average away. **Renters are undercounted `r p2(abs(G(T20, "Renter")))`% and owners overcounted `r p2(G(T20, "Owner"))`%**, a pair that has appeared in each of the last four censuses. And the race rows repeat what the [decennial chapter](../census-decennial/census-decennial-brief.html) reported from the press release: Black residents `r p2(abs(GR("Black or African American")))`% undercounted, Hispanic residents `r p2(abs(GR("Hispanic or Latino")))`%, non-Hispanic White residents `r p2(GR("Non-Hispanic White alone"))`% *over*counted.
+This is the **differential undercount**, the census's habit of missing some groups at higher rates than others, and four rows of it are worth saying out loud. **Children under five are undercounted by `r p2(abs(G(age, "0 to 4")))`%**, one of the largest rates in the survey and one of the most persistent across censuses; children aged 5 to 9 come in at `r sg(G(age, "5 to 9"))`, unmarked. **Men aged 30 to 49 are undercounted `r p2(abs(G(A20, "30-to-49 males")))`%** while women the same age come in near zero, a gap that age alone would average away. **Renters are undercounted `r p2(abs(G(T20, "Renter")))`% and owners overcounted `r p2(G(T20, "Owner"))`%**, a pair that has appeared in each of the last four censuses. And the race rows repeat what the [decennial chapter](../census-decennial/census-decennial-brief.html) reported from the press release: Black residents `r p2(abs(GR("Black or African American")))`% undercounted, Hispanic residents `r p2(abs(GR("Hispanic or Latino")))`%, non-Hispanic White residents `r p2(GR("Non-Hispanic White alone"))`% *over*counted.
 
 One indented pair in the race table deserves its own sentence. American Indian and Alaska Native residents living on reservations were undercounted `r p2(abs(GR("On Reservation")))`%, the worst rate in the survey, while those living elsewhere came in at `r sg(GR("Balance of the United States"))`. The Bureau's headline rate for the group, `r p2(abs(GR("American Indian or Alaska Native")))`%, is the average of the two — smaller than the rate in the places where the problem is worst.
 
@@ -83,7 +83,7 @@ Why does this matter for democracy rather than just for statistics? Because the 
 
 Federal money moves on the same numbers. And Figure 2 says who pays: the people the count misses are disproportionately renters, young children, and Black, Hispanic and Native residents. The people counted twice are disproportionately owners and the settled old. Representation and money drift, quietly, from the first list toward the second.
 
-The grade cannot fix any of it. Congress lets the Bureau sample in its work "except for the determination of population for purposes of apportionment", and in 1999 the Supreme Court read that to bar a sampled apportionment count. After 1990 the Secretary of Commerce declined to adjust the census using that decade's version of this survey, and the Court upheld the refusal in *Wisconsin v. City of New York* (1996). So the Post-Enumeration Survey exists to describe the problem, not to repair it: an agency's careful measurement of how wrong its own flagship product is, published in full, with no mechanism attached.
+The grade cannot fix any of it. Congress lets the Bureau sample in its work "except for the determination of population for purposes of apportionment",^[Census Act, 13 U.S.C. § 195: <https://www.law.cornell.edu/uscode/text/13/195>.] and in 1999 the Supreme Court read that to bar a sampled apportionment count.^[*Department of Commerce v. U.S. House of Representatives*, 525 U.S. 316 (1999): <https://www.law.cornell.edu/supremecourt/text/525/316>.] After 1990 the Secretary of Commerce declined to adjust the census using that decade's version of this survey, and the Court upheld the refusal in *Wisconsin v. City of New York* (1996).^[517 U.S. 1 (1996): <https://www.law.cornell.edu/supremecourt/text/517/1>.] So the Post-Enumeration Survey exists to describe the problem, not to repair it: an agency's careful measurement of how wrong its own flagship product is, published in full, with no mechanism attached.
 
 ## What this brief cannot tell you
 
@@ -93,9 +93,9 @@ The grade cannot fix any of it. Congress lets the Bureau sample in its work "exc
 
 **A blank is not a clean bill of health.** On `r N_NONE` states the survey did not see enough to say which way the count went. That gets reported as "this state was fine" constantly, and the correct reading is "we do not know".
 
-**The 2010 comparison does not work at the state level.** The state table labels the 2020 margin a standard error and the 2010 one a wider quantity that also covers a bias the newer method removed. Subtracting the columns hands you a change for every state, and the Bureau marked none of them.
+**The 2010 comparison does not work at the state level.** The state table labels the 2020 margin a standard error, the usual statistical measure of how far a sample estimate is likely to sit from the truth, and the 2010 one a wider quantity that also covers a bias the newer method removed. Subtracting the columns hands you a change for every state, and the Bureau marked none of them.
 
-**The household population is the whole frame.** The `r nn(FN("not_evaluated"))` people in group quarters and Remote Alaska are outside every figure here, and Puerto Rico was evaluated on a separate design and published separately.
+**The household population is the whole frame.** The `r nn(FN("not_evaluated"))` people in group quarters (the dormitories, prisons, nursing homes and shelters above) and in Remote Alaska are outside every figure here, and Puerto Rico was evaluated on a separate design and published separately.
 
 ## What you should have learned
 
@@ -158,10 +158,13 @@ Two stretch ideas, beyond the spreadsheet. Download the Bureau's 2010 coverage r
 
 - Census Act, 13 U.S.C. § 195 (sampling, "except for the determination of
   population for purposes of apportionment").
+  <https://www.law.cornell.edu/uscode/text/13/195>
 - *Wisconsin v. City of New York*, 517 U.S. 1 (1996) — the Secretary's refusal
   to adjust the 1990 count using that decade's post-enumeration survey, upheld.
+  <https://www.law.cornell.edu/supremecourt/text/517/1>
 - *Department of Commerce v. U.S. House of Representatives*, 525 U.S. 316
   (1999) — sampling barred for the apportionment count.
+  <https://www.law.cornell.edu/supremecourt/text/525/316>
 
 **The data itself**
 

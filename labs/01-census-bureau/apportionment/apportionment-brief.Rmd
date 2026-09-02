@@ -16,9 +16,9 @@ dd_read_chunks("apportionment-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Political power in America is supposed to follow the census. Article I, Section 2 orders a count every ten years, and orders that House seats be apportioned among the states "according to their respective Numbers." Every civics course states it as a fact. What the clause does not say is *how*: dividing `r n(sum(ap$seats))` seats among `r nrow(ap)` states essentially never comes out in whole numbers, and whichever way the fractions are settled will benefit one state at another's cost. So the question here is the how. By what rule does a count become seats, and how finely can that rule cut?
+Political power in America is supposed to follow the census. Article I, Section 2 orders a count every ten years, and orders that House seats be apportioned — divided up in proportion — among the states "according to their respective Numbers."^[U.S. Const. art. I, § 2, cl. 3, text at the National Archives: <https://www.archives.gov/founding-docs/constitution-transcript>.] Every civics course states it as a fact. What the clause does not say is *how*: dividing `r n(sum(ap$seats))` seats among `r nrow(ap)` states essentially never comes out in whole numbers, and whichever way the fractions are settled will benefit one state at another's cost. So the question here is the how. By what rule does a count become seats, and how finely can that rule cut?
 
-The 2020 answer ends at a very sharp edge. The last of the `r n(sum(ap$seats))` seats went to `r tail(b435$order, 1)`. The state next in line was `r ladder$state[1]`, and the distance between them was `r n(margin)` people, a large lecture hall. Because the count fell that way, New York casts one fewer vote on every bill that passes the House for a decade. It casts one fewer vote for President in two elections, since a state's electors are its seats plus two.
+The 2020 answer ends at a very sharp edge. The last of the `r n(sum(ap$seats))` seats went to `r tail(b435$order, 1)`. The state next in line was `r ladder$state[1]`, and the distance between them was `r n(margin)` people, a large lecture hall. Because the count fell that way, New York casts one fewer vote on every bill that passes the House for a decade. It casts one fewer vote for President in two elections, since a state's electors are its seats plus two.^[U.S. Const. art. II, § 1, cl. 2: each state appoints electors equal to its Senators and Representatives together. <https://www.law.cornell.edu/constitution/articleii>.]
 
 That margin is the number everyone quotes about the 2020 census, almost always to argue that the count needed to be more accurate. Whether the margin can bear that argument is where this brief ends, and the answer is not the obvious one.
 
@@ -28,11 +28,11 @@ The question is answered from the Bureau's own record of the hand-out: the *2020
 
 No other source could serve. The seats in this file are not a measurement of how many seats the states have. They **are** how many seats the states have, reported by the agency that ran the count under a legal deadline. And because the Bureau publishes the queue as well as the result, the rule can be re-run here and checked against the publisher to the last digit. Very little political data can be audited that completely.
 
-The count underneath the file is the decennial census. [The decennial census chapter](../census-decennial/census-decennial-brief.html) is that data's biography: what the count asks, who is in it, and who it fails to find. This brief takes the count as given and follows what the law does with it. The rule in force is the **method of equal proportions**, also called Huntington–Hill. Congress changed methods five times before fixing this one by statute in 1941, and the size of the House, `r n(sum(ap$seats))`, has been a statute of its own since 1929.
+The count underneath the file is the decennial census. [The decennial census chapter](../census-decennial/census-decennial-brief.html) is that data's biography: what the count asks, who is in it, and who it fails to find. This brief takes the count as given and follows what the law does with it. The rule in force is the **method of equal proportions**, also called Huntington–Hill. Congress changed methods five times before fixing this one by statute in 1941,^[The Census Bureau's own history of the methods, from Jefferson's to equal proportions: <https://www.census.gov/topics/public-sector/congressional-apportionment/about/historical-perspective.html>. The 1941 act is now 2 U.S.C. § 2a: <https://www.law.cornell.edu/uscode/text/2/2a>.] and the size of the House, `r n(sum(ap$seats))`, has been a statute of its own since 1929.
 
 ## The data
 
-The build reads the Bureau's three workbooks and reduces them to three small tables, keeping the state rows and dropping the title and total rows.
+The Bureau publishes those three tables as spreadsheets. The three tables here are their state rows, with the title and total rows removed.
 
 `apportionment_2020.csv` has one row per state and five columns besides the name: `resident_pop`, `overseas`, `app_pop`, `seats`, and `people_per_seat`. Fifty rows, not fifty-one: the District of Columbia has no apportioned Representative and does not appear. Here is one row.
 
@@ -58,7 +58,9 @@ The rule is short enough to write out in full. Every state starts with the one s
 
 $$\text{priority} \;=\; \frac{\text{population}}{\sqrt{k(k-1)}}$$
 
-and the highest bid takes the seat. That is the whole method. The divisor grows with every seat a state wins, so winning lowers your own next bid, and that is the entire reason the queue self-corrects instead of handing the whole House to California. Here are the first twelve seats, with the arithmetic spelled out.
+and the highest bid takes the seat. That is the whole method. The divisor grows with every seat a state wins, so winning lowers your own next bid, and that is the entire reason the queue self-corrects instead of handing the whole House to California.
+
+Follow the first three seats by hand. When seat `r pv$house_seat[1]` is handed out, every state holds exactly one seat, so every state is bidding for its second: $k = 2$, and the divisor is $\sqrt{2 \times 1}$ = `r pc(d2, 5)` for all of them. California, with `r n(ca)` people, bids `r n(ca)` ÷ `r pc(d2, 5)` = `r n(round(ca / d2))`. Texas, with `r n(tx)` people, bids `r n(round(tx / d2))`. Nobody can beat California, so seat `r pv$house_seat[1]` is California's second. Winning changes California's next bid and nobody else's: it is now asking for its third seat, $k = 3$, the divisor is $\sqrt{3 \times 2}$ = `r pc(d3, 5)`, and its bid falls to `r n(ca)` ÷ `r pc(d3, 5)` = `r n(round(ca / d3))`. Texas's `r n(round(tx / d2))` is now the highest bid on the table, so seat `r pv$house_seat[2]` is Texas's second. That drops Texas to `r n(round(tx / d3))`, which puts California's `r n(round(ca / d3))` back on top, ahead of Florida's `r n(round(fl / d2))`, and seat `r pv$house_seat[3]` is California's third. The queue runs like that `r n(sum(ap$seats) - nrow(ap))` times.^[The Bureau walks through the same arithmetic on its page "Computing Apportionment": <https://www.census.gov/topics/public-sector/congressional-apportionment/about/computing.html>.] Here are its first twelve steps, with the arithmetic spelled out.
 
 ```{r worked-queue}
 ```
@@ -110,7 +112,7 @@ Now the second of your two guesses, answered for every state at once.
 ```{r ladder-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. How far every near-miss state was from one more seat.** The eight states closest to a further seat, ordered by how short they fell; each dot is the number of additional residents that state needed. The scale is logarithmic, so a dot rather than a bar: bar length on a log axis would encode distance from an arbitrary origin rather than the quantity. `r ladder$state[1]` is the red dot at `r n(margin)`. The next state, `r ladder$state[2]`, is about `r n(round(runner / margin))` times further away.
+**Figure 2. How far every near-miss state was from one more seat.** The eight states closest to a further seat, ordered by how short they fell; each dot is the number of additional residents that state needed. The scale is logarithmic — each step along the axis multiplies by ten instead of adding a fixed amount, so that a few hundred and a million fit on one line — and the marks are dots rather than bars: bar length on a log axis would encode distance from an arbitrary origin rather than the quantity. `r ladder$state[1]` is the red dot at `r n(margin)`. The next state, `r ladder$state[2]`, is about `r n(round(runner / margin))` times further away.
 
 Most readers guess that second place was also close — a few thousand, perhaps tens of thousands. It is `r n(runner)`. **New York's near-miss was a freak event, and the distance to second place is the evidence.** Nothing about the 2020 apportionment was generally knife-edged; one comparison out of `r nrow(ap)` happened to be.
 
@@ -128,7 +130,7 @@ So the obvious reading of the famous margin is wrong. `r n(margin)` people is no
 ```{r pen, include=FALSE}
 ```
 
-If the near-miss is a fact about the rules, then the rules are the thing worth arguing with. Equal proportions is one of six methods Congress has used or considered, and they do not agree with one another. Fifty states are too many to argue about at once. Four are enough to produce the whole disagreement.
+If the near-miss is a fact about the rules, then the rules are the thing worth arguing with. Equal proportions is one of six methods Congress has used or considered, and they do not agree with one another.^[Michel L. Balinski and H. Peyton Young, *Fair Representation: Meeting the Ideal of One Man, One Vote*, 2nd ed. (Washington, D.C.: Brookings Institution Press, 2001), <https://www.brookings.edu/books/fair-representation/>.] Fifty states are too many to argue about at once. Four are enough to produce the whole disagreement.
 
 Put `r sum(penP)` people into four groups of `r paste(penP, collapse = ", ")`. Set `r penS` pennies on the table between them. Give one instruction: each group should end up with a share of the pennies matching its share of the people. Do not say how.
 
@@ -166,7 +168,7 @@ Every group can work out its own fair number in a minute, and every one of those
 
 Six rules produce `r penD` different answers here. Adams's method gives the smallest group `r penM["Adams", "A"]` pennies and takes one off the largest. Jefferson's gives the group of `r penP[2]` one fewer and hands it to the group of `r penP[3]`. Hamilton's method agrees with Huntington–Hill at this setting, which it will not do once you start moving the pennies. Nobody has miscounted anything. The group sizes are known exactly, and every bit of the disagreement is about the remainder.
 
-A room full of people makes the same point faster. The largest group reliably invents something close to rounding down, which is Jefferson's method. The smallest reliably insists that it cannot be left with nothing, which is Huntington–Hill's guaranteed seat. Both are arguing their own interest, and both are quoting a rule the United States has actually used. Jefferson was Virginia, the largest state in the union. Webster and John Quincy Adams were New England, and New England was small.
+A room full of people makes the same point faster. The largest group reliably invents something close to rounding down, which is Jefferson's method. The smallest reliably insists that it cannot be left with nothing, which is Huntington–Hill's guaranteed seat. Both are arguing their own interest, and both are quoting a rule the United States has actually used. Jefferson was Virginia, the largest state in the union. Webster and John Quincy Adams were New England, and New England was small.^[Balinski and Young, *Fair Representation*, trace who sponsored each method and which states it favoured.]
 
 Four things to do with it, in the version with the sliders:
 
@@ -176,8 +178,10 @@ Four things to do with it, in the version with the sliders:
   `r penA$before[penA$li]` to `r penA$after[penA$li]` under `r penA$rule`'s
   method. There is more to hand out and one group receives less. That is the
   **Alabama paradox**, named for the 1880 census, when the House found that
-  growing from 299 seats to 300 would take a seat away from Alabama. The last
-  two rows of the printed figure carry the same two lines.
+  growing from 299 seats to 300 would take a seat away from Alabama.^[The
+  Census Bureau's account of the episode:
+  <https://www.census.gov/topics/public-sector/congressional-apportionment/about/historical-perspective.html>.]
+  The last two rows of the printed figure carry the same two lines.
 - **Make the same move under the other five rules.** Nothing falls. A divisor
   method runs a queue like the one this brief opened with, and lengthening a
   queue cannot take back what it has already handed out.
@@ -195,13 +199,13 @@ None of this is a simplified version of the real thing. It is the real thing, wi
 
 ## What this brief cannot tell you
 
-The file has authority without uncertainty. Every population is printed as an exact whole number, and none is exact. The Bureau publishes its coverage error separately, on a different schedule, and puts state-level error in the hundreds of thousands, far above `r n(margin)`. So this brief cannot say that a more careful count would have moved the seat. Nothing here measures enumeration error, and no second source exists against which to check the first.
+The file has authority without uncertainty. Every population is printed as an exact whole number, and none is exact. The Bureau publishes its coverage error separately, on a different schedule — the [coverage brief](../census-coverage/census-coverage-brief.html) reads it — and puts state-level error in the hundreds of thousands, far above `r n(margin)`. So this brief cannot say that a more careful count would have moved the seat. Nothing here measures enumeration error, and no second source exists against which to check the first.
 
 It is one decade. Whether *some* state is always within a few thousand people of a seat cannot be settled from a single census; that would take the 1990, 2000, and 2010 files alongside.
 
 It says nothing about districts. Apportionment decides how many seats a state gets; districting decides where the lines go inside it, and the two are confused constantly.
 
-And it cannot judge the rule itself. Congress chose equal proportions over five rivals that are equally defensible and do not agree, and the Supreme Court, in *Department of Commerce v. Montana* (1992), declined to second-guess the choice. Which method is fairest is a value judgment wearing technical clothes, and no column in this file settles it.
+And it cannot judge the rule itself. Congress chose equal proportions over five rivals that are equally defensible and do not agree, and the Supreme Court, in *Department of Commerce v. Montana* (1992), declined to second-guess the choice.^[503 U.S. 442 (1992): <https://www.law.cornell.edu/supremecourt/text/503/442>.] Which method is fairest is a value judgment wearing technical clothes, and no column in this file settles it.
 
 ## What you should have learned
 
@@ -244,14 +248,18 @@ open in a spreadsheet, and they are yours to take further.
   Ideal of One Man, One Vote*, 2nd edn. Washington, D.C.: Brookings Institution
   Press. ISBN 978-0-8157-0111-8. The six methods, the impossibility result and
   the history of the fights over which rule to use are worked out here.
+  <https://www.brookings.edu/books/fair-representation/>
 
 **Statutes and cases**
 
 - U.S. Const. art. I, § 2, cl. 3; amend. XIV, § 2.
+  <https://www.archives.gov/founding-docs/constitution-transcript>
 - Permanent Apportionment Act of 1929, 46 Stat. 21; method of equal
   proportions fixed by Act of 15 November 1941, 55 Stat. 761 (now 2 U.S.C.
   §2a).
+  <https://www.law.cornell.edu/uscode/text/2/2a>
 - *Department of Commerce v. Montana*, 503 U.S. 442 (1992).
+  <https://www.law.cornell.edu/supremecourt/text/503/442>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -41,6 +41,22 @@ SENTP <- ctrl$share_with_no_margin[1]
 SMALL <- marg$median_margin_pct[1]
 BIG   <- marg$median_margin_pct[nrow(marg)]
 
+# The worked example names the county in the first row of the divergence
+# table. The name is looked up by FIPS code rather than typed beside the
+# numbers, so a rebuild that reorders the table cannot put the wrong name on
+# the right figures; an unlisted code falls back to the code itself.
+CNAME <- c("48257" = "Kaufman County, Texas, on the east side of Dallas",
+           "48397" = "Rockwall County, Texas, northeast of Dallas",
+           "48091" = "Comal County, Texas, north of San Antonio",
+           "48291" = "Liberty County, Texas, northeast of Houston",
+           "12119" = "Sumter County, Florida, home of The Villages",
+           "13157" = "Jackson County, Georgia, northeast of Atlanta",
+           "48367" = "Parker County, Texas, west of Fort Worth",
+           "37019" = "Brunswick County, North Carolina, on the coast")
+TOPFIPS <- as.character(dvg$county_fips[1])
+TOPNAME <- if (TOPFIPS %in% names(CNAME)) CNAME[[TOPFIPS]] else
+           paste("county", TOPFIPS)
+
 knit_print.data.frame <- function(x, ...) {
   n <- names(x)
   n <- gsub("_", " ", n)

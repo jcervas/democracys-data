@@ -18,13 +18,13 @@ dd_read_chunks("areal-units-code.R")
 
 Here is a claim you have met in map form. One map of a city shades each neighborhood by its Black share and shows a place sharply divided. Another shades the same city as a single unit and shows one even tone. Both can be drawn from the same census, taken on the same day, with no error in either. Two honest maps of the same people can tell opposite stories. How?
 
-The how has a name worth learning: the **modifiable areal unit problem**, named by the geographer Stan Openshaw in 1984. It is the fact that a statistic computed over areas depends on the boxes the people were sorted into, and not only on the people. This brief asks it in its sharpest form. Fulton County, Georgia is `r pc(FV("ful_black_pct"), 2)`% Black; cut the county into six districts of equal population, and how many are majority-Black? That sounds like a question about Fulton's people. Whether it is one is the test.
+The how has a name worth learning: the **modifiable areal unit problem**, named by the geographer Stan Openshaw in 1984.^[Stan Openshaw, *The Modifiable Areal Unit Problem*, Concepts and Techniques in Modern Geography 38 (Norwich: Geo Books, 1984), <https://www.uio.no/studier/emner/sv/iss/SGO9010/openshaw1983.pdf>.] It is the fact that a statistic computed over areas depends on the boxes the people were sorted into, and not only on the people. This brief asks it in its sharpest form. Fulton County, Georgia is `r pc(FV("ful_black_pct"), 2)`% Black; cut the county into six districts of equal population, and how many are majority-Black? That sounds like a question about Fulton's people. Whether it is one is the test.
 
 ## The test
 
-The test holds the people still and moves only the boxes. The data is the [2020 Census Redistricting Data (P.L. 94-171) Summary File](https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip) for Georgia, downloaded whole from the Census Bureau's own server, with block boundaries from the Bureau's TIGER/Line 2020 release. A 1975 statute obliges the Bureau to deliver this file to every state legislature so the legislature can draw districts. So these pages use the redistricting numbers themselves, in the form Georgia's map-drawers received them.
+The test holds the people still and moves only the boxes. The data is the count the Census Bureau took in 2020, in the form it publishes for redistricting: the [2020 Census Redistricting Data (P.L. 94-171) Summary File](https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip) for Georgia, downloadable from the Bureau's server at that address, with block boundaries from the Bureau's TIGER/Line 2020 release, its digital outlines of every census unit. [A 1975 statute](https://www.law.cornell.edu/uscode/text/13/141) obliges the Bureau to deliver this file to every state legislature so the legislature can draw districts. So these pages use the redistricting numbers themselves, in the form Georgia's map-drawers received them.
 
-Three properties make this file, of all files, the right instrument. It is a complete count rather than a sample, so there are no margins of error below, no allowance for how far off an estimate could be, because nothing is estimated. Its atom, the census block, is the smallest unit the Bureau publishes, so everything larger can be built out of it. And census units nest exactly. A block's identifier contains the identifiers of its block group, tract, county and state, so climbing that ladder is arithmetic on a string, with no map operation to introduce error. How that machinery works, and where it stops, is the subject of the [census geography chapter](../census-geography/census-geography-brief.html).
+Three properties make this file, of all files, the right instrument. It is a complete count rather than a sample, so there are no margins of error below, no allowance for how far off an estimate could be, because nothing is estimated. Its atom, the census block, is the smallest unit the Bureau publishes, so everything larger can be built out of it. And census units nest exactly. A block's identifier contains the identifiers of its block group (a cluster of neighboring blocks), its tract (a group of block groups, the Bureau's stand-in for a neighborhood), its county and its state, so climbing that ladder is arithmetic on a string, with no map operation to introduce error. How that machinery works, and where it stops, is the subject of the [census geography chapter](../census-geography/census-geography-brief.html).
 
 Two experiments follow. The first climbs the ladder: the same blocks, added into block groups, then tracts, then the county, watching what each rung does to the spread of the Black share. That is the **scale effect**, what happens to a statistic as the units it is computed over grow. The second holds the number and size of units fixed and changes only their shapes. That is the **zoning effect**, and it is the one that decides elections, because redrawing shapes while holding population constant is the literal definition of redistricting.
 
@@ -35,11 +35,11 @@ Two experiments follow. The first climbs the ladder: the same blocks, added into
 
 Everything below rests on one table built here from the Bureau's raw files: [`ga_block_race.csv`](data/derived/ga_block_race.csv), one row per Georgia census block. Its columns, by name: `GEOID20`, the block's fifteen-character identifier; `pop`, everyone counted there in 2020; `black_alone`; `black_any`; `vap`, the voting-age population; and `black_any_vap`, the voting-age count of any part Black.
 
-Building it was the ordinary work of opening a government file never designed to be convenient. One decision in that work changes what you can trust. Every identifier is held as text, because a fifteen-digit identifier read as a number collapses into scientific notation, and a tract identifier silently drops its leading zero. The build stops outright if any identifier is not exactly fifteen characters wide.
+One detail of how the table was made changes what you can trust. Every identifier is held as text, because a fifteen-digit identifier read as a number collapses into scientific notation, and a tract identifier silently drops its leading zero.
 
-Keeping only the rows whose summary level means "block" leaves `r n(FV("ga_blocks"))` of them. Nothing was imputed, meaning no value nobody recorded was filled in by guessing. No row was dropped for being empty either: blocks with nobody living on them stay in, all `r n(FN("ful_blocks") - FN("ful_blocks_pop"))` of Fulton's, because how many there are is part of the record.
+The Bureau's file stacks every level of geography in one table, from the state down, with a code on each row saying which level it belongs to. Keeping only the rows coded as blocks leaves `r n(FV("ga_blocks"))` of them. Nothing was imputed, meaning no value nobody recorded was filled in by guessing. No row was dropped for being empty either: blocks with nobody living on them stay in, all `r n(FN("ful_blocks") - FN("ful_blocks_pop"))` of Fulton's, because how many there are is part of the record.
 
-Two decisions in the table are choices, and they are named. `black_any` counts a person as Black if their answer is any of the `r n_black` of the census's `r n_cells` race combinations that include Black. Counting `black_alone` instead gives Georgia `r pc(FV("ga_black_alone_pct"), 1)`% rather than `r pc(FV("ga_black_pct"), 2)`%; voting-rights litigation generally uses any-part, so this brief does too. And every statistic below is population-weighted: a unit counts as many times as it holds people, so a block of three cannot pull as hard as a tract of six thousand. What the file holds, at the two scales this brief uses:
+Two decisions in the table are choices, and they are named. `black_any` counts a person as Black if their answer is any of the `r n_black` of the census's `r n_cells` race combinations that include Black. Counting `black_alone` instead gives Georgia `r pc(FV("ga_black_alone_pct"), 1)`% rather than `r pc(FV("ga_black_pct"), 2)`%; voting-rights litigation generally uses any-part, so this brief does too.^[The Justice Department's guidance on the 2000 census race categories directed that a person reporting Black together with any other race be counted as Black for voting-rights purposes: "Guidance Concerning Redistricting and Retrogression Under Section 5 of the Voting Rights Act," 66 Fed. Reg. 5412 (18 January 2001), <https://www.federalregister.gov/documents/2001/01/18/01-1435/guidance-concerning-redistricting-and-retrogression-under-section-5-of-the-voting-rights-act-42-usc-1973c>. The Supreme Court used the same "any part Black" measure in *Georgia v. Ashcroft*, 539 U.S. 461 (2003), <https://www.law.cornell.edu/supremecourt/text/539/461>.] And every statistic below is population-weighted: a unit counts as many times as it holds people, so a block of three cannot pull as hard as a tract of six thousand. What the file holds, at the two scales this brief uses:
 
 ```{r step1}
 ```
@@ -49,7 +49,7 @@ The rest of the folder was made here rather than downloaded, and made data can a
 ```{r rules}
 ```
 
-Neither rule looks at race, or at anything except where people live and which way the ruler points. Every unit of every plan holds a sixth of Fulton to within `r pc(FV("max_dev_pct"), 2)`% of the quota, tighter than any real districting plan in the United States is required to be.
+Neither rule looks at race, or at anything except where people live and which way the ruler points. Every unit of every plan holds a sixth of Fulton to within `r pc(FV("max_dev_pct"), 2)`% of the quota, the one-sixth target, well inside the tolerance courts allow state legislative and local plans, whose largest and smallest districts may differ by up to about a tenth of a district's population.^[Congressional districts are held to a stricter standard, equal "as nearly as practicable": *Karcher v. Daggett*, 462 U.S. 725 (1983), <https://www.law.cornell.edu/supremecourt/text/462/725>. State and local plans whose total deviation is under ten percent are ordinarily presumed constitutional: *Brown v. Thomson*, 462 U.S. 835 (1983), <https://www.law.cornell.edu/supremecourt/text/462/835>.]
 
 > **Before you read on, commit to a number.** The same `r n(FV("ful_blocks"))`
 > blocks, the same `r n(FV("ful_pop"))` people, `r FV("K")` units of equal
@@ -69,7 +69,7 @@ Neither rule looks at race, or at anything except where people live and which wa
 
 Most readers commit to two or three, because the county is `r pc(FV("ful_black_pct"), 2)`% Black and a sixth of it ought to look like the whole. **Across the `r n(FV("n_plans"))` plans, the answer runs from `r FV("maj_min")` to `r FV("maj_max")`.**
 
-The left panel is what political scientists call **cracking**, arrived at with no intent. The slabs run across the county's grain, so each one picks up part of the Black south and west and part of the white north. Every unit lands near the county figure and not one is a majority. The right panel cuts with the grain instead. A ruler and a protractor did this; no demographic fact entered either rule.
+The left panel is what political scientists call **cracking**, spreading a group across many districts so that it is a majority in none, arrived at here with no intent. The slabs run across the county's grain, so each one picks up part of the Black south and west and part of the white north. Every unit lands near the county figure and not one is a majority. The right panel cuts with the grain instead. A ruler and a protractor did this; no demographic fact entered either rule.
 
 ```{r zone-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -102,7 +102,7 @@ The population-weighted mean is the control in this experiment: `r pc(LF("Census
 
 Two columns of that table are worth more than they look. The most Black unit in Georgia falls from `r pc(LG("Census block", "max_share"))`% of a block to `r pc(LG("County", "max_share"))`% of a county. No county in Georgia is as Black as thousands of its blocks are, because extremes are a property of the unit. And the correlation between a unit's Black share and its share of residents under 18, a number from −1 to 1 saying how closely the two rise and fall together, runs `r pc(LG("Census block", "corr_child"), 3)` across blocks and `r pc(LG("County", "corr_child"), 3)` across counties. It changes sign on the way up. A correlation is not a fact about people; it is a fact about people *and* the boxes they were sorted into.
 
-What this says about democracy is direct. Any claim about "places", a segregated city, a poor neighborhood, a Black district, inherits a choice of box that somebody made, usually for another purpose, usually long ago. There is no true value underneath for a better method to recover. "How many majority-Black districts can Fulton County support?" is asked and answered under Section 2 of the Voting Rights Act, as though it were a fact about people. It is a fact about partitions of people, and the same people have just been shown to admit partitions giving `r FV("maj_min")` and partitions giving `r FV("maj_max")`.
+What this says about democracy is direct. Any claim about "places", a segregated city, a poor neighborhood, a Black district, inherits a choice of box that somebody made, usually for another purpose, usually long ago. There is no true value underneath for a better method to recover. "How many majority-Black districts can Fulton County support?" is asked and answered under [Section 2 of the Voting Rights Act](https://www.law.cornell.edu/uscode/text/52/10301), as though it were a fact about people. It is a fact about partitions of people, and the same people have just been shown to admit partitions giving `r FV("maj_min")` and partitions giving `r FV("maj_max")`.
 
 And gerrymandering is this fact weaponized. Neither rule here can see race, yet one plan produces `r FV("lo_maj")` majority-Black units and another `r FV("hi_maj")`. So "the algorithm doesn't look at race" defends nothing: a race-blind procedure has a racial output, settled by settings that look purely technical, an angle, a splitting order. The zoning effect is not evidence of gerrymandering. It is the reason gerrymandering is possible, and equally the reason that a plan you dislike is not, by itself, proof of intent.
 
@@ -110,9 +110,9 @@ And gerrymandering is this fact weaponized. Neither rule here can see race, yet 
 
 The range is a floor, not a measurement. Two rule families are not the space of all partitions, and neither imposes compactness, respects a city line or keeps a community together. Real plans are more constrained in ways that narrow the range, and drawn by people with motives in ways that widen it. This is one county, in one state, in one decade: the mechanism is general and these numbers are not.
 
-The ground truth is itself a set of boxes. A census block was drawn by the Bureau, along visible features, for the convenience of the counting, so the finest line drawn here is a line somebody at the Bureau already drew. The published block counts also carry privacy noise added on purpose, and that noise matters more at block level than at county level. Race here is what a person said about themselves on one day. And population is not the electorate: Fulton is `r pc(FV("ful_black_pct"), 2)`% Black by population and `r pc(FV("ful_bvap_pct"), 2)`% by voting-age population.
+The ground truth is itself a set of boxes. A census block was drawn by the Bureau, along visible features, for the convenience of the counting, so the finest line drawn here is a line somebody at the Bureau already drew. The published block counts also carry [privacy noise added on purpose](https://www.census.gov/programs-surveys/decennial-census/decade/2020/planning-management/process/disclosure-avoidance.html), and that noise matters more at block level than at county level. Race here is what a person said about themselves on one day. And population is not the electorate: Fulton is `r pc(FV("ful_black_pct"), 2)`% Black by population and `r pc(FV("ful_bvap_pct"), 2)`% by voting-age population.
 
-Nothing here says what Fulton should have. No plan is optimized for anything, and a real plan must respect city lines, communities of interest and the Voting Rights Act. Nor does anything here say how individuals voted or lived. Reading individual behavior off area averages is its own famous mistake, the **ecological fallacy**, guessing what individuals did from group totals; this brief stays at the level of areas.
+Nothing here says what Fulton should have. No plan is optimized for anything, and a real plan must respect city lines, communities of interest and the Voting Rights Act. Nor does anything here say how individuals voted or lived. Reading individual behavior off area averages is its own famous mistake, the **ecological fallacy**, guessing what individuals did from group totals^[W. S. Robinson, "Ecological Correlations and the Behavior of Individuals," *American Sociological Review* 15, no. 3 (1950): 351–357, <https://doi.org/10.2307/2087176>.]; this brief stays at the level of areas.
 
 ## What you should have learned
 
@@ -147,13 +147,19 @@ Two questions point past the spreadsheet. The sweep counted majorities of total 
 **Concepts**
 
 - Openshaw, S. (1984). *The Modifiable Areal Unit Problem.* CATMOG 38.
+  <https://www.uio.no/studier/emner/sv/iss/SGO9010/openshaw1983.pdf>
 - Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
   Individuals." *American Sociological Review* 15(3).
+  <https://doi.org/10.2307/2087176>
 
 **Law**
 
 - Voting Rights Act § 2, 52 U.S.C. § 10301 — the provision under which "how
   many majority-minority districts are possible" is asked and answered.
+  <https://www.law.cornell.edu/uscode/text/52/10301>
+- 13 U.S.C. § 141(c), the delivery of redistricting counts to the states
+  that Public Law 94-171 added in 1975.
+  <https://www.law.cornell.edu/uscode/text/13/141>
 
 **The data itself**
 
