@@ -28,6 +28,12 @@ CM <- function(q) cmp$value[cmp$quantity == q]
 C1 <- win$counties_published[1]; C5 <- win$counties_published[2]
 MISS  <- C5 - C1
 MISSP <- 100 * MISS / C5
+# the same two windows counted over the fifty states and DC alone, which is
+# the universe the decennial chapters use; the difference is Puerto Rico
+S1 <- win$counties_states_dc[1];   S5 <- win$counties_states_dc[2]
+PR1 <- win$counties_puerto_rico[1]; PR5 <- win$counties_puerto_rico[2]
+MISS_S  <- S5 - S1
+MISSP_S <- 100 * MISS_S / S5
 FLOOR <- win$smallest_place_published[1]
 LAST3 <- max(vint$year[vint$series == "3_year" & vint$http == 200])
 SENT  <- ctrl$rows_with_no_margin[1]

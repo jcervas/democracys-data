@@ -139,12 +139,41 @@ stopifnot(nrow(c5) > 3000, nrow(c1) > 500, !any(duplicated(c5$fips)))
 # estimate at all.
 FLOOR <- min(c1$est, na.rm = TRUE)
 
+# WHAT THE COUNTY ROWS ACTUALLY ARE, because "3,222 counties" is not the
+# country and the number is quoted as though it were. Two things separate this
+# file's county universe from the 3,143 the decennial chapters count:
+#
+#   PUERTO RICO. The ACS covers it and publishes its 78 municipios at this
+#   summary level. They are county-equivalents, they are not counties of a
+#   state, and they are outside the apportionment population the decennial
+#   file is built for -- which is why the redistricting chapters drop them.
+#
+#   CONNECTICUT. The state replaced its eight counties with nine planning
+#   regions, and the 2023 ACS vintage is tabulated on the new geography while
+#   the 2020 P.L. file is tabulated on the old. So the same country is 3,143
+#   rows in one product and 3,144 in the other, and neither is wrong.
+#
+# Both are measured here rather than asserted, so a later vintage that changed
+# either one would move these numbers instead of quietly contradicting them.
+st2       <- function(d) substr(d$fips, 1, 2)
+PR1       <- sum(st2(c1) == "72");  PR5 <- sum(st2(c5) == "72")
+CT5_FIPS  <- c5$fips[st2(c5) == "09"]
+CT5       <- length(CT5_FIPS)
+# planning regions are 09110...09190 and end in a zero; the old counties are
+# 09001...09015 and are odd
+CT5_PLANNING <- all(as.integer(substr(CT5_FIPS, 3, 5)) %% 10 == 0)
+stopifnot(PR5 == 78, CT5 == 9, CT5_PLANNING)
+
 windows <- data.frame(
   window = c("One-year (2023)", "Five-year (2019-2023)"),
   counties_published = c(nrow(c1), nrow(c5)),
+  counties_states_dc = c(nrow(c1) - PR1, nrow(c5) - PR5),
+  counties_puerto_rico = c(PR1, PR5),
   smallest_place_published = c(FLOOR, min(c5$est, na.rm = TRUE)),
   what_it_is = c("A single year of sample",
                  "Five years of sample pooled, averaged over the period"))
+stopifnot(windows$counties_states_dc + windows$counties_puerto_rico ==
+          windows$counties_published)
 dd_write_csv(windows, "derived/windows.csv")
 
 MISSING <- nrow(c5) - nrow(c1)
