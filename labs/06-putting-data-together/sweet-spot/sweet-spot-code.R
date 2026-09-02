@@ -20,6 +20,10 @@ bn  <- read.csv("data/derived/bins.csv",       stringsAsFactors = FALSE)
 lub <- read.csv("data/derived/lublin.csv",     stringsAsFactors = FALSE)
 pk  <- read.csv("data/derived/sweetspot.csv",  stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears in derived/ without a line there.
+dd_derived(c("bins.csv", "bisg_calibration.csv", "bisg_downstream.csv", "bisg_members.csv", "checks.csv", "districts.csv", "fitted.csv", "lublin.csv", "lublin_t1.csv", "members.csv", "simulation.csv", "surface.csv", "surname_check.csv", "surname_grade.csv", "surname_hyphen.csv", "sweetspot.csv"))
+
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
 
