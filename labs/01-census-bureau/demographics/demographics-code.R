@@ -47,6 +47,10 @@ wbk <- rd("derived/wayne_block_rings.csv", colClasses = c(id = "character"))
 wdt <- rd("derived/wayne_detroit_rings.csv")
 pro <- rd("derived/eightmile_profile.csv")
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("categories.csv", "counties.csv", "decades.csv", "eightmile_profile.csv", "facts.csv", "ladder.csv", "metros.csv", "nation.csv", "regions.csv", "standards.csv", "states.csv", "tract_dist.csv", "tract_largest.csv", "us_divisions.csv", "us_maplabels.csv", "us_rings.csv", "wayne_bg.csv", "wayne_bg_rings.csv", "wayne_block_rings.csv", "wayne_detroit_rings.csv", "wayne_outline.csv", "wayne_tract_rings.csv", "wayne_tracts.csv", "wayne_transect.csv"))
+
 FV <- function(k) { v <- fc$value[fc$name == k]
                     if (!length(v)) stop("no such fact: ", k); v }
 FN <- function(k) as.numeric(FV(k))

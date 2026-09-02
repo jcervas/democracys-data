@@ -15,6 +15,10 @@ options(scipen = 999)
 
 D  <- "data"
 fc <- read.csv(file.path(D, "derived/facts.csv"),        stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("county_outline.csv", "dens_fulton.csv", "dots_fulton.csv", "facts.csv", "ga_block_race.csv", "ladder_fulton.csv", "ladder_state.csv", "map_units.csv", "map_vals.csv", "zoning_plan_geo.csv", "zoning_plan_units.csv", "zoning_summary.csv", "zoning_sweep.csv"))
 ls_ga <- read.csv(file.path(D, "derived/ladder_state.csv"),  stringsAsFactors = FALSE)
 lf <- read.csv(file.path(D, "derived/ladder_fulton.csv"), stringsAsFactors = FALSE)
 mu <- read.csv(file.path(D, "derived/map_units.csv"),    stringsAsFactors = FALSE)

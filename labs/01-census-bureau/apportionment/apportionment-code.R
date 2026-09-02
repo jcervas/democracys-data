@@ -61,6 +61,10 @@ runner <- ladder$short[2]
 
 # the seats the 2020 count moved, from Table 1's own comparison column
 scs   <- read.csv("data/derived/seat_change_states.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("apportionment_2020.csv", "priority_values.csv", "seat_change_labels.csv", "seat_change_rings.csv", "seat_change_states.csv", "state_rings.csv"))
 SGAIN <- sum(scs$change[scs$change > 0])
 
 # the ten seats the Bureau tabulated past the statute

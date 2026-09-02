@@ -25,6 +25,10 @@ overlap <- rd("route_overlap.csv")
 routes  <- rd("routes.csv")
 apiv    <- rd("api_vintages.csv")
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("api_vintages.csv", "catalog.csv", "checks.csv", "decennial_pa.csv", "facts.csv", "national_spread.csv", "pep_revision_national.csv", "pep_revisions.csv", "pep_same_date.csv", "route_overlap.csv", "routes.csv"))
+
 n  <- function(x) format(as.numeric(x), big.mark = ",")
 pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
 

@@ -20,6 +20,10 @@ pr <- read.csv("data/derived/pairs.csv",  stringsAsFactors = FALSE)
 sa <- read.csv("data/derived/states.csv", stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",  stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("arcs.csv", "facts.csv", "groups.csv", "matrix.csv", "pairs.csv", "states.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

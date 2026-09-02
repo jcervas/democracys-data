@@ -27,6 +27,10 @@ n  <- function(x) format(as.numeric(x), big.mark = ",")
 # identifiers; getting it wrong here would be a special kind of failure.
 CH <- c(geoid = "character", digits = "character", lev = "character")
 fc  <- read.csv(file.path(D, "derived/facts.csv"),      colClasses = c(value = "character"))
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("chain.csv", "facts.csv", "levels.csv", "map_ids.csv", "map_units.csv", "nesting.csv", "splits.csv", "tract_split.csv", "us_divisions.csv", "us_ids.csv", "us_map.csv"))
 sp  <- read.csv(file.path(D, "derived/splits.csv"),     stringsAsFactors = FALSE)
 ch  <- read.csv(file.path(D, "derived/chain.csv"),      colClasses = CH)
 mu  <- read.csv(file.path(D, "derived/map_units.csv"),  stringsAsFactors = FALSE)

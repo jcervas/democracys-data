@@ -37,6 +37,10 @@ zvz    <- rd("zip_vs_zcta.csv")
 chk    <- rd("checks.csv")
 fv     <- rd("facts.csv")
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("blocks_check.csv", "checks.csv", "churn.csv", "cities.csv", "cities_big.csv", "digit_rows.csv", "digits.csv", "facts.csv", "lists.csv", "nesting.csv", "no_ground.csv", "no_ground_kind.csv", "pa_split.csv", "pgh_blocks.csv", "pgh_ids.csv", "pgh_rings.csv", "scf.csv", "zip_vs_zcta.csv"))
+
 FV <- function(k) fv$value[fv$name == k]
 FN <- function(k) as.numeric(FV(k))
 n  <- function(x) format(as.numeric(x), big.mark = ",")

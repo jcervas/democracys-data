@@ -20,6 +20,10 @@ nat <- read.csv("data/derived/nation.csv",     stringsAsFactors = FALSE)
 sc  <- read.csv("data/derived/seatchange.csv", stringsAsFactors = FALSE)
 sd  <- read.csv("data/derived/southdefs.csv",  stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("divmap.csv", "maplabels.csv", "nation.csv", "regions.csv", "seatchange.csv", "southdefs.csv", "statemap.csv", "states.csv"))
+
 Y1 <- 1960; Y2 <- 2020
 n  <- function(x) format(round(x), big.mark = ",", trim = TRUE)
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
