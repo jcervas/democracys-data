@@ -37,6 +37,20 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 BLU <- "#2166ac"   # Clinton, everywhere in this chapter
 RED <- "#b2182b"   # Trump
 
+# The worked examples in the prose: one respondent's weight, the raw and
+# weighted counts behind the ladder, and the one-variable weights that a
+# single dial produces. All read from the tables above, never typed.
+two <- R[!is.na(R$vote), ]
+NC  <- sum(two$vote == "Clinton"); NT <- sum(two$vote == "Trump")
+WC  <- sum(two$lvweight[two$vote == "Clinton"])
+WT  <- sum(two$lvweight[two$vote == "Trump"])
+HI  <- two[two$age4 == "65+", ];         HI <- HI[which.max(HI$lvweight), ]
+LO  <- two[two$party3 == "Democratic", ]; LO <- LO[which.min(LO$lvweight), ]
+tg  <- function(v, l, col) TG[[col]][TG$variable == v & TG$level == l]
+w1  <- function(v, l) tg(v, l, "likely") / tg(v, l, "as_collected")
+cshare <- function(v, l) 100 * mean(two$vote[two[[v]] == l] == "Clinton")
+EDW <- sapply(TG$level[TG$variable == "educ4"], function(l) w1("educ4", l))
+
 ## ---- ladder-table
 lad <- SC[SC$scheme %in% c("As collected", "Registered voters (Times)",
                            "Likely voters (Times, published)"), ]

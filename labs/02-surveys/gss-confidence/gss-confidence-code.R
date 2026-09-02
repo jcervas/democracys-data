@@ -66,6 +66,9 @@ DB        <- DB[order(DB$change), ]
 NSIG      <- sum(!DB$sig)
 NFELL     <- sum(DB$sig & DB$change < 0)
 NROSE     <- sum(DB$sig & DB$change > 0)
+# the one row whose change sits inside its own uncertainty, followed through by
+# hand in the brief so the reader can see what "inside" means
+OL        <- DB[DB$institution == "Organized labor", ]
 # counts small enough to belong in a sentence as words rather than digits; still
 # computed, so a revised file changes the prose rather than contradicting it
 WORDS <- c("zero", "one", "two", "three", "four", "five", "six", "seven",

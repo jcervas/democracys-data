@@ -31,6 +31,17 @@ MINMOE <- gv("Margin of error, smallest state, at 50%")
 ALLMOE <- gv("Margin of error, whole sample, at 50%")
 
 WREG <- wt[wt$variable == "votereg" & wt$category == "Yes", ]
+WNO  <- wt[wt$variable == "votereg" & wt$category == "No",  ]
+p2   <- function(x) formatC(x, format = "f", digits = 2)
+
+# one respondent's weight, on average, relative to an answer counted once:
+# a group's weighted share over its unweighted share
+W_NO  <- WNO$pct_weighted  / WNO$pct_unweighted
+W_REG <- WREG$pct_weighted / WREG$pct_unweighted
+
+# the margin-of-error arithmetic for the median state, step by step
+MED_VAR <- 0.25 / MEDN          # p(1-p)/n at p = 0.5
+MED_SE  <- sqrt(MED_VAR)
 
 knit_print.data.frame <- function(x, ...) {
   n <- names(x)

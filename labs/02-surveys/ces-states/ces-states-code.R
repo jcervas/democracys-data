@@ -31,6 +31,15 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
+# the smallest and largest state cells, for the worked margin-of-error arithmetic
+VT <- S[S$name == F("state_min"), ][1, ]
+TX <- S[S$name == F("state_max"), ][1, ]
+VT_P   <- VT$est / 100                 # the estimate as a proportion
+VT_PQ  <- VT_P * (1 - VT_P)            # p(1 - p)
+VT_VAR <- VT_PQ / VT$n_eff             # over the effective sample
+VT_SE  <- sqrt(VT_VAR)
+VT_MOE <- 100 * 1.96 * VT_SE           # in points; matches VT$moe
+
 OK  <- "#1b7837"    # the estimate's interval covers the result
 BAD <- "#b2182b"    # it does not
 

@@ -18,15 +18,15 @@ dd_read_chunks("survey-access-code.R")
 
 The great academic surveys of American politics are free and public. That is the claim, it is repeated on every archive's front page, and it is true. The General Social Survey is free. The American National Election Studies are free. The Cooperative Election Study is free and openly licensed. Nobody is refusing anybody anything as a matter of policy.
 
-So can you actually get them? Not "you" the person with a browser and an afternoon. "You" the person who wants a file fetched the way this book fetches everything else: by a program that can be run again next year and produce the same table. That question turns out to have a measurable answer, and the answer is the subject of this brief.
+So can you actually get them? Not "you" the person with a browser and an afternoon. "You" the person who wants a file the way this book gets everything else: by a program that can be run again next year and produce the same table. The distinction matters, so state it plainly once. A person downloads a file by opening a page and clicking a link. A program downloads it by sending the web server the same request with nobody at the keyboard, which is what makes the work repeatable — and an archive can tell the two apart, and may treat them differently. How differently turns out to have a measurable answer, and the answer is the subject of this brief.
 
 This is the fourth time this book has gone to get something, and the fourth different kind of difficulty. The [census](../../01-census-bureau/census-access/census-access-brief.html) had too many answers: a dozen published populations for one county, and the work is naming which you mean. [Election returns](../../03-elections/county-returns/county-returns-brief.html) had none, so you assemble fifty-one publications yourself. The [voter file](../../03-elections/voter-file-access/voter-file-access-brief.html) is public by law and gated by law. Surveys are none of those: every archive here is free, and four of the six addresses will not answer a program.
 
 ## The test
 
-The measurement is a scan of six addresses, made on `r FV("scan_date")` and kept frozen at that date. The addresses are the ones this book's own chapters read: the Census Bureau's CPS voting supplement table, the GSS cumulative file, and the ANES cumulative file's download page. To them add the Cooperative Election Study on Harvard Dataverse, a second Dataverse dataset, and an ICPSR study page. These are the archives behind [everything a survey can establish that no record can](../surveys-source/surveys-source-brief.html), which is why their front doors are worth a chapter of their own. If the section's data lives behind these six addresses, the six addresses are the section's infrastructure.
+The measurement is a scan of six addresses, made on `r FV("scan_date")` and kept frozen at that date. The addresses are the ones this book's own chapters read: the Census Bureau's voting table from the Current Population Survey (the monthly household survey best known for the unemployment rate), the General Social Survey's cumulative file (every year of NORC's survey of American society in one table), and the download page for the American National Election Studies' cumulative file. To them add the Cooperative Election Study on Harvard Dataverse (the archive Harvard runs for research data), a second dataset on the same archive, and a study page at ICPSR, the Inter-university Consortium for Political and Social Research at the University of Michigan, which holds most of the older survey files in the social sciences. These are the archives behind [everything a survey can establish that no record can](../surveys-source/surveys-source-brief.html), which is why their front doors are worth a chapter of their own. If the section's data lives behind these six addresses, the six addresses are the section's infrastructure.
 
-Each address was requested twice, with byte-identical headers, from two ordinary programs: `curl` and Python's `urllib`. Same User-Agent, same `Accept`, same `Accept-Language`. That makes `r FV("n_probes")` requests in all, and what each one answered was written down.
+Each address was requested twice, with byte-identical headers, from two ordinary programs: `curl`, a small tool that downloads a web address from the command line, and `urllib`, the module a Python program uses to do the same.^[Both are free and documented: <https://curl.se/> and <https://docs.python.org/3/library/urllib.html>.] Same **User-Agent** — the line in a request that names the program making it — same `Accept`, same `Accept-Language`. That makes `r FV("n_probes")` requests in all, and what each one answered was written down.
 
 Sending the same request twice sounds like padding. It is the whole design. Two identical requests from two different programs can only differ in the program that made them, and whether that difference matters is the thing being tested.
 
@@ -34,7 +34,7 @@ Sending the same request twice sounds like padding. It is the whole design. Two 
 
 The scan produced three small tables, and the raw record they are built from is committed beside them exactly as it arrived.
 
-`status.csv` holds one row per archive. `archive` and `what` name the address and what sits at it. `curl` and `urllib` record the HTTP status code each program received: the three-digit number every web server attaches to its answer, where 200 means success. `wall` names the bot wall in front of the address, if any, and `max_bytes` counts the largest answer either program got. `open` is TRUE only when both programs received the data itself.
+`status.csv` holds one row per archive. `archive` and `what` name the address and what sits at it. `curl` and `urllib` record the HTTP status code each program received: the three-digit number every web server attaches to its answer, where 200 means success.^[The codes and their meanings are catalogued at <https://developer.mozilla.org/en-US/docs/Web/HTTP/Status>.] `wall` names the **bot wall** in front of the address, if any — a screen a hosting service puts in front of a page to turn away automated visitors — and `max_bytes` counts the largest answer either program got. `open` is TRUE only when both programs received the data itself.
 
 ```{r status}
 ```
@@ -55,9 +55,11 @@ The scan produced three small tables, and the raw record they are built from is 
 ```{r refusal}
 ```
 
+The two walls named in the table are commercial services. Cloudflare is a company that many websites put in front of themselves to absorb attacks and screen visitors; AWS WAF is Amazon's equivalent, and Harvard Dataverse uses it.^[<https://www.cloudflare.com/> and <https://aws.amazon.com/waf/>.]
+
 **`r FV("n_403")` of the walled archives answer 403.** That is a refusal, and it behaves like one: the request failed, the status says so, and any script that checks its return value stops.
 
-**`r FV("n_202")` answer 202.** HTTP 202 is *Accepted*. It is a success code. The body is `r n(FV("bytes_202"))` bytes of challenge page where the data should be.
+**`r FV("n_202")` answer 202.** HTTP 202 is *Accepted*. It is a success code.^[Defined in RFC 9110, the current specification of HTTP, section 15.3.3: <https://www.rfc-editor.org/rfc/rfc9110.html>.] The body is `r n(FV("bytes_202"))` bytes of **challenge page** — the screen that asks a visitor to prove it is a browser, which a program cannot do — where the data should be.
 
 This book has met that pattern before. The [bellwether chapter](../../03-elections/bellwether/bellwether-brief.html) hit it on a Dataverse archive and had to fetch the file by hand. The [media ideology chapter](../../04-political-actors/media-ideology/media-ideology-brief.html) hit the same wall and had to narrow what it claims. Here it is again, measured directly rather than worked around.
 
@@ -72,7 +74,7 @@ Here is why every address was tried twice.
 
 **`r FV("disagree_archive")` told `curl` `r FV("disagree_curl")` and told Python `r FV("disagree_urllib")`** — and handed Python `r n(FV("disagree_bytes"))` bytes of the page curl was not allowed to see. The headers were identical. The URL was identical. They ran seconds apart, and it reproduces.
 
-So the thing being judged is **not the request.** It is the program that made it: how it negotiates the connection, a fingerprint below the level anything in your code can set. You cannot fix this by changing the User-Agent, because the User-Agent was never what was read.
+So the thing being judged is **not the request.** It is the program that made it: how it negotiates the connection — the technical handshake every program performs with a server before any page is sent, which differs from one program to the next — a fingerprint below the level anything in your code can set. You cannot fix this by changing the User-Agent, because the User-Agent was never what was read.
 
 Two consequences follow, and the second is the uncomfortable one. A wall like this does not distinguish a researcher from a scraper; it is not equipped to know who you are or what you intend. And "can this be fetched?" has no single answer, because it depends on the library you happened to import. A chapter reporting "ICPSR blocks automated access" would be treating a property of the pairing as a property of the archive.
 
@@ -82,11 +84,11 @@ Two consequences follow, and the second is the uncomfortable one. A wall like th
 
 Meanwhile, none of the four walled archives is withholding anything. ANES asks people to take the file from ANES, and the file is free. The CES is openly licensed on a public archive. ICPSR's holdings are free to member institutions. **The permission and the retrieval are separate systems, and they do not know about each other.** The voter file was the opposite case: North Carolina, under the strictest kind of legal regime, serves its file to any client that asks.
 
-That separation is what this measurement says about the infrastructure of public knowledge. Whether a democracy's data is reachable is decided less by law or licence than by a security setting at a hosting platform, tuned by nobody in particular, applied to everyone alike. Six chapters of this book read the ANES cumulative file, and every one requires a person with a browser to fetch it first. The reason is a Cloudflare configuration — not a fee, and not anybody's decision about who should have the data.
+That separation is what this measurement says about the infrastructure of public knowledge. Whether a democracy's data is reachable is decided less by law or licence than by a security setting at a hosting platform, tuned by nobody in particular, applied to everyone alike. Six chapters of this book read the ANES cumulative file, and every one requires a person with a browser to download it first. The reason is a setting at Cloudflare — not a fee, and not anybody's decision about who should have the data.
 
 ## What this brief cannot tell you
 
-**It does not say what a browser gets.** Every measurement here is what a *script* meets. A person with a browser can reach all six archives, and in four cases that is the intended route. The scan measures the distance between "public" and "programmatically available", which is a narrower thing than access.
+**It does not say what a browser gets.** Every measurement here is what a *script* — a program running unattended — meets. A person with a browser can reach all six archives, and in four cases that is the intended route. The scan measures the distance between "public" and "programmatically available", which is a narrower thing than access.
 
 **Two clients are two clients.** `curl` and Python's `urllib` disagreed once. A third client might disagree somewhere else, and the right reading of the ICPSR row is not "Python works" but "this is unstable in a way nothing in the request controls."
 
@@ -132,6 +134,11 @@ That separation is what this measurement says about the infrastructure of public
 - The status codes, byte counts and the `cf-mitigated` and `x-amzn-waf-action`
   headers quoted throughout were recorded on `r FV("scan_date")` and are kept
   alongside this brief exactly as they arrived.
+- The status codes themselves are defined in RFC 9110, *HTTP Semantics*
+  (2022), <https://www.rfc-editor.org/rfc/rfc9110.html>, and catalogued in
+  plain language at <https://developer.mozilla.org/en-US/docs/Web/HTTP/Status>.
+- The two programs: `curl`, <https://curl.se/>, and Python's `urllib`,
+  <https://docs.python.org/3/library/urllib.html>.
 
 **The data itself**
 

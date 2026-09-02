@@ -40,6 +40,14 @@ it$label  <- unname(LAB[it$group])
 byp$label <- unname(LAB[byp$group])
 
 POOL <- hp[hp$item == "ALL", ]
+
+# The worst single cell, followed through by hand in the brief: the item it
+# belongs to, and what each side said about it. Keyed off facts.csv rather
+# than named, so a rebuild that moved the worst cell would move the sentence.
+wc  <- byp[byp$group == f("worst_cell_group") &
+           byp$party == sub("s$", "", f("worst_cell_about_word")), ]
+wco <- function(col) wc[[col]][wc$relation == "own party"]
+wcx <- function(col) wc[[col]][wc$relation == "other party"]
 HB   <- di$count[di$item == "ALL"]
 
 knit_print.data.frame <- function(x, ...) {

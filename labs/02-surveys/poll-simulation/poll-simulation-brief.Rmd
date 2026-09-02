@@ -27,15 +27,15 @@ The question is not academic. `r close_n` states in 2024, carrying `r close_ev` 
 
 You cannot watch a poll fail unless you already know the right answer. Political polls are the one opinion measure that eventually gets graded by a real event, the election itself. That separates this brief from the rest of its section: the [surveys chapter](../surveys-source/surveys-source-brief.html) explains what a sample can establish that no record can, and nothing ever grades those answers. But even for political polls the grade arrives too late to help. By the time the election settles the question, the population has changed, and the poll cannot be re-run against it.
 
-So the test here is a country built on purpose. Construct a population of `r cnt(N)` voters split at a fixed, known number, then poll it thousands of times — honestly, and then with exactly one thing going wrong. Holding the truth fixed and varying one thing is the only way to separate the error a poll advertises from the error that has been going wrong. No archive of real polls can do it, however large.
+So the test here is a **simulation**: a country built on purpose, inside a computer, whose true answer is known because we chose it. Construct a population of `r cnt(N)` voters split at a fixed, known number, then poll it thousands of times — honestly, and then with exactly one thing going wrong. Holding the truth fixed and varying one thing is the only way to separate the error a poll advertises from the error that has been going wrong. No archive of real polls can do it, however large.
 
-One real table anchors the exercise: the 2024 presidential result in every state, from a public compilation of the fifty-one separate state canvasses, which sets the scale of what a poll is asked to resolve. Every draw runs from a fixed random seed, so the figures are the same each time the page is built, and the central result is checked against algebra rather than against a lucky draw.
+One real table anchors the exercise: the 2024 presidential result in every state, from a compilation by the researcher Jay Timm, published on GitHub and downloadable by anyone, of the fifty-one official state counts. It sets the scale of what a poll is asked to resolve. The random draws are fixed, so the figures do not change from one reading to the next, and the central result is checked against algebra rather than against a lucky draw.
 
 ## The data
 
-The real table is `pres2024_states.csv`: `r nrow(st)` rows, one per state plus Washington DC. Its columns are `state`, `abbrev`, `ev` (electoral votes), `harris`, `trump` and `other` (percentages of the vote), `winner`, and `margin` (Trump minus Harris, in points). It was cut from Timm's *PresElectionResults* compilation, whose `pres_by_state.rda` holds every presidential election back to 1864, and every difference between the two is a decision.
+The real table is `pres2024_states.csv`: `r nrow(st)` rows, one per state plus Washington DC. Its columns are `state`, `abbrev`, `ev` (electoral votes), `harris`, `trump` and `other` (percentages of the vote), `winner`, and `margin` (Trump minus Harris, in points). It was cut from Timm's *PresElectionResults* compilation, which holds every presidential election back to 1864 in one file, `pres_by_state.rda`, and every difference between the two is a decision.
 
-The build kept one election and discarded the rest. It renamed the party columns `democrat` and `republican` to the candidates `harris` and `trump`, which is right for 2024 and nonsense for any other year. Electoral votes are not in the source at all; they were keyed in from the 2020 apportionment and checked against `r sum(st$ev)`. And the source carries percentages, not vote counts, so nothing here can be summed to a national total.
+Only 2024 is kept. The compilation's party columns, `democrat` and `republican`, are renamed here to the candidates, `harris` and `trump`, which is right for 2024 and nonsense for any other year. Electoral votes are not in the source at all; they were typed in from the 2020 apportionment — the division of House seats among the states after the 2020 census, since a state's electoral votes are its seats plus its two senators — and checked against `r sum(st$ev)`.^[The Census Bureau's 2020 apportionment results: <https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html>.] And the source carries percentages, not vote counts, so nothing here can be summed to a national total.
 
 That last fact forces the one exception to this book's rule that every number is computed. **The simulated country's split is typed, not derived**, because the file kept here holds nothing to add up. Harris takes `r pc(100 * truth, 2)`% of the two-party vote and Trump `r pc(100 * (1 - truth), 2)`%, a constant chosen to sit near the 2024 national result. The population built from it has no missing values and nobody else's decisions inside it — which is exactly why it cannot stand in for a real electorate.
 
@@ -54,20 +54,25 @@ The tightest, `r st$state[which.min(st$abs_margin)]`, came in at `r pc(min(st$ab
 > **Before you read on, commit to a number.** A poll of 1,000 people
 > advertises a margin of error of ±`r pc(moe(1000), 2)` points; a poll of
 > `r cnt(100000)` people advertises ±`r pc(moe(1e5), 2)`, a claim of
-> near-certainty. In 2024 the response rate to a typical telephone poll was
-> under 1%. Suppose the people who pick up are not a random slice — suppose
+> near-certainty. The **response rate** of a telephone poll, the share of
+> people dialled who complete the interview, has collapsed: Pew Research
+> Center's own surveys got answers from 36% of the numbers they called in
+> 1997 and 6% in 2018.^[Pew Research Center, "Response rates in telephone
+> surveys have resumed their decline," 27 February 2019,
+> <https://www.pewresearch.org/methods/2019/02/27/response-rates-in-telephone-surveys-have-resumed-their-decline/>.]
+> Suppose the people who pick up are not a random slice — suppose
 > Harris voters are `r pc(100 * GAP, 0)`% likelier to answer. **How far off
 > will the poll of `r cnt(100000)` people be?** Write down a number of points
 > before you read on.
 
 ## What it says about democracy
 
-Poll the built country honestly three times, 1,000 people each, drawn perfectly at random:
+One simulated poll works like this. Pick 1,000 of the `r cnt(N)` voters at random — every voter equally likely, the way names drawn from a hat would be — ask each one which candidate they support, which the computer already knows, and report Harris's share of the 1,000. Since `r pc(100 * truth, 2)`% of the country is for Harris, each person drawn has that chance of being a Harris voter, and the share among a thousand of them will land near `r pc(100 * truth, 2)` but almost never on it. Poll the built country that way three times:
 
 ```{r three-polls}
 ```
 
-Three honest polls, three different answers. That wobble is **sampling error**, the error that comes from asking 1,000 people instead of everyone, and it is the only kind of error the ± describes. Now run a thousand honest polls, and beside them a thousand polls drawn from a pool where Harris voters are `r pc(100 * GAP, 0)`% likelier to pick up the phone.
+Three honest polls, three different answers. That wobble is **sampling error**, the error that comes from asking 1,000 people instead of everyone, and it is the only kind of error the ± describes. Now run a thousand honest polls and pile up their answers in a histogram — the **sampling distribution**, the spread of results that polls of one size produce from one country — and beside them a thousand polls drawn from a pool where Harris voters are `r pc(100 * GAP, 0)`% likelier to pick up the phone.
 
 ```{r honest-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -132,15 +137,15 @@ Pollsters know all this, and they correct for it by **weighting**: counting some
 ```{r weighting}
 ```
 
-Weighting on the thing that actually drives non-response takes the error from `r sg(raw_est - true_share)` to `r sg(est_right - true_share)`. Weighting on a real, measurable, irrelevant variable moves it essentially not at all, to `r sg(est_wrong - true_share)`. **Weighting works exactly and only when you already know what is wrong.** After 2016 the industry discovered it had not been weighting by education and added it; in 2020 it missed again, in the same direction, and the AAPOR review could not identify the mechanism. The variable you have not thought of is invisible by construction, and no amount of arithmetic finds it.
+Weighting on the thing that actually drives non-response takes the error from `r sg(raw_est - true_share)` to `r sg(est_right - true_share)`. Weighting on a real, measurable, irrelevant variable moves it essentially not at all, to `r sg(est_wrong - true_share)`. **Weighting works exactly and only when you already know what is wrong.** After 2016 the industry discovered it had not been weighting by education and added it;^[American Association for Public Opinion Research, *An Evaluation of the 2016 Election Polls in the United States* (2017), <https://aapor.org/wp-content/uploads/2022/11/AAPOR-2016-Election-Polling-Report.pdf>.] in 2020 it missed again, in the same direction, and the review by AAPOR, the pollsters' professional association, could not identify the mechanism.^[AAPOR Task Force on 2020 Pre-Election Polling, *An Evaluation of the 2020 General Election Polls* (2021), <https://aapor.org/wp-content/uploads/2022/11/AAPOR-Task-Force-on-2020-Pre-Election-Polling_Report-FNL.pdf>.] The variable you have not thought of is invisible by construction, and no amount of arithmetic finds it.
 
-The record outside the simulation says the mechanism is real. Meng (2018) proves the formal version, the *big data paradox*: "the more the data, the surer we fool ourselves." He computes that a self-selected sample of 2.3 million voters in 2016 carried the same error as a random sample of about 400. Bradley and colleagues (2021) watched it happen outside politics: a 250,000-response-per-week survey overstated vaccine uptake by up to 17 points while a small random sample was close. The margin of error, honest within its terms, describes the smallest problem a poll has — and for the states that decide elections, the problem it describes was never the one going wrong.
+The record outside the simulation says the mechanism is real. Meng (2018) proves the formal version, the *big data paradox*: "the more the data, the surer we fool ourselves."^[Xiao-Li Meng, "Statistical paradises and paradoxes in big data (I): Law of large populations, big data paradox, and the 2016 US presidential election," *Annals of Applied Statistics* 12, no. 2 (2018): 685–726, <https://doi.org/10.1214/18-AOAS1161SF>.] He computes that a self-selected sample of 2.3 million voters in 2016 carried the same error as a random sample of about 400. Bradley and colleagues (2021) watched it happen outside politics: a 250,000-response-per-week survey overstated vaccine uptake by up to 17 points while a small random sample was close.^[Valerie C. Bradley et al., "Unrepresentative big surveys significantly overestimated US vaccine uptake," *Nature* 600 (2021): 695–700, <https://www.nature.com/articles/s41586-021-04198-4>.] The margin of error, honest within its terms, describes the smallest problem a poll has — and for the states that decide elections, the problem it describes was never the one going wrong.
 
 ## What this brief cannot tell you
 
 It is a simulation, and a simulation is not evidence about the world. The `r pc(100 * GAP, 0)`% response gap was invented to make the mechanism visible; nothing here says real polls are biased by `r pc(asym(GAP) - 100 * truth, 2)` points, or that Harris voters really answered more often. Real non-response is many variables tangled together and shifting between elections, not one tidy dial. And a real gap's size cannot be measured: a gap that could be measured would already have been weighted away.
 
-The sampling here is independent draws, while real polls cluster, stratify and re-contact, all of which change the effective sample in ways the square-root rule does not capture. And the real 2024 file is thin: percentages and electoral votes, no counts, no archive of actual polls, so it shows how hard the task was rather than how any particular poll performed at it. Whether the polling industry is in crisis is genuinely disputed: three cycles erring in the same direction is a pattern, not a mechanism, and this brief settles none of that. It establishes something narrower: the quantity published as a poll's uncertainty is not the quantity that has been going wrong.
+The sampling here is independent draws, while real polls cluster, stratify and re-contact — draw people in geographic bunches, split the sample by known groups before drawing, and call back the ones who did not answer — all of which change the effective sample in ways the square-root rule does not capture. And the real 2024 file is thin: percentages and electoral votes, no counts, no archive of actual polls, so it shows how hard the task was rather than how any particular poll performed at it. Whether the polling industry is in crisis is genuinely disputed: three cycles erring in the same direction is a pattern, not a mechanism, and this brief settles none of that. It establishes something narrower: the quantity published as a poll's uncertainty is not the quantity that has been going wrong.
 
 ## What you should have learned
 
@@ -156,7 +161,7 @@ The sampling here is independent draws, while real polls cluster, stratify and r
 - Take the states with the smallest `margin` values in `pres2024_states.csv` and add their `ev` together. What is the smallest set of states a polling error would have to get wrong to change the outcome?
 - Pick a state in `pres2024_states.csv` and imagine a poll off by three points in the same direction everywhere. Work down the `margin` column and count how many states flip.
 - A margin of error covers sampling and nothing else. List three things that could go wrong in polling the states in `pres2024_states.csv` outside the sampling, and say which would be hardest to detect.
-- **Stretch:** the Cooperative Election Study publishes tens of thousands of real interviews per cycle with the weights attached. Download one year and compare its weighted and unweighted presidential vote shares: how much work are the weights doing?
+- **Stretch:** the Cooperative Election Study, the large online survey the [weighting chapter](../ces-class/ces-class-brief.html) is built on, publishes tens of thousands of real interviews per cycle with the weights attached. Download one year and compare its weighted and unweighted presidential vote shares: how much work are the weights doing?
 - **Stretch:** read Meng (2018) and work out his effective-sample formula for a poll you have seen reported this year. What would its honest sample size be under a small response gap?
 
 ## Sources
@@ -178,16 +183,26 @@ The sampling here is independent draws, while real polls cluster, stratify and r
 - Bradley, V. C., Kuriwaki, S., Isakov, M., Sejdinović, D., Meng, X.-L. and
   Flaxman, S. (2021). "Unrepresentative big surveys significantly overestimated
   US vaccine uptake." *Nature* 600: 695–700.
+  <https://www.nature.com/articles/s41586-021-04198-4>
 - Groves, R. M. (2006). "Nonresponse Rates and Nonresponse Bias in Household
-  Surveys." *Public Opinion Quarterly* 70(5): 646–675.
+  Surveys." *Public Opinion Quarterly* 70(5): 646–675. doi:10.1093/poq/nfl033
 - Kennedy, C. et al. (2018). "An Evaluation of the 2016 Election Polls in the
-  United States." *Public Opinion Quarterly* 82(1): 1–33.
+  United States." *Public Opinion Quarterly* 82(1): 1–33. doi:10.1093/poq/nfx047.
+  The same task force's full report:
+  <https://aapor.org/wp-content/uploads/2022/11/AAPOR-2016-Election-Polling-Report.pdf>
 - Meng, X.-L. (2018). "Statistical paradises and paradoxes in big data (I): Law
   of large populations, big data paradox, and the 2016 US presidential
   election." *Annals of Applied Statistics* 12(2): 685–726.
+  <https://doi.org/10.1214/18-AOAS1161SF>
 - AAPOR Task Force on 2020 Pre-Election Polling (2021). *An Evaluation of the
   2020 General Election Polls*. American Association for Public Opinion
-  Research. <https://aapor.org/>
+  Research. <https://aapor.org/>; the report itself:
+  <https://aapor.org/wp-content/uploads/2022/11/AAPOR-Task-Force-on-2020-Pre-Election-Polling_Report-FNL.pdf>
+- Pew Research Center (2019). "Response rates in telephone surveys have
+  resumed their decline."
+  <https://www.pewresearch.org/methods/2019/02/27/response-rates-in-telephone-surveys-have-resumed-their-decline/>
+- U.S. Census Bureau. *2020 Census Apportionment Results.*
+  <https://www.census.gov/data/tables/2020/dec/2020-apportionment-data.html>
 
 **The data itself**
 

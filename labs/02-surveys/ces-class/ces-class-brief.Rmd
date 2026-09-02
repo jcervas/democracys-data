@@ -34,11 +34,11 @@ That caveat costs less than it looks like it costs, because the room is not the 
 
 Nobody is required to run the Cooperative Election Study. It exists because dozens of university research teams each buy a module of it and share a common core of questions, coordinated since 2006 by Stephen Ansolabehere, Brian Schaffner and their collaborators. The release read here is the 2024 Common Content, Data Release 2, published on Harvard Dataverse with a DOI attached.
 
-**Who is in it, and how they got there.** About sixty thousand American adults — and, crucially, not a random sample of them. The CES is an **opt-in online panel** of people who signed up with YouGov to take surveys. The panel is matched afterwards to a target sample drawn from a probability frame, so that it resembles the country, and then weighted. Sixty thousand respondents sounds like rigor, but size is not design, and everything this chapter shows follows from who joins a political survey panel voluntarily.
+**Who is in it, and how they got there.** About sixty thousand American adults — and, crucially, not a random sample of them. The CES is an **opt-in online panel**: a standing pool of people who signed up with the polling firm YouGov to take surveys online, and are invited back to take more. Nobody drew them at random. What YouGov does instead is draw an imaginary random sample of the country from census-style lists and, for each imaginary person, pick the real panel member who most resembles them in age, sex, race, education and a few other things — a technique its designers call **sample matching** — and then weight the result so that it resembles the country.^[Stephen Ansolabehere and Douglas Rivers, "Cooperative Survey Research," *Annual Review of Political Science* 16 (2013): 307–329, doi:10.1146/annurev-polisci-022811-160625, describe the design; YouGov's own account of its panel is at <https://today.yougov.com/about/panel-methodology>.] Sixty thousand respondents sounds like rigor, but size is not design, and everything this chapter shows follows from who joins a political survey panel voluntarily.
 
 **Who it was made for.** Political scientists who need subgroups. A national poll of a thousand cannot say anything about one state or one small group; sixty thousand can, which is the whole purchase. The common content asks what political scientists have agreed to ask, in wording they have agreed on, and it would stop the year the money did.
 
-**What it costs to get.** Nothing in money. The file is a free download from Harvard Dataverse for anyone with an account: about 60,000 rows and 694 variables, 184 MB. Those figures are typed rather than computed, because the respondent file is too large to ship here and is not this book's to redistribute. What ships here instead is a `r nrow(b)`-row summary derived from it — one row per answer category of `r length(unique(b$variable))` questions, each carrying a headcount and the same share computed twice. The class file is not committed either, by design: it is one room's real answers, replaced in public copies by a placeholder with the same shape.
+**What it costs to get.** Nothing in money. The file is a free download from Harvard Dataverse for anyone with an account: about 60,000 rows and 694 variables, 184 MB. The file itself is not reproduced here — it is large, and it is not this book's to redistribute — so those three figures are quoted from the release rather than computed. What this chapter carries instead is a `r nrow(b)`-row summary derived from it — one row per answer category of `r length(unique(b$variable))` questions, each carrying a headcount and the same share computed twice. The class file is not published either, by design: it is one room's real answers, replaced in public copies by a placeholder with the same shape.
 
 **What has already been done to it.** Almost everything. The CES teams drew the target sample, matched the panel onto it, wrote the wordings, assigned the numeric codes, validated voter registration against state records, and computed the weight, `commonweight`. The file arrives usable because a team spent years making it so, and their judgments arrive with it, unlabeled and inherited whole. The weighted column is not this chapter's arithmetic; it is somebody else's model, shipped as a column of numbers that looks exactly like the column of counts beside it.
 
@@ -54,12 +54,12 @@ A release appears on Dataverse in the months after each November election, and i
 ```{r ces-shape}
 ```
 
-The Guide that decodes those digits has to be read carefully, because it once nearly wrecked this chapter. The Guide *displays* the race categories in a different order than their numeric codes run: it lists Middle Eastern sixth, while the category that actually carries code 6 is "two or more races". A build script that read the labels off the printed order would have produced this:
+The Guide that decodes those digits has to be read carefully, because it once nearly wrecked this chapter. The Guide *displays* the race categories in a different order than their numeric codes run: it lists Middle Eastern sixth, while the category that actually carries code 6 is "two or more races". Read the labels off the printed order and you get this:
 
 ```{r ces-mislabel}
 ```
 
-`r cnt(gv("race","Two or more races","n"))` people called Middle Eastern and `r cnt(gv("race","Middle Eastern","n"))` called two or more races — a `r round(gv("race","Two or more races","n") / gv("race","Middle Eastern","n"))`-fold error inside one category, in a table that would have looked entirely normal. Codes are therefore mapped to labels by matching the published category counts instead, **because the count is the only part of that mapping that can be checked against anything.**
+`r cnt(gv("race","Two or more races","n"))` people called Middle Eastern and `r cnt(gv("race","Middle Eastern","n"))` called two or more races — a `r round(gv("race","Two or more races","n") / gv("race","Middle Eastern","n"))`-fold error inside one category, in a table that would have looked entirely normal. The labels here were therefore attached to codes by matching the headcount the Guide publishes for each category, **because the count is the only part of that mapping that can be checked against anything.**
 
 Two files sit under this chapter, and they store different things.
 
@@ -70,7 +70,7 @@ The benchmark file is already a summary: not 60,000 interviews, but what those i
 
 ## What the weights do to a published number
 
-A **weight** is a number attached to each respondent saying how many people like them the sample ought to have contained. If the panel caught half as many people without a high-school diploma as the country has, each one is counted roughly twice. The targets the weights aim at are counts of adults by age, sex, race and education. They come from the census and from federal surveys, which is how census data ends up quietly inside every survey estimate.
+A **weight** is a number attached to each respondent saying how many people like them the sample ought to have contained. If the panel caught half as many people without a high-school diploma as the country has, each one is counted roughly twice. That is not a hypothetical. `r cnt(gv("educ","No HS","n"))` respondents said they had no high-school diploma, `r pc(gv("educ","No HS","pct_unweighted"))`% of everyone interviewed; after weighting, the same people are `r pc(gv("educ","No HS","pct_weighted"))`% of the sample, because that is the share the targets say the country has. Each of those `r cnt(gv("educ","No HS","n"))` answers is therefore counted, on average, as about `r pc(gv("educ","No HS","pct_weighted") / gv("educ","No HS","pct_unweighted"))` answers — one person asked, standing in for two. The targets the weights aim at are counts of adults by age, sex, race and education. They come from the census and from federal surveys, which is how census data ends up quietly inside every survey estimate.
 
 The rare thing about the CES is that both columns survive into print. Here is one row of the benchmark file:
 
@@ -88,7 +88,7 @@ Every CES figure anybody has ever seen has been through this, and the unweighted
 
 The same mechanism runs down the table. Strong Democrats fall `r pc(abs(gv("pid7","Strong Democrat","shift")))` points, and people who follow the news "most of the time" fall `r pc(abs(gv("newsint","Most of the time","shift")))`. People with no high-school diploma, the group least likely to opt into a political panel, rise `r pc(gv("educ","No HS","shift"))`. Summed question by question, the weights move `r pc(max(adj$idx))`% of the sample on `r rev(adj$label)[1]`, more than on any political question. The panel's problem is engagement, not opinion, and the weights say so.
 
-Now watch that machinery move a headline. Seven-point party identification collapses naturally into three groups. Do it to both columns.
+Now watch that machinery move a headline. **Seven-point party identification** is the standard survey scale of partisanship, built from two questions: whether you think of yourself as a Democrat, a Republican or an independent, and then either how strongly, or — for independents — which party you feel closer to. The seven answers run from Strong Democrat through Independent to Strong Republican, with the **leaners**, independents who admit to a side, one step in from each end. The scale collapses naturally into three groups, leaners counted with their party. Do it to both columns.
 
 ```{r collapse}
 ```
@@ -107,7 +107,7 @@ Now watch that machinery move a headline. Seven-point party identification colla
 
 **Figure 1. Seven answer options collapsing into three groups, and the weights changing the headline on the way.** Each ribbon is one answer option, entering on the left at the width the researchers collected and leaving on the right at the width they publish; ribbon width is the share of the sample. Ribbons fit this figure because the two columns are the same people counted twice: nothing enters or leaves, it only thickens and thins. A ribbon is the one chart form that shows a reallocation without pretending anything moved in or out. The Democratic block enters at `r pc(gsum["u","Democrat"])`% and leaves at `r pc(gsum["w","Democrat"])`%; the Republican block enters at `r pc(gsum["u","Republican"])`% and leaves at `r pc(gsum["w","Republican"])`%. Hover a ribbon for the answer option behind it.
 
-**The sample the CES collected is D+`r pc(dr_raw)`. The sample it publishes is D+`r pc(dr_wtd)`.** The weights move the headline partisan balance of the largest political survey in America by `r pc(dr_raw - dr_wtd)` points. That is not a scandal — the weighted figure is very likely the better estimate of the country. It is a demonstration that a published survey number is a construction, built by people who had to decide which variables mattered, and that the deciding happened before you ever saw it.
+**The sample the CES collected is D+`r pc(dr_raw)` — Democrats ahead of Republicans by `r pc(dr_raw)` points. The sample it publishes is D+`r pc(dr_wtd)`.** The weights move the headline partisan balance of the largest political survey in America by `r pc(dr_raw - dr_wtd)` points. That is not a scandal — the weighted figure is very likely the better estimate of the country. It is a demonstration that a published survey number is a construction, built by people who had to decide which variables mattered, and that the deciding happened before you ever saw it.
 
 ## A room is a census of itself
 
@@ -138,13 +138,13 @@ So the two halves of this chapter fail in two different ways, and the reflex to 
 
 ## What this data cannot tell you
 
-**Whether the weighted column is right.** A weight can only correct an imbalance on something that exists in both the panel and the census tables it aims at. Whatever made someone join an opt-in panel is not a column in any census table, so it can be corrected only as far as it travels with the demographics that are. Which variables the weights are still missing is, by construction, not in the file, and never will be. The AAPOR review of the 2016 polls found exactly this failure at scale: state polls over-represented college graduates, mostly did not weight on education, and that single unadjusted variable explains much of the miss.
+**Whether the weighted column is right.** A weight can only correct an imbalance on something that exists in both the panel and the census tables it aims at. Whatever made someone join an opt-in panel is not a column in any census table, so it can be corrected only as far as it travels with the demographics that are. Which variables the weights are still missing is, by construction, not in the file, and never will be. The review of the 2016 polls by AAPOR, the American Association for Public Opinion Research — the pollsters' professional body — found exactly this failure at scale: state polls over-represented college graduates, mostly did not weight on education, and that single unadjusted variable explains much of the miss.^[Courtney Kennedy et al., "An Evaluation of the 2016 Election Polls in the United States," *Public Opinion Quarterly* 82, no. 1 (2018): 1–33, doi:10.1093/poq/nfx047. The committee's full report is at <https://aapor.org/wp-content/uploads/2022/11/AAPOR-2016-Election-Polling-Report.pdf>.]
 
-**Whether opt-in panels beat probability samples.** Ansolabehere and Rivers make the case that a large, matched, transparently weighted panel now beats a probability sample that almost nobody answers; the AAPOR reviews supply the caution. Groves adds that a response rate on its own settles nothing, because nonresponse bias depends on whether answering correlates with the thing measured — which is precisely the shape of the CES's own registration adjustment. Serious people hold both positions, and everything above is compatible with either.
+**Whether opt-in panels beat probability samples.** A **probability sample** is one the researcher draws at random from a list of everyone, so that each person's chance of being picked is known — the design that all the textbook arithmetic assumes. Ansolabehere and Rivers make the case that a large, matched, transparently weighted panel now beats a probability sample that almost nobody answers; the AAPOR reviews supply the caution. Groves adds that a response rate on its own settles nothing, because nonresponse bias depends on whether answering correlates with the thing measured — which is precisely the shape of the CES's own registration adjustment.^[Robert M. Groves, "Nonresponse Rates and Nonresponse Bias in Household Surveys," *Public Opinion Quarterly* 70, no. 5 (2006): 646–675, doi:10.1093/poq/nfl033.] Serious people hold both positions, and everything above is compatible with either.
 
-**Anything that needs the individual respondents.** The benchmark file here is a summary, so there is no cross-tabulation: you cannot ask whether a gap survives holding age constant. Item non-response is present and invisible throughout — `r cnt(N_CES - sum(b$n[b$variable=="newsint"]))` people skipped the news-attention question, and no published figure mentions them.
+**Anything that needs the individual respondents.** The benchmark file here is a summary, so there is no cross-tabulation: you cannot ask whether a gap survives holding age constant. **Item non-response** — people who took the survey but skipped a particular question — is present and invisible throughout: `r cnt(N_CES - sum(b$n[b$variable=="newsint"]))` people skipped the news-attention question, and no published figure mentions them.
 
-**Anything confident about the room.** `r n_class` respondents cannot resolve a difference smaller than about `r pc(moe(n_class))` points, and almost every interesting difference is smaller than that. Mode differs too: the CES is taken alone at home, the class survey in a room where an instructor could see the screen — identical words, a different instrument. And nobody can say what the room would look like weighted, because there is nothing to weight it to.
+**Anything confident about the room.** `r n_class` respondents cannot resolve a difference smaller than about `r pc(moe(n_class))` points, and almost every interesting difference is smaller than that. The **mode** — the way a survey reaches a person — differs too: the CES is taken alone at home, the class survey in a room where an instructor could see the screen — identical words, a different instrument. And nobody can say what the room would look like weighted, because there is nothing to weight it to.
 
 ```{r weak-placeholder, results='asis'}
 ```
@@ -196,10 +196,15 @@ tables you just opened.
 
 - Ansolabehere, S. and Rivers, D. (2013). "Cooperative Survey Research."
   *Annual Review of Political Science* 16: 307–329.
+  doi:10.1146/annurev-polisci-022811-160625.
 - Groves, R. M. (2006). "Nonresponse Rates and Nonresponse Bias in Household
-  Surveys." *Public Opinion Quarterly* 70(5): 646–675.
+  Surveys." *Public Opinion Quarterly* 70(5): 646–675. doi:10.1093/poq/nfl033.
 - Kennedy, C. et al. (2018). "An Evaluation of the 2016 Election Polls in the
-  United States." *Public Opinion Quarterly* 82(1): 1–33.
+  United States." *Public Opinion Quarterly* 82(1): 1–33. doi:10.1093/poq/nfx047.
+  The committee's report:
+  <https://aapor.org/wp-content/uploads/2022/11/AAPOR-2016-Election-Polling-Report.pdf>
+- YouGov. "Panel methodology." How the opt-in panel is recruited and matched.
+  <https://today.yougov.com/about/panel-methodology>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

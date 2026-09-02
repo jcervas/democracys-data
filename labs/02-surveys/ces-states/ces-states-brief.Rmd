@@ -22,21 +22,21 @@ Nationally, it nearly is. But a national sample is not a national sample everywh
 
 ## The test
 
-The data is the [2024 CES Common Content](https://doi.org/10.7910/DVN/X11EP6): `r n(FN("n_total"))` respondents interviewed around the 2024 election, released by Ansolabehere, Schaffner and Pope on Harvard Dataverse. Every state estimate it yields is then graded against the certified 2024 presidential result in that state, which this book carries in its [historical campaigns chapter](../../03-elections/historical-campaigns/historical-campaigns-brief.html).
+The data is the [2024 CES Common Content](https://doi.org/10.7910/DVN/X11EP6): `r n(FN("n_total"))` respondents interviewed around the 2024 election, released by Ansolabehere, Schaffner and Pope on Harvard Dataverse. Every state estimate it yields is then graded against the **certified** 2024 presidential result in that state — the official count each state signs off on after the election — which this book carries in its [historical campaigns chapter](../../03-elections/historical-campaigns/historical-campaigns-brief.html).
 
 Why this source, of all surveys? Because it is the largest, and the question is precisely about what largeness buys. It is also unusually honest equipment. The CES publishes the **weights** it applies to itself — the factors that count some answers more heavily than others, so the sample resembles the country. This book's [weighting chapter](../ces-class/ces-class-brief.html) reads that file at length.
 
 The benchmarks those weights aim at come from the Census Bureau's counts; the weighting is only the method that pulls a sample toward them. This brief leans on that chapter for what the CES is, and asks one further question of it.
 
-And why the presidential vote, of all its 694 questions? Because it is the one question with a certified answer. A survey estimate of trust or ideology can only be compared with another survey. An estimate of the two-party vote can be graded, state by state, against what the state actually did.
+And why the presidential vote, of all its 694 questions? Because it is the one question with a certified answer. A survey estimate of trust or ideology can only be compared with another survey. An estimate of the **two-party vote** — the Democratic share of the votes cast for the two major candidates, with third parties left out — can be graded, state by state, against what the state actually did.
 
 ## The data
 
 Everything below is built into one table, `states.csv`, with a row per state. It starts from three columns of the big file: `inputstate`, the state each respondent lives in as a numeric code; `CC24_364b`, the presidential vote; and `commonweight`, the survey's own weight. Of `r n(FN("n_total"))` respondents, `r n(FN("n_twoparty"))` named one of the two major candidates; the other `r n(FN("n_other"))` named somebody else, did not vote, or did not answer.
 
-The file itself cannot be downloaded by a program: Harvard Dataverse answers an automated request with a success code and a challenge page, a wall this book's [survey access brief](../survey-access/survey-access-brief.html) measures directly. A person with a browser downloaded it once, and this brief reads the copy the weighting chapter keeps rather than holding a second one.
+The file is a free download from Harvard Dataverse for anyone with an account — a download a person has to make, because the archive turns away programs, a wall this book's [survey access brief](../survey-access/survey-access-brief.html) measures directly. This brief reads the copy the [weighting chapter](../ces-class/ces-class-brief.html) keeps rather than holding a second one.
 
-Two sibling chapters supply what the CES does not. The certified returns come from historical campaigns. The **crosswalk**, a table that matches one set of codes to another, comes from [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html), and turns the numeric state codes into the abbreviations the returns use. Neither file is typed here. And the vote coding was verified, not assumed: the build refuses to run if the national two-party estimate lands more than five points from the certified result, which a swapped coding would trip at once.
+Two sibling chapters supply what the CES does not. The certified returns come from historical campaigns. The **crosswalk**, a table that matches one set of codes to another, comes from [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html), and turns the numeric state codes into the abbreviations the returns use. Neither file is typed here. And the vote coding was checked rather than assumed: before any state is graded, the national estimate is set beside the certified national result, and a swapped coding — Democrats counted as Republicans — would miss it by far more than the five points allowed. That check is in the table at the end of this brief.
 
 For each state, the table then records `n`, the respondents in the state, and `est`, the weighted two-party Democratic share they imply. `moe` is that estimate's margin of error; `deff` and `n_eff` are the design effect and effective sample size, explained below. `actual` is the certified share, `error` the difference, and `covers` whether the certified result falls inside the margin.
 
@@ -56,7 +56,9 @@ Nationally, the machine works. The CES puts the two-party Democratic share at `r
 
 **`r F("state_min")` has `r F("n_min")` respondents.** `r F("state_max")` has `r n(FN("n_max"))`, which is `r p1(F("n_ratio"))` times as many. The margin of error runs from `r p2(F("moe_min"))` points in the best-sampled state to `r p2(F("moe_max"))` in `r F("moe_max_state")`, and the median state's margin is `r p2(F("moe_median"))` points. A survey described in every write-up by one national sample size is, at the level most people want to use it, an ordinary small poll fifty-one times over.
 
-The respondent counts overstate even that. Weighting costs precision, and the cost has a name: the **design effect**, the factor by which the effective sample is smaller than the headcount. The median state's design effect is `r p2(F("deff_median"))`, so a state cell of 300 respondents carries roughly the precision of a simple random sample of about 110. Every margin above already accounts for that; the point is that the number in the press release does not.
+The respondent counts overstate even that. Weighting costs precision, and the cost has a name: the **design effect**, the factor by which the **effective sample** — the number of equally weighted respondents that would give the same precision — is smaller than the headcount. The median state's design effect is `r p2(F("deff_median"))`, so a state cell of 300 respondents carries roughly the precision of a simple random sample of about 110 — a sample in which everyone had the same chance of being picked and every answer counts once. Every margin above already accounts for that; the point is that the number in the press release does not.
+
+Here is the arithmetic for the smallest cell, step by step. `r F("state_min")` has `r F("n_min")` respondents, but their weights are unequal, and a design effect of `r p2(VT$deff)` says those `r F("n_min")` carry the precision of `r p1(VT$n_eff)` equally weighted people. The CES puts `r F("state_min")`'s two-party Democratic share at `r p1(VT$est)`%. A margin of error is 1.96 times the square root of p(1 − p) divided by the effective sample, so: `r formatC(VT_P, format = "f", digits = 3)` times `r formatC(1 - VT_P, format = "f", digits = 3)` is `r formatC(VT_PQ, format = "f", digits = 3)`; divided by `r p1(VT$n_eff)` that is `r formatC(VT_VAR, format = "f", digits = 5)`; its square root is `r formatC(VT_SE, format = "f", digits = 4)`; and 1.96 times that, as a percentage, is ± `r p1(VT_MOE)` points. `r F("state_max")`'s `r n(TX$n)` respondents go through the same steps and come out at ± `r p1(TX$moe)`. Nothing about `r F("state_min")` is being measured badly. There are simply too few Vermonters in the room for the answer to be narrow, and no amount of care in the interviewing changes that.
 
 ### Precision is not accuracy
 
@@ -70,9 +72,9 @@ Now grade every state against what it actually did.
 
 **Figure 1. Every state twice: the margin of error it claims, and the error it actually made against the certified result.** A scatter against sample size, because the question is what sample size buys. Hollow points are the claimed margins; filled points are the errors, red where the result falls outside the margin.
 
-Two correlations say the whole thing. A state's sample size predicts its margin of error at `r p2(F("cor_n_moe"))`. It predicts how wrong the state actually was at `r p2(F("cor_n_err"))`. **Sample size buys precision. It barely buys accuracy.** The hollow points fall away steeply to the right; the filled ones scatter almost as widely at 3,000 respondents as at 300.
+Two correlations say the whole thing. A **correlation** runs from −1 to +1: −1 means one number falls exactly as the other rises, 0 means they have nothing to do with each other. A state's sample size predicts its margin of error at `r p2(F("cor_n_moe"))`. It predicts how wrong the state actually was at `r p2(F("cor_n_err"))`. **Sample size buys precision. It barely buys accuracy.** The hollow points fall away steeply to the right; the filled ones scatter almost as widely at 3,000 respondents as at 300.
 
-If sampling were the only thing going wrong, about 95% of states would have the certified result inside their margin — sampling error is what a margin of error describes, and nothing else. **`r F("n_covered")` of `r F("n_states_graded")` do**, which is `r p1(F("pct_covered"))`%, against the `r p1(F("expected_covered"))` states that 95% coverage predicts. The median state misses by `r p2(F("err_median"))` points; the worst, `r F("err_max_state")`, misses by `r p2(F("err_max"))`.
+A margin of error is drawn, by convention, so that the true value falls inside it nineteen times in twenty. So if sampling were the only thing going wrong, about 95% of states would have the certified result inside their margin — sampling error is what a margin of error describes, and nothing else. **`r F("n_covered")` of `r F("n_states_graded")` do**, which is `r p1(F("pct_covered"))`%, against the `r p1(F("expected_covered"))` states that 95% coverage predicts. The median state misses by `r p2(F("err_median"))` points; the worst, `r F("err_max_state")`, misses by `r p2(F("err_max"))`.
 
 That shortfall is everything a margin of error does not promise. It covers who answered and who did not, whether the people in a small state's cell resemble that state, and whether a person who says they voted for somebody did. For a reader of democracy's data, the lesson is structural: most public claims about opinion in a small state rest on cells this size, and the printed margin understates the doubt. The [weighting chapter](../ces-class/ces-class-brief.html) takes the machinery apart; the [poll weighting brief](../poll-weighting/poll-weighting-brief.html) shows the judgment calls inside it on a single poll.
 
@@ -84,7 +86,7 @@ That shortfall is everything a margin of error does not promise. It covers who a
 
 **The benchmark is not the same population.** The certified result counts everyone who voted. The CES estimate counts people who said they voted a particular way, weighted to a model of the electorate. Some of the gap in Figure 1 is that difference rather than survey error.
 
-**And the design effect is estimated, not published.** The Kish formula used here reads the weights and returns the precision they imply. A design-based standard error from the survey's own documentation would differ, probably not by much, and this brief does not have one.
+**And the design effect is estimated, not published.** The formula used here is a rule of thumb devised by the statistician Leslie Kish: it reads how unequal the weights are and returns the precision they imply, and the more unequal they are, the fewer people the sample is effectively worth.^[Leslie Kish, *Survey Sampling* (New York: John Wiley & Sons, 1965), <https://www.wiley.com/en-us/Survey+Sampling-p-9780471109495>.] A design-based standard error from the survey's own documentation would differ, probably not by much, and this brief does not have one.
 
 ## What you should have learned
 
@@ -111,16 +113,20 @@ That shortfall is everything a margin of error does not promise. It covers who a
   Ansolabehere, Schaffner and Pope. doi:10.7910/DVN/X11EP6,
   `CCES24_Common_OUTPUT_vv_topost_final.csv`. `r n(FN("n_total"))`
   respondents. <https://doi.org/10.7910/DVN/X11EP6>
-  Not scriptable — Harvard Dataverse answers automated requests with a
-  success code and a challenge page — so the copy read here is the one the
+  A download a person has to make — Harvard Dataverse turns away automated
+  requests, as the [survey access brief](../survey-access/survey-access-brief.html)
+  measures — so the copy read here is the one the
   [weighting chapter](../ces-class/ces-class-brief.html) keeps.
 - **Certified 2024 returns and the state crosswalk** are read from the
   [historical campaigns](../../03-elections/historical-campaigns/historical-campaigns-brief.html)
   and [data sources](../../06-putting-data-together/data-sources/data-sources-brief.html)
   chapters rather than retyped.
-- **Build.** `data/build-data.R` verifies the vote coding against the certified
+- **Build.** `data/build-data.R` checks the vote coding against the certified
   national result before proceeding, then writes the table this brief reads.
   Every number above is computed at the moment this document was rendered.
+- Kish, Leslie (1965). *Survey Sampling.* New York: John Wiley & Sons. The
+  source of the design-effect rule of thumb.
+  <https://www.wiley.com/en-us/Survey+Sampling-p-9780471109495>
 
 **The data itself**
 
