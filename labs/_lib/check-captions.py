@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# STYLE.md rule 4: one figure, one caption.
+# One figure, one caption.
 #
 #     python3 _lib/check-captions.py            # report every doubled caption
 #     python3 _lib/check-captions.py <slug>     # one chapter
@@ -116,7 +116,7 @@ def main():
                       % (num, idx, share * 100, txt))
     if total:
         print("\n%d caption(s) in %d chapter(s) repeat their Figure paragraph "
-              "(STYLE.md rule 4)." % (total, chapters))
+              "" % (total, chapters))
         print("The paragraph is the one that survives: it is in the PDF too, "
               "and the caption is not.")
     else:

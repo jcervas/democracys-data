@@ -294,7 +294,7 @@ text(bp, bar9 + 3.2, paste0(pc(bar9), "%"), cex = 0.8)
 box(bty = "l")
 
 ## ---- floor-d3
-# Drawn with the shared library (_lib/dd-charts.js), per STYLE.md rule 16: a
+# Drawn with the shared library (_lib/dd-charts.js), as the house convention asks: a
 # plain categorical bar chart with one reference line is exactly what dd_fig()
 # is for, and this is the document's FIRST html figure, so dd_fig() emits the
 # d3 and dd-charts.js tags that the two hand-written figures below ride on.

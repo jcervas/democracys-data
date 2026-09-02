@@ -65,10 +65,6 @@ echo "=== checks that cannot fail ==="
 Rscript "$LIB/check-vacuous.R"    || fail=1
 
 echo
-echo "=== language (labs/STYLE.md) ==="
-python3 "$LIB/check-language.py" || true
-echo
-
 echo "=== AI prompt boxes ==="
 python3 "$LIB/check-ai-prompt.py" || fail=1
 
@@ -81,7 +77,7 @@ echo "=== inside the renders ==="
 python3 "$LIB/check-figures.py"  || true
 
 echo
-echo "=== one figure, one caption (STYLE.md rule 4) ==="
+echo "=== one figure, one caption ==="
 python3 "$LIB/check-captions.py" || true
 
 # GATING since the 3rd-edition rewrite finished, 31 August 2026. Every
@@ -89,7 +85,7 @@ python3 "$LIB/check-captions.py" || true
 # so a new one that does not is a mistake worth stopping for.
 # DD_STRICT_TEMPLATE=0 relaxes it to advisory while mid-rewrite.
 echo
-echo "=== 3rd-edition template and titles (STYLE.md Part Three) ==="
+echo "=== 3rd-edition template and titles ==="
 python3 "$LIB/check-layout.py" --template || fail=1
 
 # Opt-in, because it breaks the rule the rest of this file keeps. It drives a

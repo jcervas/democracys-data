@@ -27,7 +27,7 @@
 #      open questions, and every file a question names is one the chapter
 #      actually hands over. That last rule is the one worth having: a question
 #      saying "sort `flows.csv`" survives a rename of flows.csv silently,
-#      because prose is not a path and no other check reads it. STYLE.md also
+#      because prose is not a path and no other check reads it. The house convention also
 #      forbids typing a figure into a question -- "fifteen counties disagree"
 #      goes stale -- but that one is left to a person, because a year is a
 #      number too and this script cannot tell them apart.

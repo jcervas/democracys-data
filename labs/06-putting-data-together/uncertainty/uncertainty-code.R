@@ -40,7 +40,7 @@ NARROW <- max(de$width)
 ACC2 <- "#1C4C5C"; WARN <- "#C41230"; GRY <- "#8A8F94"
 POOL <- "#54278F"; BAND <- "#E7EFF1"
 
-# ---- why these three figures are hand-written (STYLE.md rule 16) -----------
+# ---- why these three figures are hand-written ---------------------------
 # Designated showpieces, not drift. All three draw a mark the shared library
 # has no vocabulary for, and the mark IS the argument:
 #   fig1, fig2  a forest plot -- the interval drawn as a bar with a diamond at

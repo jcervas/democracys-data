@@ -330,7 +330,7 @@ legend("top", c("from the name alone", "after adding the Bronx"),
        bty = "n", horiz = TRUE, cex = 0.78, inset = c(0, -0.06), xpd = NA)
 
 ## ---- gains-d3
-# Drawn with the shared library (_lib/dd-charts.js), per STYLE.md rule 16: a
+# Drawn with the shared library (_lib/dd-charts.js), as the house convention asks: a
 # before/after rod per row is exactly dd_fig("dumbbell"), and nothing about
 # this figure needs hand-written D3. d3 = FALSE because the kilo figure above
 # is a designated showpiece and has already put the d3 tag on the page; a

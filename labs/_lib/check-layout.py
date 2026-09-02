@@ -20,7 +20,7 @@
 # Two further checks are ADVISORY and never touch the exit status (until
 # DD_STRICT_TEMPLATE=1): does each document end the way the 3rd-edition
 # template says its type ends, and does its title name the data rather than
-# withhold a punchline. See "--template" and STYLE.md Part Three.
+# withhold a punchline. See "--template".
 #
 # The build stamps are NOT checked here. check-stamps.py owns all of that --
 # whether a BUILD-STAMP.tsv exists, whether it names the right files, and
@@ -324,7 +324,7 @@ for lab, d in chapters():
 
 # --- 4. the 3rd-edition template — ADVISORY -----------------------------------
 #
-# STYLE.md Part Three (third edition, 31 Aug 2026): every document is a
+# Third edition (31 Aug 2026): every document is a
 # `type: chapter` (a reading about a kind of data) or a `type: brief` (a lab),
 # declared in its YAML front matter, absent meaning brief. A brief's H2s end
 # "What you should have learned" > "Extensions" > "Sources"; a chapter carries
@@ -381,7 +381,7 @@ tail_bad = []          # (slug, type, what its H2s actually end with)
 tail_ok = tail_total = 0
 title_bad = []         # (slug, title)
 
-# Titles already read by a person and judged fine (STYLE.md rule 14). Same
+# Titles already read by a person and judged fine. Same
 # pattern as check-tables-reviewed.tsv: delete a line to see it again.
 REVIEWED_TITLES = os.path.join(HERE, "check-titles-reviewed.tsv")
 reviewed_titles = set()
@@ -398,7 +398,7 @@ for slug, p in ALL:
         continue
     fm = front_matter(text)
 
-    # -- title policy (STYLE.md rule 14). The heuristic is deliberately dumb
+    # -- title policy. The heuristic is deliberately dumb
     # and low-recall: a title with no digit, colon, comma or em-dash, running
     # five words or more, is the shape a withholding sentence takes
     # ("Everyone Guesses Forty" is spared only by its length; "Everybody
@@ -429,7 +429,7 @@ for slug, p in ALL:
 
 def report_template():
     how = "gating" if STRICT_TEMPLATE else "advisory, DD_STRICT_TEMPLATE=0"
-    print("template tail (STYLE.md rule 13; %s):" % how)
+    print("template tail (%s):" % how)
     for slug, typ, got in tail_bad:
         print("  %-28s (%s) ends: %s" % (slug, typ, got))
     print("%d of %d chapters follow the 3rd-edition template"
@@ -437,7 +437,7 @@ def report_template():
     print("  (briefs end learned > Extensions > Sources; chapters carry "
           "learned and end on Sources)")
     print()
-    print("title policy (STYLE.md rule 14; %s):" % how)
+    print("title policy (%s):" % how)
     if title_bad:
         for slug, title in title_bad:
             print("  %-28s %s" % (slug, title))
