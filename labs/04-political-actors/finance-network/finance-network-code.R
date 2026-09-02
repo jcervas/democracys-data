@@ -22,6 +22,10 @@ ge <- read.csv("data/derived/graph_edges.csv", stringsAsFactors = FALSE)
 id <- read.csv("data/derived/identity.csv",    stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",       stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("candidates.csv", "committees.csv", "edges.csv", "facts.csv", "graph_edges.csv", "graph_nodes.csv", "identity.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

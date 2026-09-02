@@ -25,6 +25,10 @@ leaders <- rd("platform_leaders.csv")
 stale   <- rd("stale_handles.csv")
 allm    <- rd("all_members.csv")
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("all_members.csv", "checks.csv", "coverage.csv", "facts.csv", "party_coverage.csv", "platform_leaders.csv", "stale_handles.csv"))
+
 n  <- function(x) format(as.numeric(x), big.mark = ",")
 pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
 plat <- c(x = "X", instagram = "Instagram", bluesky = "Bluesky")

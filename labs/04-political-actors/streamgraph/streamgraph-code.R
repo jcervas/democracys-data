@@ -19,6 +19,10 @@ ar <- read.csv("data/derived/articles.csv", stringsAsFactors = FALSE)
 ev <- read.csv("data/derived/events.csv",   stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",    stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("articles.csv", "events.csv", "facts.csv", "series.csv", "stream.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

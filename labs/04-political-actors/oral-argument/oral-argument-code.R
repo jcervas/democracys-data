@@ -138,6 +138,10 @@ RED <- "#C41230"; BLU <- "#2c7fb8"; GRY <- "#8A8F94"
 # timestamps still attached. The first turn by a justice is the one printed,
 # because the argument is about what the Court records of ITSELF.
 ex <- read.csv("data/derived/exhibit.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("arguments.csv", "checks.csv", "exhibit.csv", "justice_terms.csv", "measures.csv", "order.csv", "silence.csv", "speakers.csv", "totals.csv"))
 j <- jsonlite::fromJSON(file.path("data", ex$file), simplifyVector = FALSE)
 allturns <- unlist(lapply(j$transcript$sections, function(s) s$turns),
                    recursive = FALSE)

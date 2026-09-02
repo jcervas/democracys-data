@@ -21,6 +21,10 @@ et <- read.csv(file.path(D, "derived/entry_tenure.csv"),    stringsAsFactors = F
 pr <- read.csv(file.path(D, "derived/presidents.csv"),      stringsAsFactors = FALSE)
 ck <- read.csv(file.path(D, "derived/checks.csv"),          stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("age_by_congress.csv", "checks.csv", "entry_tenure.csv", "life_expectancy.csv", "members.csv", "presidents.csv"))
+
 # ---- formatting -------------------------------------------------------------
 # R rounds half to even; JavaScript rounds half up. Every number that appears
 # in both the D3 figure and the static one is formatted ONCE here, in R, and
