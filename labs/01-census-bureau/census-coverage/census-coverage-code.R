@@ -27,6 +27,23 @@ fc     <- rd("facts.csv")
 comp   <- rd("components.csv")
 ck     <- rd("checks.csv")
 
+# The size of each derived table, for the hand-off table at the foot of the
+# brief. The links there are written out literally, because check-sources.py
+# proves a chapter hands over its tables by reading the SOURCE rather than the
+# render -- a generated list would be invisible to it. The shapes are measured
+# here so the only part that could drift does not.
+DERIVED <- c("age.csv", "age_sex.csv", "checks.csv", "components.csv",
+             "facts.csv", "map_bins.csv", "map_insets.csv", "map_states.csv",
+             "race.csv", "states.csv", "tenure.csv")
+# A file added to derived/ without a row in that table stops the build. Five of
+# these eleven were on disk with nothing on the page pointing at them, which is
+# the failure this guard exists to prevent repeating.
+stopifnot(setequal(list.files("data/derived", pattern = "[.]csv$"), DERIVED))
+DIM <- function(f) {
+  d <- read.csv(file.path("data/derived", f), stringsAsFactors = FALSE)
+  paste0(nn(nrow(d)), " \u00d7 ", ncol(d))
+}
+
 F  <- function(k) fc$value[fc$key == k]
 FN <- function(k) as.numeric(F(k))
 nn <- function(x) format(round(as.numeric(x)), big.mark = ",")
@@ -279,3 +296,4 @@ par(op)
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))
+
