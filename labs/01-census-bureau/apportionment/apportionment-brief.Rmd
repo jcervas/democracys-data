@@ -123,6 +123,76 @@ Then a number nobody is asked to guess, because it sits inside New York's own ro
 
 So the obvious reading of the famous margin is wrong. `r n(margin)` people is not evidence that the census needed to be counted more carefully. It is evidence that the margin fell below the resolution of the instrument: below the census's own published uncertainty about state totals, and far below a policy choice already sitting inside the number. There is no recount for a census, and the quantity in dispute is `r round(ny$overseas / margin)` times smaller than an administrative rule inside the thing that would have to be recounted. **The near-miss is a fact about the rules, not about the accuracy of the count.**
 
+## Activity: four states and a jar of pennies
+
+```{r pen, include=FALSE}
+```
+
+If the near-miss is a fact about the rules, then the rules are the thing worth arguing with. Equal proportions is one of six methods Congress has used or considered, and they do not agree with one another. Fifty states are too many to argue about at once. Four are enough to produce the whole disagreement.
+
+Put `r sum(penP)` people into four groups of `r paste(penP, collapse = ", ")`. Set `r penS` pennies on the table between them. Give one instruction: each group should end up with a share of the pennies matching its share of the people. Do not say how.
+
+Every group can work out its own fair number in a minute, and every one of those numbers is defensible. The four numbers will not add up to `r penS`. That is the problem the whole method fight is about, and it arrives before any formula does.
+
+> **Write two numbers down before you touch the figure.** How many pennies
+> should the group of `r penP[1]` get, when its fair share is
+> `r sprintf("%.2f", penQ[1])`? And which group should give one up, so that the
+> four numbers add to `r penS`?
+
+> **The six rules, without the arithmetic.** Every one of them is answering the
+> same question: a group is owed a share with a fraction in it, and somebody has
+> to decide what happens to the fraction.
+>
+> - **Adams** — round every share up. A sliver of a share still earns a whole
+>   penny, so the smallest group does best.
+> - **Dean** — make each group's people-per-penny as close to the average as it
+>   can be, measured in people.
+> - **Huntington–Hill** — the same aim, measured in percentages instead of
+>   people. This is the one the United States has used since 1941.
+> - **Webster** — ordinary rounding. Above the halfway point a share rounds up,
+>   below it rounds down.
+> - **Jefferson** — round every share down. Fractions are simply discarded,
+>   which suits the group holding the most pennies already.
+> - **Hamilton** — no rounding rule at all. Hand out the whole shares, then give
+>   the leftover pennies to whoever has the largest fractions.
+
+```{r pen-static, eval=!knitr::is_html_output(), fig.height=4.6}
+```
+
+```{r pen-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+**Figure 3. Six rules, four groups, `r penS` pennies.** Each row is one of the six rules listed above, run over four group sizes instead of fifty state populations. Cells in bold differ from Huntington–Hill, the method in force since 1941: blue is a penny more, red a penny fewer. In the browser the sliders set the four group sizes and the number of pennies. The checkbox decides whether every group is handed one penny before the rules start. All six rules are re-run on every step.
+
+Six rules produce `r penD` different answers here. Adams's method gives the smallest group `r penM["Adams", "A"]` pennies and takes one off the largest. Jefferson's gives the group of `r penP[2]` one fewer and hands it to the group of `r penP[3]`. Hamilton's method agrees with Huntington–Hill at this setting, which it will not do once you start moving the pennies. Nobody has miscounted anything. The group sizes are known exactly, and every bit of the disagreement is about the remainder.
+
+A room full of people makes the same point faster. The largest group reliably invents something close to rounding down, which is Jefferson's method. The smallest reliably insists that it cannot be left with nothing, which is Huntington–Hill's guaranteed seat. Both are arguing their own interest, and both are quoting a rule the United States has actually used. Jefferson was Virginia, the largest state in the union. Webster and John Quincy Adams were New England, and New England was small.
+
+Four things to do with it, in the version with the sliders:
+
+- **Make the House bigger and watch a group get smaller.** Press *set up the
+  paradox*, which puts `r penA$size` pennies on the table, then move the
+  pennies one step to `r penA$size + 1`. Group `r penA$loser` drops from
+  `r penA$before[penA$li]` to `r penA$after[penA$li]` under `r penA$rule`'s
+  method. There is more to hand out and one group receives less. That is the
+  **Alabama paradox**, named for the 1880 census, when the House found that
+  growing from 299 seats to 300 would take a seat away from Alabama. The last
+  two rows of the printed figure carry the same two lines.
+- **Make the same move under the other five rules.** Nothing falls. A divisor
+  method runs a queue like the one this brief opened with, and lengthening a
+  queue cannot take back what it has already handed out.
+- **Set all four groups to the same size.** Every rule ends up starred, because
+  the last penny is a genuine tie and the answer turns on a coin flip. The
+  exercise is dead at that setting, which is why the numbers it opens on were
+  searched for rather than picked.
+- **Turn off the mandated first penny.** Set three groups to 1 against a fourth
+  at 9, with 8 pennies. Jefferson's method gives the large group all eight and
+  the other three nothing. That is what the constitutional floor is for, and it
+  is a floor rather than a property of the rule, because three of these six
+  rules would not impose it on their own.
+
+None of this is a simplified version of the real thing. It is the real thing, with the populations small enough to hold in your head. The rules are the same rules and the failures are the same failures. The reason there is no neutral answer for four groups is the reason there is none for fifty states.
+
 ## What this brief cannot tell you
 
 The file has authority without uncertainty. Every population is printed as an exact whole number, and none is exact. The Bureau publishes its coverage error separately, on a different schedule, and puts state-level error in the hundreds of thousands, far above `r n(margin)`. So this brief cannot say that a more careful count would have moved the seat. Nothing here measures enumeration error, and no second source exists against which to check the first.
@@ -139,6 +209,7 @@ And it cannot judge the rule itself. Congress chose equal proportions over five 
 - The 2020 count moved `r n(SGAIN)` seats across `r n(sum(scs$change != 0))` states, and each seat moved an Electoral College vote with it.
 - `r ladder$state[1]` missed the final seat by `r n(margin)` people, while the next state in line was `r n(runner)` short: the near-miss was an outlier, not the normal state of affairs.
 - The margin was smaller than the instrument. New York's own total includes `r n(ny$overseas)` people assigned to it by a rule about federal employees abroad, roughly `r round(ny$overseas / margin)` times the margin that decided the seat.
+- The rule is a choice, and the choices disagree. Over four groups and `r penS` pennies, the six methods Congress has used or considered produce `r penD` different answers, with every group size known exactly and nothing miscounted.
 
 ## Extensions
 
@@ -166,6 +237,13 @@ Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
 [`apportionment_2020.csv`](data/derived/apportionment_2020.csv), [`priority_values.csv`](data/derived/priority_values.csv), [`seat_change_states.csv`](data/derived/seat_change_states.csv)
+
+**Literature**
+
+- Balinski, M. L. and Young, H. P. (2001). *Fair Representation: Meeting the
+  Ideal of One Man, One Vote*, 2nd edn. Washington, D.C.: Brookings Institution
+  Press. ISBN 978-0-8157-0111-8. The six methods, the impossibility result and
+  the history of the fights over which rule to use are worked out here.
 
 **Statutes and cases**
 
