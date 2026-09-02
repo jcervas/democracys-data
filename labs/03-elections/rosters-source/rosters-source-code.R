@@ -20,6 +20,10 @@ ext <- read.csv("data/derived/exits.csv",   stringsAsFactors = FALSE)
 car <- read.csv("data/derived/careers.csv", stringsAsFactors = FALSE)
 ck  <- read.csv("data/derived/checks.csv",  stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("careers.csv", "checks.csv", "excess.csv", "exits.csv", "rosters.csv"))
+
 nn <- function(x) format(round(x), big.mark = ",")
 p1 <- function(x) formatC(x, format = "f", digits = 1)
 cv <- function(k) ck$value[ck$check == k]

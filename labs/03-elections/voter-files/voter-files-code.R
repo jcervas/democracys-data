@@ -30,6 +30,10 @@ st   <- read.csv("data/derived/status.csv",     stringsAsFactors = FALSE)
 to   <- read.csv("data/derived/turnout.csv",    stringsAsFactors = FALSE, check.names = FALSE)
 lost <- read.csv("data/derived/lost.csv",       stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("columns.csv", "deadlines.csv", "headscan.csv", "lost.csv", "peek.csv", "race_party.csv", "registration.csv", "schema.csv", "status.csv", "turnout.csv"))
+
 VOTERS   <- sum(to$in_file_2026)
 ACTIVE   <- st$voters[st$status == "ACTIVE"]
 INACTIVE <- sum(st$voters[st$status == "INACTIVE"])

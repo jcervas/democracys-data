@@ -32,6 +32,10 @@ ex <- read.csv("data/derived/excluded.csv",      stringsAsFactors = FALSE,
 pa <- read.csv("data/derived/parity.csv",        stringsAsFactors = FALSE)
 ff <- read.csv("data/derived/facts.csv",         stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("counties.csv", "county_rings.csv", "dorling.csv", "excluded.csv", "facts.csv", "grid_cells.csv", "lorenz.csv", "parity.csv", "state_rings.csv"))
+
 # Every scalar about the map comes out of facts.csv, which data/build-data.R
 # wrote from the sources it fetched. The section that checks the returns
 # against the fifty-one state canvasses computes its numbers on the page, from

@@ -29,6 +29,10 @@ tpz    <- rd("third_party_zero.csv")
 # lists Jackson County and Kansas City on separate lines; the compilation has
 # only Jackson. Both lines are read from the certified assembly itself.
 off24 <- rd("pres2024_counties_official.csv")
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "crosscheck_ap_2024.csv", "crosscheck_ap_counties_2024.csv", "facts.csv", "formats.csv", "largest_gaps.csv", "not_counties.csv", "pres2020_counties_official.csv", "pres2024_counties_official.csv", "third_party_zero.csv", "unit_shapes.csv"))
 JAX <- off24[which(off24$state_name == "Missouri" & off24$county_fips == 29095), ]
 KCM <- off24[which(off24$state_name == "Missouri" & off24$county_name == "Kansas City"), ]
 

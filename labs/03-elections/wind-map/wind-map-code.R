@@ -28,6 +28,10 @@ uo <- read.csv(file.path(D, "derived/us_outline.csv"))
 go <- read.csv(file.path(D, "derived/ga_outline.csv"))
 ff <- read.csv(file.path(D, "derived/facts.csv"))
 
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears in derived/ without a line there.
+dd_derived(c("audit_summary.csv", "correction_2016.csv", "county_centroids.csv", "facts.csv", "ga_outline.csv", "join_1620.csv", "office_gap.csv", "parity.csv", "precinct_join_ladder.csv", "precinct_join_residual.csv", "provenance_audit.csv", "source_audit_2016.csv", "us_outline.csv", "wind_ga.csv", "wind_ga_counties.csv", "wind_input_2026.csv", "wind_us.csv", "wind_us_1620.csv", "wind_us_1624.csv"))
+
 # Every number in this document comes out of F(). Nothing is typed.
 FV <- setNames(ff$value, ff$key)
 F  <- function(k) {

@@ -17,6 +17,10 @@ di <- read.csv("data/derived/districts.csv", stringsAsFactors = FALSE)
 by <- read.csv("data/derived/by_year.csv",   stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",     stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("by_year.csv", "districts.csv", "facts.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 p1 <- function(x) formatC(x, format = "f", digits = 1)
 p2 <- function(x) formatC(x, format = "f", digits = 2)

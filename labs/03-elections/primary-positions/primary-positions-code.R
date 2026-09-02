@@ -24,6 +24,10 @@ FA <- read.csv("data/derived/factions.csv",     stringsAsFactors = FALSE)
 PL <- read.csv("data/derived/party_labels.csv", stringsAsFactors = FALSE)
 CK <- read.csv("data/derived/checks.csv",       stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("by_count.csv", "by_issue.csv", "by_outcome.csv", "candidates.csv", "checks.csv", "factions.csv", "party_labels.csv"))
+
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",", trim = TRUE)
 ck <- function(k) {

@@ -32,6 +32,33 @@ Two more sources anchor the picture. Each arrow starts at the Census Bureau's po
 
 ## The data
 
+Nineteen tables come out of this chapter's three build scripts. Four are
+what the figures below are drawn from; the rest are the audits, joins and
+companion vintages that make the four trustworthy. Sizes are rows by
+columns, read off the files.
+
+| Table | What it holds | Size |
+|---|---|---|
+| [`wind_us.csv`](data/derived/wind_us.csv) | 3,104 national county arrows, 2020 to 2024: both years' returns, the two-party margin and swing, and the arrow's start point and length. | `r dd_dim("wind_us.csv")` |
+| [`wind_ga.csv`](data/derived/wind_ga.csv) | The same columns for Georgia alone, 159 counties, built from the state's own returns rather than a national compilation. | `r dd_dim("wind_ga.csv")` |
+| [`us_outline.csv`](data/derived/us_outline.csv) | Projected state outlines for the national map, the frame the county arrows are drawn on. | `r dd_dim("us_outline.csv")` |
+| [`ga_outline.csv`](data/derived/ga_outline.csv) | Projected Georgia county outlines, the frame wind_ga.csv is drawn on. | `r dd_dim("ga_outline.csv")` |
+| [`county_centroids.csv`](data/derived/county_centroids.csv) | 3,221 county population-weighted centroids, where the tail of each arrow is anchored. | `r dd_dim("county_centroids.csv")` |
+| [`facts.csv`](data/derived/facts.csv) | Every scalar the three documents (this brief and its two companions) quote. | `r dd_dim("facts.csv")` |
+| [`provenance_audit.csv`](data/derived/provenance_audit.csv) | A per-unit audit of the two national county files this chapter reconciles, before they became wind_us.csv. | `r dd_dim("provenance_audit.csv")` |
+| [`audit_summary.csv`](data/derived/audit_summary.csv) | provenance_audit.csv collapsed to counts -- how many units matched cleanly, how many needed a decision. | `r dd_dim("audit_summary.csv")` |
+| [`precinct_join_ladder.csv`](data/derived/precinct_join_ladder.csv) | What each successive repair to the Georgia precinct-name join recovers, step by step. | `r dd_dim("precinct_join_ladder.csv")` |
+| [`precinct_join_residual.csv`](data/derived/precinct_join_residual.csv) | Where the precinct join still fails after every repair, by county. | `r dd_dim("precinct_join_residual.csv")` |
+| [`office_gap.csv`](data/derived/office_gap.csv) | 2,641 Georgia precincts: president against senate on the same ballot, the within-precinct check on ticket-splitting. | `r dd_dim("office_gap.csv")` |
+| [`wind_ga_counties.csv`](data/derived/wind_ga_counties.csv) | 159 Georgia counties against the 2022 governor's race, a baseline the presidential swing is checked against. | `r dd_dim("wind_ga_counties.csv")` |
+| [`wind_input_2026.csv`](data/derived/wind_input_2026.csv) | A stub: the one file meant to be replaced with live returns on class day, so the map can be redrawn on the newest election. | `r dd_dim("wind_input_2026.csv")` |
+| [`parity.csv`](data/derived/parity.csv) | The agreement check between the D3 map in the browser and the base-R map on paper -- same arrows, two renderers. | `r dd_dim("parity.csv")` |
+| [`wind_us_1620.csv`](data/derived/wind_us_1620.csv) | The same national arrows for 2016 to 2020, carrying that pair's own vote columns (votes_dem_16 / votes_gop_16). | `r dd_dim("wind_us_1620.csv")` |
+| [`join_1620.csv`](data/derived/join_1620.csv) | The unit audit for the 2016-to-2020 join, the same kind of table provenance_audit.csv is for 2020-to-2024. | `r dd_dim("join_1620.csv")` |
+| [`wind_us_1624.csv`](data/derived/wind_us_1624.csv) | 2016 to 2024 arrows, an eight-year span built by joining the two pairs already on disk -- no votes fetched twice. | `r dd_dim("wind_us_1624.csv")` |
+| [`source_audit_2016.csv`](data/derived/source_audit_2016.csv) | Two independent 2016 county-return files scored, at the state level, against a third source that shares data with neither. | `r dd_dim("source_audit_2016.csv")` |
+| [`correction_2016.csv`](data/derived/correction_2016.csv) | Per-county, the 2016 swing before and after that audit's correction was applied. | `r dd_dim("correction_2016.csv")` |
+
 `wind_us.csv` holds one row per county drawn, with both years' returns and the county's center point side by side. The columns that matter carry the analysis: `margin_20` and `margin_24` are the two-party margins, Republican votes minus Democratic votes divided by the sum of the two, so that a county the Democrat carried by ten points reads −10. `swing` is the difference between them, in points, positive toward the Republican. `net_votes` is the swing multiplied by the county's two-party vote — the net number of ballots that changed hands. `pop` is the county's census population, and `x`, `y`, `dx`, `dy` are where the arrow starts on the page and which way and how far it goes, stored once so every figure draws the identical arrow.
 
 Follow one row through. Fulton County, Georgia — Atlanta — cast `r n(EX$votes_dem_20)` Democratic and `r n(EX$votes_gop_20)` Republican votes in 2020, a margin of `r sg(EX$margin_20)`; in 2024 it cast `r n(EX$votes_dem_24)` and `r n(EX$votes_gop_24)`, a margin of `r sg(EX$margin_24)`. Subtract the first margin from the second and the swing is `r sg(EX$swing)`: the county moved toward the Republican while staying one of the most Democratic in the South, which is exactly the movement a red-and-blue map cannot show. Its net votes are that swing applied to its `r n(EX_two_24)` two-party ballots of 2024, `r n(EX$net_votes)` ballots' worth of movement.
@@ -170,10 +197,9 @@ Two stretch ideas point past the spreadsheet. The MIT Election Data and Science 
 
 **The data itself**
 
-Every figure above is drawn from these tables. They are plain CSV, they
-open in a spreadsheet, and they are yours to take further.
-
-[`wind_us.csv`](data/derived/wind_us.csv), [`wind_ga.csv`](data/derived/wind_ga.csv), [`county_centroids.csv`](data/derived/county_centroids.csv), [`us_outline.csv`](data/derived/us_outline.csv), [`ga_outline.csv`](data/derived/ga_outline.csv)
+All nineteen tables are described in [The data](#the-data) at the top of this
+brief. They are plain CSV, they open in a spreadsheet, and they are yours to
+take further: [`wind_us.csv`](data/derived/wind_us.csv), [`wind_ga.csv`](data/derived/wind_ga.csv), [`us_outline.csv`](data/derived/us_outline.csv), [`ga_outline.csv`](data/derived/ga_outline.csv), [`county_centroids.csv`](data/derived/county_centroids.csv), [`facts.csv`](data/derived/facts.csv), [`provenance_audit.csv`](data/derived/provenance_audit.csv), [`audit_summary.csv`](data/derived/audit_summary.csv), [`precinct_join_ladder.csv`](data/derived/precinct_join_ladder.csv), [`precinct_join_residual.csv`](data/derived/precinct_join_residual.csv), [`office_gap.csv`](data/derived/office_gap.csv), [`wind_ga_counties.csv`](data/derived/wind_ga_counties.csv), [`wind_input_2026.csv`](data/derived/wind_input_2026.csv), [`parity.csv`](data/derived/parity.csv), [`wind_us_1620.csv`](data/derived/wind_us_1620.csv), [`join_1620.csv`](data/derived/join_1620.csv), [`wind_us_1624.csv`](data/derived/wind_us_1624.csv), [`source_audit_2016.csv`](data/derived/source_audit_2016.csv), [`correction_2016.csv`](data/derived/correction_2016.csv).
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

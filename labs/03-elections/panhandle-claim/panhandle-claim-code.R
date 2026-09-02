@@ -38,6 +38,10 @@ fct  <- rd("facts.csv")
 rng  <- rd("county_map.csv", colClasses = c(id = "character"))
 mlb  <- rd("county_map_labels.csv", colClasses = c(fips = "character"))
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("benchmark.csv", "bounds.csv", "candidate_by_region.csv", "correlates.csv", "county_map.csv", "county_map_labels.csv", "county_results.csv", "deviations.csv", "electorate.csv", "facts.csv", "regions.csv", "williams.csv"))
+
 # Every number the prose states comes out of here, so a rebuild that moves a
 # number moves the sentence with it.
 F <- function(k) {

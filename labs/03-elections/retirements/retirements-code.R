@@ -26,6 +26,10 @@ VP <- read.csv("data/derived/vsoc_party.csv",    stringsAsFactors = FALSE)
 CK <- read.csv("data/derived/checks.csv",        stringsAsFactors = FALSE)
 CM <- read.csv("data/derived/compare.csv",       stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "compare.csv", "departures.csv", "dropped.csv", "exits.csv", "exits_by_year.csv", "recovered.csv", "unmatched.csv", "vsoc.csv", "vsoc_party.csv"))
+
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",", trim = TRUE)
 ck <- function(k) {

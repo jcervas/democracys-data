@@ -44,6 +44,10 @@ ms <- read.csv("data/derived/fig_map_states.csv",      stringsAsFactors = FALSE,
 mf <- read.csv("data/derived/fig_map_frame.csv",       stringsAsFactors = FALSE)
 mb <- read.csv("data/derived/fig_map_absent.csv",      stringsAsFactors = FALSE)
 mm <- read.csv("data/derived/fig_map_meta.csv",        stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("anomalies.csv", "counties.csv", "fig_map_absent.csv", "fig_map_attr.csv", "fig_map_counties.csv", "fig_map_frame.csv", "fig_map_meta.csv", "fig_map_state_lines.csv", "fig_map_states.csv", "states.csv", "unusable_states.csv"))
 mv <- function(k) mm$value[mm$key == k]
 mn <- function(k) as.numeric(mv(k))
 

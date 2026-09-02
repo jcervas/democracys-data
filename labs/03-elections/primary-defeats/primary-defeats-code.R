@@ -25,6 +25,10 @@ VS <- read.csv("data/derived/vsoc.csv",       stringsAsFactors = FALSE)
 GG <- read.csv("data/derived/giroux.csv",     stringsAsFactors = FALSE)
 CM <- read.csv("data/derived/compare.csv",    stringsAsFactors = FALSE)
 CK <- read.csv("data/derived/checks.csv",     stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("by_year.csv", "checks.csv", "compare.csv", "denied.csv", "giroux.csv", "incumbents.csv", "vsoc.csv"))
 # The exit table from the sibling chapter, for the top band of the funnel and
 # for the one sentence that quotes its headline share. Read once here rather
 # than re-read inline four times.

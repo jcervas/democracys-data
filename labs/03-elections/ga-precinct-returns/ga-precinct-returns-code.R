@@ -60,6 +60,10 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 
 ## ---- vintage-setup
 s24 <- read.csv("data/derived/ga2024_structure.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over at the head of "The data";
+# dd_derived() stops the build if one appears in derived/ without a line there.
+dd_derived(c("assign_point.csv", "block_assign.csv", "counties.csv", "crosswalk.csv", "crosswalk_check.csv", "crosswalk_compare.csv", "crosswalk_pop.csv", "fig_forsyth.csv", "fig_forsyth_lab.csv", "fig_wind_blocks.csv", "fig_wind_meta.csv", "fig_wind_outline.csv", "fig_wind_pts.csv", "ga2020_counties.csv", "ga2020_precincts.csv", "ga2020_structure.csv", "ga2020_vote_methods.csv", "ga2020rc_counties.csv", "ga2020rc_precincts.csv", "ga2020rc_structure.csv", "ga2020rc_vote_methods.csv", "ga2024_counties.csv", "ga2024_precincts.csv", "ga2024_structure.csv", "ga2024_vote_methods.csv", "precincts.csv", "precincts_2024_est.csv", "precincts_2024_pop.csv", "recount.csv", "structure.csv"))
 g <- function(d, k) d$value[d$item == k]
 
 ## ---- vintages

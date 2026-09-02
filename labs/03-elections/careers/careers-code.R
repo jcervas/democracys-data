@@ -20,6 +20,10 @@ nv <- read.csv("data/derived/naive.csv",    stringsAsFactors = FALSE)
 tl <- read.csv("data/derived/timeline.csv", stringsAsFactors = FALSE)
 fx <- read.csv("data/derived/facts.csv",    stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("careers.csv", "cohorts.csv", "facts.csv", "km.csv", "naive.csv", "timeline.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)

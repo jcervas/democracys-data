@@ -23,6 +23,10 @@ BR <- read.csv("data/derived/brackets.csv",           stringsAsFactors = FALSE)
 NC <- read.csv("data/derived/nonclosing_by_year.csv", stringsAsFactors = FALSE)
 CK <- read.csv("data/derived/checks.csv",             stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("brackets.csv", "by_year.csv", "checks.csv", "contests.csv", "nonclosing_by_year.csv", "runoffs.csv"))
+
 pc <- function(x, k = 0) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",", trim = TRUE)
 ck <- function(k) {

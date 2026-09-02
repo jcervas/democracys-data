@@ -52,6 +52,10 @@ NHOUSE <- fn("n_house")
 # ticket, and the House crossover whose winner did the same. Every figure
 # quoted about them is read off their own rows.
 hse <- read.csv("data/derived/house.csv", stringsAsFactors = FALSE)
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "counties.csv", "facts.csv", "house.csv", "senate.csv", "split_trend.csv", "states.csv"))
 xs  <- sen[sen$crossover, ]
 xs  <- xs[which.max(abs(xs$ran_ahead)), ]
 hx  <- hse[hse$crossover, ]

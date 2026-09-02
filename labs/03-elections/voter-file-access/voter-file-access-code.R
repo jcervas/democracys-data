@@ -35,6 +35,10 @@ EAC_AGE <- as.integer(format(as.Date(FV("price_captured")), "%Y")) -
 # the prose Ballotpedia prints, because for eight jurisdictions the price is
 # not a single amount; `bp_price_usd` is filled in only where it is.
 price <- rd("price.csv")
+
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "claimed_downloads.csv", "facts.csv", "funnel.csv", "link_rot.csv", "page_shape.csv", "price.csv", "scan.csv"))
 PCMP  <- price[price$bp_price_is_one_number == "yes", ]
 PGAP  <- PCMP[PCMP$same_price == "no", ]
 PGAP  <- PGAP[order(-abs(PGAP$eac_price_usd - PGAP$bp_price_usd)), ]

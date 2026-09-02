@@ -25,6 +25,10 @@ MD <- read.csv("data/derived/monthday.csv",    stringsAsFactors = FALSE)
 GA <- read.csv("data/derived/ga_keys.csv",     stringsAsFactors = FALSE)
 BD <- read.csv("data/derived/birthday.csv",    stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("birthday.csv", "birthyears.csv", "crosscounty.csv", "facts.csv", "ga_keys.csv", "groupsize.csv", "keys.csv", "monthday.csv", "scaling.csv"))
+
 # A missing key must stop the render, not render as nothing. An inline
 # `r fx("typo")` that returns character(0) disappears silently and leaves a
 # sentence with a hole where a number should be -- which is how a paragraph

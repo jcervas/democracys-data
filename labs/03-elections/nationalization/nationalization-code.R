@@ -20,6 +20,10 @@ hy  <- read.csv("data/derived/house_years.csv",  stringsAsFactors = FALSE)
 swp <- read.csv("data/derived/swap.csv",         stringsAsFactors = FALSE)
 fx  <- read.csv("data/derived/facts.csv",        stringsAsFactors = FALSE)
 
+# Every table this chapter writes is handed over in the brief's data-itself
+# list; dd_derived() stops the build if one appears in derived/ without a link.
+dd_derived(c("checks.csv", "delegation_states.csv", "delegations.csv", "facts.csv", "house_years.csv", "senate_contests.csv", "senate_years.csv", "swap.csv"))
+
 f  <- function(k) fx$value[fx$key == k]
 fn <- function(k) as.numeric(f(k))
 n  <- function(x) format(round(as.numeric(x)), big.mark = ",", trim = TRUE)
