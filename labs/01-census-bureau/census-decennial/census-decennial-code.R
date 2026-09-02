@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
 options(scipen = 999)
 
 rd  <- function(f) read.csv(file.path("data/derived", f), stringsAsFactors = FALSE)
-tab <- rd("tables.csv");   ga   <- rd("georgia.csv")
+tab <- rd("tables.csv");   nat  <- rd("national.csv")
 race <- rd("race.csv");    dead <- rd("deadlines.csv")
 cov  <- rd("coverage.csv");  sc  <- rd("scale.csv")
 cost <- rd("cost.csv")
@@ -24,7 +24,7 @@ use  <- rd("census-use.csv"); adjm <- rd("adjustments.csv")
 nn <- function(x) format(round(as.numeric(x)), big.mark = ",")
 p1 <- function(x) formatC(as.numeric(x), format = "f", digits = 1)
 p2 <- function(x) formatC(as.numeric(x), format = "f", digits = 2)
-G  <- function(q) ga$value[ga$quantity == q]
+N  <- function(q) nat$value[nat$quantity == q]
 R  <- function(g) race$people[race$group == g]
 CV <- function(g, col) cov[[col]][cov$group == g]
 CO <- function(q) cost$value[cost$quantity == q]
@@ -37,7 +37,7 @@ P1N   <- tab$cells[tab$table == "P1"]
 COMBO <- P1N - 9
 SUBTOT <- 5                      # the "Population of N races" subtotal lines
 COMBOR <- COMBO - SUBTOT         # combinations proper
-POP   <- G("Total population")
+POP   <- N("Total population")
 
 W        <- function(t) tab$cells[tab$table == t]
 RACECELL <- W("P1") + W("P2") + W("P3") + W("P4")
@@ -81,7 +81,7 @@ data.frame(Table = tab$table, Variables = nn(tab$cells),
 
 ## ---- racetab
 data.frame(Group = race$group, People = nn(race$people),
-           Share_of_state = paste0(p1(race$share_of_state), "%"))
+           Share_of_the_country = paste0(p1(race$share_of_us), "%"))
 
 ## ---- cov-static
 cv <- cov_rows()
@@ -134,9 +134,12 @@ data.frame(Group = cov$group,
 
 ## ---- scaletab
 data.frame(Group = sc$group,
-           Published_in_Georgia = nn(sc$published_in_georgia),
+           Published_count = nn(sc$published),
            National_rate = paste0(ifelse(sc$national_rate > 0, "+", ""),
                                   p2(sc$national_rate), "%"),
            Implied_people = paste0(nn(abs(sc$implied_people)), " ",
                                    ifelse(sc$implied_people > 0,
                                           "missed", "in excess")))
+
+## ---- ai-prompt
+cat(ai_prompt(readLines("data/ai-prompt.txt")))

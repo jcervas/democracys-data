@@ -30,24 +30,35 @@
 # ---------------------------------------------------------------------------
 #
 # 1. THE FILE ITSELF. U.S. Census Bureau, 2020 Census P.L. 94-171 Redistricting
-#    Data Summary File, Georgia. Read from the copy the areal-units chapter
-#    already committed:
+#    Data Summary File, read for the whole country through the Census data API
+#    as the dataset `2020/dec/pl`:
 #
-#      ../../areal-units/data/raw/ga2020.pl.zip   (or raw/pl/, if unpacked)
+#      https://api.census.gov/data/2020/dec/pl
 #
-#    Borrowed rather than re-downloaded: it is 358 MB unpacked, and the vintage
-#    decision was made in that chapter. Four pipe-delimited files, no header
-#    row. The geographic header joins to the data segments on LOGRECNO.
+#    A KEY IS REQUIRED. The API has needed one since 2025; an unkeyed request
+#    302s to missing_key.html. Free from
+#    https://api.census.gov/data/key_signup.html; put it in ~/.Renviron as
+#      CENSUS_API_KEY='...'
+#    It is never written into this file, and the committed derived/ output means
+#    the LAB needs no key and no network -- only this rebuild does.
 #
-#      gageo2020.pl     97 fields. Field 3 SUMLEV, field 8 LOGRECNO.
-#                       SUMLEV 040 is the state; there is exactly one such row.
-#      ga000012020.pl  149 fields = 5 header + P1 (71 cells) + P2 (73)
-#      ga000022020.pl  152 fields = 5 header + P3 (71) + P4 (73) + H1 (3)
-#      ga000032020.pl   15 fields = 5 header + P5 (10)
+#    THE FILE IS DELIVERED STATE BY STATE and the Bureau publishes no national
+#    archive of it: fifty-one legacy zips, about 1.3 GB, is the only other route
+#    to the same numbers. This chapter used to read one of those zips -- 358 MB
+#    unpacked, borrowed from the areal-units chapter, which keeps it in a raw/
+#    folder that is not under version control. So the old build could not run
+#    for anyone who did not already have that other chapter's download.
 #
-#    The table widths are not hard-coded from documentation below -- they are
-#    measured from the files, and checked against these numbers, so that a file
-#    of a different vintage fails loudly instead of quietly mis-slicing.
+#    THE SWAP IS CHECKED, NOT ASSUMED. derived/legacy_georgia.csv holds the
+#    fifteen quantities the previous build parsed out of the Georgia zip by
+#    field position. Every run re-fetches Georgia from the API and compares all
+#    fifteen, and stops if one differs.
+#
+#    TABLE WIDTHS are still measured rather than copied from documentation:
+#    they are counted from the API's own variables.json, which lists every cell
+#    of every table, and checked against the widths the legacy file was
+#    measured at, so a vintage change fails loudly instead of quietly
+#    mis-slicing.
 #
 # 2. COVERAGE ERROR, transcribed. U.S. Census Bureau, "Census Bureau Releases
 #    Estimates of Undercount and Overcount in the 2020 Census", press release
@@ -97,9 +108,12 @@
 #   raw/ncsl-state-adjustments.tsv  States that alter the file first.
 #   derived/tables.csv    The six tables in the redistricting file, and how
 #                         wide each one is. Measured from the file.
-#   derived/georgia.csv   What those tables say about one state.
-#   derived/race.csv      Georgia by race and by Hispanic origin, the two
+#   derived/national.csv  What those tables say about the whole country.
+#   derived/race.csv      The nation by race and by Hispanic origin, the two
 #                         questions the coverage estimates are broken out on.
+#   derived/legacy_georgia.csv  Frozen. The fifteen quantities the previous
+#                         build read out of the Georgia legacy zip, kept as the
+#                         check that the API serves the same file.
 #   derived/deadlines.csv Statutory deadline against delivered date.
 #   derived/coverage.csv  2020 PES net coverage error by group, with 2010.
 #   derived/scale.csv     Those rates put on a scale a reader can hold.
@@ -108,7 +122,7 @@
 #                             draw districts from the federal count.
 #   derived/adjustments.csv   The states that move people before drawing.
 #
-# Run from this directory:  Rscript build-data.R      (no internet needed)
+# Run from this directory:  Rscript build-data.R      (needs CENSUS_API_KEY)
 # ---------------------------------------------------------------------------
 
 dir.create("raw",     showWarnings = FALSE)
@@ -117,68 +131,111 @@ source("../../../_lib/precision.R")    # dd_write_csv(): six significant digits
 
 options(scipen = 999, stringsAsFactors = FALSE)
 
-# --- 0. Locate the P.L. file ------------------------------------------------
+# --- 0. Read the file from the API ------------------------------------------
 #
-# Prefer the unpacked copy; fall back to the zip. Either way nothing is
-# downloaded and nothing is written back into the other chapter's folder.
+# Two requests: the nation, which is what this chapter reports, and Georgia,
+# which is only fetched so that it can be checked against the numbers the
+# previous build parsed out of the legacy zip.
 
-AU  <- "../../areal-units/data/raw"
-ex  <- file.path(AU, "pl")
-if (!dir.exists(ex)) {
-  ex <- file.path(tempdir(), "pl")
-  dir.create(ex, showWarnings = FALSE)
-  utils::unzip(file.path(AU, "ga2020.pl.zip"), exdir = ex)
+KEY <- Sys.getenv("CENSUS_API_KEY")
+if (!nzchar(KEY)) stop("set CENSUS_API_KEY in ~/.Renviron -- see the header")
+
+BASE <- "https://api.census.gov/data/2020/dec/pl"
+
+# The cells this chapter needs, named as the published technical specification
+# names them. P1 is race, P2 race by Hispanic origin, P3 the same as P1 for
+# adults, H1 housing, P5 group quarters.
+vars <- c(
+  total        = "P1_001N",   # everyone
+  adults       = "P3_001N",   # 18 and over
+  gq           = "P5_001N",   # in group quarters
+  hu           = "H1_001N",   # housing units
+  hu_occupied  = "H1_002N",
+  hu_vacant    = "H1_003N",
+  white        = "P1_003N",   # the six single-race cells, P1 3-8
+  black        = "P1_004N",
+  aian         = "P1_005N",
+  asian        = "P1_006N",
+  nhpi         = "P1_007N",
+  other_race   = "P1_008N",
+  two_or_more  = "P1_009N",
+  hispanic     = "P2_002N",   # Hispanic origin, any race
+  white_nh     = "P2_005N")   # White alone AND not Hispanic
+
+# The API answers with a JSON array of arrays, header row first. Rows are cut
+# on the brackets and cells pulled out by their quotes -- no jsonlite, the way
+# the other API-reading chapters in this corpus do it, and quote-based because
+# NAME can carry a comma.
+get_pl <- function(geo) {
+  u <- paste0(BASE, "?get=NAME,", paste(vars, collapse = ","), "&for=", geo,
+              "&key=", KEY)
+  txt <- paste(readLines(url(u), warn = FALSE), collapse = "")
+  if (grepl("missing_key", txt, fixed = TRUE))
+    stop("the API refused the key in CENSUS_API_KEY -- see the header")
+  rows <- regmatches(txt, gregexpr("\\[[^][]*\\]", txt))[[1]]
+  cell <- function(r) gsub('"', "", regmatches(r, gregexpr('"[^"]*"', r))[[1]])
+  hdr <- cell(rows[1]); got <- cell(rows[2])
+  stopifnot(length(hdr) == length(got), all(vars %in% hdr))
+  setNames(as.numeric(got[match(vars, hdr)]), names(vars))
 }
-f_geo  <- file.path(ex, "gageo2020.pl")
-f_seg1 <- file.path(ex, "ga000012020.pl")
-f_seg2 <- file.path(ex, "ga000022020.pl")
-f_seg3 <- file.path(ex, "ga000032020.pl")
-stopifnot(file.exists(f_geo), file.exists(f_seg1), file.exists(f_seg2),
-          file.exists(f_seg3))
 
-# --- 1. The state record ----------------------------------------------------
+cat("reading 2020/dec/pl from the Census API --\n")
+US <- get_pl("us:*")
+GA <- get_pl("state:13")
+cat("  national total:", format(US[["total"]], big.mark = ","), "\n")
+
+# --- 1. The API against the legacy file -------------------------------------
 #
-# SUMLEV 040 is the state. One row, and the file is read for that one row
-# rather than for the 232,717 blocks the source chapter uses.
+# The reason this build no longer needs a 358 MB zip out of another chapter.
+# legacy_georgia.csv is frozen: it is what the previous build measured out of
+# the Georgia P.L. zip by field position. If the API is the same file, every
+# one of the fifteen quantities matches.
 
-geo <- read.delim(f_geo, sep = "|", header = FALSE, quote = "",
-                  colClasses = "character", fileEncoding = "latin1")
-names(geo)[c(3, 8, 10)] <- c("SUMLEV", "LOGRECNO", "GEOCODE")
-st <- geo[geo$SUMLEV == "040", ]
-stopifnot(nrow(st) == 1L)
-LRN <- st$LOGRECNO
-
-# Read one segment and return the state's row as a numeric vector of cells,
-# with the five header fields dropped. Reading the whole segment and keeping
-# one row is wasteful and is also the honest thing to do: the file has no
-# index, and a reader with the file in front of them has to do the same.
-cells <- function(path, expect) {
-  d <- read.delim(path, sep = "|", header = FALSE, quote = "",
-                  colClasses = "character")
-  stopifnot(ncol(d) == expect)                 # width is CHECKED, not assumed
-  r <- d[d[[5]] == LRN, ]
-  stopifnot(nrow(r) == 1L)
-  as.numeric(unlist(r[-(1:5)]))
-}
-s1 <- cells(f_seg1, 149)     # P1 (71) + P2 (73)
-s2 <- cells(f_seg2, 152)     # P3 (71) + P4 (73) + H1 (3)
-s3 <- cells(f_seg3,  15)     # P5 (10)
-stopifnot(length(s1) == 144, length(s2) == 147, length(s3) == 10)
-
-P1 <- s1[1:71];   P2 <- s1[72:144]
-P3 <- s2[1:71];   P4 <- s2[72:144];  H1 <- s2[145:147]
-P5 <- s3[1:10]
+fx <- read.csv("derived/legacy_georgia.csv", stringsAsFactors = FALSE)
+fx_key <- c("Total population" = "total",
+            "Population 18 and over" = "adults",
+            "Population in group quarters" = "gq",
+            "Housing units" = "hu",
+            "Occupied housing units" = "hu_occupied",
+            "Vacant housing units" = "hu_vacant",
+            "White alone" = "white",
+            "Black or African American alone" = "black",
+            "American Indian or Alaska Native alone" = "aian",
+            "Asian alone" = "asian",
+            "Native Hawaiian or Other Pacific Islander alone" = "nhpi",
+            "Some Other Race alone" = "other_race",
+            "Two or more races" = "two_or_more",
+            "Hispanic or Latino, of any race" = "hispanic",
+            "White alone, not Hispanic" = "white_nh")
+stopifnot(setequal(fx$quantity, names(fx_key)))
+bad <- fx$quantity[fx$value != GA[fx_key[fx$quantity]]]
+cat("legacy-vs-API, Georgia:", nrow(fx), "quantities --", length(bad),
+    "mismatches\n")
+if (length(bad)) cat("  differ:", paste(bad, collapse = "; "), "\n")
+stopifnot(length(bad) == 0)
 
 # --- 2. What the redistricting file contains --------------------------------
 #
 # THE POINT OF THIS TABLE. Every district in the United States is drawn from
-# this file, and it is six tables wide. The cell counts are lengths of vectors
-# sliced above, so they cannot drift from the file.
+# this file, and it is six tables wide. Not six hundred.
+#
+# The widths are still MEASURED rather than copied out of documentation -- the
+# API publishes a machine-readable list of every variable it serves, so the
+# cells of each table are counted by counting them there. The widths the legacy
+# Georgia file was measured at are asserted against that count, so a vintage
+# that changed a table would fail here instead of quietly mis-slicing.
+
+vj <- paste(readLines(url(paste0(BASE, "/variables.json")), warn = FALSE),
+            collapse = "")
+# {"P1_001N":{...,"group":"P1",...},...} -- count the cells claiming each group
+grp <- regmatches(vj, gregexpr('"group"[[:space:]]*:[[:space:]]*"[^"]*"', vj))[[1]]
+grp <- sub('.*"([^"]*)"$', "\\1", grp)
+wide <- function(t) sum(grp == t)
 
 tables <- data.frame(
   table = c("P1", "P2", "P3", "P4", "H1", "P5"),
-  cells = c(length(P1), length(P2), length(P3), length(P4),
-            length(H1), length(P5)),
+  cells = vapply(c("P1", "P2", "P3", "P4", "H1", "P5"), wide, numeric(1),
+                 USE.NAMES = FALSE),
   what_it_counts = c(
     "Everyone, by race",
     "Everyone, by Hispanic origin and race",
@@ -186,6 +243,8 @@ tables <- data.frame(
     "People 18 and over, by Hispanic origin and race",
     "Housing units: total, occupied, vacant",
     "People living in group quarters, by type of institution"))
+# the widths the legacy file was measured at, in the same order
+stopifnot(identical(tables$cells, c(71, 73, 71, 73, 3, 10)))
 dd_write_csv(tables, "derived/tables.csv")
 NCELL <- sum(tables$cells)
 
@@ -195,40 +254,42 @@ NCELL <- sum(tables$cells)
 # 15 quadruples, 6 quintuples and the single all-six cell. That is where the
 # width comes from, and it is a fact about the QUESTION rather than about the
 # population -- most of those cells are very small numbers.
-COMBOS   <- length(P1) - 9L          # 62 cells below the single-race block
+COMBOS   <- tables$cells[tables$table == "P1"] - 9L
 SUBTOT   <- 5L                       # "Population of N races" subtotal lines
 COMBOS_R <- COMBOS - SUBTOT          # 57 real combinations
 stopifnot(COMBOS_R == 15 + 20 + 15 + 6 + 1)
 
-
-# How the width accumulates, all read off the measured cell counts: the count
-# alone is one number; race makes it 71; adding Hispanic origin brings P1+P2 to
-# 144; the 18-and-over line doubles that to 288 across P1-P4. The remaining 13
-# are housing (3) and group quarters (10).
+# How the width accumulates: the count alone is one number; race makes it 71;
+# adding Hispanic origin brings P1+P2 to 144; the 18-and-over line doubles that
+# to 288 across P1-P4. The remaining 13 are housing (3) and group quarters (10).
 w         <- function(t) tables$cells[tables$table == t]
 RACE_CELL <- w("P1") + w("P2") + w("P3") + w("P4")
 REST_CELL <- w("H1") + w("P5")
 stopifnot(RACE_CELL + REST_CELL == NCELL)
 
-# --- 3. What the six tables say about one state -----------------------------
+# --- 3. What the six tables say about the country ---------------------------
 
-georgia <- data.frame(
+national <- data.frame(
   quantity = c("Total population",
                "Population 18 and over",
                "Population in group quarters",
                "Housing units",
                "Occupied housing units",
                "Vacant housing units"),
-  value = c(P1[1], P3[1], P5[1], H1[1], H1[2], H1[3]))
-stopifnot(georgia$value[georgia$quantity == "Housing units"] ==
-          sum(H1[2], H1[3]))                # occupied + vacant = total
-dd_write_csv(georgia, "derived/georgia.csv")
+  value = as.numeric(US[c("total", "adults", "gq", "hu",
+                          "hu_occupied", "hu_vacant")]))
+stopifnot(national$value[national$quantity == "Housing units"] ==
+          sum(US[["hu_occupied"]], US[["hu_vacant"]]))   # occupied + vacant
+# the published 2020 resident population, to the person
+stopifnot(US[["total"]] == 331449281)
+dd_write_csv(national, "derived/national.csv")
 
 # --- 4. The two questions the coverage estimates are broken out on ----------
 #
-# P1 cells 3-8 are the six single-race categories; P2 cell 2 is Hispanic origin
-# of any race. These are the same categories the Post-Enumeration Survey
-# reports its coverage error for, which is why they are pulled out here.
+# P1 cells 3-8 are the six single-race categories, P1 cell 9 is two or more
+# races, and P2 cell 2 is Hispanic origin of any race. These are the same
+# categories the Post-Enumeration Survey reports its coverage error for, which
+# is why they are pulled out here.
 
 race <- data.frame(
   group = c("White alone", "Black or African American alone",
@@ -236,8 +297,11 @@ race <- data.frame(
             "Native Hawaiian or Other Pacific Islander alone",
             "Some Other Race alone", "Two or more races",
             "Hispanic or Latino, of any race"),
-  people = c(P1[3], P1[4], P1[5], P1[6], P1[7], P1[8], P1[9], P2[2]))
-race$share_of_state <- 100 * race$people / P1[1]
+  people = as.numeric(US[c("white", "black", "aian", "asian", "nhpi",
+                           "other_race", "two_or_more", "hispanic")]))
+race$share_of_us <- 100 * race$people / US[["total"]]
+# the seven race answers are a partition of everyone; Hispanic origin is not
+stopifnot(abs(sum(race$people[1:7]) - US[["total"]]) < 0.5)
 dd_write_csv(race, "derived/race.csv")
 
 # --- 5. The deadlines -------------------------------------------------------
@@ -295,36 +359,35 @@ dd_write_csv(coverage, "derived/coverage.csv")
 
 # --- 7. Rates, on a scale a reader can hold ---------------------------------
 #
-# A percentage is easy to nod at. THIS IS NOT A STATE ESTIMATE: the PES does
-# not publish coverage rates by state and race, so what follows is the national
-# rate applied to Georgia's published counts -- an illustration of magnitude,
-# and labelled as one everywhere it appears.
+# A percentage is easy to nod at. The PES rates are national and the counts
+# they are applied to are now national too, so this is the population the rate
+# was actually measured on rather than an illustration borrowed from one state.
 
 # MATCH THE POPULATION TO THE RATE. The Bureau reports its White rate for the
 # NOT-HISPANIC White population, so it has to be applied to that same
 # population: P2 cell 5, White alone and not Hispanic. Using P1's "White alone"
-# would fold in Georgia's Hispanic White residents, who are already carried by
-# the Hispanic row -- the same people under two rows, at rates of opposite sign.
+# would fold in Hispanic White residents, who are already carried by the
+# Hispanic row -- the same people under two rows, at rates of opposite sign.
 pick     <- function(g) race$people[race$group == g]
-WHITE_NH <- P2[5]
+WHITE_NH <- US[["white_nh"]]
 stopifnot(WHITE_NH > 0, WHITE_NH < pick("White alone"))
 
 scale <- data.frame(
   group = c("Black or African American alone",
             "Hispanic or Latino, of any race",
             "White alone, not Hispanic"),
-  published_in_georgia = c(pick("Black or African American alone"),
-                           pick("Hispanic or Latino, of any race"),
-                           WHITE_NH),
+  published = c(pick("Black or African American alone"),
+                pick("Hispanic or Latino, of any race"),
+                WHITE_NH),
   national_rate = c(-3.30, -4.99, 1.64))
 
 # THE ARITHMETIC IS NOT rate * published. A net coverage rate is measured
 # against the TRUE population, not the published one: published = true *
 # (1 + rate/100). So the implied gap is published/(1 + rate/100) - published,
-# which for the Black row is 113,316 rather than the 109,577 that taking 3.30%
-# of the published count would give. The chapter says so.
+# which is a larger number than taking the rate off the published count. The
+# chapter says so.
 scale$implied_people <- with(scale,
-  published_in_georgia / (1 + national_rate / 100) - published_in_georgia)
+  published / (1 + national_rate / 100) - published)
 # Sign: POSITIVE = people the count is implied to have missed,
 #       NEGATIVE = people it is implied to hold in excess.
 dd_write_csv(scale, "derived/scale.csv")
@@ -436,17 +499,17 @@ writeLines(c(
 cat(sprintf("\ntables.csv    : %d tables, %d cells in the whole file\n",
             nrow(tables), NCELL))
 cat(sprintf("                P1 is %d cells: %d combinations + %d subtotal lines\n",
-            length(P1), COMBOS_R, SUBTOT))
+            w("P1"), COMBOS_R, SUBTOT))
 cat(sprintf("race width    : %d of %d cells exist because of the race question\n",
             RACE_CELL, NCELL))
-cat("\ngeorgia.csv   : what the six tables say about one state\n")
-print(georgia, row.names = FALSE)
+cat("\nnational.csv  : what the six tables say about the whole country\n")
+print(national, row.names = FALSE)
 cat("\ndeadlines.csv : both statutory, both missed\n")
 print(deadlines[, c("delivery", "due", "delivered", "days_late")],
       row.names = FALSE)
 cat("\ncoverage.csv  : 2020 net coverage error, per cent (negative = undercount)\n")
 print(coverage, row.names = FALSE)
-cat("\nscale.csv     : national rates on Georgia's published counts\n")
+cat("\nscale.csv     : national rates on the national published counts\n")
 print(scale, row.names = FALSE)
 cat(sprintf("\ncost          : $%.1fbn, $%.2f per person counted\n",
             COST_2020 / 1e9, COST_PP))
