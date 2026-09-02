@@ -41,6 +41,8 @@ ag$dev <- 100 * (ag$pop - IDEAL) / IDEAL
 DEV_RANGE <- max(ag$dev) - min(ag$dev)
 WORTH <- max(ag$pop) / min(ag$pop)
 BIG <- ag$boe5[which.max(ag$pop)]; SML <- ag$boe5[which.min(ag$pop)]
+POP_BIG <- max(ag$pop); POP_SML <- min(ag$pop)   # the worked example in the brief
+DEV_BIG <- max(ag$dev); DEV_SML <- min(ag$dev)
 
 # ---- Georgia's county unit rule, applied to 2020 population ---------------
 UNITS  <- sum(cu$units); NEEDED <- floor(UNITS / 2) + 1

@@ -3,8 +3,9 @@
 #
 # Eight files end up in this folder:
 #
-#   derived/census_surnames.csv   every surname held by 100 or more people at the 2010
+#   derived/census_surnames.csv   every surname held by 100 or more people at the 2020
 #                         Census, with the racial composition of its bearers
+#                         (the 2010 table is census_surnames_2010.csv, below)
 #   derived/county_race.csv       racial and ethnic composition of every U.S. county,
 #                         in the same six categories as the surname file
 #   derived/surnames_2020_top100.csv

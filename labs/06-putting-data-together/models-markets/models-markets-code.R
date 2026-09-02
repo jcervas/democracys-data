@@ -31,6 +31,10 @@ tab$gap <- tab$happened - tab$priced
 gb <- function(lv, col) tab[[col]][tab$band == lv]
 
 brier    <- mean((d$p7 - d$outcome)^2)
+# one market's score, for the worked example in the brief: the largest market
+o1     <- d[order(-d$volume), ][1, ]
+B1     <- (o1$p7 - o1$outcome)^2
+B1_ALT <- (o1$p7 - (1 - o1$outcome))^2      # had it gone the other way
 brier50  <- mean((0.5 - d$outcome)^2)
 brierbr  <- mean((mean(d$outcome) - d$outcome)^2)
 

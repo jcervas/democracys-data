@@ -67,6 +67,24 @@ G <- merge(GRID, RACES, by.x = "st", by.y = "state", all.x = TRUE)
 G <- G[order(G$row, G$col), ]
 
 CODE_ORDER <- RACES$state          # already alphabetical by abbreviation
+
+# One race's ratings put on the scale by hand, for the worked example in the
+# brief: the race the forecasters disagree about most.
+MD_ST   <- RACES$state[RACES$state_name == fx("most_disagreed")]
+md_r    <- RAT[RAT$state == MD_ST, ]
+md_s    <- tapply(md_r$score, md_r$rating, function(v) v[1])
+md_t    <- table(md_r$rating)[order(-md_s)]
+md_s    <- md_s[names(md_t)]
+WORDS   <- c("one", "two", "three", "four", "five", "six", "seven",
+             "eight", "nine", "ten", "eleven", "twelve")
+md_bits <- sprintf("%s %s at %s%s", WORDS[md_t], names(md_t),
+                   formatC(md_s, format = "fg"), ifelse(md_t > 1, " each", ""))
+MD_TXT  <- paste(c(paste(head(md_bits, -1), collapse = ", "), tail(md_bits, 1)),
+                 collapse = " and ")
+MD_N    <- nrow(md_r)
+MD_SUM  <- sum(md_r$score)
+MD_MEAN <- mean(md_r$score)
+MD_NEAR <- CATS[which.min(abs(SCORES - MD_MEAN))]
 D_HOLD <- mq("Democratic seats not on the ballot")
 D_NEED <- mq("of the 35, Democrats must win")
 

@@ -16,15 +16,15 @@ dd_read_chunks("sweet-spot-code.R")
 ```{r setup, include=FALSE}
 ```
 
-American voting-rights law reaches for one remedy above all others: a district in which a minority group is a majority, and can elect the candidate it prefers. *Bartlett v. Strickland*, 556 U.S. 1, 19–20 (2009) made the 50 percent line the thing that decides a case. So how many majority-Black congressional districts does the country actually have? The question sounds like it has one answer.
+American voting-rights law reaches for one remedy above all others: a district in which a minority group is a majority, and can elect the candidate it prefers. *Bartlett v. Strickland*, 556 U.S. 1, 19–20 (2009) made the 50 percent line the thing that decides a case.^[*Bartlett v. Strickland*, 556 U.S. 1 (2009): <https://www.law.cornell.edu/supremecourt/text/07-689>.] So how many majority-Black congressional districts does the country actually have? The question sounds like it has one answer.
 
-The other half of it is what happens on the way to that line. A district can be **packed**, holding far more Black voters than a majority needs, or **cracked**, holding too few to elect anybody. In between sits a band of districts that are 40 to 50 percent Black. Both questions are answered here from one Congress.
+The other half of it is what happens on the way to that line. A district can be **packed**, holding far more Black voters than a majority needs, so that the surplus elects nobody extra, or **cracked**, holding too few to elect anybody because the group was split across several districts. In between sits a band of districts that are 40 to 50 percent Black. Both questions are answered here from one Congress.
 
 ## The test
 
-The population figures come from the Census Bureau's **Citizen Voting Age Population Special Tabulation**, built on the 2019–2023 American Community Survey and published for each district of the 118th Congress (2023–2025). Its producer is the Bureau's Redistricting Data Office, which exists because the Voting Rights Act needs it to. Thirteen race lines by four population bases, with a margin of error on every cell saying how far off the estimate could be. No other file gives citizen voting-age population by district and race, and the 50 percent question cannot be asked without choosing a base.
+The population figures come from the Census Bureau's **Citizen Voting Age Population Special Tabulation**, known as CVAP, built on the 2019–2023 American Community Survey — the Bureau's continuous sample survey of households, and the only federal count that asks about citizenship — and published for each district of the 118th Congress (2023–2025).^[The Census Bureau's CVAP page, where the tabulation and its documentation are published: <https://www.census.gov/programs-surveys/decennial-census/about/voting-rights/cvap.html>.] Its producer is the Bureau's Redistricting Data Office, which exists because the Voting Rights Act needs it to. Thirteen race lines by four **population bases** — the bottom number a share is divided by: everybody, adults, citizens, and adult citizens — with a **margin of error** on every cell saying how far off the estimate could be, since it comes from a survey rather than a full count. No other file gives citizen voting-age population by district and race, and the 50 percent question cannot be asked without choosing a base.
 
-Who each district elected is not in a federal file anywhere. No dataset records the race of a member of Congress: not the Clerk's election statistics, not Voteview, not the Biographical Directory's bulk data. The nearest institutional source is the U.S. House's own Office of the Historian, which curates *Black Americans in Congress* and *Hispanic Americans in Congress* and publishes them as a search filter on a photo gallery. The 2020 presidential result for each district comes from The Downballot, recomputed onto the 2022 lines the 118th Congress ran on.
+Who each district elected is not in a federal file anywhere. No dataset records the race of a member of Congress: not the Clerk's election statistics, not Voteview, not the Biographical Directory's bulk data. The nearest institutional source is the U.S. House's own Office of the Historian, which curates *Black Americans in Congress* and *Hispanic Americans in Congress*^[Office of the Historian, U.S. House of Representatives: <https://history.house.gov/Exhibitions-and-Publications/BAIC/Black-Americans-in-Congress/> and <https://history.house.gov/Exhibitions-and-Publications/HAIC/Hispanic-Americans-in-Congress/>.] and publishes them as a search filter on a photo gallery. The 2020 presidential result for each district comes from The Downballot, an elections news site that recomputes presidential returns onto congressional district lines, here the 2022 lines the 118th Congress ran on.^[The Downballot's data page: <https://www.the-downballot.com/p/data>.]
 
 Three files, and two joins. Districts and members meet on state and district number. The Historian's lists meet the members on the **Bioguide ID**, the identifier Congress gives everyone who has served, which the Historian publishes nowhere except inside the filename of each member's listing photograph. Every join carries the assumptions of both files plus one more about how they line up. That is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html), a crosswalk being a table that translates one set of identifiers into another.
 
@@ -44,7 +44,7 @@ One row is a congressional district, and there are `r NDIST` of them.
 
 Two cleaning decisions shaped that table. `r nrow(mem)` people held these `r NDIST` seats, because **`r NCHG` seats changed occupant mid-Congress**, and the member recorded here is the first to hold it. A rule keyed to opening day instead drops VA-04 entirely, because Donald McEachin died three weeks after winning it. And `r NBOTH` members appear on **both** of the Historian's lists, so the two categories are not exclusive.
 
-The third decision is the one the count turns on. The stricter definition of the group is **Black alone**; the looser is **any-part Black**, alone or in combination, which is Voting Rights Act practice. The CVAP tabulation cannot express the looser one, because it breaks multiracial answers into named pairs plus a bucket called "Remainder of Two or More Race Responses" that it never decomposes. So the build carries **bounds**: Black alone at the bottom, and Black alone plus every combination plus the whole remainder bucket at the top.
+The third decision is the one the count turns on. The stricter definition of the group is **Black alone**; the looser is **any-part Black**, alone or in combination, which is Voting Rights Act practice. The CVAP tabulation cannot express the looser one, because it breaks multiracial answers into named pairs plus a bucket called "Remainder of Two or More Race Responses" that it never decomposes. So the table carries **bounds**: Black alone at the bottom, and Black alone plus every combination plus the whole remainder bucket at the top.
 
 **The federal tabulation built for the Voting Rights Act cannot express the Voting Rights Act's own definition of the group it protects.**
 
@@ -66,6 +66,13 @@ Three population bases, crossed with two definitions of Black, give six defensib
 
 **Between `r MAJ_LO` and `r MAJ_HI`.** Nothing else is in dispute: same Congress, same census file, six ways of reading it, and the count moves by `r MAJ_HI - MAJ_LO`, or `r pc(100 * (MAJ_HI - MAJ_LO) / MAJ_LO, 0)`% of the smallest answer. The disagreement is concentrated in the districts sitting on the line, which are the only ones where it could ever matter.
 
+Take one district and count it six ways. PA-03, in Philadelphia, is the top row of Figure 1 below.
+
+```{r six-ways}
+```
+
+"Majority" here means strictly more than 50%, which is *Bartlett*'s reading; a district at exactly 50.0% would not count. On `r SIX_OVER` of the six readings PA-03 is over the line, and on `r 6 - SIX_OVER` it is under: Black alone, among adults, at `r pc(SIX$vap_black_low_pct)`%. Every count in the table above is this exercise run on all `r NDIST` districts, and the six answers differ because districts near the line, like this one, land on different sides of it depending on the reading.
+
 ```{r flip-static, eval=!knitr::is_html_output(), fig.height = 3.9}
 ```
 
@@ -74,13 +81,13 @@ Three population bases, crossed with two definitions of Black, give six defensib
 
 **Figure 1. Six answers per district.** The `r nrow(FLIP)` districts that are over 50% Black on at least one of the six measures and under 50% on at least one other. One row per district fits this question because the question is whether a single district crosses a single line, and six marks on one row show the disagreement without arithmetic. Filled marks are Black alone and open marks any-part Black; the shape is the population base, and the dashed line is 50%.
 
-Read the top row. **PA-03 is `r pc(FLIP$pop_black_low_pct[FLIP$key == "PA-03"])`% Black by total population and `r pc(FLIP$vap_black_low_pct[FLIP$key == "PA-03"])`% by voting-age population.** It is over the line on the base most people quote and under it on the base the Supreme Court named. Nobody moved, and the bottom number everything is divided by changed the answer.
+Read the top row again. **PA-03 is over the line on the base most people quote, total population, and under it on the base the Supreme Court named, voting-age population.** Nobody moved, and the bottom number everything is divided by changed the answer.
 
 The bounds are not uniformly narrow, either. Across all `r NDIST` districts the gap between Black-alone and any-part Black among adults has a median of `r pc(median(d$vap_black_high_pct - d$vap_black_low_pct), 2)` points. In Hawaii's second district it is `r pc(max(d$vap_black_high_pct - d$vap_black_low_pct), 1)` points, because the unallocated multiracial bucket there is enormous. A national median hides the places where the definition does all the work.
 
 ### Between packing and cracking
 
-A district does not have to be majority-Black to elect a Black member, and how far short it can fall is the question the literature argues about. David Lublin and colleagues sorted districts into bands by Black share and reported what share of each band elected a Black legislator. Here is their U.S. House row beside the same bands rebuilt on a Congress they could not have seen.
+A district does not have to be majority-Black to elect a Black member, and how far short it can fall is the question the literature argues about. David Lublin and colleagues sorted districts into bands by Black share and reported what share of each band elected a Black legislator.^[David Lublin, Lisa Handley, Thomas L. Brunell and Bernard Grofman, "Minority Success in Non-Majority Minority Districts: Finding the 'Sweet Spot'," *Journal of Race, Ethnicity, and Politics* 5, no. 2 (2020): 275–298, <https://doi.org/10.1017/rep.2019.24>.] Here is their U.S. House row beside the same bands rebuilt on a Congress they could not have seen.
 
 ```{r now-table}
 ```
@@ -112,7 +119,7 @@ The explanation on offer is about primaries. As white voters in the South left t
 ```{r sweet-fit}
 ```
 
-**It is not there.** Fit Black electoral success against composition and against Republican share, with a squared term so the Republican effect is allowed to curve. Composition is overwhelming, and **neither Republican term can be told apart from zero**. The squared term, which is the whole curve claim, has p = `r pc(QP, 2)`, and the fitted curve has no maximum anywhere inside the range of the data.
+**It is not there.** Fit Black electoral success against composition and against Republican share, with a squared term so the Republican effect is allowed to curve. Composition is overwhelming, and **neither Republican term can be told apart from zero**. The squared term, which is the whole curve claim, has p = `r pc(QP, 2)` — a p-value being the chance of seeing a bend at least this large when there is none, so anything above the conventional 0.05 is read as no evidence — and the fitted curve has no maximum anywhere inside the range of the data.
 
 The raw middles say the same thing backwards. Among the `r nrow(band)` districts between 30% and 50% Black, the ones that elected a Black member have a median Trump share of **`r pc(BAND_W)`%** and the ones that did not have **`r pc(BAND_L)`%**. Black candidates are winning these seats in the *least* Republican of them, not in the sweet spot.
 
@@ -162,15 +169,19 @@ None of these is answered above, and every one can be answered from the tables t
   `filter=1` and `filter=11`. <https://history.house.gov/People/Search/>
   `r n(sum(read.csv("data/raw/historian.csv")$list == "black"))` and
   `r n(sum(read.csv("data/raw/historian.csv")$list == "hispanic"))` members, all
-  time. Read from the Historian's site by `data/fetch-historian.py`; Bioguide IDs recovered from
-  listing-photograph filenames, and from biography pages for the sixteen members
-  who have no photograph.
-- `unitedstates/congress-legislators`, current and historical.
-  <https://unitedstates.github.io/congress-legislators/>
+  time. Each member's Bioguide ID is taken from the listing, where it appears
+  only in the filename of the member's photograph; the sixteen members with no
+  photograph are matched through their biography pages.
+- `unitedstates/congress-legislators`, current and historical, a file of every
+  member of Congress kept by volunteers on GitHub.
+  <https://unitedstates.github.io/congress-legislators/> (that address no
+  longer resolved when last checked; the project itself is at
+  <https://github.com/unitedstates/congress-legislators>).
   Who served, in which district, for which party, between which dates. It does
   not record race.
 - The Downballot, presidential results by congressional district, 2020 on the
-  2022 lines, **read from `pres_by_cd.csv` rather than downloaded again**.
+  2022 lines. <https://www.the-downballot.com/p/data> The copy used is the one
+  this book's House competition chapter already holds.
 
 **The data itself**
 
@@ -189,10 +200,14 @@ case counts**.
 
 **Cases**
 
-- *Thornburg v. Gingles*, 478 U.S. 30 (1986)
-- *Bartlett v. Strickland*, 556 U.S. 1 (2009)
-- *Allen v. Milligan*, 599 U.S. 1 (2023)
-- *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026)
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986),
+  <https://www.law.cornell.edu/supremecourt/text/478/30>
+- *Bartlett v. Strickland*, 556 U.S. 1 (2009),
+  <https://www.law.cornell.edu/supremecourt/text/07-689>
+- *Allen v. Milligan*, 599 U.S. 1 (2023),
+  <https://www.supremecourt.gov/opinions/22pdf/21-1086_1co6.pdf>
+- *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026),
+  <https://www.supremecourt.gov/opinions/25pdf/24-109_new_jifl.pdf>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

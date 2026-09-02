@@ -22,7 +22,7 @@ You need something to hold the map against. Not an ideal map, which nobody can d
 
 ## The test
 
-Using the ALARM Project's **50-State Redistricting Simulations**, published on the Harvard Dataverse (<https://doi.org/10.7910/DVN/SLCD3E>). For every state with more than one congressional district it supplies two things side by side. One is the map the state enacted after the 2020 census. The other is 5,000 alternatives drawn by a program that never saw a voter's party or a resident's race. That program had three rules: equal population between districts, districts in one connected piece, and districts that are not needlessly sprawling. Call the second set the **neutral maps**.
+Using the ALARM Project's **50-State Redistricting Simulations**, a collection built by a research group at Harvard led by Kosuke Imai, described at <https://alarm-redist.org/fifty-states/> and published on the Harvard Dataverse at <https://doi.org/10.7910/DVN/SLCD3E>. For every state with more than one congressional district it supplies two things side by side. One is the **enacted plan**, the map the state actually put in force after the 2020 census. The other is 5,000 alternatives drawn by a program that never saw a voter's party or a resident's race.^[The program is described in Cory McCartan and Kosuke Imai, "Sequential Monte Carlo for Sampling Balanced and Compact Redistricting Plans," *Annals of Applied Statistics* 17, no. 4 (2023): 3300–3323, <https://doi.org/10.1214/23-AOAS1763>.] That program had three rules: equal population between districts, districts in one connected piece, and districts that are not needlessly sprawling. Call the second set the **neutral maps**, and the 5,000 of them taken together the **ensemble**.
 
 That pairing is why this source rather than another. Being unusual is a statement about a distribution, not about a map, and no single plan carries a distribution. This is the collection that ships one beside the enacted plan for every state at once.
 
@@ -30,15 +30,15 @@ That pairing is why this source rather than another. Being unusual is a statemen
 
 ## The data
 
-Almost nothing you will read below arrives in the download. `data/build-data.R` computes it, and the definitions are where the argument lives.
+Almost nothing you will read below arrives in the download. Every count is computed from it, and the definitions are where the argument lives.
 
 A district counts as **competitive** if its two-party vote share lands within some number of points of an even split. The two-party share is the Democratic votes divided by the Democratic and Republican votes together, third parties set aside. `competitive_national.csv` carries one row per `threshold`, at 2.5, 5, 10 and 15 points, with `enacted` and `neutral_mean` beside it. `competitive_by_state.csv` repeats all of that per `state`, with `n_districts`.
 
-A district counts as **Black-plurality** if Black voting-age population is the largest of every racial and ethnic group reported for it. That is stricter than "more Black residents than white," which can be true in a district where Hispanic residents outnumber both. An earlier version of this build used the looser test and misclassified several genuinely Hispanic-plurality districts. The error was caught by comparing the national count against an independent tally, which is worth doing to any number of this kind.
+A district counts as **Black-plurality** if Black voting-age population is the largest of every racial and ethnic group reported for it. That is stricter than "more Black residents than white," which can be true in a district where Hispanic residents outnumber both. An earlier version of this brief used the looser test and misclassified several genuinely Hispanic-plurality districts. The error was caught by comparing the national count against an independent tally, which is worth doing to any number of this kind.
 
-`black_by_state.csv` gives each state `actual_black`, `neutral_black_mean` and `gerry_black`, plus `n_plans_tied_at_max`. That last column matters. Thousands of the 5,000 plans are usually tied for a state's highest possible Republican seat count, and `gerry_black` takes whichever of those tied plans holds the fewest Black-plurality districts. It is not a real gerrymander anybody drew. It is the most adversarial map available inside an ensemble that was never told to be adversarial about race.
+`black_by_state.csv` gives each state `actual_black`, `neutral_black_mean` and `gerry_black`, plus `n_plans_tied_at_max`. That last column matters. Thousands of the 5,000 plans are usually tied for a state's highest possible Republican seat count, and `gerry_black` takes whichever of those tied plans holds the fewest Black-plurality districts. Read Texas's row to see the three numbers made. Its enacted map holds `r bk("TX", "actual_black")` Black-plurality districts. Count the same way in each of the 5,000 neutral maps and the average is `r pc(bk("TX", "neutral_black_mean"), 2)`, which means most of them hold none. `r bk("TX", "n_plans_tied_at_max")` of the 5,000 tie for the highest Republican seat count any of them reaches, and `gerry_black` is whichever of those `r bk("TX", "n_plans_tied_at_max")` holds the fewest Black-plurality districts: `r bk("TX", "gerry_black")`. It is not a real gerrymander anybody drew. It is the most adversarial map available inside an ensemble that was never told to be adversarial about race.
 
-Two cleaning decisions travel with the numbers. Six states have one House seat and so nothing to simulate, leaving `r fx("n_states")` states and `r fx("n_districts")` districts everywhere below. And Alabama's and Louisiana's enacted counts carry a hand correction, because courts ordered new maps after the dataset's own snapshot.
+Two cleaning decisions travel with the numbers. Six states have one House seat and so nothing to simulate, leaving `r fx("n_states")` states and `r fx("n_districts")` districts everywhere below. And Alabama's and Louisiana's enacted counts carry a hand correction, because courts ordered new maps after the dataset's own snapshot.^[Alabama's second majority-Black district followed *Allen v. Milligan*, 599 U.S. 1 (2023), <https://www.law.cornell.edu/supremecourt/text/21-1086>. Louisiana's, drawn in 2024 after the same ruling, was held an unconstitutional racial gerrymander in *Louisiana v. Callais* (2026), <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>, after this snapshot was taken.]
 
 > **Before you scroll, make two predictions.** If district lines were drawn
 > by a process blind to party, would there be more competitive seats than
@@ -67,7 +67,7 @@ That consistency is the point. One threshold could be an accident of where the l
 
 The exceptions are the interesting part. Illinois and California sit next on that list, so the pattern is not one-sided, though states with Republican-controlled legislatures dominate the largest gaps. Illinois was drawn by its legislature. California was drawn by an independent commission, and its map is third in the country for distance from its own neutral ensemble. In `r WD("Commission draws it")` states a commission's map becomes law without a legislative vote, and most of those states sit close to their ensembles. California says a commission is not a machine for producing the neutral map.
 
-The lines decide something besides competition. Section 2 of the Voting Rights Act forbids lines that dilute a racial minority's ability to elect the candidates it prefers. The neutral maps allow a sharper question than whether a given state diluted anyone. They allow you to ask what happens to Black representation when a legislature stops trying to preserve it and tries instead to win every seat the lines can yield.
+The lines decide something besides competition. Section 2 of the Voting Rights Act forbids lines that dilute a racial minority's ability to elect the candidates it prefers.^[52 U.S.C. § 10301: <https://www.law.cornell.edu/uscode/text/52/10301>.] The neutral maps allow a sharper question than whether a given state diluted anyone. They allow you to ask what happens to Black representation when a legislature stops trying to preserve it and tries instead to win every seat the lines can yield.
 
 The next figure is restricted to the `r fx("gop_n_states")` states Republicans controlled after the 2020 census. A Republican gerrymander is only a live possibility where Republicans hold the pen, and running the same test on a Democratic-controlled state would ask about a map nobody there has a reason to draw.
 
@@ -81,15 +81,15 @@ The next figure is restricted to the `r fx("gop_n_states")` states Republicans c
 
 Two different stories sit inside that one chart. In Alabama and Louisiana the neutral maps rarely produce a Black-plurality district on their own, so those seats exist because a judge required them. In Georgia the Black population is numerous and concentrated enough that neutral maps produce such districts most of the time, and a maximized gerrymander still cuts `r fx("ga_actual")` down to `r fx("ga_gerry")`. Concentration protects a group from accidental erasure. It does not protect them from a map drawn on purpose.
 
-Kenny and colleagues (2026) run the harder version of this, with a real seat-maximizing search across all fifty states, and reach the same shape of answer.
+Kenny and colleagues (2026) run the harder version of this, with a real seat-maximizing search across all fifty states, and reach the same shape of answer.^[Christopher T. Kenny, Brian Zhou, Tyler Simko and Kosuke Imai, "Weakening the Voting Rights Act Reduces Minority Representation and Electoral Competition," working paper (2026), <https://imai.fas.harvard.edu/research/callais/>.]
 
 ## What this brief cannot tell you
 
-**The neutral maps followed three rules, and a real map has to follow more.** Two of the three are federal and hard: near-exact equal population, and the Voting Rights Act's limits on how lines may treat racial minorities. Everything else is state law and differs by state. Many states require respect for county and city boundaries, or for communities of interest, or for the cores of prior districts. That last rule protects incumbents by protecting the shape they were elected in.
+**The neutral maps followed three rules, and a real map has to follow more.** Federal law adds two hard ones: near-exact equal population between congressional districts,^[*Karcher v. Daggett*, 462 U.S. 725 (1983), <https://www.law.cornell.edu/supremecourt/text/462/725>.] which the simulations honoured, and the Voting Rights Act's limits on how lines may treat racial minorities, which they never considered. Everything else is state law and differs by state. Many states require respect for county and city boundaries, or for communities of interest, or for the cores of prior districts. That last rule protects incumbents by protecting the shape they were elected in.
 
 Those criteria conflict, and few states rank them. A state can point at a neutral map and say it split a county the state's own constitution protects, and the state would be right. It does not follow that the gaps in Figures 1 and 2 are explained by county lines, and nothing here measures how much of each gap the extra rules could account for.
 
-**That objection now has legal force.** In *Louisiana v. Callais* (2026) the Supreme Court held that a map offered to show what could have been drawn must meet all of the state's legitimate objectives, its stated political goals included. Nothing in a 5,000-map ensemble built on three rules can clear that.
+**That objection now has legal force.** In *Louisiana v. Callais* (2026) the Supreme Court held that a map offered to show what could have been drawn must meet all of the state's legitimate objectives, its stated political goals included.^[*Louisiana v. Callais*, No. 24-109, slip op. at 29–30 (U.S. Apr. 29, 2026), <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>.] Nothing in a 5,000-map ensemble built on three rules can clear that.
 
 Two smaller limits. Party control of a legislature is a rough proxy for who drew a map, and for at least three of the `r fx("gop_n_states")` states in Figure 3 it is the wrong answer. Iowa's maps are drafted by nonpartisan staff, Utah had an advisory commission, and Ohio's process is a hybrid. Every count here is also a snapshot of maps and law that both keep moving.
 
@@ -119,7 +119,9 @@ None of these is answered above, and every one can be answered from the tables t
 - ALARM Project, **50-State Redistricting Simulations**, Harvard Dataverse,
   doi:10.7910/DVN/SLCD3E. Enacted plans and 5,000 neutral simulated plans per
   state, for every state with more than one congressional district.
-  <https://doi.org/10.7910/DVN/SLCD3E>
+  <https://doi.org/10.7910/DVN/SLCD3E> (the Dataverse answers a download
+  request with a "202 accepted" before serving the file). The project's own
+  description of the collection: <https://alarm-redist.org/fifty-states/>
 - National Conference of State Legislatures, *Redistricting Law 2020*
   (Denver: NCSL, October 2019), Exhibit 5.1 and the Iowa note on p. 91, keyed
   in for who draws each congressional map; chapter 4 for the redistricting
@@ -136,20 +138,28 @@ open in a spreadsheet, and they are yours to take further.
 **Cases**
 
 - *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), on what an illustrative map
-  must now achieve to count as evidence.
+  must now achieve to count as evidence. <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>
+- *Allen v. Milligan*, 599 U.S. 1 (2023), the ruling behind Alabama's and
+  Louisiana's court-ordered maps.
+  <https://www.law.cornell.edu/supremecourt/text/21-1086>
+- *Karcher v. Daggett*, 462 U.S. 725 (1983), on how equal congressional
+  districts must be. <https://www.law.cornell.edu/supremecourt/text/462/725>
+- Section 2 of the Voting Rights Act, 52 U.S.C. § 10301.
+  <https://www.law.cornell.edu/uscode/text/52/10301>
 
 **Academic literature**
 
 - McCartan, C. and Imai, K. (2023). "Sequential Monte Carlo for Sampling
   Balanced and Compact Redistricting Plans." *The Annals of Applied
   Statistics* 17(4): 3300–3323. The algorithm behind the 5,000 maps.
+  <https://doi.org/10.1214/23-AOAS1763>
 - Kenny, C. T., Zhou, B., Simko, T., and Imai, K. (2026). "Weakening the
   Voting Rights Act Reduces Minority Representation and Electoral
   Competition." Working paper. A more thoroughly optimized version of this
   brief's second question, run across all 50 states with a genuine
   seat-maximizing search rather than a best-of-5,000 selection. Its published
   estimate is a national decline of roughly half in minority-opportunity
-  districts.
+  districts. <https://imai.fas.harvard.edu/research/callais/>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -22,9 +22,9 @@ This brief builds a model of the 2026 House from files this book already holds, 
 
 ## The test
 
-Four sources are combined. The polls come from six private outfits that each average the **generic ballot**, a survey question asking which party's candidate you would support in your district, without naming anybody. No agency publishes such an average and none of the six publishes a readable file. They are read instead from the table that puts them side by side on the Wikipedia article "2026 United States House of Representatives elections" (<https://en.wikipedia.org/wiki/2026_United_States_House_of_Representatives_elections>).
+Four sources are combined. The polls come from six private outfits that each average the **generic ballot**, a survey question asking which party's candidate you would support in your district, without naming anybody. Political scientists have shown that this one question, asked months out, predicts the national House vote well enough to forecast seats from.^[Joseph Bafumi, Robert S. Erikson and Christopher Wlezien, "Forecasting House Seats from Generic Congressional Polls: The 2010 Midterm Election," *PS: Political Science & Politics* 43, no. 4 (2010): 633–636, <https://doi.org/10.1017/S104909651000106X>.] No agency publishes such an average and none of the six publishes a readable file. They are read instead from the table that puts them side by side on the Wikipedia article "2026 United States House of Representatives elections" (<https://en.wikipedia.org/wiki/2026_United_States_House_of_Representatives_elections>).
 
-The returns come from the Clerk of the House's *Statistics of the Congressional Election* for 2004–2024, with the presidential vote inside each district beside them. The base rate comes from House party divisions back to 1858, the Senate roster from `legislators-current.csv`, and a published professional forecast is quoted for comparison.
+The returns — the vote counts in every district — come from the Clerk of the House's *Statistics of the Congressional Election* for 2004–2024, with the presidential vote inside each district beside them. The **base rate**, how the president's party has fared at past midterms with nothing else known, comes from the House Historian's record of party divisions back to 1858. The Senate roster, which senator holds which seat and when it is next up, comes from the `congress-legislators` file kept by volunteers on GitHub, and a published professional forecast is quoted for comparison.
 
 Those sources answer the question because a forecast is a join between a national number and a local one, and both halves exist here in files with signatures on them. The key is the district, a state plus a district number, carried by the returns and the presidential figures alike. Every join takes on the assumptions of both files plus one more about how they line up, which is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html). That chapter also covers the crosswalk, a table that translates one set of areas into another.
 
@@ -37,7 +37,7 @@ Those sources answer the question because a forecast is a join between a nationa
 
 **The six agree to within `r pc(diff(range(aggs$margin)))` points**, and that is the last time in this brief that anything is this well determined. The last column is what the model uses. Between a tenth and an eighth of respondents pick neither party, and that share differs across the six by `r pc(diff(range(aggs$other_pct)))` points. Dropping them and recomputing gives the **two-party share**, averaging `r pc(POLL_2P, 2)`% Democratic.
 
-`baseline.csv` holds one row per district. It carries `district_id`, the 2024 Democratic share of the two-party House vote in `dv`, the presidential share in `dpres`, the starting share the model uses in `base`, and the flags `imputed`, `no_totals` and `uncontested`. Those flags mark the cleaning that mattered.
+`baseline.csv` holds one row per district. It carries `district_id`, the 2024 Democratic share of the two-party House vote in `dv`, the presidential share in `dpres`, the starting share the model uses in `base`, and the flags `imputed`, `no_totals` and `uncontested`, which mark a starting share that was estimated rather than observed, a district the Clerk printed no vote total for, and a race with only one major-party candidate. Those flags mark the cleaning that mattered.
 
 ```{r impute-fit}
 ```
@@ -47,7 +47,9 @@ Those sources answer the question because a forecast is a join between a nationa
 ```{r baseline-check}
 ```
 
-**`r NEAR` seats start within five points of the line and the other `r 435 - NEAR` decide nothing.** The model itself is three lines. Subtract 2024's `r pc(NAT24, 2)`% from the national two-party vote you assume, which the polls make `r sprintf("%+.2f", SWING)` points. Add that swing to every district's starting share, plus two random errors: one drawn once for the country, one drawn separately for each seat. Then count every district above 50, `r format(sum(sd0$n), big.mark = ",")` times over.
+**`r NEAR` seats start within five points of the line and the other `r 435 - NEAR` decide nothing.** The model itself is three lines. First, the **swing**: subtract 2024's `r pc(NAT24, 2)`% from the national two-party vote you assume, which the polls make `r sprintf("%+.2f", SWING)` points. Second, add that swing to every district's starting share — a **uniform swing**, the same shift everywhere — plus two random errors: one drawn once for the country, one drawn separately for each seat. Third, count every district above 50. Doing that once is one imagined election; doing it `r format(sum(sd0$n), big.mark = ",")` times, with fresh errors each time, is the **simulation**, and the share of those runs in which the Democrats reach 218 is the probability the forecast reports.
+
+Follow one district through. `r tipd` finished 2024 at `r pc(tipv, 1)`% Democratic of the two-party vote, so that is where it starts. Add the swing and it stands at `r pc(tipv + SWING, 1)`% before any error is drawn. A national error of two points against the Democrats would pull it back to `r pc(tipv + SWING - 2, 1)`%, a district error is then drawn on top, and the seat is counted Democratic in any run where the total ends above 50. This district matters because it is the 218th when all 435 are sorted by starting share: the seat that delivers a majority.
 
 **The national error is one number applied to every district**, standing for the polls being off or the last three months going unexpectedly. **The district error is drawn fresh for each seat**, standing for a retirement, a scandal, a local issue. The rest of this brief is what follows from that difference.
 
@@ -59,7 +61,7 @@ Those sources answer the question because a forecast is a join between a nationa
 
 ## What it says about democracy
 
-Before any error is added the model is a plain function: give it a national vote share, get back a seat count. That function is the map.
+Before any error is added the model is a plain function: give it a national vote share, get back a seat count. That function is the map, and political scientists call it the **seats–votes curve**.^[Edward R. Tufte, "The Relationship between Seats and Votes in Two-Party Systems," *American Political Science Review* 67, no. 2 (1973): 540–554, <https://www.jstor.org/stable/1958782>.]
 
 ```{r curve-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -69,7 +71,7 @@ Before any error is added the model is a plain function: give it a national vote
 
 **Figure 1. Seats against votes on the 2024 map.** A step curve fits because seats are won one at a time. Each step is a single district crossing 50%, so the line shows where the map is dense with close seats and where it is empty. The vertical axis is Democratic seats, the horizontal axis the national two-party Democratic share of the House vote, and the dashed line at 218 is a majority.
 
-**The Democrats reach 218 seats at `r pc(TIP, 1)`% of the national vote, a margin of `r mg(TIP)`.** They can lose that vote by `r pc(abs(2 * (TIP - 50)), 1)` points and still hold the chamber, and the seat delivering it is `r tipd`. **The curve runs at about `r SLOPE` seats per point**, which is the exchange rate between a poll and a chamber: two points of polling error is roughly `r round(2 * SLOPE)` seats.
+**The Democrats reach 218 seats at `r pc(TIP, 1)`% of the national vote, a margin of `r mg(TIP)`** — a margin being the gap between the two parties' shares, here with the Republicans ahead. They can lose that vote by `r pc(abs(2 * (TIP - 50)), 1)` points and still hold the chamber, and the seat delivering it is `r tipd`. **The curve runs at about `r SLOPE` seats per point**, which is the exchange rate between a poll and a chamber: two points of polling error is roughly `r round(2 * SLOPE)` seats.
 
 ```{r dial-static, eval=!knitr::is_html_output(), fig.height=4.6}
 ```
@@ -102,7 +104,7 @@ Four other answers sit beside this one, in order of how much data each needs.
 ```{r model-table}
 ```
 
-**Every model that states a probability lands between `r pc(100 * min(mods$p_house, na.rm = TRUE), 0)`% and `r pc(100 * max(mods$p_house, na.rm = TRUE), 0)`%.** One is a single sentence about midterms; another is a professional forecast built on polls, money, candidate files and race ratings. What the data buys is a narrower answer, not a different one: the base rate's interval is `r mods$hi[2] - mods$lo[2]` seats wide and the professional model's is `r f51$hi - f51$lo`. This model sits `r MED - f51$point` seats more Democratic and calls a wider interval. The optimism is mostly incumbency, which it cannot see.
+**Every model that states a probability lands between `r pc(100 * min(mods$p_house, na.rm = TRUE), 0)`% and `r pc(100 * max(mods$p_house, na.rm = TRUE), 0)`%.** One is a single sentence about midterms — the president's party usually loses House seats, a regularity measured since the 1970s;^[Edward R. Tufte, "Determinants of the Outcomes of Midterm Congressional Elections," *American Political Science Review* 69, no. 3 (1975): 812–826, <https://www.jstor.org/stable/1958391>.] another is a professional forecast built on polls, money, candidate files and **race ratings**, the Lean, Likely and Toss-up labels the next brief takes apart. What the data buys is a narrower answer, not a different one: the base rate's interval is `r mods$hi[2] - mods$lo[2]` seats wide and the professional model's is `r f51$hi - f51$lo`. This model sits `r MED - f51$point` seats more Democratic and calls a wider interval. The optimism is mostly **incumbency**, the edge a sitting member has over a challenger, which the professional model measures and this one cannot see.
 
 ### Both chambers, one election
 
@@ -115,7 +117,7 @@ The Senate is on the same ballot, and running both in one simulation answers a q
 
 ## What this brief cannot tell you
 
-**Which map November will use.** Every district here is a 2024 district, and `r RD_ENACT` states have enacted new congressional maps since.
+**Which map November will use.** Every district here is a 2024 district, and `r RD_ENACT` states have enacted new congressional maps since.^[The redraws are tracked state by state at Loyola Law School's *All About Redistricting*: <https://redistricting.lls.edu/>.]
 
 ```{r redistricting-table}
 ```
@@ -129,7 +131,7 @@ The redraws removed `r abs(RD_COMP)` competitive seats. The partisan effect roug
 
 Turning that dial from zero to the default widens the interval by `r sens$width[nrow(sens)] - sens$width[1]` seats and moves the probability by `r pc(100 * (sens$p_house[1] - sens$p_house[nrow(sens)]), 0)` points. The guess matters far more to the range than to the headline, and only the headline is repeated.
 
-**Who is running.** Every seat's starting share carries the incumbent who won it, and incumbents retire. Over fifty members have said they will not stand again, and each of those seats reverts toward its underlying partisanship unseen.
+**Who is running.** Every seat's starting share carries the incumbent who won it, and incumbents retire. Over fifty members have said they will not stand again,^[Ballotpedia's running list of members not seeking re-election in 2026: <https://ballotpedia.org/List_of_U.S._Congress_incumbents_who_are_not_running_for_re-election_in_2026>.] and each of those seats reverts toward its underlying partisanship unseen.
 
 **Whether the forecast was any good.** In November one thing will happen, and no single outcome shows that `r pc(100 * PHOUSE, 0)`% was right or wrong. The Senate half is weaker still: its baseline carries no incumbency, and 33 seats cancel their independent errors far less than 435 do.
 
@@ -166,8 +168,10 @@ None of these is answered above, and every one can be answered from the tables S
   the House of Representatives, 1789 to Present*, for the base-rate model.
   <https://history.house.gov/Institution/Party-Divisions/Party-Divisions/>
 - `@unitedstates/congress-legislators`, `legislators-current.csv`
-  (<https://unitedstates.github.io/congress-legislators/legislators-current.csv>),
-  for every senator's party and Senate class. That the two independents caucus
+  (<https://unitedstates.github.io/congress-legislators/legislators-current.csv>;
+  the project is at <https://github.com/unitedstates/congress-legislators>),
+  a file of every sitting member kept by volunteers, for every senator's party
+  and Senate class. That the two independents caucus
   with the Democrats is not in the file and is applied here.
 - Presidential returns by state, 1864–2024, for each state's lean.
   <https://github.com/jaytimm/PresElectionResults>
@@ -183,9 +187,10 @@ None of these is answered above, and every one can be answered from the tables S
 **The one number that is not from a file**
 
 - The assumed polling error, `r pc(SD_POLL, 2)` points of two-party share
-  (`r pc(2 * SD_POLL)` points of margin). Published assessments of final
-  generic-ballot averages put the typical miss there, and the average used here
-  is three months out rather than final.
+  (`r pc(2 * SD_POLL)` points of margin). It is a judgment, not a measurement.
+  Bafumi, Erikson and Wlezien (cited above) is where a reader can check how far
+  generic-ballot polls have sat from the eventual vote; the average used here
+  is three months out rather than final, when the miss is larger.
 
 **The data itself**
 

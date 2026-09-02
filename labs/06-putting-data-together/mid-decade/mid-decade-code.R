@@ -35,6 +35,8 @@ OFFICE <- c(pres = "President", senator = "U.S. Senate", gov = "Governor",
 el_label <- function(e)
   paste(OFFICE[sub("-[0-9]{4}$", "", e)], sub("^.*-", "", e))
 seats$label <- el_label(seats$election)
+# the 2024 presidential race alone, walked through in the prose
+s24 <- seats[seats$election == "pres-2024", ]
 
 # one shared color rule for every figure, HTML and PDF alike: Democratic
 # two-party share, capped 20 points either side of 50-50

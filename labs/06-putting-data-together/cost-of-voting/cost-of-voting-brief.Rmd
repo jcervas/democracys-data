@@ -24,9 +24,9 @@ Those are two different acts wearing the same name. Is it genuinely harder to vo
 
 ## The test
 
-Somebody has already tried to measure it. The Cost of Voting Index reads the election law of all fifty states, scores it against a fixed list of considerations, and compresses the result into one value per state per election. It has been maintained since 1996, most recently by Pomante (2025), at <https://costofvotingindex.com>.
+Somebody has already tried to measure it. The Cost of Voting Index reads the election law of all fifty states, scores it against a fixed list of considerations, and compresses the result into one value per state per election: an **index**, many rules folded into one number. It was built by the political scientists Quan Li, Michael Pomante and Scot Schraufnagel, who published it in 2018 with scores for every presidential election back to 1996,^[Quan Li, Michael J. Pomante II and Scot Schraufnagel, "Cost of Voting in the American States," *Election Law Journal* 17, no. 3 (2018): 234–247, doi:10.1089/elj.2017.0478.] and Pomante has since extended it through 2024.^[Michael J. Pomante II, "Cost of Voting in the American States: 2024," *Election Law Journal* 24, no. 1 (2025): 52–61, doi:10.1089/elj.2024.0037.] The scores, the laws behind them and the codebook are published by the authors at <https://costofvotingindex.com>.
 
-This brief joins three sources on one key: the state, in an election year. The index supplies the laws and the score. Turnout comes from the United States Elections Project (<https://election.lab.ufl.edu/data-downloads/>), measured over the voting-eligible population, meaning adult citizens less those a state's felony law excludes. Party control of state government is not in the index at all. For 1996 through 2008 it is Carl Klarner's state partisan balance measures (<https://ippsr.msu.edu/public-policy/correlates-state-policy>); later elections are coded from governors and chamber majorities.
+This brief joins three sources on one key: the state, in an election year. The index supplies the laws and the score. Turnout comes from the United States Elections Project's turnout tables, maintained by the political scientist Michael McDonald at the University of Florida and downloadable at <https://election.lab.ufl.edu/data-downloads/>, measured over the voting-eligible population, meaning adult citizens less those a state's felony law excludes. Party control of state government is not in the index at all. For 1996 through 2008 it is the political scientist Carl Klarner's state partisan balance measures, as carried in Michigan State University's Correlates of State Policy collection, downloadable at <https://ippsr.msu.edu/public-policy/correlates-state-policy>; later elections are coded from governors and chamber majorities. A *trifecta*, below, is one party holding the governorship and both chambers of the legislature.
 
 This index can answer the question, where most cannot, because it publishes its own ingredients. The laws, the codebook and the component weights are all on the site, so the number can be rebuilt rather than taken on trust. Every join here inherits the assumptions of both files, plus one more about how they line up. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the chapter on that third assumption, and on the crosswalk, a table that translates one set of identifiers into another.
 
@@ -39,7 +39,9 @@ This index can answer the question, where most cannot, because it publishes its 
 
 Each of those columns is a different kind of thing, which is the first thing to notice about the file. **`reg. deadline` and `early voting` are numbers of days.** **`voter ID` is a five-point scale**, from no identification required to strict photo. **`absentee` and `inconveniences` are counts of restrictions**, each one a law that either exists in a state or does not. Everything is oriented so that bigger is worse. Underneath the ten columns sit `r nrow(it)` individual yes-or-no items, listed in `items_2024.csv`, and the additive issue areas are those items added up.
 
-The recipe for turning them into one number is published. Standardize the ten issue areas, run a principal component analysis, and keep the first four components. Then add them up, weighting each by how much of the variation it accounts for, which means counting some parts of the score for more than others. A principal component analysis takes ten correlated columns and finds the directions along which states differ most.
+The recipe for turning them into one number is published. Standardize the ten issue areas, which means putting each on the same scale by subtracting its fifty-state average and dividing by its spread, so that a column measured in days and a column measured on a five-point scale count alike. Run a principal component analysis, which takes ten correlated columns and finds the directions along which states differ most, and keep the first four of those directions, the components. Then add them up, weighting each by how much of the variation it accounts for, which means counting some parts of the score for more than others.
+
+Standardizing is the step to hold onto. Take `r HARD`, the hardest state in the file. Its registration deadline is `r MSR$reg_deadline` days before the election, against a fifty-state average of `r pc(mean(d$reg_deadline), 1)` days with a spread, a standard deviation, of `r pc(sd(d$reg_deadline), 1)`; subtract the average and divide by the spread and the deadline becomes `r pc(Z("reg_deadline", MSR))`, about one spread above the average state. Its voter-identification score is `r MSR$voter_id` on the five-point scale, against an average of `r pc(mean(d$voter_id), 2)` and a spread of `r pc(sd(d$voter_id), 2)`, so standardized it is `r pc(Z("voter_id", MSR))`. On their own scales a `r MSR$reg_deadline` dwarfs a `r MSR$voter_id`; standardized, both say the same kind of thing, how unusual the state is, in the same units. The principal component analysis then combines the ten standardized columns into four weighted sums, adds those, and for `r HARD` the arithmetic gives `r pc(MSR$final)`, the highest score of the fifty.
 
 ```{r rebuild-check}
 ```
@@ -68,7 +70,7 @@ Now the answer to the prediction. Equal weights move the average state `r pc(mea
 ```{r reweight-table}
 ```
 
-The reason the unstandardized version behaves so badly is worth naming. Two issue areas are measured in **days**, the registration deadline and early voting, and their spreads run around `r pc(max(LOAD$sd), 0)` against about `r pc(min(LOAD$sd), 1)` for automatic registration. Skip the standardizing step and those two columns write the index nearly on their own, not because days matter more but because days are numbered higher.
+The reason the unstandardized version behaves so badly is worth naming. Two issue areas are measured in **days**, the registration deadline and early voting, and their spreads, the standard deviations from above, run around `r pc(max(LOAD$sd), 0)` against about `r pc(min(LOAD$sd), 1)` for automatic registration. Skip the standardizing step and those two columns write the index nearly on their own, not because days matter more but because days are numbered higher.
 
 ```{r fig2-static, eval=!knitr::is_html_output(), fig.height=5.6}
 ```
@@ -85,7 +87,7 @@ Variance weighting has one further consequence that is easy to state and hard to
 ```{r near-universal}
 ```
 
-**`r max(it$states_scored)` of 50 states forbid people in prison from registering to vote.** As a barrier that is absolute. It is the difference between voting and not voting for everyone it touches, and roughly four million American adult citizens are on the far side of it (Uggen and colleagues 2024). As a *variable* it is nearly worthless, because it barely separates one state from another, and it sits in the index carrying a standard deviation of `r pc(it$sd[it$states_scored == max(it$states_scored)], 2)`. That is what an index buys and what it hides: a single comparable number, at the price of everything the states agree about.
+**`r max(it$states_scored)` of 50 states forbid people in prison from registering to vote.** As a barrier that is absolute. It is the difference between voting and not voting for everyone it touches: the Sentencing Project's count puts roughly four million American adult citizens barred from voting over a felony conviction, about three in ten of them in prison or jail.^[Christopher Uggen, Ryan Larson, Sarah Shannon and Robert Stewart, *Locked Out 2024: Four Million Denied Voting Rights Due to a Felony Conviction* (Washington: The Sentencing Project, 2024), <https://www.sentencingproject.org/reports/locked-out-2024-four-million-denied-voting-rights-due-to-a-felony-conviction/>.] As a *variable* it is nearly worthless, because it barely separates one state from another, and it sits in the index carrying a standard deviation of `r pc(it$sd[it$states_scored == max(it$states_scored)], 2)`. That is what an index buys and what it hides: a single comparable number, at the price of everything the states agree about.
 
 That leads directly to the assumption the whole enterprise rests on, which is that cost affects behaviour.
 
@@ -98,7 +100,7 @@ That leads directly to the assumption the whole enterprise rests on, which is th
 ```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. Cost against turnout, 2024.** Each point is a state, and the dashed line is the best straight line through them. It slopes the way the theory says it should, with a correlation of `r fact("turnout_correlation")`, and explains `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation between states.
+**Figure 3. Cost against turnout, 2024.** Each point is a state, and the dashed line is the best straight line through them. It slopes the way the theory says it should, with a correlation of `r fact("turnout_correlation")` on a scale where −1 would mean cost predicts turnout perfectly and 0 not at all, and explains `r pc(100 * as.numeric(fact("turnout_r_squared")), 1)`% of the variation between states.
 
 Hawaii is the `r d$final_rank[d$state == "Hawaii"]`rd easiest state in which to vote and turns out `r pc(d$vep_turnout[d$state == "Hawaii"], 1)`% of its eligible adults. `r HARD` is the hardest of all `r nrow(d)` and turns out `r pc(d$vep_turnout[d$state == HARD], 1)`%, which is `r pc(d$vep_turnout[d$state == HARD] - d$vep_turnout[d$state == "Hawaii"], 1)` points *higher*. Wisconsin ranks `r d$final_rank[d$state == "Wisconsin"]`th on cost and turns out `r pc(d$vep_turnout[d$state == "Wisconsin"], 1)`%.
 
@@ -159,9 +161,8 @@ None of these is answered above, and every one can be answered from the tables t
 - Michael J. Pomante II, *Cost of Voting Index*, <https://costofvotingindex.com>
   — the Data page, which publishes the COVI values and ranks for 1996 through
   2024, the master spreadsheet of state voting requirements, and the codebook
-  defining every item. All three are committed as they arrived, because the
-  site serves them from versioned URLs and the announced 2026 edition will
-  re-estimate the whole series.
+  defining every item. All three are kept as they were downloaded in August
+  2026, because the announced 2026 edition will re-estimate the whole series.
 - Turnout is the 2024 rate over the voting-eligible population, from the United
   States Elections Project's general election turnout series (Michael McDonald,
   University of Florida), <https://election.lab.ufl.edu/data-downloads/>. That
@@ -184,15 +185,17 @@ open in a spreadsheet, and they are yours to take further.
 **Academic literature**
 
 - Pomante, M. J. II (2025). "Cost of Voting in the American States: 2024."
-  *Election Law Journal* 24(1): 52–61.
+  *Election Law Journal* 24(1): 52–61. doi:10.1089/elj.2024.0037; the index's
+  own site links the article from <https://costofvotingindex.com/publications>.
 - Li, Q., Pomante, M. J. II and Schraufnagel, S. (2018). "Cost of Voting in the
   American States." *Election Law Journal* 17(3): 234–247. The paper that
-  built the 1996–2016 series.
+  built the 1996–2016 series. doi:10.1089/elj.2017.0478.
 - Klarner, C. (2013). "State Partisan Balance Data, 1937–2011." Harvard
   Dataverse, hdl:1902.1/20403.
 - Uggen, C., Larson, R., Shannon, S. and Stewart, R. (2024). *Locked Out 2024:
-  Estimates of People Denied Voting Rights.* The Sentencing Project — the four
-  million figure quoted above.
+  Four Million Denied Voting Rights Due to a Felony Conviction.* The
+  Sentencing Project — the four million figure quoted above.
+  <https://www.sentencingproject.org/reports/locked-out-2024-four-million-denied-voting-rights-due-to-a-felony-conviction/>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

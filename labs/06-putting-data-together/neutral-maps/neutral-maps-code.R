@@ -24,6 +24,8 @@ who    <- read.csv("data/derived/who_draws.csv", stringsAsFactors = FALSE)
 whoS   <- read.csv("data/derived/who_draws_states.csv", stringsAsFactors = FALSE)
 WD <- function(k) who$states[who$who_draws_it == k]
 fxn <- function(k) as.numeric(fx(k))
+# one cell of black_by_state.csv, for walking a row through in the prose
+bk  <- function(st, col) black[[col]][black$state == st]
 
 pc <- function(x, k = 1) formatC(as.numeric(x), format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",")

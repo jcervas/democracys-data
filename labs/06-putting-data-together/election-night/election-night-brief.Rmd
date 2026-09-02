@@ -18,17 +18,17 @@ dd_read_chunks("election-night-code.R")
 
 On election night the returns do not arrive in a random order. Small rural precincts finish counting first and large urban counties finish last. Ballots cast in person are usually counted before ballots that arrived by mail, and several states keep counting mail for days. So the lead a candidate holds at nine o'clock is partly a fact about the electorate and partly a fact about which places have finished.
 
-That produces a predictable pattern rather than noise. Foley (2013) measured a shift toward Democratic candidates during the canvass, the official count that continues after election night, since about 2000. **A number that is still moving is not a result.** So how do you tell a real shift from the order of the count?
+That produces a predictable pattern rather than noise. The law professor Edward Foley measured a shift toward Democratic candidates during the canvass, the official count that continues after election night, in every presidential election since about 2000.^[Edward B. Foley, "A Big Blue Shift: Measuring an Asymmetrically Increasing Margin of Litigation," *Journal of Law and Politics* 28, no. 4 (2013): 501–546, SSRN working paper 2353352.] **A number that is still moving is not a result.** So how do you tell a real shift from the order of the count?
 
-The answer is a baseline: a number written down beforehand saying what each place is expected to do. A county that reports is then compared against its own expectation rather than a running statewide total, and the gap is the only thing carrying information.
+The answer is a **baseline**: a number written down beforehand saying what each place is expected to do. A county that reports is then compared against its own expectation rather than a running statewide total, and the gap is the only thing carrying information. Here the expectation for every state is its 2024 presidential result.
 
 ## The test
 
 The baseline tested here is one sentence. **A state elects the senator of the party whose presidential candidate carried it.** No candidates appear in that sentence, and no money, polls or campaigns — nothing that happened after the previous presidential election was counted.
 
-A rule cannot be graded on the election it was written for, because that election has not happened. So it is rehearsed one level down, on the `r nrow(reh)` congressional districts of 2024 with the presidential vote counted inside each one and the party of the member elected there beside it. That file offers `r nrow(reh)` chances to be wrong instead of `r nrow(sen)`, which makes accuracy measurable at each level of competitiveness rather than only overall. The returns come from Jason Timm's compilation of the state canvasses (<https://github.com/jaytimm/PresElectionResults>), because no federal agency publishes American election returns.
+A rule cannot be graded on the election it was written for, because that election has not happened. So it is rehearsed one level down, on the `r nrow(reh)` congressional districts of 2024 with the presidential vote counted inside each one and the party of the member elected there beside it. That file offers `r nrow(reh)` chances to be wrong instead of `r nrow(sen)`, which makes accuracy measurable at each level of competitiveness rather than only overall. The presidential returns, by state and by district, are the researcher Jason Timm's compilation of the certified state counts, downloadable at <https://github.com/jaytimm/PresElectionResults>. No federal agency publishes American election returns, so every national file is somebody's assembly of fifty-one state publications.
 
-Two joins build it, and both keys are geography. The 2026 landscape joins a roster of sitting senators to each state's 2024 presidential margin on the two-letter state abbreviation. The rehearsal joins the presidential vote inside a district to the House result there on the district identifier. Every join takes on the assumptions of both files plus one more about how they line up, which is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html). That chapter also covers the crosswalk, a table that translates one set of areas into another.
+Two joins build it — a join being the step that lines two tables up on a column they share, the **join key** — and both keys are geography. The 2026 landscape joins a roster of sitting senators to each state's 2024 presidential margin on the two-letter state abbreviation. The rehearsal joins the presidential vote inside a district to the House result there on the district identifier, `GA-05` for Georgia's fifth. Every join takes on the assumptions of both files plus one more about how they line up, which is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html). That chapter also covers the crosswalk, a table that translates one set of areas into another.
 
 ## The data
 
@@ -36,12 +36,14 @@ Three files, and only two of them exist yet.
 
 `senate_2026_landscape.csv` has `r nrow(sen)` rows, one per Senate seat on the 2026 ballot. It carries `state`, `senator_last`, `party`, `pres24_margin` and `ev` from the sources, and `pres24_winner`, `abs_margin` and `hostile_turf` computed here by comparison. The last is a definition rather than a measurement: a seat is on hostile turf when the party holding it is the party that lost the state for president.
 
-The roster it starts from is `legislators-current.csv`, a volunteer-maintained public-domain list of everyone serving in Congress. It is two tables wearing one layout: its 435 representatives carry a `district` and its 100 senators carry a `senate_class` instead, each side leaving the other's column blank. **One row is a person, and this brief needs a list of contests.**
+The roster it starts from is the list of current members of Congress maintained by the @unitedstates project, a volunteer group that publishes public-domain data about Congress, downloadable as `legislators-current.csv` at <https://unitedstates.github.io/congress-legislators/legislators-current.csv>. It is two tables wearing one layout: its representatives carry a `district` and its 100 senators carry a `senate_class` instead, each side leaving the other's column blank. **One row is a person, and this brief needs a list of contests.**
 
 ```{r shape-en}
 ```
 
-Senate terms run six years, so the class says whose is expiring. Both Georgia senators appear in the roster and only one is in this brief, because Jon Ossoff's seat is Class 2 and Raphael Warnock's is not. Nothing about a senator's name, party or state distinguishes them; one digit does.
+Senate terms run six years, and the Senate is divided into three classes so that one class's terms end in each even-numbered year; the class says whose is expiring. Both Georgia senators appear in the roster and only one is in this brief, because Jon Ossoff's seat is Class 2 and Raphael Warnock's is not. Nothing about a senator's name, party or state distinguishes them; one digit does.
+
+**Class 2 is not the whole ballot, and this matters on the night.** A seat vacated mid-term is filled at the next general election whatever class it belongs to, and 2026 has `r nrow(SPEC)` such seats: `r paste(SPEC$state_name, collapse = " and ")`, where Marco Rubio and JD Vance left the Senate in January 2025 to become Secretary of State and Vice President. The appointees now holding them, `r paste(paste(SPEC$senator_first, SPEC$senator_last), collapse = " and ")`, face special elections for the remainder of the terms, so both states have a Senate race on 3 November and both appear in the `r nrow(sen)` rows here. Two cautions. Each of those states *also* has a Class 1 senator who is not on the ballot, so the seat, not the state, is what was selected. And a list built from the class digit alone would have `r nrow(sen) - nrow(SPEC)` rows and nowhere to put `r nrow(SPEC)` of the night's results; that is what the results template below guards against.^[The Senate's own list of seats by class is at <https://www.senate.gov/senators/Class_II.htm>; the two special elections are Class 3 seats, listed at <https://www.senate.gov/senators/Class_III.htm>.]
 
 ```{r one-row}
 ```
@@ -50,9 +52,9 @@ Two things to notice in that row. **`pres24_margin` is not about this election.*
 
 `rehearsal_house_2024.csv` is the opposite kind of object, an election that is finished. It holds `district`, `state`, `cd`, the Democratic share of the district's two-party presidential vote in `dem_share`, the `house_rep` elected there with `house_rep_party`, and the three columns computed here: `baseline`, `actual` and `as_expected`. Nobody tallies a presidential vote by congressional district, so `dem_share` is less official than it looks. Somebody has to lay precinct returns over district lines and split the precincts the lines cut through, which makes it a careful reconstruction rather than a canvass.
 
-The third file is `results_senate_2026_TEMPLATE.csv`: `r nrow(sen)` rows and two empty columns, waiting for the night. What fills them will not be a count. **A called race is a judgment**, made by analysts who decide that the ballots still outstanding cannot reorder the ones already in.
+The third file is `results_senate_2026_TEMPLATE.csv`: `r nrow(sen)` rows, one per race including the `r nrow(SPEC)` special elections, and two empty columns waiting for the night. `winner_party` takes the party of the candidate a results page has called the winner, `Democrat` or `Republican`; `dem_pct` takes the Democratic candidate's share of the vote as reported at the moment you look. A row for a race not yet called stays blank, because a blank is honest and a guess is not. What fills the first column will not be a count. **A called race is a judgment**, made by analysts who decide that the ballots still outstanding cannot reorder the ones already in, and the file will not remember who made it or when unless you write that down beside it.
 
-Cleaning barely arises, which is a property of the sources rather than a virtue of the build. The work is one merge on a state abbreviation, one dropping of rows, and a few columns worked out by comparison. Nothing was imputed, meaning no missing value was guessed at and filled in.
+Little cleaning was needed. The two files are joined on the state abbreviation, the senators not on the ballot are dropped, and the remaining columns are comparisons. No missing value was guessed at and filled in.
 
 > **Before you read on, commit to an answer.** The rule above gets some
 > districts wrong. **Where do those districts sit?** Not geographically —
@@ -114,6 +116,8 @@ And the complement.
 
 **Outside five points of even the rule was right in `r sum(reh$as_expected[reh$dev > 5])` districts of `r sum(reh$dev > 5)`. Inside five points it was right `r pc(acc(reh$as_expected[reh$dev <= 5]))`% of the time.** Every one of the `r nrow(miss)` misses lies within `r pc(max(miss$dev), 1)` points of an even split.
 
+One of them shows how a miss is scored. Nebraska's second district, around Omaha, gave Harris `r pc(NE2$dem_share)`% of its two-party presidential vote, so the baseline for the seat was a Democrat. The seat went to `r NE2$house_rep`, a Republican, so `as_expected` is FALSE. The district sits `r pc(NE2$dev)` points from an even split, well inside the zone where the rule is guessing; the same miss in a district Trump carried by thirty would have been a shock, and there were none.
+
 ```{r misses}
 ```
 
@@ -129,6 +133,8 @@ And the complement.
 
 That second reading is what makes the baseline work on the night. Beyond five points the expectation is close to certain, so a place reporting far from it is either a real shift or a partial count. Ask what is still outstanding there and you can tell which. Inside five points the baseline knows nothing, so a lead that moves is neither evidence of a shift nor evidence against one.
 
+Take the two ends of the map. `r TOPSAFE$state_name` went for Trump by `r pc(TOPSAFE$pres24_margin)` points, and `r TOPSAFE$senator_last` is defending a Republican seat, so the baseline says Republican; in the rehearsal the rule never missed a district that far from even. If at nine o'clock the Republican leads there by only ten, the baseline says partial count, not shift: ask which counties have yet to report and expect the margin to widen as they do. If the *certified* result were a ten-point Republican win, that would be the night's news, a departure a baseline exists to catch. Georgia went for Trump by `r pc(GA$pres24_margin)`, and `r GA$senator_last` is defending a Democratic seat, so the baseline says Republican but the rehearsal says a call this close to even is a coin flip plus. A Democratic lead at nine o'clock there means nothing, and neither does a Republican one; the only useful question is what is still out.
+
 ```{r apply}
 ```
 
@@ -139,9 +145,11 @@ That second reading is what makes the baseline work on the night. Beyond five po
 
 What does not follow is that campaigns do not matter. The baseline holding is consistent with two very different worlds: one where nothing happened, and one where enormous effort made the expected thing happen.
 
+**What to do on the morning of 4 November.** Open `results_senate_2026_TEMPLATE.csv` beside a results page. For each of the `r nrow(sen)` rows, `r paste(SPEC$state_name, collapse = " and ")` included, write the called winner's party in `winner_party` and the Democratic share reported at that hour in `dem_pct`, and leave uncalled races blank. In a notes column of your own, record where each call came from and at what time. Then set `winner_party` beside `pres24_winner` in `senate_2026_landscape.csv`, the baseline, and count the agreements separately for seats more than five points from even and seats within five, the way the rehearsal did. The rehearsal says the first group should agree almost everywhere; any seat there that disagrees is either the night's real story or a state still counting, and the way to tell is to ask how many ballots it has left. The second group is where the baseline knew nothing, so a disagreement there is not a surprise and an agreement is not a vindication.
+
 ## What this brief cannot tell you
 
-**Whether the baseline has become more accurate over time.** Hopkins (2018) argues that American political behaviour has nationalised, and Abramowitz and Webster (2016) put the tightening down to negative partisanship. Both predict that the same rehearsal run on 1980 would score far lower. This file holds one election and cannot test it.
+**Whether the baseline has become more accurate over time.** Daniel Hopkins argues that American political behaviour has nationalised, with local contests increasingly decided by national party loyalties,^[Daniel J. Hopkins, *The Increasingly United States: How and Why American Political Behavior Nationalized* (Chicago: University of Chicago Press, 2018), <https://press.uchicago.edu/ucp/books/book/chicago/I/bo27596045.html>.] and Alan Abramowitz and Steven Webster put the tightening down to negative partisanship, voting against the other party rather than for one's own.^[Alan I. Abramowitz and Steven Webster, "The Rise of Negative Partisanship and the Nationalization of U.S. Elections in the 21st Century," *Electoral Studies* 41 (2016): 12–22, <https://doi.org/10.1016/j.electstud.2015.11.001>.] Both predict that the same rehearsal run on 1980 would score far lower. This file holds one election and cannot test it.
 
 **What is still outstanding anywhere.** Nothing here records how many ballots a jurisdiction has left to count, which is what you need to separate a real shift from a partial one. The baseline says what to expect; it does not say how much of the answer has arrived.
 
@@ -165,21 +173,24 @@ None of these is answered above, and every one can be answered from the tables t
 - Find the rows where `as_expected` is FALSE and read `house_rep` beside `dem_share`. What do those members have in common?
 - `senate_2026_landscape.csv` flags seats with `hostile_turf` and gives `pres24_margin` beside it. List them, and say which party has more exposure.
 - Sort `senate_2026_landscape.csv` by `abs_margin`, then check `senator_last` against the candidates actually on this year's ballot. How many names have changed?
-- **Stretch.** On the night, fill `results_senate_2026_TEMPLATE.csv` from a results page and score the baseline against it. Note where each call came from and at what hour, because a called race is somebody's judgment and the file will not say so.
+- **Stretch.** On the night, fill `results_senate_2026_TEMPLATE.csv` from a results page and score the baseline against it, following the morning-of-4-November steps above. Note where each call came from and at what hour, because a called race is somebody's judgment and the file will not say so. Check that the `r paste(SPEC$state_name, collapse = " and ")` special elections have found their rows.
 - **Stretch.** Pick a state that counts mail ballots for days and track its margin from election night through certification. How far did it move, and which way?
 
 ## Sources
 
 **Data**
 
-- 2026 Senate landscape: the Class 2 seats with each state's 2024 presidential
-  margin, built from `@unitedstates/congress-legislators`,
-  `legislators-current.csv`
-  (<https://unitedstates.github.io/congress-legislators/legislators-current.csv>).
-  Incumbents are as of August 2026.
+- 2026 Senate landscape: the Class 2 seats plus the Florida and Ohio special
+  elections, with each state's 2024 presidential margin. The seats and their
+  holders are from the roster of current members of Congress maintained by
+  the @unitedstates project (`legislators-current.csv`,
+  <https://unitedstates.github.io/congress-legislators/legislators-current.csv>;
+  the project itself is at <https://github.com/unitedstates/congress-legislators>).
+  Incumbents are as of August 2026. The state margins are from Jason Timm's
+  compilation below.
 - Rehearsal file: the 2024 presidential vote by congressional district beside
   the party of the member elected there, from Jason Timm's
-  `PresElectionResults` compilation
+  `PresElectionResults` compilation of the certified state counts
   (<https://github.com/jaytimm/PresElectionResults>). The presidential figures
   are a reconstruction from precinct returns.
 
@@ -193,12 +204,16 @@ Every figure above is drawn from these plain CSV tables.
 
 - Foley, E. B. (2013). "A Big Blue Shift: Measuring an Asymmetrically
   Increasing Margin of Litigation." *Journal of Law and Politics* 28(4):
-  501–546.
+  501–546. Also circulated as SSRN working paper 2353352.
 - Hopkins, D. J. (2018). *The Increasingly United States: How and Why American
   Political Behavior Nationalized.* Chicago: University of Chicago Press.
+  <https://press.uchicago.edu/ucp/books/book/chicago/I/bo27596045.html>
 - Abramowitz, A. I. and Webster, S. (2016). "The rise of negative partisanship
   and the nationalization of U.S. elections in the 21st century." *Electoral
-  Studies* 41: 12–22.
+  Studies* 41: 12–22. <https://doi.org/10.1016/j.electstud.2015.11.001>
+- United States Senate. Senators by class, for which seats face election in
+  which year. <https://www.senate.gov/senators/Class_II.htm> and
+  <https://www.senate.gov/senators/Class_III.htm>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

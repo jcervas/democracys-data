@@ -25,11 +25,11 @@ Nothing about that single night can answer the question. Things priced at 70% ar
 
 ## The test
 
-Grading a probability takes many probabilities, each carrying a number recorded before the answer and an answer that arrived later. This brief uses `r cnt(nrow(d))` resolved prediction markets from Polymarket, with closing dates running from `r min(d$end_date)` to `r max(d$end_date)` (<https://polymarket.com/>). A prediction market is a forecast with money behind it. Traders buy contracts that pay one dollar if a thing happens, so the price is what the crowd will bet the chance is, and when the market settles everyone finds out.
+Grading a probability takes many probabilities, each carrying a number recorded before the answer and an answer that arrived later. This brief uses `r cnt(nrow(d))` resolved prediction markets from Polymarket (<https://polymarket.com/>), with closing dates running from `r min(d$end_date)` to `r max(d$end_date)`. A **prediction market** is a forecast with money behind it. Traders buy contracts that pay one dollar if a thing happens and nothing if it does not, so a contract trading at 70 cents is the crowd betting that the chance is about 70%, and when the market settles everyone finds out. The record is Polymarket's own: it publishes a list of every market that has closed and how it settled, downloadable at <https://gamma-api.polymarket.com/markets?closed=true&order=volumeNum&ascending=false>, and a day-by-day price history for each contract, described at <https://docs.polymarket.com/>.
 
-That venue answers the question because almost nothing else in public life leaves a record of this shape. Forecasting models publish pictures rather than files, so the comparison everyone wants, market against model, cannot be run at all. The betting site publishes its own order book because its traders want it, which makes the publisher the counterparty as well, and the record can be withdrawn without notice.
+That venue answers the question because almost nothing else in public life leaves a record of this shape. Forecasting models publish pictures rather than files, so the comparison everyone wants, market against model, cannot be run at all. The betting site publishes its trading record because its traders want it, not for anyone's research, and it can withdraw the record without notice. Economists have argued since the early 2000s that prices like these pool scattered information well;^[Justin Wolfers and Eric Zitzewitz, "Prediction Markets," *Journal of Economic Perspectives* 18, no. 2 (2004): 107–126, <https://www.aeaweb.org/articles?id=10.1257/0895330041371321>.] this brief asks the narrower question of whether the prices this venue actually produced were honest.
 
-Two public interfaces supply it. One lists markets that have closed and how they settled; the other returns the price history of a single contract. They are joined on the contract identifier the first carries in a field called `clobTokenIds` and the second answers to. Every join takes on the assumptions of both files plus one more about how they line up, which is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html). That chapter is also where the crosswalk lives, a table that translates one set of identifiers into another. A key is a column two files share, and nothing in either file promises that the same string means the same thing on both sides.
+Those two records are joined here. The list of closed markets carries each contract's identifier, a long code, and the price history is looked up by that same code. Every join takes on the assumptions of both files plus one more about how they line up, which is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html); that chapter also explains the crosswalk, a table that translates one set of identifiers into another. A key is a column two files share, and nothing in either file promises that the same code means the same thing on both sides.
 
 ## The data
 
@@ -42,7 +42,7 @@ That is the whole design: a claim, a number attached to it before the answer was
 
 The prices had to be dug out of a trading record. A market issues no forecast. It trades continuously and leaves a price for every day it was open, so `p7` and `p30` were picked by counting back from the closing date. Those are two moments chosen out of hundreds, after the fact, and the second is carried beside the first so the choice can be tested rather than trusted.
 
-Three cleaning decisions do real work. Only markets that settled cleanly to yes or no can be scored, so contracts that voided, that settled to a number, or that never settled were dropped. A market younger than thirty days has no thirty-day price, and `r cnt(sum(is.na(d$p30)))` of `r cnt(nrow(d))` rows are left blank rather than filled in. And the file is ordered by money rather than drawn at random, because the build took the highest-volume resolved markets in order.
+Three cleaning decisions do real work. Only markets that settled cleanly to yes or no can be scored, so contracts that voided, that settled to a number, or that never settled were dropped. A market younger than thirty days has no thirty-day price, and `r cnt(sum(is.na(d$p30)))` of `r cnt(nrow(d))` rows are left blank rather than filled in. And the file is ordered by money rather than drawn at random: it holds the resolved markets with the most dollars traded, taken in that order.
 
 The last two decide how far anything here travels. This is not a sample of prediction markets and cannot be read as one. The markets that vanished are mostly the ambiguous ones, whose wording did not survive contact with events. A score computed on what is left is a score on the questions that turned out to be answerable.
 
@@ -63,7 +63,7 @@ Start with what cannot be done. Suppose the 70% chance came in; a defender says 
 ```{r one-forecast}
 ```
 
-This is a property of probability rather than a weakness of forecasters, and the only escape from it is volume. Gather many forecasts, group them by what each one claimed, and check the groups against what happened.
+This is a property of probability rather than a weakness of forecasters, and the only escape from it is volume.^[Philip E. Tetlock, *Expert Political Judgment: How Good Is It? How Can We Know?* (Princeton: Princeton University Press, 2005), <https://press.princeton.edu/books/paperback/9780691175973/expert-political-judgment>, graded tens of thousands of expert forecasts in exactly this way.] Gather many forecasts, group them by what each one claimed, and check the groups against what happened.
 
 ```{r swarm-prep, include=FALSE}
 ```
@@ -89,7 +89,7 @@ Now sort every market into a band by its seven-day price and ask what share of e
 
 **Figure 2. What each price band claimed, against what happened to it.** One circle per band, placed at the band's average price and the share of it that occurred, with circle area the number of markets in the band. The dashed diagonal is perfect calibration, and the large circle at the bottom left is the `r cnt(tab$n[1])` markets priced under 0.1.
 
-Read the top of the table first. Markets priced 0.9 to 1.0 happened `r pc(100 * gb("(0.9,1]", "happened"))`% of the time, those priced 0.8 to 0.9 happened `r pc(100 * gb("(0.8,0.9]", "happened"))`% of the time, and those priced 0.7 to 0.8 happened `r pc(100 * gb("(0.7,0.8]", "happened"))`% of the time. **A 70% chance, from this venue, has meant roughly a 70% chance.** One number compresses the picture: the Brier score, the average squared distance between the probability and the outcome, where zero is perfect.
+Read the top of the table first. Markets priced 0.9 to 1.0 happened `r pc(100 * gb("(0.9,1]", "happened"))`% of the time, those priced 0.8 to 0.9 happened `r pc(100 * gb("(0.8,0.9]", "happened"))`% of the time, and those priced 0.7 to 0.8 happened `r pc(100 * gb("(0.7,0.8]", "happened"))`% of the time. **A 70% chance, from this venue, has meant roughly a 70% chance.** One number compresses the picture: the **Brier score**, the average squared distance between the probability and the outcome, where zero is perfect.^[Glenn W. Brier, "Verification of Forecasts Expressed in Terms of Probability," *Monthly Weather Review* 78, no. 1 (1950): 1–3, <https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2>.] Take the largest market in the file, the one in the table above. It was priced at `r p4(o1$p7)` seven days out and then `r ifelse(o1$outcome == 1, "happened", "did not happen")`, so its outcome is `r o1$outcome`. Its distance is `r o1$outcome` − `r p4(o1$p7)` = `r p4(abs(o1$outcome - o1$p7))`, and squared that is `r p4(B1)`. Had it gone the other way the score would have been `r p4(B1_ALT)`. A forecast of exactly 0.5 scores 0.25 whichever way things go; a confident forecast scores near zero when right and near one when wrong. The venue's Brier score is that calculation averaged over all `r cnt(nrow(d))` markets.
 
 ```{r brier}
 ```
@@ -103,7 +103,7 @@ Read the table from the bottom and it stops behaving.
 ```{r low-bands}
 ```
 
-Markets priced 0.1 to 0.2 happened `r pc(100 * gb("(0.1,0.2]", "happened"))`% of the time, roughly `r pc(gb("(0.1,0.2]","happened")/gb("(0.1,0.2]","priced"), 1)` times what they claimed, and the band below behaves the same way. Racetrack bettors have overpaid for longshots for as long as anyone has measured it, so that explanation is close to hand. Before taking it, count the chances the table gave itself. Ten bands were tested, and at the conventional 5% threshold you expect about one apparent discovery from chance alone.
+Markets priced 0.1 to 0.2 happened `r pc(100 * gb("(0.1,0.2]", "happened"))`% of the time, roughly `r pc(gb("(0.1,0.2]","happened")/gb("(0.1,0.2]","priced"), 1)` times what they claimed, and the band below behaves the same way. Racetrack bettors have overpaid for longshots for as long as anyone has measured it,^[First measured by Richard M. Griffith, "Odds Adjustments by American Horse-Race Bettors," *American Journal of Psychology* 62, no. 2 (1949): 290–294, <https://www.jstor.org/stable/1418469>; surveyed in Richard H. Thaler and William T. Ziemba, "Anomalies: Parimutuel Betting Markets: Racetracks and Lotteries," *Journal of Economic Perspectives* 2, no. 2 (1988): 161–174, <https://www.aeaweb.org/articles?id=10.1257/jep.2.2.161>.] so that explanation is close to hand. Before taking it, count the chances the table gave itself. Ten bands were tested, and at the conventional 5% threshold — a **p-value** under 0.05, meaning a gap this large would arise by chance less than one time in twenty if the prices were honest — you expect about one apparent discovery from chance alone.
 
 ```{r sig}
 ```
@@ -171,15 +171,17 @@ None of these is answered above, and every one can be answered from the table th
 - Sort the same file by `volume` and split it into thirds rather than halves. Does calibration improve smoothly with money, or only at the top?
 - Compare `p30` against `p7` on the rows carrying both. Do the prices get more accurate as the closing date approaches, or only more confident?
 - Sort by the distance between `p7` and `outcome`, then read the `question` column for the worst twenty. Do the misses have anything in common?
-- **Stretch.** The same two public interfaces are answering today. Draw a fresh sample of resolved markets and run the calibration table on it.
+- **Stretch.** Polymarket's two records are still being published today. Draw a fresh sample of resolved markets and run the calibration table on it.
 
 ## Sources
 
 **Data**
 
-- Polymarket, through the public Gamma markets interface (resolved markets and
-  their settlements) and the price-history interface. `r cnt(nrow(d))` markets
-  survived the filters. <https://polymarket.com/>
+- Polymarket's record of every resolved market and how it settled, published at
+  <https://gamma-api.polymarket.com/markets?closed=true&order=volumeNum&ascending=false>,
+  and the price history it publishes for each contract, documented at
+  <https://docs.polymarket.com/>. `r cnt(nrow(d))` markets survived the
+  filters. <https://polymarket.com/>
 
 **The data itself**
 
@@ -191,17 +193,28 @@ spreadsheet.
 **Also cited**
 
 - Brier, G. W. (1950). "Verification of Forecasts Expressed in Terms of
-  Probability." *Monthly Weather Review* 78(1): 1–3. The scoring rule used
-  above.
+  Probability." *Monthly Weather Review* 78(1): 1–3.
+  <https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2>
+  The scoring rule used above.
 - Wolfers, J. and Zitzewitz, E. (2004). "Prediction Markets." *Journal of
-  Economic Perspectives* 18(2): 107–126. The case for prices as an aggregator,
-  and its limits.
+  Economic Perspectives* 18(2): 107–126.
+  <https://www.aeaweb.org/articles?id=10.1257/0895330041371321> The case for
+  prices as an aggregator, and its limits.
 - Berg, J. E., Nelson, F. D. and Rietz, T. A. (2008). "Prediction market
   accuracy in the long run." *International Journal of Forecasting* 24(2):
-  285–300.
+  285–300. <https://doi.org/10.1016/j.ijforecast.2008.03.007>
 - Tetlock, P. E. (2005). *Expert Political Judgment: How Good Is It? How Can
-  We Know?* Princeton University Press. Tens of thousands of scored expert
-  forecasts, none of them refutable one at a time.
+  We Know?* Princeton University Press.
+  <https://press.princeton.edu/books/paperback/9780691175973/expert-political-judgment>
+  Tens of thousands of scored expert forecasts, none of them refutable one at
+  a time.
+- Griffith, R. M. (1949). "Odds Adjustments by American Horse-Race Bettors."
+  *American Journal of Psychology* 62(2): 290–294.
+  <https://www.jstor.org/stable/1418469> The first measurement of the
+  longshot bias.
+- Thaler, R. H. and Ziemba, W. T. (1988). "Anomalies: Parimutuel Betting
+  Markets: Racetracks and Lotteries." *Journal of Economic Perspectives* 2(2):
+  161–174. <https://www.aeaweb.org/articles?id=10.1257/jep.2.2.161>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

@@ -49,6 +49,9 @@ MAJ_LO <- min(MAJ); MAJ_HI <- max(MAJ)
 over <- sapply(names(BASES), function(b) d[[b]] > 50)
 FLIP <- d[rowSums(over) > 0 & rowSums(over) < length(BASES), ]
 FLIP <- FLIP[order(-FLIP$pop_black_low_pct), ]
+# one district counted six ways, for the worked example in the brief
+SIX      <- d[d$key == "PA-03", ]
+SIX_OVER <- sum(SIX[, names(BASES)] > 50)
 
 # ---- the 40-50% band, then and now ----------------------------------------
 L3 <- lub[lub$table == 3 & lub$panel == "A" & lub$chamber == "U.S. House", ]
@@ -240,6 +243,17 @@ svg.selectAll("rect.h").data(D).join("rect").attr("class","h")
   .on("mouseleave",function(){tip.style("opacity",0);});
 })();
 </script>'))
+
+## ---- six-ways
+o <- data.frame(
+  base = c("Total population", "Voting-age population",
+           "Citizen voting-age population"),
+  alone = paste0(pc(c(SIX$pop_black_low_pct, SIX$vap_black_low_pct,
+                      SIX$cvap_black_low_pct)), "%"),
+  anypart = paste0(pc(c(SIX$pop_black_high_pct, SIX$vap_black_high_pct,
+                        SIX$cvap_black_high_pct)), "%"))
+names(o) <- c("Population base", "Black alone", "Any-part Black")
+o
 
 ## ---- maj-count
 o <- data.frame(measure = unname(BASES), districts = n(MAJ))

@@ -71,6 +71,16 @@ MISSING_CB <- as.integer(FN("cb_10k_stores") - FN("n_cb_osm"))
 EXCL_SHARE <- VS("whole foods only") + VS("cracker barrel only")
 COVERED    <- 100 - as.numeric(FV("neither_county_pct"))
 
+# one county the prose walks through: Knox County, Tennessee, which holds a
+# store of each chain and voted Republican in 2024
+cn     <- rd("counties.csv", colClasses = c(fips = "character"))
+KNOX   <- cn[cn$fips == "47093", ]
+KNOX_D <- 100 * KNOX$dem2024 / (KNOX$dem2024 + KNOX$gop2024)
+# how many typical no-store counties Knox's two-party vote is worth
+KNOX_X <- (KNOX$dem2024 + KNOX$gop2024) /
+  median(cn$dem2024[cn$cat == "neither"] + cn$gop2024[cn$cat == "neither"],
+         na.rm = TRUE)
+
 ## ---- replicate
 o <- data.frame(
   category = p20$category,

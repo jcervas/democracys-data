@@ -1448,7 +1448,7 @@ font-variant-numeric: tabular-nums; color: var(--ink);
 <h3 class="subtitle">The same curve, six times — and how much you leave
 out before it becomes a law</h3>
 <h4 class="author">Democracy’s Data</h4>
-<h4 class="date">Last updated 1 September 2026</h4>
+<h4 class="date">Last updated 2 September 2026</h4>
 
 
 <div id="TOC">
@@ -1470,8 +1470,10 @@ learned</a></li>
 nearly all of it. A few candidates raise almost all the money, a few
 counties hold much of the population, a few surnames cover much of the
 country. People who work with numbers like these say the same sentence
-about all of them: <em>it’s a power law</em>. Is that true, and what
-does the regularity explain?</p>
+about all of them: <em>it’s a power law</em>, meaning that size falls
+off with rank in a fixed proportion, so that going ten times further
+down the list always divides the size by the same amount. Is that true,
+and what does the regularity explain?</p>
 <p>The question is worth your time because these are the numbers a news
 story averages. “The average candidate raised two million dollars” is
 correct arithmetic and describes almost nobody. Whether such a quantity
@@ -1489,14 +1491,14 @@ day. 168,595 values in all.</p>
 The Census Bureau supplies the 2010 surname list and the 2020 county
 populations, the Federal Election Commission the candidate and
 independent-expenditure files for 2023–2024, and the Wikimedia
-Foundation the daily article requests through 2024. Each is read as the
-chapter that downloaded it keeps it. That the six are unrelated is the
-point: a shape found in all of them is not a fact about one agency’s
-filing rules.</p>
-<p>The six are combined on a key this build makes rather than one the
-files carry. Each file is sorted from largest to smallest, every row is
-given its position in that list, and the six lists are stacked on two
-columns, <code>series</code> and <code>rank</code>. <a href="../data-sources/data-sources-brief.html">Join Keys and
+Foundation the daily article requests through 2024. Each is taken as the
+chapter that introduced it keeps it, and the addresses are in the
+sources. That the six are unrelated is the point: a shape found in all
+of them is not a fact about one agency’s filing rules.</p>
+<p>The six are combined on a key made here rather than one the files
+carry. Each file is sorted from largest to smallest, every row is given
+its position in that list, and the six lists are stacked on two columns,
+<code>series</code> and <code>rank</code>. <a href="../data-sources/data-sources-brief.html">Join Keys and
 Crosswalks</a> states the rule this section keeps returning to, and
 explains the crosswalk, a table that translates one set of identifiers
 into another. A number built from two sources inherits the assumptions
@@ -1584,9 +1586,11 @@ article-day it belongs to</td>
 </table>
 <p>Four decisions were taken before any curve was drawn.</p>
 <p><strong>Zeros are dropped.</strong> These curves use logarithmic
-axes, and the logarithm of zero does not exist, so each quantity keeps
-only the units that have any of it. For candidate receipts that removes
-986 of 2,860 candidates, who filed with the FEC and raised nothing.</p>
+axes, on which each tick multiplies the one before by ten instead of
+adding to it, so that 1, 10, 100 and 1,000 sit evenly spaced. The
+logarithm of zero does not exist, so each quantity keeps only the units
+that have any of it. For candidate receipts that removes 986 of 2,860
+candidates, who filed with the FEC and raised nothing.</p>
 <p><strong>The largest row in the surname file was removed, because it
 is not a surname.</strong> The Bureau publishes every name held by 100
 or more people and sweeps everyone else into one line called <em>ALL
@@ -1594,13 +1598,12 @@ OTHER NAMES</em>, covering 36,257,637 people, 12.1% of the country. It
 is a residual, the bucket for what is left over once the named rows are
 subtracted, and left in it would have outranked SMITH twelve times
 over.</p>
-<p><strong>One series had to be downloaded again.</strong> English
-Wikipedia’s article on JD Vance sat under a different title until July
-2024, and the pageview record reports traffic by title. Asked for
-today’s title, it returned only the readers who arrived through the
-leftover redirect, so a sitting senator appeared to have a handful of
-readers a day. Those days sat at the bottom of the smallest series here,
-and the <a href="../../04-political-actors/media-attention/media-attention-brief.html">media-attention
+<p><strong>One series had to be rebuilt.</strong> English Wikipedia’s
+article on JD Vance sat under a different title until July 2024, and the
+pageview record reports traffic by title. Asked for today’s title, it
+returned only the readers who arrived through the leftover redirect, so
+a sitting senator appeared to have a handful of readers a day. Those
+days sat at the bottom of the smallest series here, and the <a href="../../04-political-actors/media-attention/media-attention-brief.html">media-attention
 chapter</a> now sums every title the article has held.</p>
 <p>That correction is the general hazard. <strong>A long tail is where
 measurement error goes to hide.</strong> A value a thousand times too
@@ -1617,9 +1620,11 @@ row per series, with <code>n</code>, <code>median</code>,
 <code>above_mean_pct</code>, <code>top1_share</code> and
 <code>gini</code>. <code>fits.csv</code> holds a line fitted at
 forty-four cut-offs, with <code>frac</code>, <code>k</code>,
-<code>slope</code> and <code>r2</code>. <code>zipf.csv</code> sets each
-series’ <code>observed</code> value beside <code>zipf</code>, the
-prediction, and their <code>ratio</code>.</p>
+<code>slope</code> and <code>r2</code>, the R² statistic, which is the
+share of the points’ scatter the line accounts for, 1 being a perfect
+fit. <code>zipf.csv</code> sets each series’ <code>observed</code> value
+beside <code>zipf</code>, the prediction, and their
+<code>ratio</code>.</p>
 <blockquote>
 <p><strong>Before you read on, commit to a number.</strong> SMITH is the
 most common surname in the United States, held by 2,369,644 people.
@@ -1764,7 +1769,16 @@ cliff at the left edge then a flat line the rest of the way. That is
 what a spreadsheet’s default chart gives you when the largest value is
 millions of times the median. The logarithms are the only reason there
 is anything to look at, and with them the six run close to parallel over
-two or three decades.</p>
+two or three powers of ten in rank.</p>
+<p>Read the surname curve off that scale one tick at a time. Rank 1 is
+SMITH, 2,369,644 people. One tick to the right, since each tick
+multiplies the rank by ten, is rank 10, MARTINEZ, with 1,039,848 people,
+2.3 times fewer. The next tick, rank 100, is LONG with 223,485, 4.7
+times fewer than rank 10; the next, rank 1,000, is COMPTON with 34,287,
+6.5 times fewer again. The vertical axis is also in ticks of ten, so a
+straight line would mean the same drop for every step to the right. The
+drops here grow with each step, and that growing drop is the curve
+bending downward in Figure 1.</p>
 <table style="width:100%;">
 <colgroup>
 <col width="24%" />
@@ -1851,14 +1865,17 @@ two or three decades.</p>
 </tr>
 </tbody>
 </table>
-<p>The oldest version of the claim is <strong>Zipf’s rule</strong> (Zipf
-1949): the item at rank <em>k</em> is 1/<em>k</em> of the item at rank
-1. So the 100th most common surname should be a hundredth of SMITH. It
-is not close. LONG is held by 223,485 people, 9.4 times the prediction.
-Money misses the other way: the 100th best-funded candidate raised
-$8,143,126, 0.69 of the prediction. Surnames fall away more gently than
-1/<em>k</em> and money more steeply, so no single number can be
-<em>the</em> exponent for both.</p>
+<p>The oldest version of the claim is the <strong>rank–size
+rule</strong>, better known as <strong>Zipf’s law</strong> after the
+linguist George Zipf, who found it in word frequencies and city sizes:<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> the item
+at rank <em>k</em> is 1/<em>k</em> of the item at rank 1, so each step
+to the right divides the size by exactly ten. So the 100th most common
+surname should be a hundredth of SMITH. It is not close. LONG is held by
+223,485 people, 9.4 times the prediction. Money misses the other way:
+the 100th best-funded candidate raised $8,143,126, 0.69 of the
+prediction. Surnames fall away more gently than 1/<em>k</em> and money
+more steeply, so no single number can be <em>the</em> exponent for
+both.</p>
 <table>
 <colgroup>
 <col width="20%" />
@@ -2095,10 +2112,11 @@ segment covers the fitted range and the dashed extension carries the
 line past it. The panels along the bottom show the slope and R² at every
 cut-off at once.</p>
 <p>Take candidate receipts. Fitted to the whole file, the line has slope
--2.70 and an R² of 0.683, bending away from the data at both ends.
-Fitted to the top 10%, the same data gives slope -0.89 and R² 0.976.
-Nothing about the file changed. The 2,574-odd candidates who raised
-something small were simply left out too.</p>
+-2.70, meaning the size falls that many powers of ten for each power of
+ten in rank, and an R² of 0.683, bending away from the data at both
+ends. Fitted to the top 10%, the same data gives slope -0.89 and R²
+0.976. Nothing about the file changed. The 2,574-odd candidates who
+raised something small were simply left out too.</p>
 <table>
 <colgroup>
 <col width="24%" />
@@ -2178,8 +2196,8 @@ sharing a surname, drifts from -0.80 to -1.18, smoothly and in one
 direction, which is what a lognormal does. Money a candidate raised
 slides from -0.94 to -2.70, nearly tripling depending on where you
 stop.</p>
-<p>Two ordinary mechanisms produce these curves. A thing that grows by a
-random <em>percentage</em> of its size each period, rather than by a
+<p>Two ordinary mechanisms produce these curves.<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a> A thing that grows by
+a random <em>percentage</em> of its size each period, rather than by a
 random amount, ends up heavy-tailed and curved over the whole range.
 Counties grow that way, and so does a surname passed down a family tree.
 A thing whose chance of getting the next unit is proportional to how
@@ -2198,10 +2216,11 @@ most data is also the one most shaped by filing rules.</p>
 <p><strong>A straight line on logarithmic axes is not proof of a power
 law</strong>, and this brief does not test for one. Telling a power law
 from a lognormal takes a fitted lower cut-off and a goodness-of-fit test
-against synthetic data, the Clauset, Shalizi and Newman procedure in the
-sources. Least squares on log-log points, which is what Figure 2 and
-most published claims do, is biased. R² does little work either: over
-many orders of magnitude, almost any falling curve scores well.</p>
+against synthetic data, the procedure Aaron Clauset, Cosma Shalizi and
+Mark Newman set out in 2009.<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> Least squares on log-log points, which is
+what Figure 2 and most published claims do, is biased. R² does little
+work either: over many orders of magnitude, almost any falling curve
+scores well.</p>
 <p><strong>These six lists are not the same kind of object.</strong>
 Surnames and counties are close to complete enumerations. Candidate
 receipts and committee spending exist only because a filing rule
@@ -2265,7 +2284,8 @@ report.</p>
 <ul>
 <li>U.S. Census Bureau. <em>Frequently Occurring Surnames from the 2010
 Census.</em> Names held by fewer than 100 people are not published
-individually. Captured and committed by this book’s <a href="../surnames/surnames-brief.html">surnames chapter</a>. <a href="https://www2.census.gov/topics/genealogy/2010surnames/names.zip" class="uri">https://www2.census.gov/topics/genealogy/2010surnames/names.zip</a></li>
+individually. Captured and committed by this book’s <a href="../surnames/surnames-brief.html">surnames chapter</a>. <a href="https://www2.census.gov/topics/genealogy/2010surnames/names.zip" class="uri">https://www2.census.gov/topics/genealogy/2010surnames/names.zip</a>,
+described at <a href="https://www.census.gov/topics/population/genealogy/data/2010_surnames.html" class="uri">https://www.census.gov/topics/population/genealogy/data/2010_surnames.html</a></li>
 <li>U.S. Census Bureau. <em>2020 Decennial Census</em>, county
 population, committed by this book’s <a href="../../03-elections/mapping/mapping-brief.html">mapping
 chapter</a>. <a href="https://www.census.gov/programs-surveys/decennial-census/decade/2020/2020-census-results.html" class="uri">https://www.census.gov/programs-surveys/decennial-census/decade/2020/2020-census-results.html</a></li>
@@ -2278,19 +2298,33 @@ chapters. <a href="https://www.fec.gov/data/browse-data/?tab=bulk-data" class="u
 daily, 2024, committed by this book’s <a href="../../04-political-actors/media-attention/media-attention-brief.html">media-attention
 chapter</a>. <a href="https://wikimedia.org/api/rest_v1/#/Pageviews%20data" class="uri">https://wikimedia.org/api/rest_v1/#/Pageviews%20data</a></li>
 <li>Zipf, George K. (1949). <em>Human Behavior and the Principle of
-Least Effort.</em> Addison-Wesley. The origin of the 1/<em>k</em>
-rule.</li>
+Least Effort.</em> Addison-Wesley. The origin of the 1/<em>k</em> rule.
+A scanned copy is at <a href="https://archive.org/details/in.ernet.dli.2015.90211" class="uri">https://archive.org/details/in.ernet.dli.2015.90211</a></li>
 <li>Clauset, Aaron, Cosma Rohilla Shalizi and M. E. J. Newman (2009).
 “Power-Law Distributions in Empirical Data.” <em>SIAM Review</em> 51(4):
-661–703. The test this brief declines to shortcut.</li>
+661–703. The test this brief declines to shortcut. Preprint at <a href="https://arxiv.org/abs/0706.1062" class="uri">https://arxiv.org/abs/0706.1062</a></li>
 <li>Gabaix, Xavier (2016). “Power Laws in Economics: An Introduction.”
 <em>Journal of Economic Perspectives</em> 30(1): 185–206. On the
-mechanisms above.</li>
+mechanisms above. <a href="https://www.aeaweb.org/articles?id=10.1257/jep.30.1.185" class="uri">https://www.aeaweb.org/articles?id=10.1257/jep.30.1.185</a></li>
 </ul>
 <p><strong>The data itself</strong></p>
 <p>Every figure above is drawn from these tables, which open in a
 spreadsheet.</p>
 <p><a href="data/derived/fits.csv"><code>fits.csv</code></a>, <a href="data/derived/ranks.csv"><code>ranks.csv</code></a>, <a href="data/derived/summary.csv"><code>summary.csv</code></a>, <a href="data/derived/zipf.csv"><code>zipf.csv</code></a></p>
+</div>
+<div class="footnotes footnotes-end-of-document">
+<hr />
+<ol>
+<li id="fn1"><p>George Kingsley Zipf, <em>Human Behavior and the
+Principle of Least Effort</em> (Cambridge, Mass.: Addison-Wesley, 1949),
+<a href="https://archive.org/details/in.ernet.dli.2015.90211" class="uri">https://archive.org/details/in.ernet.dli.2015.90211</a>.<a href="#fnref1" class="footnote-back">↩︎</a></p></li>
+<li id="fn2"><p>Both are set out for non-specialists in Xavier Gabaix,
+“Power Laws in Economics: An Introduction,” <em>Journal of Economic
+Perspectives</em> 30, no. 1 (2016): 185–206, <a href="https://www.aeaweb.org/articles?id=10.1257/jep.30.1.185" class="uri">https://www.aeaweb.org/articles?id=10.1257/jep.30.1.185</a>.<a href="#fnref2" class="footnote-back">↩︎</a></p></li>
+<li id="fn3"><p>Aaron Clauset, Cosma Rohilla Shalizi and M. E. J.
+Newman, “Power-Law Distributions in Empirical Data,” <em>SIAM
+Review</em> 51, no. 4 (2009): 661–703, <a href="https://arxiv.org/abs/0706.1062" class="uri">https://arxiv.org/abs/0706.1062</a>.<a href="#fnref3" class="footnote-back">↩︎</a></p></li>
+</ol>
 </div>
 
 

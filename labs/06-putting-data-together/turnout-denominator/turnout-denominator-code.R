@@ -48,6 +48,12 @@ NC24 <- N24$VAP * N24$NONCITIZEN_PCT / 100
 GAP24 <- N24$rate_vep_tb - N24$rate_vap_tb
 EXTRA <- N24$VAP * N24$rate_vep_tb / 100 - N24$TOTAL_BALLOTS_COUNTED
 
+# ---- one state, taken apart the same way -----------------------------------
+# The state rows carry no overseas line (the publisher does not spread that
+# population across states), so the walk is VAP less noncitizens less felons.
+TXR  <- st[st$YEAR == 2024 & st$STATE == "Texas", ]
+TXNC <- TXR$VAP * TXR$NONCITIZEN_PCT / 100
+
 # ---- the five states, and the one the section is written around ------------
 FLIP  <- tr[tr$sign_flip, ]
 FLIP  <- FLIP[order(FLIP$b_vap), ]

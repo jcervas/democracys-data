@@ -16,17 +16,17 @@ dd_read_chunks("vote-dilution-code.R")
 ```{r setup, include=FALSE}
 ```
 
-A district map can make your vote worth less than your neighbour's while nobody stops you from casting it. American law calls that **vote dilution**, and it recognises two kinds. Districts of unequal population dilute everyone living in the large ones: twice the people, one representative each, half a representative apiece. Districts drawn so that a minority group can never elect anyone dilute that group instead.
+A district map can make your vote worth less than your neighbour's while nobody stops you from casting it. American law calls that **vote dilution**, and it recognises two kinds. Districts of unequal population — **malapportionment**, in the law's word — dilute everyone living in the large ones: twice the people, one representative each, half a representative apiece. Districts drawn so that a minority group can never elect anyone dilute that group instead.
 
 So when does a map cross either line, and how does a court decide? One answer is arithmetic you could do in a spreadsheet. The other asks a plaintiff to prove something about a district that has never existed, which means somebody has to build it first.
 
 ## The test
 
-Four files describe Houston County, Georgia, and the map its Board of Education runs on. The population counts are the 2020 census at block level, the file a 1975 statute obliges the Census Bureau to hand every state legislature so it can draw districts. The shapes are the Bureau's 2020 TIGER/Line blocks. The enacted five-district plan is law, passed by the Georgia General Assembly and in force. And the registered-voter counts come from Georgia's voter registration file, which records **self-reported** race. That column exists because Section 5 of the Voting Rights Act once obliged the state to show what a change in its election rules did to minority voters.
+Four files describe Houston County, Georgia, and the map its Board of Education runs on. The population counts are the 2020 census at block level, from the redistricting file that a 1975 statute, Public Law 94-171, obliges the Census Bureau to hand every state legislature so it can draw districts.^[The Census Bureau's page on the P.L. 94-171 redistricting data: <https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html>.] The shapes are the Bureau's 2020 TIGER/Line files, its published digital outlines of every block. The enacted five-district plan is law, passed by the Georgia General Assembly and in force. And the registered-voter counts come from Georgia's statewide voter registration file, which records each voter's **self-reported** race, the box the voter ticked when registering. That column exists because Section 5 of the Voting Rights Act once obliged the state to show what a change in its election rules did to minority voters.^[The Department of Justice's description of Section 5 and the preclearance it required until 2013: <https://www.justice.gov/crt/about-section-5-voting-rights-act>.]
 
 Those four are the right files because the first *Gingles* precondition asks about a map that does not exist. Answering it needs a building block small enough to reassemble into any map at all, and the census block is that. They also supply three counts of "the people" at once, which almost nowhere else does, because almost nowhere else records race on the registration form.
 
-The four meet on one column: `GEOID20`, the census block's fifteen-character identifier. Every join carries the assumptions of both files plus one more about how they line up. That is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html), a crosswalk being a table that translates one set of areas into another. Here the join is checked rather than trusted. The build asserts that the four block lists match exactly, and that TIGER's own population field equals the published tables to the person.
+The four meet on one column: `GEOID20`, the census block's fifteen-character identifier. Every join carries the assumptions of both files plus one more about how they line up. That is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html), a crosswalk being a table that translates one set of areas into another. Here the join is checked rather than trusted: the four block lists were compared and match exactly, and the population the TIGER file carries for each block equals the published tables to the person.
 
 One disclosure belongs here. Houston County's method of electing its Board of Commissioners is the subject of pending litigation, *Driver v. Houston County*, No. 5:25-cv-00025 (M.D. Ga.), in which the instructor has been retained by plaintiffs.^[The docket is public. Filings are indexed by CourtListener, a free archive of federal court records: <https://www.courtlistener.com/?q=%22Driver+v.+Houston+County%22>.] **No material from any expert report is used anywhere in this brief**, and nothing here reaches a legal conclusion.
 
@@ -37,13 +37,13 @@ One row is a 2020 census block, the smallest unit the census publishes. There ar
 ```{r one-row}
 ```
 
-`GEOID20` names the block and `boe5` says which of the five enacted districts it sits in. Then `pop`, `vap` and `reg` count its residents, its adults and its registered voters, each with a `_black` companion. Three counts of the people, and they are not the same number: the county is `r pc(sh_pop, 2)`% Black by population, `r pc(sh_vap, 2)`% among adults, and `r pc(sh_reg, 2)`% among registered voters. That spread is `r pc(sh_reg - sh_vap, 2)` points wide, and it will decide a question the Supreme Court calls dispositive.
+`GEOID20` names the block and `boe5` says which of the five enacted districts it sits in. Then `pop`, `vap` and `reg` count its residents, its adults and its registered voters, each with a `_black` companion. Three counts of the people, and they are not the same number: the county is `r pc(sh_pop, 2)`% Black by population, `r pc(sh_vap, 2)`% among adults, and `r pc(sh_reg, 2)`% among registered voters. That spread is `r pc(sh_reg - sh_vap, 2)` points wide, and it will decide a question the Supreme Court calls dispositive, meaning the one that settles the case.
 
 The enacted plan arrives as a **block equivalency file**: one row per block, one district number, no boundary and no coordinate anywhere in it. A districting plan *is* a lookup table, and the picture everyone argues about is drawn afterwards by merging blocks that share a number.
 
-Three cleaning decisions were made and none was collapsed away afterwards. "Black" means **any-part Black**, alone or in combination, matching Voting Rights Act practice. The registration counts use reported race only, since rows whose race had been guessed were dropped upstream. And blocks with nobody living on them are kept, `r n(EMPTY)` of the `r n(nrow(b))`, because a district has to be drawn across empty ground.
+Three cleaning decisions were made and none was collapsed away afterwards. "Black" means **any-part Black**, alone or in combination, matching Voting Rights Act practice. The registration counts use reported race only: voters whose race the file had inferred rather than recorded are left out. And blocks with nobody living on them are kept, `r n(EMPTY)` of the `r n(nrow(b))`, because a district has to be drawn across empty ground.
 
-Two things are in none of the four files. Which block touches which is computed from the shapes during the build. And **most of the districts in this brief did not exist until this brief's own code made them**, which is what evidence for the first precondition always is.
+Two things are in none of the four files. Which block touches which is worked out from the block outlines. And **most of the districts in this brief did not exist until this brief's own code made them**, which is what evidence for the first precondition always is.
 
 > **Before you read on, write two numbers down.** The county is
 > `r pc(sh_vap, 2)`% Black among adults and holds `r pc(HAVE_BL / NEED_BL, 2)`
@@ -58,7 +58,7 @@ Two things are in none of the four files. Which block touches which is computed 
 
 ### The dilution you can settle by subtraction
 
-Add up the enacted plan's five districts and compare each to the average.
+Add up the population of each of the enacted plan's five districts and compare it to the average. That average, the county's population divided by five, is the **ideal population** of `r n(IDEAL)`, and a district's **deviation** is how far above or below it the district sits, as a percentage of the ideal. District `r BIG` is the largest at `r n(POP_BIG)` people, which is `r n(POP_BIG - IDEAL)` over the ideal, or `r sprintf("%+.2f", DEV_BIG)`%. District `r SML` is the smallest at `r n(POP_SML)`, or `r sprintf("%+.2f", DEV_SML)`%. The distance between those two, `r pc(DEV_RANGE, 2)` points, is the plan's **maximum deviation**, and it is the number a court asks for.
 
 ```{r dev-static, eval=!knitr::is_html_output(), fig.height=3.1}
 ```
@@ -68,9 +68,9 @@ Add up the enacted plan's five districts and compare each to the average.
 
 **Figure 1. The enacted plan against equal population.** One bar per Board of Education district, running left or right of the ideal of `r n(IDEAL)` people. Bars from a zero line fit this question, because the question is distance from a single number in two directions. The shaded band is the 10-point maximum deviation a state or local plan is presumed to be within.
 
-*Brown v. Thomson*, 462 U.S. 835, 842 (1983) collected the rule that a state or local plan under a **10%** maximum deviation is a minor one and does not by itself make a case. This plan spans `r pc(DEV_RANGE, 2)` points, a sixth of that allowance. Read as a price, a vote in the smallest district is worth `r pc(100 * (WORTH - 1), 2)`% more than a vote in the largest. That is the entire malapportionment inquiry, done in one subtraction.
+*Reynolds v. Sims*, 377 U.S. 533 (1964) required that legislative districts hold substantially equal populations,^[*Reynolds v. Sims*, 377 U.S. 533 (1964): <https://www.law.cornell.edu/supremecourt/text/377/533>.] and *Brown v. Thomson*, 462 U.S. 835, 842 (1983) collected the rule that a state or local plan under a **10%** maximum deviation is a minor one and does not by itself make a case.^[*Brown v. Thomson*, 462 U.S. 835 (1983): <https://www.law.cornell.edu/supremecourt/text/462/835>.] This plan spans `r pc(DEV_RANGE, 2)` points, a sixth of that allowance. Read as a price, a vote in the smallest district is worth `r pc(100 * (WORTH - 1), 2)`% more than a vote in the largest, because one seat is shared among `r n(POP_SML)` people there and `r n(POP_BIG)` here. That is the entire malapportionment inquiry, done in one subtraction.
 
-If it is that easy, what was the rule for? Until 1963 Georgia nominated statewide officers under the **county unit system**, in which counties cast two to six unit votes each regardless of size. *Gray v. Sanders*, 372 U.S. 368, 381 (1963) struck it down, and gave the rule its name: political equality "can mean only one thing — one person, one vote."
+If it is that easy, what was the rule for? Until 1963 Georgia nominated statewide officers under the **county unit system**, in which counties cast two to six unit votes each regardless of size.^[The New Georgia Encyclopedia's account of the county unit system: <https://www.georgiaencyclopedia.org/articles/government-politics/county-unit-system/>.] *Gray v. Sanders*, 372 U.S. 368, 381 (1963) struck it down, and gave the rule its name: political equality "can mean only one thing — one person, one vote."^[*Gray v. Sanders*, 372 U.S. 368 (1963): <https://www.law.cornell.edu/supremecourt/text/372/368>.]
 
 ```{r county-units}
 ```
@@ -79,7 +79,7 @@ If it is that easy, what was the rule for? Until 1963 Georgia nominated statewid
 
 ### The dilution you cannot settle by subtraction
 
-The argument moved to the other kind. Section 2 of the Voting Rights Act, 52 U.S.C. § 10301(b), makes out a violation where a group has "less opportunity than other members of the electorate to participate in the political process and to elect representatives of their choice." *Thornburg v. Gingles*, 478 U.S. 30, 50–51 (1986) turned that into three things a plaintiff must show first. The group must be large enough and compact enough to be a majority in one district, it must vote cohesively, and the majority must vote as a bloc against it.
+The argument moved to the other kind. Section 2 of the Voting Rights Act, 52 U.S.C. § 10301(b), makes out a violation where a group has "less opportunity than other members of the electorate to participate in the political process and to elect representatives of their choice."^[52 U.S.C. § 10301: <https://www.law.cornell.edu/uscode/text/52/10301>.] *Thornburg v. Gingles*, 478 U.S. 30, 50–51 (1986) turned that into three things a plaintiff must show first, now called the **Gingles preconditions**.^[*Thornburg v. Gingles*, 478 U.S. 30 (1986): <https://www.law.cornell.edu/supremecourt/text/478/30>.] The group must be large enough and geographically compact enough to be a majority in one district; it must vote cohesively, meaning largely for the same candidates; and the majority must vote as a bloc against it, so that the group's candidates usually lose.
 
 Preconditions two and three are claims about elections that happened. **Precondition one is a claim about a district that did not**, and it is the only one a census file can answer.
 
@@ -93,9 +93,9 @@ Its arithmetic half is quickly done. Each of five districts holds `r n(D_VAP)` v
 
 **Figure 2. Where the Black adults are.** All `r n(nrow(b))` census blocks, shaded by the Black share of their voting-age population, with the five enacted districts in red. The `r n(EMPTY)` hatched blocks contain nobody at all, which is the absence of the quantity rather than a low value of it.
 
-There is no single Black neighbourhood to enclose. The **index of dissimilarity**, meaning the share of Black adults who would have to move blocks for the two groups to be spread identically, is `r pc(DISS, 1)`. Only `r n(N_HI)` of `r n(nrow(b))` blocks are majority-Black among adults, holding `r pc(S_HI, 1)`% of the county's Black adults, so the other `r pc(100 - S_HI, 1)`% live where they are outnumbered.
+There is no single Black neighbourhood to enclose. The **index of dissimilarity**, meaning the share of Black adults who would have to move blocks for the two groups to be spread identically, is `r pc(DISS, 1)`.^[The index is from Otis Dudley Duncan and Beverly Duncan, "A Methodological Analysis of Segregation Indexes," *American Sociological Review* 20, no. 2 (1955): 210–217, <https://www.jstor.org/stable/2088328>.] Only `r n(N_HI)` of `r n(nrow(b))` blocks are majority-Black among adults, holding `r pc(S_HI, 1)`% of the county's Black adults, so the other `r pc(100 - S_HI, 1)`% live where they are outnumbered.
 
-So build the district and find out. Start at the block with the most Black adults and annex neighbours until the district holds `r n(IDEAL)` people. At each step the mapmaker looks at the **`reach`** nearest available blocks on the frontier and takes whichever leaves the Black share of adults highest. At `reach = 1` one candidate is ever considered, so race never enters the rule for growing the district; at `reach = ∞` every frontier block is a candidate.
+So build the district and find out. Start at the block with the most Black adults and annex neighbours until the district holds `r n(IDEAL)` people. At each step the mapmaker looks at the **`reach`** nearest available blocks on the frontier, the blocks touching the district so far, and takes whichever leaves the Black share of adults highest. At `reach = 1` one candidate is ever considered, so race never enters the rule for growing the district; at `reach = ∞` every frontier block is a candidate.
 
 ```{r front-static, eval=!knitr::is_html_output(), fig.height=4.1}
 ```
@@ -107,7 +107,7 @@ So build the district and find out. Start at the block with the most Black adult
 
 The dial buys Black share and pays in compactness, at a brutal rate. At `reach = 1` the district is `r pc(R1_5$vap_black_pct)`% Black among adults with a Polsby-Popper of `r pc(R1_5$pp, 3)`: a respectable shape, nowhere near a majority. The first setting that clears 50% is reach `r CROSS$reach`, and its compactness is `r pc(R1_5$pp / CROSS$pp, 0)` times worse. At the far end the district reaches `r pc(RI_5$vap_black_pct)`% at `r pc(RI_5$pp, 3)`, which is not a shape so much as a route.
 
-Two points deserve their own story. One setting is out of order: at reach `r WOB$reach` the district drops to `r pc(WOB$vap_black_pct)`%, below several tighter settings, because a greedy search is not guaranteed to improve as its own parameter grows. And the starting block barely matters, since restarting from each of `r n(SW_N)` majority-Black blocks moves the answer only `r pc(SW_HI - SW_LO, 1)` points.
+Two points deserve their own story. One setting is out of order: at reach `r WOB$reach` the district drops to `r pc(WOB$vap_black_pct)`%, below several tighter settings, because a greedy search, one that takes the best-looking next step without looking further ahead, is not guaranteed to improve as its own parameter grows. And the starting block barely matters, since restarting from each of `r n(SW_N)` majority-Black blocks moves the answer only `r pc(SW_HI - SW_LO, 1)` points.
 
 The honest summary an expert could write from Figure 3 is that a majority-Black district can be built here only by abandoning compactness. That summary is wrong.
 
@@ -132,7 +132,7 @@ People drew that one, out of the whole county rather than outward from a seed. *
 
 ### Majority of what?
 
-*Bartlett v. Strickland*, 556 U.S. 1, 19–20 (2009) reads the precondition to require a real numerical majority, greater than 50 percent of voting-age population. District 4 clears 50% on all three counts. Take the four-district configuration, where it does not.
+*Bartlett v. Strickland*, 556 U.S. 1, 19–20 (2009) reads the precondition to require a real numerical majority, greater than 50 percent of voting-age population.^[*Bartlett v. Strickland*, 556 U.S. 1 (2009): <https://www.law.cornell.edu/supremecourt/text/07-689>.] District 4 clears 50% on all three counts. Take the four-district configuration, where it does not.
 
 ```{r denominator}
 ```
@@ -143,7 +143,7 @@ Neither number is wrong, and the disagreement is a join. The census counts every
 
 ### The standard changed four months ago
 
-*Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), decided 29 April 2026, left the three preconditions standing and changed what satisfies the first. A plaintiff now "cannot use race as a districting criterion" in drawing an illustrative map. That map must also meet all the State's legitimate districting objectives "just as well" as the State's own (slip op., at 29–30). Every point on Figure 3 except the leftmost was produced by letting race decide which block to annex. Same county, same census, same code, and a change in doctrine moves the admissible answer `r pc(RI_5$vap_black_pct - R1_5$vap_black_pct, 1)` points, down to `reach = 1` and its `r pc(R1_5$vap_black_pct)`%.
+*Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), decided 29 April 2026, left the three preconditions standing and changed what satisfies the first.^[*Louisiana v. Callais*, No. 24-109, slip opinion of 29 April 2026: <https://www.supremecourt.gov/opinions/25pdf/24-109_new_jifl.pdf>. The docket is at <https://www.supremecourt.gov/search.aspx?filename=/docket/docketfiles/html/public/24-109.html>.] A plaintiff now "cannot use race as a districting criterion" in drawing an illustrative map. That map must also meet all the State's legitimate districting objectives "just as well" as the State's own (slip op., at 29–30). Every point on Figure 3 except the leftmost was produced by letting race decide which block to annex. Same county, same census, same code, and a change in doctrine moves the admissible answer `r pc(RI_5$vap_black_pct - R1_5$vap_black_pct, 1)` points, down to `reach = 1` and its `r pc(R1_5$vap_black_pct)`%.
 
 ## What this brief cannot tell you
 
@@ -181,14 +181,16 @@ None of these is answered above, and every one can be answered from the tables t
 - 2020 Census, P.L. 94-171 redistricting file, block level, Houston County,
   Georgia: population and voting-age population, both by race.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
-- 2020 TIGER/Line tabulation blocks for Georgia, for geometry, adjacency and
-  both compactness measures. Its independent `POP20` field agrees with the
+- 2020 TIGER/Line tabulation blocks for Georgia, the Bureau's digital block
+  outlines, used for geometry, adjacency and both compactness measures. Its independent `POP20` field agrees with the
   tables above at `r n(POP)` people.
   <https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_13_tabblock20.zip>
 - Houston County Board of Education plan, as enacted and in force, as a
   block-equivalency file.
-- Georgia voter registration file for Houston County: **self-reported** race and
-  census block, `r n(REG)` records, with inferred races dropped upstream.
+- Georgia's statewide voter registration file, kept by the Secretary of State
+  and available to the public, restricted here to Houston County: `r n(REG)`
+  records, each with the voter's **self-reported** race and census block.
+  Voters whose race the file had inferred rather than recorded are not counted.
 - Every district here other than the enacted five was drawn by the growth
   algorithm described above.
 
@@ -202,25 +204,38 @@ open in a spreadsheet, and they are yours to take further.
 **Cases and statute**
 
 - Voting Rights Act of 1965 § 2, 52 U.S.C. § 10301 (results test added 1982,
-  Pub. L. 97-205 § 3, 96 Stat. 134); § 5, 52 U.S.C. § 10304, whose coverage
-  formula *Shelby County v. Holder*, 570 U.S. 529 (2013) struck.
+  Pub. L. 97-205 § 3, 96 Stat. 134), <https://www.law.cornell.edu/uscode/text/52/10301>;
+  § 5, 52 U.S.C. § 10304, <https://www.law.cornell.edu/uscode/text/52/10304>,
+  whose coverage formula *Shelby County v. Holder*, 570 U.S. 529 (2013)
+  struck, <https://www.law.cornell.edu/supremecourt/text/12-96>.
 - Senate Report No. 97-417 (1982), whose nine factors *Gingles* adopted.
-- *Gray v. Sanders*, 372 U.S. 368 (1963); *Reynolds v. Sims*, 377 U.S. 533
-  (1964); *Brown v. Thomson*, 462 U.S. 835 (1983).
-- *Thornburg v. Gingles*, 478 U.S. 30 (1986); *Bartlett v. Strickland*,
-  556 U.S. 1 (2009) (plurality); *Allen v. Milligan*, 599 U.S. 1 (2023);
-  *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026) (Nos. 24-109, 24-110).
+- *Gray v. Sanders*, 372 U.S. 368 (1963),
+  <https://www.law.cornell.edu/supremecourt/text/372/368>; *Reynolds v. Sims*,
+  377 U.S. 533 (1964), <https://www.law.cornell.edu/supremecourt/text/377/533>;
+  *Brown v. Thomson*, 462 U.S. 835 (1983),
+  <https://www.law.cornell.edu/supremecourt/text/462/835>.
+- *Thornburg v. Gingles*, 478 U.S. 30 (1986),
+  <https://www.law.cornell.edu/supremecourt/text/478/30>; *Bartlett v.
+  Strickland*, 556 U.S. 1 (2009) (plurality),
+  <https://www.law.cornell.edu/supremecourt/text/07-689>; *Allen v. Milligan*,
+  599 U.S. 1 (2023), <https://www.supremecourt.gov/opinions/22pdf/21-1086_1co6.pdf>;
+  *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026) (Nos. 24-109, 24-110),
+  <https://www.supremecourt.gov/opinions/25pdf/24-109_new_jifl.pdf>.
 
 **Academic literature**
 
+- Duncan, O. D. and Duncan, B. (1955). "A Methodological Analysis of
+  Segregation Indexes." *American Sociological Review* 20(2): 210–217.
+  <https://www.jstor.org/stable/2088328>. The index of dissimilarity.
 - National Conference of State Legislatures. *Redistricting Law 2020*. Denver:
   NCSL, October 2019, chapter 3, for the nine totality factors.
+  <https://www.ncsl.org/redistricting-and-census/redistricting-law-2020>
 - Polsby, D. D. and Popper, R. D. (1991). "The Third Criterion: Compactness as a
   Procedural Safeguard Against Partisan Gerrymandering." *Yale Law & Policy
   Review* 9(2): 301–353.
 - Reock, E. C. Jr. (1961). "A Note: Measuring Compactness as a Requirement of
   Legislative Apportionment." *Midwest Journal of Political Science* 5(1):
-  70–74.
+  70–74. <https://www.jstor.org/stable/2109043>
 
 ```{r on-mark-halo, results='asis', echo=FALSE, eval=knitr::is_html_output()}
 ```

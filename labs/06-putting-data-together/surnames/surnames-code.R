@@ -88,6 +88,23 @@ pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",")
 G  <- function(nm, v) look(nm)[[v]]
 
+# ---- one case by hand: SMITH in the Bronx, every step of Bayes' rule ------
+# The prose walks the Black and white rows of this table, so every figure it
+# quotes comes from HB rather than being retyped. HB$post must equal
+# bisg("SMITH", "36005"); the stopifnot says so.
+hb_s <- look("SMITH")
+hb_p <- c(hb_s$pctwhite, hb_s$pctblack, hb_s$pctapi, hb_s$pctaian,
+          hb_s$pct2prace, hb_s$pcthispanic)
+hb_p[is.na(hb_p)] <- 0
+HB <- data.frame(name  = hb_p,
+                 bronx = 100 * as.numeric(co[co$fips == "36005", grp6]),
+                 natl  = 100 * as.numeric(natl),
+                 row.names = grp6)
+HB$ratio <- HB$bronx / HB$natl
+HB$prod  <- HB$name * HB$ratio
+HB$post  <- 100 * HB$prod / sum(HB$prod)
+stopifnot(all(abs(HB$post - bisg("SMITH", "36005")) < 0.1))
+
 # ---- figure data ----------------------------------------------------------
 
 # the thousand most common surnames, on the two shares they share
@@ -298,6 +315,14 @@ svg.append("g").selectAll("text.v").data(D).join("text")
 </script>
 <p style="font-size:0.85em;color:#666;margin-top:0.2em">%s</p>
 ', rows, acap))
+
+## ---- hand
+o <- data.frame(group = pretty6,
+                a = pc(HB$name), b = pc(HB$bronx), d = pc(HB$natl),
+                e = pc(HB$ratio, 2), f = pc(HB$prod), g = pc(HB$post))
+names(o) <- c("group", "SMITH, by name (%)", "the Bronx (%)", "the country (%)",
+              "Bronx ÷ country", "name × ratio", "posterior (%)")
+o
 
 ## ---- flip
 o <- rbind(`SMITH in Allegheny County, PA` = bisg("SMITH", "42003"),

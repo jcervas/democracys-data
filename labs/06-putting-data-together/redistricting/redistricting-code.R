@@ -56,6 +56,20 @@ pc  <- function(x, k = 1) formatC(x, format = "f", digits = k)
 row_of <- function(ab) paste(sprintf("%.1f",
   sort(cd$dem_share[cd$state == ab], decreasing = TRUE)), collapse = "  ")
 
+# wasted votes, walked through in the prose. Every district is given a
+# hundred votes so that shares are counts: a losing party wastes all of its
+# votes, a winning party everything past fifty. In the sign convention above
+# the efficiency gap is (Republican waste - Democratic waste) / districts,
+# which is the simple-form formula st$eg uses whenever turnout is equal.
+ds <- function(d) cd$dem_share[cd$district == d]
+wv <- function(ab, which) {
+  v  <- cd$dem_share[cd$state == ab]
+  wd <- ifelse(v > 50, v - 50, v)
+  wr <- ifelse(v < 50, 50 - v, 100 - v)
+  c(wd = sum(wd), wr = sum(wr))[[which]]
+}
+egw <- function(ab) (wv(ab, "wr") - wv(ab, "wd")) / sum(cd$state == ab)
+
 # how far the three rankings actually agree, computed rather than asserted
 rho <- function(a, b) round(cor(big[[a]], big[[b]], method = "spearman",
                                 use = "complete.obs"), 2)

@@ -16,17 +16,17 @@ dd_read_chunks("senate-2026-code.R")
 ```{r setup, include=FALSE}
 ```
 
-`r fx("n_forecasters")` professional forecasters have already rated every Senate race on the 2026 ballot. Their ratings are public, they disagree with each other in `r as.numeric(fx("n_races")) - as.numeric(fx("n_unanimous"))` of the `r fx("n_races")` races, and not one of them publishes what a rating means as a number. So what does a rating actually claim, and how much of November is already settled in August?
+`r fx("n_forecasters")` professional forecasters have already rated every Senate race on the 2026 ballot: a **race rating** places a contest in one of a few named categories, from Solid Democratic through Toss-up to Solid Republican, rather than giving it a probability. Their ratings are public, they disagree with each other in `r as.numeric(fx("n_races")) - as.numeric(fx("n_unanimous"))` of the `r fx("n_races")` races, and not one of them publishes what a rating means as a number. So what does a rating actually claim, and how much of November is already settled in August?
 
-The way to find out is to rate the races yourself first. A prediction made after the fact is not a prediction, and the human capacity to remember having believed whatever happened is close to unlimited. The only defence is a record with a date on it.
+The way to find out is to rate the races yourself first. A prediction made after the fact is not a prediction, and the human capacity to remember having believed whatever happened is close to unlimited.^[The effect was first measured by Baruch Fischhoff, "Hindsight ≠ Foresight: The Effect of Outcome Knowledge on Judgment under Uncertainty," *Journal of Experimental Psychology: Human Perception and Performance* 1, no. 3 (1975): 288–299, <https://doi.org/10.1037/0096-1523.1.3.288>.] The only defence is a record with a date on it.
 
 ## The test
 
-This brief reads `r fx("n_ratings")` published ratings of `r fx("n_races")` Senate races, made by `r fx("n_forecasters")` forecasters between `r fx("ratings_first_date")` and `r fx("ratings_last_date")`, together with the candidates who have qualified for those ballots. All of it comes from one Wikipedia article, "2026 United States Senate elections" (<https://en.wikipedia.org/wiki/2026_United_States_Senate_elections>), read as wikitext rather than as a web page. On the rendered page a rating is a coloured table cell, and a colour cannot be read back out.
+This brief reads `r fx("n_ratings")` published ratings of `r fx("n_races")` Senate races, made by `r fx("n_forecasters")` forecasters between `r fx("ratings_first_date")` and `r fx("ratings_last_date")`, together with the candidates who have qualified for those ballots. All of it comes from one Wikipedia article, "2026 United States Senate elections" (<https://en.wikipedia.org/wiki/2026_United_States_Senate_elections>), which is where the forecasters' ratings sit side by side. It is read as the page's source text rather than as the page a browser shows, because on the displayed page a rating is a coloured cell, and a colour cannot be read back into a word.
 
 That article answers the question because nowhere else do the `r fx("n_forecasters")` sit side by side. They publish no common file and share no vocabulary: Cook says "Solid Republican" where Sabato says "Safe Republican".^[The Cook Political Report (<https://www.cookpolitical.com/ratings/senate-race-ratings>) and Sabato's Crystal Ball at the University of Virginia Center for Politics (<https://centerforpolitics.org/crystalball/>) are the two longest-running of the forecasters read here.] Wikipedia is not the authority on any of it, and is not treated as one here. Every rating is footnoted to the forecaster who published it and every candidate to a state election official, so what the article supplies is the assembly rather than the facts.
 
-Three sources are joined, and the key is the state. The predictions table gives each state its ratings, the race-summary tables give each state its candidates, and `legislators-current.csv` gives each state its sitting senator and Senate class. The third is used only as a test: the 33 non-special races must be exactly the states with a Class 2 senator. Every join takes on the assumptions of both files plus one more about how they line up. That is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html), which also covers the crosswalk, a table that translates one set of identifiers into another.
+Three sources are joined, and the key is the state. The predictions table gives each state its ratings, the race-summary tables give each state its candidates, and the `congress-legislators` file kept by volunteers on GitHub gives each state its sitting senators and their **Senate class** — the Senate is divided into three classes, one of which stands for election every two years, and 2026 is Class 2's turn.^[The Senate's own list of Class II senators: <https://www.senate.gov/senators/Class_II.htm>.] The third is used only as a test: the 33 non-special races must be exactly the states with a Class 2 senator. Every join takes on the assumptions of both files plus one more about how they line up. That is the subject of [Join Keys and Crosswalks](../data-sources/data-sources-brief.html), which also covers the crosswalk, a table that translates one set of identifiers into another.
 
 ## The data
 
@@ -35,11 +35,11 @@ Start with the arithmetic your `r fx("n_races")` answers get added to, which is 
 ```{r seat-math}
 ```
 
-Read the last three rows together. Democrats hold `r D_HOLD` seats that nobody votes on this year. A majority is `r mq("seats for a Democratic majority")` rather than 50, because the Vice President breaks ties and the Vice President is a Republican. So Democrats need `r D_NEED` of the `r fx("n_races")` races on the map, and they currently hold `r fx("d_up")` of them, which makes the requirement a net gain of `r fx("d_net_gain")`.
+Read the last three rows together. Democrats hold `r D_HOLD` seats that nobody votes on this year. A majority is `r mq("seats for a Democratic majority")` rather than 50, because the Vice President breaks ties and the Vice President is a Republican.^[The Senate's record of every tie a Vice President has broken: <https://www.senate.gov/artandhistory/history/resources/pdf/VPTies.pdf>.] So Democrats need `r D_NEED` of the `r fx("n_races")` races on the map, and they currently hold `r fx("d_up")` of them, which makes the requirement a net gain of `r fx("d_net_gain")`.
 
 `r note(paste0("Two of the ", fx("n_races"), " are special elections, in Florida and Ohio, for seats whose regular term does not end until 2028. Marco Rubio and JD Vance both left the Senate in January 2025, and both seats were filled by appointment. A count of only the 33 expiring terms would leave out Ohio, one of the most contested races in the country."))`
 
-`races.csv` holds one row per race, carrying `seat_party`, `senator`, `status`, `dem_cand` and `rep_cand`. It also carries the Cook Partisan Voting Index in `pvi`, the winner's share at the seat's last election in `last_share`, and the forecasters' average, spread and range in `fc_mean`, `fc_sd`, `fc_min` and `fc_max`. `ratings_long.csv` holds every forecaster's rating of every race, with `rating`, `published` and a numeric `score`. `forecasters.csv` gives each of the twelve a `mean_gap`, and `class_ratings.csv` collects the maps other readers have submitted.
+`races.csv` holds one row per race, carrying `seat_party`, `senator`, `status`, `dem_cand` and `rep_cand`. It also carries the **Cook Partisan Voting Index** in `pvi` — the Cook Political Report's score of how much more Republican or Democratic a state voted for president than the country did, so that R+6 means six points more Republican than the nation — the winner's share at the seat's last election in `last_share`, and the forecasters' average, spread and range in `fc_mean`, `fc_sd`, `fc_min` and `fc_max`. `ratings_long.csv` holds every forecaster's rating of every race, with `rating`, `published` and a numeric `score`. `forecasters.csv` gives each of the twelve a `mean_gap`, and `class_ratings.csv` collects the maps other readers have submitted.
 
 That numeric `score` is the one construction decision worth arguing with. Forecasters do not publish probabilities; they publish one of five words, and a word is a category rather than a measurement.
 
@@ -48,12 +48,14 @@ That numeric `score` is the one construction decision worth arguing with. Foreca
 
 Averaging words is impossible, so the words were turned into the numbers in the middle column: positive for the Democrat, symmetric around a toss-up. The two forecasters who use "Tilt" have it scored at half a point. **Nothing makes those gaps equal.** Saying that "Likely" is exactly twice "Lean" is an assumption rather than a finding, and a different set of numbers gives a different average. The scale is printed here so that you can disagree with it.
 
+Watch it work on one race. Take `r fx("most_disagreed")`, the race the `r fx("n_forecasters")` disagree about most: `r MD_TXT`. Add the scores and the total is `r pc(MD_SUM, 1)`; divide by `r MD_N` and the average is `r pc(MD_MEAN, 2)`, nearer to `r MD_NEAR` than to anything else on the scale, though no forecaster said anything of the kind. Every average in this brief was made this way, and every one inherits the assumption that Likely is worth exactly twice Lean.
+
 There is a second problem with the scale, and it is worse. It has seven boxes, every one of which assumes a Democrat is running against a Republican. In `r fx("n_no_dem")` of the `r fx("n_races")` races no Democrat filed at all.
 
 ```{r no-dem}
 ```
 
-Nebraska is the one to look at. Dan Osborn is an independent who came within a few points of a Republican in 2024, with no Democrat on the ballot against him. A scale running from Safe D to Safe R cannot say what a strong independent looks like. You will still have to rate Nebraska, and whatever you put there will be wrong in a way the map cannot show.
+Nebraska is the one to look at. Dan Osborn is an independent who came within a few points of a Republican in 2024, with no Democrat on the ballot against him.^[The certified 2024 result is on Ballotpedia: <https://ballotpedia.org/United_States_Senate_election_in_Nebraska,_2024>.] A scale running from Safe D to Safe R cannot say what a strong independent looks like. You will still have to rate Nebraska, and whatever you put there will be wrong in a way the map cannot show.
 
 > **Before you go on, commit to two numbers.** Write down how many of the 100
 > Senate seats the Democrats will hold in January 2027, and how confident you
@@ -79,7 +81,7 @@ Two buttons will fill the map for you, one from each seat's last election and on
 
 **Table 1. The `r fx("n_races")` races.** The paper version of Figure 1. Fill the last column, then read it down to get your code: 1 for Safe D through 7 for Safe R.
 
-`r note(paste0("The incumbent is not the ballot. ", fx("n_retiring"), " of these senators are retiring, ", fx("n_lost_primary"), " lost their own party's primary, and ", fx("n_appointed"), " were appointed rather than elected. Only ", fx("n_incumbent_running"), " of the ", fx("n_races"), " races have the sitting senator running again."))`
+`r note(paste0("The incumbent, the senator who holds the seat now, is not the ballot. ", fx("n_retiring"), " of these senators are retiring, ", fx("n_lost_primary"), " lost their own party's primary, and ", fx("n_appointed"), " were appointed rather than elected. Only ", fx("n_incumbent_running"), " of the ", fx("n_races"), " races have the sitting senator running again."))`
 
 Now look at what everybody else committed to.
 
@@ -159,8 +161,9 @@ None of these is answered above, and every one can be answered from the tables t
   changed: `r { f <- FCS[order(FCS$forecaster), ]; paste0(paste(sprintf("%s (%s)", f$forecaster, format(as.Date(f$published), "%e %B %Y")), collapse = ", ")) }`.
   Their published ratings are recorded here, not recomputed.
 - `@unitedstates/congress-legislators`, `legislators-current.csv`
-  (<https://unitedstates.github.io/congress-legislators/legislators-current.csv>),
-  used only as a check.
+  (<https://unitedstates.github.io/congress-legislators/legislators-current.csv>;
+  the project is at <https://github.com/unitedstates/congress-legislators>), a
+  file of every sitting member kept by volunteers, used only as a check.
 
 **The data itself**
 
@@ -185,6 +188,19 @@ Every figure above is drawn from these tables, which are plain CSV.
 - Balk, T. "Can Democrats Win Back the Senate? Why Their Chances Are
   Improving." *The New York Times*, 24 August 2026, for the six-state core
   battlefield and the seat arithmetic reproduced above.
+- United States Senate, *Class II — Senators Whose Terms of Service Expire in
+  2027*, <https://www.senate.gov/senators/Class_II.htm>, and *Occasions When
+  Vice Presidents Have Voted to Break Tie Votes in the Senate*,
+  <https://www.senate.gov/artandhistory/history/resources/pdf/VPTies.pdf>.
+- Ballotpedia, the two special elections:
+  <https://ballotpedia.org/United_States_Senate_special_election_in_Florida,_2026>
+  and <https://ballotpedia.org/United_States_Senate_special_election_in_Ohio,_2026>;
+  and the 2024 Nebraska result,
+  <https://ballotpedia.org/United_States_Senate_election_in_Nebraska,_2024>.
+- Fischhoff, B. (1975). "Hindsight ≠ Foresight: The Effect of Outcome
+  Knowledge on Judgment under Uncertainty." *Journal of Experimental
+  Psychology: Human Perception and Performance* 1(3): 288–299.
+  <https://doi.org/10.1037/0096-1523.1.3.288>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

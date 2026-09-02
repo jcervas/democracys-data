@@ -16,9 +16,9 @@ dd_read_chunks("validated-turnout-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Almost every published claim about who takes part in American elections rests on a survey. The Census Bureau asks about 60,000 households after each federal election whether they voted, and nobody checks the answers. The states, separately, count the ballots.
+Almost every published claim about who takes part in American elections rests on a survey. The Census Bureau asks about 60,000 households after each federal election whether they voted, and nobody checks the answers.^[The Current Population Survey interviews "a probability selected sample of about 60,000 occupied households" every month; the voting questions are added in November of even-numbered years. U.S. Census Bureau, *Current Population Survey: Methodology*, <https://www.census.gov/programs-surveys/cps/technical-documentation/methodology.html>.] The states, separately, count the ballots.
 
-That makes turnout a rare thing: a survey question with an outside answer key. Do the two numbers agree? The question matters to a citizen because the survey is the only source that reports turnout by race, age and education. Those figures are quoted in voting-rights litigation and in nearly every argument about unequal participation. If the survey is wrong it is wrong in a direction, and the published gaps between groups are wrong with it.
+That makes turnout a rare thing: a survey question with an outside answer key. Turnout measured by asking is called **self-reported**; turnout checked against a record of ballots actually cast is **validated**, and the second is the standard the first is held to here. Do the two numbers agree? The question matters to a citizen because the survey is the only source that reports turnout by race, age and education. Those figures are quoted in voting-rights litigation and in nearly every argument about unequal participation. If the survey is wrong it is wrong in a direction, and the published gaps between groups are wrong with it.
 
 ## The test
 
@@ -35,15 +35,17 @@ The table is `cps_turnout.csv`: one row per presidential election, `r nrow(cps)`
 ```{r one-record}
 ```
 
-The survey half arrives as `hst_vote01.xlsx`, a workbook with no header row. It has a header *region* spread over four rows, formatted for a person to read on a page. The build finds the stub heading `Total, Percent Voted`, starts one row below it, and takes every value by fixed column position.
+Read that one row as the join reads it. In 2016 the Bureau put the number of citizens of voting age at `r cnt(g(2016, "citizen_vap"))`, and `r pc(g(2016, "pct_citizen_basis"))`% of them told the survey they had voted, which comes to `r cnt(g(2016, "reported_voters"))` people. The same year the states counted `r cnt(g(2016, "actual_votes"))` ballots for president. Set one against the other and the survey's electorate is the larger by `r cnt(g(2016, "gap_people"))` people, `r pc(g(2016, "gap_pct"))`% more voters than ballots. Every point in the figures below is that subtraction, repeated for `r nrow(cps)` elections.
 
-Three decisions in that build settle what the table can be asked.
+The Bureau publishes the survey half as a spreadsheet laid out for a person to read on a page, its headings spread over four rows; the figures used here are the *Total, Percent Voted* line of that table, one for each election.
 
-**The count of self-reported voters is derived, not published.** Table A-1 prints percentages and one population total. `reported_voters` is the voting-age population multiplied by the published percentage, which is arithmetic on the Bureau's own figures rather than an estimate of anybody's.
+Three things about how the table was put together settle what it can be asked.
+
+**The count of self-reported voters is derived, not published.** Table A-1 prints percentages and one population total. `reported_voters` is the citizen voting-age population multiplied by the published percentage of citizens who said they voted (before 1980, when the Bureau published no citizen figures, the whole voting-age population and its percentage), which is arithmetic on the Bureau's own figures rather than an estimate of anybody's.
 
 **Ballots for president are not the whole electorate.** People vote and skip the top of the ticket, so the true ballot count is a little higher than the column used here. Every gap below is a small overstatement for that reason.
 
-**The rate columns are empty before 1980.** The Bureau began publishing a citizen basis only when the difference between residents and citizens grew large enough to matter. Quietly dropping those blank rows would move the series' start date to 1980, which happens to be its historical peak.
+**The rate columns are empty before 1980.** The Bureau began publishing a citizen basis only when the difference between residents and citizens grew large enough to matter. Quietly dropping those blank rows would cut the series' first four elections, among them `r cps$year[which.max(cps$gap_pct)]`, the year the gap was proportionally widest.
 
 > **Before you read on, commit to a direction.** Over the six decades in this
 > file, does the gap between what people say and what the ballots show get
@@ -61,7 +63,7 @@ More people say they voted than there are ballots, in `r sum(cps$gap_people > 0)
 
 **Figure 1. What people said, and what was counted, `r Y1` to `r Y2`.** The upper line is how many Americans the survey implies said they voted; the lower line is ballots cast for president, and the shaded wedge between them is the gap. Two lines with the space between them filled in is the right form here because the question is about a difference rather than a level. Both series roughly doubled over sixty years; the wedge did not. The widest year is `r cps$year[which.max(cps$gap_people)]`, at `r mn(max(cps$gap_people))` million people.
 
-The obvious explanation arrives first and almost everybody writes it down: people lie about voting. It is not an absurd reading. Voting is socially desirable, the interviewer represents the federal government, and admitting you stayed home is mildly embarrassing. Over-reporting of that kind is real and well documented.
+The obvious explanation arrives first and almost everybody writes it down: people lie about voting. It is not an absurd reading. Voting is socially desirable, the interviewer represents the federal government, and admitting you stayed home is mildly embarrassing. Over-reporting of that kind is real and well documented.^[Stephen Ansolabehere and Eitan Hersh, "Validation: What Big Data Reveal About Survey Misreporting and the Real Electorate," *Political Analysis* 20, no. 4 (2012): 437–459, <https://doi.org/10.1093/pan/mps023>.]
 
 But notice what the explanation predicts. If social pressure drives the gap, the gap should hold roughly steady, or grow as voting becomes more moralised in a polarised era. It does neither.
 
@@ -103,9 +105,11 @@ So the answer to the opening question depends on which instrument you trust. The
 ```{r mechanisms}
 ```
 
-Consider the second row seriously. Survey response rates collapsed over exactly the period the gap shrank. If the people who still answer a government survey are disproportionately voters, the raw sample drifts toward voters on its own. The Bureau's weighting, which means counting some answers more than others so the sample matches the country, corrects for age, sex, race and region. It does not correct for how civic-minded somebody is, because nobody holds a population total for that.
+Consider the second row seriously. Survey response rates fell across American household surveys over exactly the period the gap shrank.^[Robert M. Groves, "Nonresponse Rates and Nonresponse Bias in Household Surveys," *Public Opinion Quarterly* 70, no. 5 (2006): 646–675, doi:10.1093/poq/nfl033.] If the people who still answer a government survey are disproportionately voters, the raw sample drifts toward voters on its own. The Bureau's weighting, which means counting some answers more than others so the sample matches the country, corrects for age, sex, race and region. It does not correct for how civic-minded somebody is, because nobody holds a population total for that.
 
-**It cannot tell you whether validation studies measure lying or measure record linkage.** Ansolabehere and Hersh (2012) matched a large survey to a commercial voter file and concluded that self-reports are badly inflated. Berent, Krosnick and Lupia (2016) answered that a failed match looks exactly like a liar, because names change, addresses change and records get purged. Every audit needs its own instrument, so the data cannot arbitrate.
+A fourth mechanism sits inside the Bureau's arithmetic rather than in anybody's answer. A person who is interviewed but does not answer the voting question — says they do not know, refuses, or is never asked — is counted by the Bureau as a non-voter. Hur and Achen (2013) showed that this coding rule, as the share of such non-answers grew, pulled the published rate down election by election without anyone lying less.^[Aram Hur and Christopher H. Achen, "Coding Voter Turnout Responses in the Current Population Survey," *Public Opinion Quarterly* 77, no. 4 (2013): 985–993, doi:10.1093/poq/nft042; summarised at <https://electionupdates.caltech.edu/2014/01/21/more-new-research-on-voter-turnout-hur-and-achen-in-poq-on-coding-voter-turnout-responses-in-the-cps/>.] Part of the shrinking wedge in Figure 2 may be that rule doing its quiet work.
+
+**It cannot tell you whether validation studies measure lying or measure record linkage** — whether a mismatch is a person who lied or a person whose line in the voter file was never found. Ansolabehere and Hersh (2012) matched a large survey to a commercial voter file and concluded that self-reports are badly inflated. Berent, Krosnick and Lupia (2016) answered that a failed match looks exactly like a liar, because names change, addresses change and records get purged.^[Matthew K. Berent, Jon A. Krosnick and Arthur Lupia, "Measuring Voter Registration and Turnout in Surveys: Do Official Government Records Yield More Accurate Assessments?" *Public Opinion Quarterly* 80, no. 3 (2016): 597–621, doi:10.1093/poq/nfw021.] Every audit needs its own instrument, so the data cannot arbitrate.
 
 **It cannot give the by-group figures a margin of error.** The published table carries nothing saying how far off each percentage could be, and the Asian and Hispanic figures rest on the smallest subsamples in it.
 
@@ -154,16 +158,23 @@ spreadsheet, and it is yours to take further.
 
 - Ansolabehere, S. and Hersh, E. (2012). "Validation: What Big Data Reveal About
   Survey Misreporting and the Real Electorate." *Political Analysis* 20(4):
-  437–459.
+  437–459. <https://doi.org/10.1093/pan/mps023>
 - Berent, M. K., Krosnick, J. A. and Lupia, A. (2016). "Measuring Voter
   Registration and Turnout in Surveys: Do Official Government Records Yield More
   Accurate Assessments?" *Public Opinion Quarterly* 80(3): 597–621.
+  doi:10.1093/poq/nfw021
 - Groves, R. M. (2006). "Nonresponse Rates and Nonresponse Bias in Household
-  Surveys." *Public Opinion Quarterly* 70(5): 646–675.
+  Surveys." *Public Opinion Quarterly* 70(5): 646–675. doi:10.1093/poq/nfl033
 - Hur, A. and Achen, C. H. (2013). "Coding Voter Turnout Responses in the Current
   Population Survey." *Public Opinion Quarterly* 77(4): 985–993.
+  doi:10.1093/poq/nft042; summarised at
+  <https://electionupdates.caltech.edu/2014/01/21/more-new-research-on-voter-turnout-hur-and-achen-in-poq-on-coding-voter-turnout-responses-in-the-cps/>
 - McDonald, M. P. and Popkin, S. L. (2001). "The Myth of the Vanishing Voter."
   *American Political Science Review* 95(4): 963–974.
+  <https://doi.org/10.1017/S0003055400400134>
+- U.S. Census Bureau, *Current Population Survey: Methodology* — the sample of
+  about 60,000 households and how it is drawn.
+  <https://www.census.gov/programs-surveys/cps/technical-documentation/methodology.html>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

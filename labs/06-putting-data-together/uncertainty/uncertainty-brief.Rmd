@@ -18,34 +18,34 @@ dd_read_chunks("uncertainty-code.R")
 
 Every estimate you meet in public life is supposed to come with a margin of error: a number saying how far off the estimate could be and still be doing its job. A narrow margin reads as a settled number. This brief asks what a narrow margin is actually a fact about.
 
-It asks that in the one place in this book where an estimate can be graded against a recorded answer. Georgia writes race on the voter registration form, so for `r n(NV)` registered voters in Houston County there are two things on file. A **guess**, worked out from the voter's surname and the census block they live in. And the **answer**, which is what the voter wrote down.
+It asks that in the one place in this book where an estimate can be graded against a recorded answer. Georgia writes race on the voter registration form, so for `r n(NV)` registered voters in Houston County there are two things on file. A **guess**, worked out from the voter's surname and the census block they live in, the smallest area the census reports and often a single city block. And the **answer**, which is what the voter wrote down.
 
-The guess is right for **`r p2(ACC)`%** of them, and the 95% interval around that share runs from `r p2(ALO)`% to `r p2(AHI)`%. That is less than a point wide, which makes it one of the most precisely measured numbers in this book. Whether it describes anybody is a separate question, and the interval has nothing to say about it.
+The guess is right for **`r p2(ACC)`%** of them, and its **95% confidence interval**, the range that would capture the true share in 95 of every 100 samples drawn this way, runs from `r p2(ALO)`% to `r p2(AHI)`%. That is less than a point wide, which makes it one of the most precisely measured numbers in this book. Whether it describes anybody is a separate question, and the interval has nothing to say about it.
 
 ## The test
 
-The measurement joins three files. The first is a Houston County, Georgia voter registration extract, carrying the race each voter reported and the census block each one lives in. The second is the U.S. Census Bureau's *Frequently Occurring Surnames from the 2010 Census* (<https://www2.census.gov/topics/genealogy/2010surnames/names.zip>). The third is the 2020 Census redistricting count of who lives on each of the county's blocks. The extract and the block table are the committed tables of the [BISG check brief](../bisg-check/bisg-check-brief.html); the surname list is the [surnames brief](../surnames/surnames-brief.html)'s copy, read where it sits.
+The measurement joins three files. The first is Houston County, Georgia's voter registration file, carrying the race each voter reported and the census block each one lives in. Georgia sells its voter file to anyone who orders it (<https://sos.ga.gov/page/order-voter-registration-lists-and-files>); this copy is working data for the county's 2026 redistricting matter, in which the instructor is retained, and no material from any expert report is used here. The second is the U.S. Census Bureau's *Frequently Occurring Surnames from the 2010 Census*, downloadable at <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>. The third is the Bureau's 2020 Census count of who lives on each of the county's blocks, from the redistricting file it publishes for every state (<https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>). The voter file and the block counts are the same ones the [BISG check brief](../bisg-check/bisg-check-brief.html) uses, and the surname list is the one the [surnames brief](../surnames/surnames-brief.html) describes.
 
-These are the right files because grading a guess requires a recorded answer, and almost no file in American politics has one. A handful of states, mostly ones once subject to federal supervision of their election law, put a race question on the registration form. That question is why the quantity a surname model is trying to produce is already written down here.
+These are the right files because grading a guess requires a recorded answer, and almost no file in American politics has one. A handful of states, mostly ones once subject to federal supervision of their election law, put a race question on the registration form.^[The national mail registration form's state-by-state instructions show which states ask: U.S. Election Assistance Commission, <https://www.eac.gov/voters/national-mail-voter-registration-form>.] That question is why the quantity a surname model is trying to produce is already written down here.
 
 Everything below rests on two joins holding. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the reading on what a join key is and how one fails. It also covers the repair for a key that will not line up: a crosswalk, a table that translates one set of identifiers into another.
 
 ## The data
 
-The table under this brief was built by running the surname-and-block method from scratch on all `r n(NV)` voters. Each answer was then compared against the race that voter reported. The same method was scored again inside every group, and again inside every kind of neighbourhood.
+Every table under this brief comes from running the surname-and-block method on all `r n(NV)` voters and comparing each answer against the race that voter reported. The same method was scored again inside every group, and again inside every kind of neighbourhood.
 
 The join has two keys and both are strings of text. The **surname** joins a voter to the Census surname list, and it does not always land. `r p1(PMISS)`% of these voters, `r n(NMISS)` people, carry a name the Bureau does not publish, because fewer than a hundred Americans shared it. Those voters fall back to the national spread of surnames, which is a much weaker starting guess. The **fifteen-character census block identifier**, `GEOID20`, joins a voter to the block table. It arrived in the extract already filled in, matched from a street address by somebody else.
 
 One piece of cleaning decides what can be claimed. The source file marks records whose race was supplied by a model rather than by the voter, and every one of those was dropped before any of this ran. Scoring a method against its own output would produce an excellent number that means nothing.
 
-Four tables come out of that run. `by_group.csv` holds one row per racial group with `n_true`, `n_pred`, `recall` and its interval `rec_lo` and `rec_hi`, and `precision` with `pre_lo` and `pre_hi`. `by_decile.csv` holds the same recall in ten strata of neighbourhood, with `block_black_lo`, `block_black_hi`, `black_voters`, `recall`, `lo` and `hi`. `thresh.csv` sweeps the cutoff, carrying `t`, the four counts `tp`, `fp`, `fn` and `tn`, and the rates `tpr`, `fpr` and `prec`. `calib.csv` compares the probability the model announced against what actually happened, bin by bin.
+Four tables come out of that run. `by_group.csv` holds one row per racial group with `n_true`, `n_pred`, `recall` and its interval `rec_lo` and `rec_hi`, and `precision` with `pre_lo` and `pre_hi`. `by_decile.csv` holds the same recall in ten strata of neighbourhood, with `block_black_lo`, `block_black_hi`, `black_voters`, `recall`, `lo` and `hi`. `thresh.csv` sweeps the cutoff, carrying `t`, the four counts `tp`, `fp`, `fn` and `tn`, and the rates `tpr`, `fpr` and `prec`. `calib.csv` checks the model's **calibration**, whether its stated confidence can be taken at its word: it gathers the voters the model gave a similar probability of being Black and compares that probability with the share who actually were. Here it cannot be taken at its word. Among the `r n(CBN)` voters the model scored between 25 and 30 percent likely to be Black, `r p1(CBO)`% were.
 
 Four quantities do all the work below, and they answer different questions:
 
 ```{r varmap}
 ```
 
-The intervals are Wilson intervals rather than the textbook estimate plus or minus two standard errors. One group below sits so close to zero that the textbook formula puts the bottom of its interval below zero. An interval containing impossible values is a sign the approximation has been pushed outside its range. The build writes the Wilson arithmetic out in full and checks it against a second calculation before using it.
+The intervals are **Wilson intervals**, a 1927 formula that keeps an interval for a percentage between 0 and 100,^[Edwin B. Wilson, "Probable Inference, the Law of Succession, and Statistical Inference," *Journal of the American Statistical Association* 22, no. 158 (1927): 209–212, <https://www.jstor.org/stable/2276774>.] rather than the textbook estimate plus or minus two standard errors. One group below sits so close to zero that the textbook formula puts the bottom of its interval below zero. An interval containing impossible values is a sign the approximation has been pushed outside its range.
 
 > **Before you read on, commit to a number.** The model is `r p2(ACC)`%
 > accurate, give or take half a point. **Write down what you expect its
@@ -64,7 +64,7 @@ Score the same model separately for each group and the pooled figure stops descr
 
 **Figure 1. The same model, scored separately for each group.** A forest plot fits this question, because the question is whether one pooled number covers the rows underneath it. The bar is each group's 95% interval and the diamond is its estimate. The shaded band carries the pooled interval up through the figure, so you can see what falls inside it. Almost nothing does.
 
-The model finds **`r p1(WR)`%** of white voters and **`r p1(BR)`%** of Black voters. For American Indian and Alaska Native voters it finds **`r p2(AIR)`%**: `r n(AIN)` people, of whom it identifies almost none, with an interval of `r p2(AILO)`% to `r p2(AIHI)`% that never comes near the pooled figure. Its precision for that group is `r p1(AIP)`%, so on the rare occasion it does say American Indian, it is almost always wrong.
+The model finds **`r p1(WR)`%** of white voters and **`r p1(BR)`%** of Black voters. For American Indian and Alaska Native voters it finds **`r p2(AIR)`%**: `r n(AIN)` people, of whom it identifies almost none, with an interval of `r p2(AILO)`% to `r p2(AIHI)`% that never comes near the pooled figure. Put that row in people. Of the `r n(AIN)` voters who reported American Indian or Alaska Native, the model found `r n(AIFOUND)`; that is its recall, `r n(AIFOUND)` divided by `r n(AIN)`, or `r p2(AIR)`%. It put the label on `r n(AIPRED)` voters, and those same `r n(AIFOUND)` were the only ones it had right; that is its precision, `r n(AIFOUND)` divided by `r n(AIPRED)`, or `r p1(AIP)`%. So on the rare occasion it does say American Indian, it is almost always wrong.
 
 Compare those rows with the number you wrote down. The pooled `r p2(ACC)`% is not an average of them in any useful sense. It is dominated by the largest group, and a reader given only the pooled figure has no way to discover a group the model cannot see at all.
 
@@ -76,7 +76,7 @@ The obvious objection is that groups differ, so of course their numbers differ. 
 ```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 2. The same estimate, ten times, on ten strata of one county.** Rows are tenths of the census block's Black share, from the whitest blocks at the top to the Blackest at the bottom. The band and the dashed line are the pooled figure for Black voters, `r p1(BR)`%.
+**Figure 2. The same estimate, ten times, on ten strata, or slices, of one county.** Rows are tenths of the census block's Black share, from the whitest blocks at the top to the Blackest at the bottom. The band and the dashed line are the pooled figure for Black voters, `r p1(BR)`%.
 
 Read the diamonds down the page and they run from **`r p1(DLO)`% to `r p1(DHI)`%**. The model finds nine in ten Black voters who live in a majority-Black block, and one in twenty who live in a mostly white one. Now read the bars. The widest interval anywhere in that figure is `r p1(NARROW)` points. Every one of these estimates is precise, and they disagree with each other by `r p1(DHI - DLO)` points.
 
@@ -92,9 +92,9 @@ Everything so far used the model's own top guess. But the model does not produce
 ```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-**Figure 3. The same model at every possible cut.** Each point on the curve is one threshold, and the panel beside it reports what that choice does to four counts of real people. The diagonal is what a coin would achieve. The area under the curve is `r p2(AUC)`, a summary of the ranking that depends on no threshold at all.
+**Figure 3. The same model at every possible cut.** Each point on the curve is one threshold, and the panel beside it reports what that choice does to four counts of real people. The diagonal is what a coin would achieve. The area under the curve is `r p2(AUC)`, a summary of the ranking that depends on no threshold at all, on a scale where 1 is a perfect ranking and 0.5 is the coin.
 
-Move the cut and the four counts trade against each other. At the conventional half, the model finds `r p1(HTPR)`% of Black voters at the cost of calling `r p1(HFPR)`% of everyone else Black. No setting is correct, because the two errors are not the same kind of thing. One is a Black voter the analysis loses; the other is a white voter the analysis invents. Which matters more depends entirely on what the number is for.
+Move the cut and the four counts trade against each other. At the conventional cut of one-half, calling a voter Black whenever the model's probability reaches 50%, the model finds `r p1(HTPR)`% of Black voters at the cost of calling `r p1(HFPR)`% of everyone else Black. No setting is correct, because the two errors are not the same kind of thing. One is a Black voter the analysis loses; the other is a white voter the analysis invents. Which matters more depends entirely on what the number is for.
 
 **The area under the curve is a property of the model. Every other number in this brief is a property of a decision somebody made,** and none of those decisions is recorded beside the estimate when it travels.
 
@@ -133,19 +133,25 @@ Two stretch ideas point past the spreadsheet. North Carolina also records race o
   Philip Pantoja and Nicole Lurie (2009). "Using the Census Bureau's surname
   list to improve estimates of race/ethnicity and associated disparities."
   *Health Services and Outcomes Research Methodology* 9: 69–83. The method
-  scored here.
+  scored here. <https://doi.org/10.1007/s10742-009-0047-1>
 - Wilson, Edwin B. (1927). "Probable Inference, the Law of Succession, and
   Statistical Inference." *Journal of the American Statistical Association*
   22(158): 209–212. The interval used throughout.
+  <https://www.jstor.org/stable/2276774>
 - U.S. Census Bureau, *Frequently Occurring Surnames from the 2010 Census.*
   <https://www2.census.gov/topics/genealogy/2010surnames/names.zip>
 - U.S. Census Bureau, 2020 Census P.L. 94-171 redistricting file for Georgia,
   for the block counts.
   <https://www2.census.gov/programs-surveys/decennial/2020/data/01-Redistricting_File--PL_94-171/Georgia/ga2020.pl.zip>
-- The voter registration extract is not published. It is the committed table of
-  the [BISG check brief](../bisg-check/bisg-check-brief.html), which documents
-  where it came from and what was removed from it. The model here is recomputed
-  from these files rather than copied from either brief's scores.
+- Houston County, Georgia's voter registration file, with self-reported race
+  and a census block for each voter: working data for the county's 2026
+  redistricting matter, in which the instructor is retained. Georgia sells its
+  voter file to anyone who orders it
+  (<https://sos.ga.gov/page/order-voter-registration-lists-and-files>); this
+  copy is not published. It is the same file the
+  [BISG check brief](../bisg-check/bisg-check-brief.html) uses, which documents
+  what was removed from it. The model here is recomputed from these files
+  rather than copied from either brief's scores.
 
 **The data itself**
 

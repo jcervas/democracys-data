@@ -22,9 +22,9 @@ So what *is* the turnout rate? The question is not pedantic. A turnout rate is h
 
 ## The test
 
-This brief joins one numerator, the top number of a fraction, to two competing denominators. A denominator is the bottom number, the thing you are dividing by. The ballots and the populations come from the same two files, keyed on the election year for the national series and on state and year for the fifty states.
+This brief joins one numerator, the top number of a fraction, to two competing denominators. A denominator is the bottom number, the thing you are dividing by. The ballots and the populations come from the same two files, matched row to row on the election year for the national series and on state and year for the fifty states.
 
-The 1948–2000 half is Michael McDonald and Samuel Popkin's Table 1 from *The Myth of the Vanishing Voter*, printed on page 966 of the December 2001 *American Political Science Review* (<https://www.jstor.org/stable/3117725>). The 1980–2024 half is McDonald's maintained series at the United States Elections Project, published as CSV under a Creative Commons licence (<https://election.lab.ufl.edu/data-downloads/>).
+The 1948–2000 half is Table 1 of Michael McDonald and Samuel Popkin's *The Myth of the Vanishing Voter*, the 2001 article that introduced the voting-eligible population, printed on page 966 of the December 2001 *American Political Science Review* (<https://www.jstor.org/stable/3117725>). The 1980–2024 half is the turnout tables of the United States Elections Project, which McDonald, a political scientist at the University of Florida, has maintained since; they are downloadable as CSV under a Creative Commons licence at <https://election.lab.ufl.edu/data-downloads/>.
 
 Those two sources answer the question because they are the only ones that print the ballots next to *both* candidate denominators for the same elections. Anyone can recompute either rate and compare. The join runs on a well-behaved key: a year and a state name are about as safe as keys get, which is why the interesting failure here is not in the join. [Join Keys and Crosswalks](../data-sources/data-sources-brief.html) is the chapter on what a key can promise, and on the crosswalk, a table that translates one set of identifiers into another when two files share no key.
 
@@ -32,14 +32,14 @@ Those two sources answer the question because they are the only ones that print 
 
 Five tables carry this brief. `mp1948.csv` holds the article's own table, `r cv("Table 1 data rows parsed")` rows covering `r cv("Table 1 election years")`, with `year`, `vote_highest`, `vap`, `vap_rate`, the three adjustments (`noncitizens`, `felons`, `overseas`), `vep`, `vep_rate` and `inelig_pct`. `national.csv` and `states.csv` hold the modern series, `r cv("Elections Project rows, 1980-2024")` rows in all, with `YEAR`, `STATE`, `TOTAL_BALLOTS_COUNTED`, `VOTE_FOR_HIGHEST_OFFICE`, `VAP`, `VEP`, `NONCITIZEN_PCT`, `INELIGIBLE_FELONS_TOTAL`, `ELIGIBLE_OVERSEAS` and the four rates this brief computes from them. `state_trends.csv` fits both trends per state and flags `sign_flip`; `pairs2024.csv` compares every pair of states on both denominators.
 
-The voting-eligible population is not a mysterious quantity. It is the voting-age population, minus the people in it who cannot vote, plus the people who can vote and are not in it.
+The **voting-eligible population**, VEP in the figures, is not a mysterious quantity. Start from the **voting-age population**, VAP, which is everyone aged 18 and over living in the country, citizen or not, free or not. Subtract the people in it who cannot vote and add the people who can vote and are not in it.
 
 ```{r vep-def}
 ```
 
 Two construction decisions matter more than the rest.
 
-**The older half is typesetting, not a file.** There is no dataset behind the 1948–2000 series. The numbers exist as an arrangement of characters on a printed page, and the build recovers them by reading the converted text. Public is not the same as usable: a number can be authoritative, cited for twenty-five years, and still not be a dataset. Two independent properties of the published table are checked against each other, and all `r cv("Table 1 data rows parsed")` rows reconstruct within `r cv("largest disagreement between rebuilt and printed VEP rate, pts")` of a percentage point.
+**The older half is typesetting, not a file.** There is no dataset behind the 1948–2000 series. The numbers exist as an arrangement of characters on a printed page, and were recovered here by reading the text of the article's PDF. Public is not the same as usable: a number can be authoritative, cited for twenty-five years, and still not be a dataset. Two checks catch misread digits: the printed voting-eligible rate is recomputed from the printed ballots and population, and the printed adjustments are added up to see that they reach it. All `r cv("Table 1 data rows parsed")` rows reconstruct within `r cv("largest disagreement between rebuilt and printed VEP rate, pts")` of a percentage point.
 
 **The modern file carries two numerators, and they are never spliced.** `VOTE_FOR_HIGHEST_OFFICE` counts votes for the top statewide contest; `TOTAL_BALLOTS_COUNTED` counts every ballot, including those where the voter skipped that contest. The second runs two to three per cent higher, and the two cover different years. Joining them end to end inserts a jump larger than most of the effects below, so every trend here is computed on one numerator at a time. That is why the state analysis stops at 2016 rather than 2024.
 
@@ -51,12 +51,12 @@ Two construction decisions matter more than the rest.
 
 ## What it says about democracy
 
-**`r sg(B_VEP[1], 3)` points per election.** Not half, and not a third. The corrected series falls by `r f2(abs(B_VEP[1] * (nrow(W72) - 1)))` of a percentage point across the whole of 1972 to 2000, with a standard error `r n(abs(B_VEP[2]/B_VEP[1]))` times the estimate itself. It cannot be told apart from a flat line.
+**`r sg(B_VEP[1], 3)` points per election.** Not half, and not a third. The corrected series falls by `r f2(abs(B_VEP[1] * (nrow(W72) - 1)))` of a percentage point across the whole of 1972 to 2000, with a standard error, the margin of doubt around a fitted slope, `r n(abs(B_VEP[2]/B_VEP[1]))` times the estimate itself. It cannot be told apart from a flat line.
 
 ```{r trend-tab}
 ```
 
-That matters because of what the falling version was used for. By the late 1990s the decline of American voter participation was, in the words of the standard text on the subject, the most analyzed trend in recent American political history. Turnout had run near `r f1(max(PRES$vap_rate))`% in `r PRES$year[which.max(PRES$vap_rate)]` and was down to `r f1(PRES$vap_rate[PRES$year == 1996])`% by 1996. Television had done it, or negative advertising, or the collapse of party organizations, or the decline of social capital. Every one of those explanations was an explanation of the same measurement.
+That matters because of what the falling version was used for. By the late 1990s the decline of American voter participation was, in the words of Steven Rosenstone and John Mark Hansen's standard text on the subject, the most analyzed trend in recent American political history.^[Steven J. Rosenstone and John Mark Hansen, *Mobilization, Participation, and Democracy in America* (New York: Macmillan, 1993), quoted in the opening paragraph of McDonald and Popkin's 2001 article.] Turnout had run near `r f1(max(PRES$vap_rate))`% in `r PRES$year[which.max(PRES$vap_rate)]` and was down to `r f1(PRES$vap_rate[PRES$year == 1996])`% by 1996. Television had done it, or negative advertising, or the collapse of party organizations, or the decline of social capital. Every one of those explanations was an explanation of the same measurement.
 
 ```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
 ```
@@ -83,12 +83,14 @@ The vanishing voter was never a fact about voters. It was a fact about immigrati
 
 Noncitizens are `r f1(100 * NC24 / (NC24 + N24$INELIGIBLE_FELONS_TOTAL))`% of everything subtracted, which is why the correction tracks immigration so closely and why it grew when it did.
 
+Take one state through the same steps. Texas had `r n(TXR$VAP)` residents of voting age in November 2024. `r f1(TXR$NONCITIZEN_PCT)`% of them, `r n(TXNC)` people, were not citizens. A further `r n(TXR$INELIGIBLE_FELONS_TOTAL)` were in prison, on probation or on parole for a felony, and Texas bars all three from voting. Subtract both and `r n(TXR$VEP)` people could have cast a ballot; the state rows carry no overseas line, because the publisher does not spread those citizens across states, and the subtraction lands within `r n(abs(TXR$VEP - TXR$vep_recon))` people of the file's own figure. The file records `r n(TXR$TOTAL_BALLOTS_COUNTED)` ballots, a visibly rounded number. Divide by the first population and Texas turnout was `r f1(TXR$rate_vap_tb)`%; divide by the second and it was `r f1(TXR$rate_vep_tb)`%, `r f1(TXR$rate_vep_tb - TXR$rate_vap_tb)` points higher from the same ballots.
+
 Noncitizens are also not spread evenly. In 2024 they are `r f1(max(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% of the voting-age population in `r st$STATE[st$YEAR == 2024][which.max(st$NONCITIZEN_PCT[st$YEAR == 2024])]` and `r f1(min(st$NONCITIZEN_PCT[st$YEAR == 2024]))`% in `r st$STATE[st$YEAR == 2024][which.min(st$NONCITIZEN_PCT[st$YEAR == 2024])]`. Fit the same two lines for each state across the `r TX$n` presidential elections from 1980 to 2016 and `r cv("states whose 1980-2016 presidential trend changes sign")` states come out with turnout falling on one denominator and rising on the other.
 
 ```{r flip-tab}
 ```
 
-Texas is the clearest case, falling `r f1(abs(TX$fit_vap))` points against everyone of voting age and rising `r f1(TX$fit_vep)` points against everyone allowed to vote. Now the honest part, which is the more useful lesson of the two. **Not one of the `r 2 * nrow(FLIP)` trends in that table is statistically distinguishable from zero.** `r P_SIG` of the `r 2 * nrow(tr)` state trends across all `r nrow(tr)` jurisdictions do clear the conventional threshold, so this is not a claim that ten elections can never establish anything. The sign flips where neither slope is well determined, which is exactly where you would expect it.
+Texas is the clearest case, falling `r f1(abs(TX$fit_vap))` points against everyone of voting age and rising `r f1(TX$fit_vep)` points against everyone allowed to vote. Now the honest part, which is the more useful lesson of the two. **Not one of the `r 2 * nrow(FLIP)` trends in that table is statistically distinguishable from zero**: the margin of doubt around each fitted slope is wide enough to include no change at all. `r P_SIG` of the `r 2 * nrow(tr)` state trends across all `r nrow(tr)` jurisdictions do clear the conventional threshold for calling a trend real, so this is not a claim that ten elections can never establish anything. The sign flips where neither slope is well determined, which is exactly where you would expect it.
 
 That is the finding, not a caveat on it. The denominator decides which of two unsupported stories the data appears to tell, and a reader shown only one line has no way to know the other exists.
 
@@ -113,7 +115,7 @@ One comparison carries no such uncertainty, because it is two divisions rather t
 
 **None of the five sign changes rests on a significant trend.** They show how sensitive a conclusion is to a choice of denominator. They do not establish that turnout rose anywhere, and the claim that Texas turnout fell is not supported either.
 
-**The better denominator is still wrong.** It subtracts people in prison, on probation and on parole where state law bars them from voting. It does not subtract people who have completed a sentence in full and remain barred, because the maintainer reports having no reliable way to estimate that population and says so in the documentation. Residency requirements are not adjusted for by either source.
+**The better denominator is still wrong.** It subtracts people in prison, on probation and on parole where state law bars them from voting, taking the state rules from the National Conference of State Legislatures' summary.^[The file's documentation names its source for who is barred where: <https://www.ncsl.org/elections-and-campaigns/felon-voting-rights>.] It does not subtract people who have completed a sentence in full and remain barred, because the maintainer reports having no reliable way to estimate that population and says so in the documentation. Residency requirements are not adjusted for by either source.
 
 **And the 2024 figures are a version 0.x release.** Some state ballot counts in that file are visibly rounded estimates rather than certifications, and the publisher still calls the file preliminary.
 
@@ -143,7 +145,7 @@ None of these is answered above, and every one can be answered from the tables t
 - McDonald, Michael P., and Samuel L. Popkin. 2001. "The Myth of the Vanishing
   Voter." *American Political Science Review* 95 (4): 963–974.
   <https://www.jstor.org/stable/3117725>
-  Table 1, page 966, captured with `pdftotext -layout` into
+  Table 1, page 966, read from the article's PDF into the plain-text file
   `mp2001-table1.txt`. `r cv("Table 1 data rows parsed")` election
   years, `r cv("Table 1 election years")`. See `README.txt` for what
   was and was not altered.
@@ -153,7 +155,10 @@ None of these is answered above, and every one can be answered from the tables t
 - McDonald, Michael P. *2024 General Election Turnout Rates*, version 0.4.
   United States Elections Project, University of Florida.
   <https://election.lab.ufl.edu/data-downloads/turnoutdata/Turnout_2024G_v0.4.csv>
-  Both files' documentation is downloaded alongside them and quoted above.
+  Both files' documentation is kept alongside them and quoted above.
+- National Conference of State Legislatures. *Felon Voting Rights*, the
+  state-by-state rules the turnout files use to decide who is barred.
+  <https://www.ncsl.org/elections-and-campaigns/felon-voting-rights>
 
 **The data itself**
 

@@ -37,6 +37,17 @@ DLO <- fn("dec_lo_recall"); DHI <- fn("dec_hi_recall")
 de$width <- de$hi - de$lo
 NARROW <- max(de$width)
 
+# the American Indian and Alaska Native row in people rather than rates: how
+# many the model found, and how many it labelled, so recall and precision can
+# be walked through as two divisions of the same small count
+AIPRED  <- gp$n_pred[gp$group == "aian"]
+AIFOUND <- round(AIN * AIR / 100)
+
+# one calibration bin, for the prose: the voters the model scored between 25
+# and 30 percent likely to be Black, and the share of them who were
+CB  <- cb[cb$bin == "(0.25,0.3]", ]
+CBN <- CB$n; CBO <- 100 * CB$observed
+
 ACC2 <- "#1C4C5C"; WARN <- "#C41230"; GRY <- "#8A8F94"
 POOL <- "#54278F"; BAND <- "#E7EFF1"
 

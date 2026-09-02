@@ -16,9 +16,9 @@ dd_read_chunks("rpv-code.R")
 ```{r setup, include=FALSE}
 ```
 
-Section 2 of the Voting Rights Act turns on a factual question: do voters of different races prefer different candidates? *Thornburg v. Gingles*, 478 U.S. 30 (1986), made it two of the three things a plaintiff must establish. So a federal judge decides whether a districting plan stands by reading a percentage in an expert report.
+Section 2 of the Voting Rights Act, the part of the 1965 law that forbids election rules giving a racial minority less chance than other voters to elect the candidates it prefers,^[52 U.S.C. § 10301: <https://www.law.cornell.edu/uscode/text/52/10301>.] turns on a factual question: do voters of different races prefer different candidates? That pattern is called **racially polarized voting**. In *Thornburg v. Gingles*, 478 U.S. 30 (1986),^[<https://www.law.cornell.edu/supremecourt/text/478/30>.] the Supreme Court set three preconditions a plaintiff must establish: that the minority group is large and geographically compact enough to form a majority in a district, that its members vote alike, and that the majority usually votes as a bloc to defeat the candidate the minority prefers. The second and third are racially polarized voting, stated from each side. So a federal judge decides whether a districting plan stands by reading a percentage in an expert report.
 
-Nobody records how you voted. What is recorded is how a *precinct* voted, and separately, who lives in that precinct. From those two totals an expert must work out how each racial group behaved, which is **ecological inference**: guessing what individuals did from group totals. In almost every county the answer cannot be checked afterwards by anyone.
+Nobody records how you voted. What is recorded is how a *precinct* voted, the few thousand voters who share one polling place, and separately, who lives in that precinct. From those two totals an expert must work out how each racial group behaved, which is **ecological inference**: guessing what individuals did from group totals. In almost every county the answer cannot be checked afterwards by anyone.
 
 In one kind of county it can. **What can precinct totals actually establish about how a racial group voted?**
 
@@ -26,7 +26,7 @@ In one kind of county it can. **What can precinct totals actually establish abou
 
 Georgia makes two facts public that are private nearly everywhere else: the race a voter reports on the registration form, and which party's primary ballot they requested. So for the General Primary of 21 May 2024 in Houston County, the quantity ecological inference exists to estimate is on record, person by person.
 
-Three separate state records meet to produce that. Race comes off the **voter registration form**, where it sits because the Voting Rights Act obliged covered states to report who was registering. Party of the ballot comes from the **voter-history file**, because a state running partisan primaries has to record which one each voter took. Precinct comes from the **registration extract**, so a voter can be sent to the right polling place. Nobody built that answer key; it is a by-product of three unrelated obligations. Georgia sells all three to anyone who orders them (<https://sos.ga.gov/page/order-voter-registration-lists-and-files>), and the copy here is working data from the county's 2026 redistricting matter.
+Three separate state records meet to produce that. Race comes off the **voter registration form**, where it sits because the Voting Rights Act obliged covered states to report who was registering. Party of the ballot comes from the **voter-history file**, because a state running partisan primaries has to record which one each voter took. Precinct comes from the **registration extract**, so a voter can be sent to the right polling place. Nobody built that answer key; it is a by-product of three unrelated obligations. Georgia sells all three to anyone who orders them (<https://sos.ga.gov/page/order-voter-registration-lists-and-files>), and the copy here is working data from the county's 2026 redistricting matter, in which the instructor is retained. No material from any expert report is used.
 
 This is the right evidence for grading a method and the wrong evidence for settling anything about the county's politics. The recorded outcome is *which party's ballot a voter asked for in a May primary*, not which candidate they supported in November. A general election with the same answer key would be better, and no such file can exist anywhere.
 
@@ -50,7 +50,7 @@ What comes out is the thing ecological inference exists to reconstruct, so it is
 
 **Race, party, precinct — three columns, one voter per row, and the question is already answered.** Count the rows where race is Black and party is Democratic, divide by the rows where race is Black, and you have the number the rest of this brief estimates badly.
 
-Then it disappears. Every voter-level row was replaced by totals before anything was saved, leaving `r nrow(p)` precinct rows with the columns `precinct`, `voters`, `black`, `white`, `dem` and `rep`. The cross-tabulation linking race to ballot is gone, and nothing in the precinct file recovers it. That is not an accident of this build; it is the condition of every Section 2 case ever litigated.
+Then it disappears. Every voter-level row was replaced by totals before anything was saved, leaving `r nrow(p)` precinct rows with the columns `precinct`, `voters`, `black`, `white`, `dem` and `rep`. The cross-tabulation linking race to ballot is gone, and nothing in the precinct file recovers it. That is not an accident of this file; it is the condition of every Section 2 case ever litigated.
 
 Two columns break that rule on purpose. `black_dem` and `white_dem` carry the counts the totals cannot give you, withheld from every method below and produced at the end as an answer key. **An expert witness has the rest of this table and does not have those two columns**, which is the whole difficulty, stated as a data structure.
 
@@ -62,19 +62,23 @@ Note the last two rows. No precinct here is overwhelmingly Black, and that matte
 ***
 
 > **Before you read on, write two things down.** The oldest method in
-> voting-rights litigation looks only at precincts that are nearly all one
-> race. There are none above 80% Black here, so it returns nothing at all.
+> voting-rights litigation, **homogeneous precinct analysis**, looks only at
+> precincts that are nearly all one race and takes their totals as that
+> group's vote. There are none above 80% Black here, so it returns nothing
+> at all.
 >
 > First, **your own estimate** of the share of Black voters who took a
 > Democratic ballot. Second, and this is the question that matters: if a
-> report handed you a fitted line with an R² of `r pc(r2, 3)` and a clean
-> scatter, **how far off would you expect its estimate to be?**
+> report handed you a fitted line with an R² of `r pc(r2, 3)` — the fit
+> statistic that runs from 0 to 1 and says how much of the scatter the line
+> accounts for — and a clean scatter, **how far off would you expect its
+> estimate to be?**
 
 ***
 
 ## What it says about democracy
 
-The workhorse of Section 2 litigation for fifty years is Goodman's ecological regression: fit a straight line through the precincts and read off its ends. Where the line crosses zero percent Black is the estimate for white voters; where it crosses one hundred percent is the estimate for Black voters.
+The workhorse of Section 2 litigation for fifty years is Goodman's ecological regression:^[Leo A. Goodman, "Ecological Regressions and Behavior of Individuals," *American Sociological Review* 18, no. 6 (1953): 663–664, <https://www.jstor.org/stable/2088121>.] fit a straight line through the precincts and read off its ends. Where the line crosses zero percent Black is the estimate for white voters; where it crosses one hundred percent is the estimate for Black voters.
 
 ```{r good-static, eval=!knitr::is_html_output(), fig.height=5.8}
 ```
@@ -88,7 +92,7 @@ The workhorse of Section 2 litigation for fifty years is Goodman's ecological re
 
 The gray band is why. The most Black precinct in the county is `r pc(100 * max(p$pct_black))`% Black, so the estimate for Black voters comes from extending the line `r pc(100 - 100 * max(p$pct_black), 0)` points past the last observation. The model is not summarising data out there. There is none.
 
-There is a method that cannot be wrong, and its weakness is why nobody uses it alone. Duncan and Davis pointed out in 1953 that the precinct totals by themselves *limit* the answer. If a precinct is 40% Black and cast 45% Democratic ballots, then even if every white voter went Democratic, Black voters must supply the rest. Imposing all `r nrow(p)` constraints at once leaves Black Democratic support between `r pc(bd_lo)`% and `r pc(bd_hi)`% — no assumptions, and impossible to be wrong. It is also `r pc(bd_hi - bd_lo)` points wide, which is why nobody testifies with it.
+There is a method that cannot be wrong, and its weakness is why nobody uses it alone. Duncan and Davis pointed out in 1953 that the precinct totals by themselves *limit* the answer,^[Otis Dudley Duncan and Beverly Davis, "An Alternative to Ecological Correlation," *American Sociological Review* 18, no. 6 (1953): 665–666, <https://www.jstor.org/stable/2088122>.] which is the **method of bounds**. One precinct shows how it works. `r wc$precinct` had `r n(wc$voters)` primary voters, `r n(wc$black)` Black and `r n(wc$white)` white, and `r n(wc$dem)` of them asked for a Democratic ballot. Even if every one of the `r n(wc$white)` white voters took a Democratic ballot, that accounts for only `r n(wc$white)` of the `r n(wc$dem)`; the other `r n(wc_min)` had to come from Black voters, so at least `r n(wc_min)` of the `r n(wc$black)`, or `r pc(wc_lo)`%, did. At the other end, all `r n(wc$dem)` Democratic ballots could have been Black voters', and that is more than the precinct has, so the ceiling is 100%. Every precinct yields a floor and a ceiling like that, and they can be combined two ways. Add them up, each precinct's floor and ceiling on the count of Black Democratic ballots over all `r n(sum(p$black))` Black voters, and the county-wide rate is pinned between `r pc(agg_lo)`% and `r pc(agg_hi)`%: no assumptions, impossible to be wrong, and `r pc(agg_hi - agg_lo)` points wide. Assume instead, as the regression does, that Black voters behave alike in every precinct, and that one rate must fit inside all `r nrow(p)` sets of limits at once, which narrows the range to `r pc(bd_lo)`% to `r pc(bd_hi)`%. That is the range Figure 2 draws, and it is still `r pc(bd_hi - bd_lo)` points wide, which is why nobody testifies with it.
 
 Now open the answer key.
 
@@ -103,11 +107,11 @@ Now open the answer key.
 
 **Figure 2. Every estimate, against the recorded truth.** One row per group: the thick bar is what the bounds allow, the dot is Goodman's estimate, the triangle is the homogeneous-precinct answer, and the vertical rule is what the voter file recorded. The shaded zone past 100% is impossible, and the regression's Black estimate sits inside it.
 
-**The truth is `r pc(truth_black)`% for Black voters and `r pc(truth_white)`% for white voters.** This electorate is about as polarized as American politics gets, and every method got the direction right. Look at how. The bounds contained the truth, as they must, and cost `r pc(bd_hi - bd_lo)` points of precision. Goodman missed by `r pc(est_black - truth_black)` points and landed outside the range of possible numbers, its white estimate of `r pc(est_white)`% being less than half the true `r pc(truth_white)`%. The homogeneous-precinct route could not answer for Black voters at all, and overstated white Democratic support by `r pc(hw_dem - truth_white)` points.
+**The truth is `r pc(truth_black)`% for Black voters and `r pc(truth_white)`% for white voters.** This electorate is about as polarized as American politics gets, and every method got the direction right. Look at how. The bounds contained the truth, at a cost of `r pc(bd_hi - bd_lo)` points of precision. Goodman missed by `r pc(est_black - truth_black)` points and landed outside the range of possible numbers, its white estimate of `r pc(est_white)`% being less than half the true `r pc(truth_white)`%. The homogeneous-precinct route could not answer for Black voters at all, and overstated white Democratic support by `r pc(hw_dem - truth_white)` points.
 
 **The method that was most confident was the one that was wrong, and its confidence was legible.** The impossibility was the only warning, and only because the truth sat near a boundary. Had Black Democratic support been 60%, Goodman could have missed by the same margin and returned a plausible 51%, and nobody would ever have known.
 
-The failure is not that the model fits badly. It predicts every precinct's Democratic share to within `r pc(max_resid)` points and still misstates the group rate by `r pc(est_black - truth_black)`. **Predicting the total and taking the total apart are different problems.** That is the ecological fallacy, shown rather than asserted.
+The failure is not that the model fits badly. It predicts every precinct's Democratic share to within `r pc(max_resid)` points and still misstates the group rate by `r pc(est_black - truth_black)`. **Predicting the total and taking the total apart are different problems.** That is the **ecological fallacy**, reading what individuals did off the totals of the groups they belong to,^[W. S. Robinson, "Ecological Correlations and the Behavior of Individuals," *American Sociological Review* 15, no. 3 (1950): 351–357, <https://doi.org/10.2307/2087176>.] shown rather than asserted.
 
 ```{r truth-static, eval=!knitr::is_html_output(), fig.height=5.9}
 ```
@@ -123,11 +127,11 @@ The whole thing also rests on one polling place. `r top$precinct` is the only pr
 
 ## What this brief cannot tell you
 
-**None of this establishes the *Gingles* preconditions any more.** *Louisiana v. Callais*, 608 U.S. ___ (2026), did not overrule *Gingles* but updated it, and the update lands on the two preconditions this brief is about. A plaintiff must now "provide an analysis that controls for party affiliation" and show racial bloc voting "that cannot be explained by partisan affiliation" (slip op., at 30). The only outcome recorded here is which party's ballot a voter asked for, which is the between-party comparison in its purest form. That is exactly the comparison the Court now says proves nothing on its own.
+**None of this establishes the *Gingles* preconditions any more.** *Louisiana v. Callais*, 608 U.S. ___ (2026), did not overrule *Gingles* but updated it, and the update lands on the two preconditions this brief is about. A plaintiff must now "provide an analysis that controls for party affiliation" and show racial bloc voting "that cannot be explained by partisan affiliation."^[*Louisiana v. Callais*, No. 24-109, slip op. at 30 (U.S. Apr. 29, 2026), <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>.] The only outcome recorded here is which party's ballot a voter asked for, which is the between-party comparison in its purest form. That is exactly the comparison the Court now says proves nothing on its own.
 
 **Seventeen precincts, one primary, two groups.** A primary ballot request is not a November vote, and primary electorates are smaller and more partisan. Everyone who is not Black or white was dropped for want of a box to put them in. They voted; the framework excluded them, not the data.
 
-**Race on the form is itself a measurement**, with the one-box problem every self-reported race question has. And King's 1997 method, the standard tool in current litigation, was not run here. It uses the bounds as hard limits and a model to locate the answer inside them, so it would do better. It would also still be a model, uncheckable in every county but this kind.
+**Race on the form is itself a measurement**, with the one-box problem every self-reported race question has. And Gary King's 1997 method, known in the field simply as **EI** and the standard tool in current litigation, was not run here.^[Gary King, *A Solution to the Ecological Inference Problem: Reconstructing Individual Behavior from Aggregate Data* (Princeton: Princeton University Press, 1997), <https://gking.harvard.edu/eicamera/kinroot.html>.] It uses the bounds as hard limits and a model to locate the answer inside them, so it would do better. It would also still be a model, uncheckable in every county but this kind.
 
 **The validation comes from a biased set of counties.** Checking these methods needs a state that records race *and* runs partisan primaries: a small, mostly Southern set, and also where Section 2 litigation concentrates.
 
@@ -136,7 +140,7 @@ The whole thing also rests on one polling place. `r top$precinct` is the only pr
 - The precinct totals cannot be taken apart. `black_dem` and `white_dem` exist here only because Georgia records both race and party of ballot, which almost nowhere else does.
 - The method courts trust most returned nothing. No precinct here reaches 80% Black, the most Black being `r pc(100 * max(p$pct_black))`%, so a homogeneous-precinct estimate for Black voters does not exist.
 - Ecological regression fit with an R² of `r pc(r2, 3)` and estimated `r pc(est_black)`% against a recorded truth of `r pc(truth_black)`%: `r pc(est_black - truth_black)` points off, and past the ceiling of possibility.
-- The bounds cannot be wrong and cannot decide anything: `r pc(bd_lo)`% to `r pc(bd_hi)`%, a range `r pc(bd_hi - bd_lo)` points wide.
+- The bounds cannot decide anything. With no assumption at all they allow `r pc(agg_lo)`% to `r pc(agg_hi)`%; assuming one county-wide rate, as the regression does, `r pc(bd_lo)`% to `r pc(bd_hi)`%, still `r pc(bd_hi - bd_lo)` points wide.
 - Goodman's line assumes each group behaves the same everywhere. Here the Black Democratic rate runs from `r pc(min(p$true_blk))`% to `r pc(max(p$true_blk))`%, correlated `r pc(cor_blk, 2)` with the very variable on the horizontal axis.
 
 ## Extensions
@@ -160,22 +164,31 @@ Two stretch ideas point past the spreadsheet. North Carolina also records race o
   three to anyone who orders them.
   <https://sos.ga.gov/page/order-voter-registration-lists-and-files>
   The copy used here is working data for the county's 2026 redistricting
-  matter. **Rows whose race had been filled in by a surname model were
-  dropped** before the collapse to precinct level.
+  matter, in which the instructor is retained; no material from any expert
+  report is used. **Rows whose race had been filled in by a surname model
+  were dropped** before the collapse to precinct level.
 
 **Literature and cases**
 
 - Goodman, L. A. (1953). "Ecological Regressions and Behavior of Individuals."
   *American Sociological Review* 18(6): 663–664.
+  <https://www.jstor.org/stable/2088121>
 - Duncan, O. D. and Davis, B. (1953). "An Alternative to Ecological
   Correlation." *American Sociological Review* 18(6): 665–666.
+  <https://www.jstor.org/stable/2088122>
+- Robinson, W. S. (1950). "Ecological Correlations and the Behavior of
+  Individuals." *American Sociological Review* 15(3): 351–357. The ecological
+  fallacy, named. <https://doi.org/10.2307/2087176>
 - Freedman, D. A. et al. (1991). "Ecological Regression and Voting Rights."
-  *Evaluation Review* 15(6): 673–711.
+  *Evaluation Review* 15(6): 673–711. doi:10.1177/0193841X9101500601
 - King, G. (1997). *A Solution to the Ecological Inference Problem.* Princeton
-  University Press.
+  University Press. <https://gking.harvard.edu/eicamera/kinroot.html>
 - *Thornburg v. Gingles*, 478 U.S. 30 (1986).
+  <https://www.law.cornell.edu/supremecourt/text/478/30>
 - *Louisiana v. Callais*, 608 U.S. ___ (2026), Nos. 24-109 and 24-110, decided
-  29 April 2026.
+  29 April 2026. <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>
+- Section 2 of the Voting Rights Act, 52 U.S.C. § 10301.
+  <https://www.law.cornell.edu/uscode/text/52/10301>
 
 **The data itself**
 

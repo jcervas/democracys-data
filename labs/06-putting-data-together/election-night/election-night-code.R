@@ -33,6 +33,15 @@ safe <- sen[sen$abs_margin >= 15, ]
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(round(x), big.mark = ",")
 
+# ---- the rows the prose walks through ----
+# The two special elections (seats vacated by Rubio and Vance, both class 3),
+# the safest seat on the ballot, the Georgia seat the one-row table shows,
+# and the Omaha district the rule missed.
+SPEC    <- sen[sen$state %in% c("FL", "OH"), ]
+TOPSAFE <- sen[which.max(sen$abs_margin), ]
+GA      <- sen[sen$state == "GA", ]
+NE2     <- reh[reh$district == "NE-02", ]
+
 # ---- a square-tile layout of the fifty states, for the map of the class ----
 # Column and row only; nothing here is a finding, it is where a box is drawn.
 tile <- do.call(rbind, lapply(strsplit(strsplit(paste(
@@ -78,7 +87,9 @@ registerS3method("knit_print", "data.frame", knit_print.data.frame,
 ## ---- shape-en
 data.frame(
   stage = c("Members of Congress in the roster", "Senators",
-            "Senators whose class is up in 2026"),
+            paste0("Senate seats on the 2026 ballot (", nrow(sen) - nrow(SPEC),
+                   " Class 2 terms ending, plus ", nrow(SPEC),
+                   " special elections)")),
   rows = c("537", "100", nrow(sen)))
 
 ## ---- one-row

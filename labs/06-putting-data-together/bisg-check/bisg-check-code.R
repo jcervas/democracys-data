@@ -71,6 +71,31 @@ a_amb <- c(surname = 100 * mean(sur[amb] == v$race[amb]),
 pc <- function(x, k = 1) formatC(x, format = "f", digits = k)
 n  <- function(x) format(x, big.mark = ",", trim = TRUE)
 
+base_black <- 100 * mean(v$race == "black")
+
+# ---- one case by hand: the commonest surname in the file, on the block where
+# most of its holders are registered. The block is never named in the brief,
+# so no line of the voter file is reproduced: the residents are the census's
+# counts, the check at the end is a tally. HAND$posterior must agree with the
+# row of `post` the scoring used; the stopifnot says so.
+hn   <- "WILLIAMS"
+hw   <- v[v$surname == hn, ]
+hbk  <- names(which.max(table(hw$GEOID20)))
+HS   <- S[which(v$surname == hn)[1], ]                # P(race | surname)
+HBk  <- P[hbk, ]                                      # who lives on the block
+HC   <- colSums(P)                                    # who lives in the county
+HL   <- (HBk / sum(HBk)) / (HC / sum(HC))             # block share over county share
+HU   <- HS * HL
+HAND <- data.frame(group = PR, surname = 100 * HS,
+                   block = as.numeric(HBk),
+                   block_pct = 100 * HBk / sum(HBk), county_pct = 100 * HC / sum(HC),
+                   ratio = HL, product = 100 * HU, posterior = 100 * HU / sum(HU))
+stopifnot(all(abs(HAND$posterior -
+                  100 * post[which(v$surname == hn & v$GEOID20 == hbk)[1], ]) < 0.1))
+h_n   <- sum(hw$GEOID20 == hbk)
+h_blk <- sum(hw$GEOID20 == hbk & hw$race == "black")
+h_all <- 100 * mean(hw$race == "black")
+
 # The shape of the source files, and the counts the cleaning threw away. These
 # used to live inside a chunk that printed all 53 column names as a table; the
 # table went in the 3rd-edition cut, the numbers the prose quotes did not.
@@ -126,6 +151,15 @@ data.frame(
                "Voters the method is scored on"),
   value = c(n(nrow(v0)), paste0(n(sum(matched)), " (", pc(p_match), "%)"),
             n(nrow(drop)), n(nrow(v))))
+
+## ---- hand
+o <- data.frame(group = HAND$group, a = pc(HAND$surname), b = n(HAND$block),
+                d = pc(HAND$block_pct), e = pc(HAND$county_pct),
+                f = pc(HAND$ratio, 2), g = pc(HAND$product), h = pc(HAND$posterior))
+names(o) <- c("group", "WILLIAMS, by name (%)", "living on the block",
+              "the block (%)", "the county (%)", "block ÷ county",
+              "name × ratio", "posterior (%)")
+o
 
 ## ---- bisg
 o <- data.frame(group = PR,

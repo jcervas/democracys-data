@@ -55,6 +55,11 @@ IA_LAB <- c("Registration deadline", "Registration restrictions",
 P24 <- prcomp(d[, IA], scale. = TRUE)
 LOAD <- data.frame(area = IA_LAB, sd = sapply(d[, IA], sd), row.names = NULL)
 
+# the hardest state's own row, and a standardized value: how many spreads
+# above the fifty-state average that state sits on one issue area
+MSR <- d[d$state == HARD, ]
+Z   <- function(col, row) (row[[col]] - mean(d[[col]])) / sd(d[[col]])
+
 # The static twins run through base-R devices, which cannot restyle for the
 # dark page the way the shared library's classes do. Light values here; the
 # D3 twins use the gop/dem/series classes brief.css owns.

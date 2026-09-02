@@ -28,7 +28,7 @@ The answer decides what an ordinary voter can do about one. A claim resting on a
 
 ## The test
 
-Using the 2024 presidential vote counted inside every congressional district, from Jason Timm's `PresElectionResults` compilation (<https://github.com/jaytimm/PresElectionResults>).
+Using the 2024 presidential vote counted inside every congressional district, compiled from precinct returns by the researcher Jay Timm and downloadable at <https://github.com/jaytimm/PresElectionResults>.
 
 Presidential results rather than House results, and that choice is the method. To ask whether a *map* is biased you have to hold the voters still and vary only the lines. House results cannot do that, because they mix the map together with incumbency, money, scandal and seats nobody contested. The presidential race is the same contest in all `r nrow(cd)` districts here, so any difference in how those votes become seats belongs to the plan. This is how the question is asked in litigation.
 
@@ -43,9 +43,9 @@ One row is one congressional district, carrying the 2024 presidential vote count
 ```{r one-row}
 ```
 
-`dem_share` is the only column the build adds: `democrat` divided by the two of them together. It is the Democratic share of the *two-party* vote, and it discards third-party and write-in ballots so that fifty per cent means tied. That bottom number is a choice, and everything below rests on it.
+`dem_share` is the only column added here: `democrat` divided by the two of them together. It is the Democratic share of the *two-party* vote, and it discards third-party and write-in ballots so that fifty per cent means tied. That bottom number is a choice, and everything below rests on it.
 
-Two cleaning decisions are worth the space. Maine runs ranked-choice House elections, and the compilation records ME-02's winner as "Continuing Ballots" with an empty string where the party goes. An empty string is not a missing value, and R will not warn you about the difference. Grouped by party, that row quietly becomes its own party. The row is kept, because its presidential figures are sound, and the party is set to genuinely missing instead.
+Two cleaning decisions are worth the space. Maine runs ranked-choice House elections, and the compilation records ME-02's winner as "Continuing Ballots" with an empty string where the party goes. An empty string is not a missing value, and the software will not warn you about the difference. Grouped by party, that row quietly becomes its own party. The row is kept, because its presidential figures are sound, and the party is set to genuinely missing instead.
 
 New York's twenty-first carries no presidential figures at all. It is dropped rather than filled in with a state average, so every national count below is over `r nrow(cd)` districts and not 435.
 
@@ -58,9 +58,11 @@ New York's twenty-first carries no presidential figures at all. It is dropped ra
 
 Three statistics are computed here, each from `dem_share` alone, for every state with six districts or more. All three are oriented the same way: a negative number means the plan favors Republicans.
 
-The **efficiency gap** compares a party's share of the seats with its share of the votes, doubling the vote term because a wasted vote costs a party twice. The **mean minus median** subtracts the average district's Democratic share from the median district's. When the median district is more Republican than the average one, half the seats are gone before the average voter is reached. The **declination** measures the kink where the sorted shares cross fifty. It compares how deeply a party wins the seats it wins against how narrowly it loses the ones it loses, which is the packing-and-cracking signature stated as an angle.
+The **efficiency gap** counts **wasted votes**: every vote cast for a losing candidate, and every vote for a winner beyond the half needed to win. The party that wastes far fewer of its votes is the one the lines serve. When every district has the same turnout, the count collapses to a formula on shares alone, the Democratic seat share above one-half minus twice the Democratic vote share above one-half, and that is the version computed here.^[Nicholas O. Stephanopoulos and Eric M. McGhee, "Partisan Gerrymandering and the Efficiency Gap," *University of Chicago Law Review* 82, no. 2 (2015): 831–900, <https://chicagounbound.uchicago.edu/uclrev/vol82/iss2/4/>.] The **mean minus median** subtracts the average district's Democratic share from the median district's, the one in the middle when the districts are sorted.^[Michael D. McDonald and Robin E. Best, "Unfair Partisan Gerrymanders in Politics and Law: A Diagnostic Applied to Six Cases," *Election Law Journal* 14, no. 4 (2015): 312–330, doi:10.1089/elj.2015.0358.] When the median district is more Republican than the average one, half the seats are gone before the average voter is reached. The **declination** measures the kink where the sorted shares cross fifty. It compares how deeply a party wins the seats it wins against how narrowly it loses the ones it loses, which is the packing-and-cracking signature stated as an angle.^[Gregory S. Warrington, "Quantifying Gerrymandering Using the Vote Distribution," *Election Law Journal* 17, no. 1 (2018): 39–57; the preprint is at <https://arxiv.org/abs/1705.09393>.]
 
 To win most of the seats with fewer than half the votes you do two things. **Pack** the other side into a few districts they carry overwhelmingly, wasting their surplus. **Crack** the rest across many districts where they lose narrowly, wasting all of it. Both moves leave the same mark: an empty band around the majority line.
+
+North Carolina makes the wasted-vote arithmetic concrete. Give every district a hundred votes, so that shares are counts. In NC-04, which Harris carried with `r pc(ds("NC-04"))`% of the two-party vote, Democrats wasted `r pc(ds("NC-04") - 50)` votes, the surplus past fifty, and Republicans wasted all `r pc(100 - ds("NC-04"))` of theirs. In NC-13, which she lost with `r pc(ds("NC-13"))`%, Democrats wasted all `r pc(ds("NC-13"))` of their votes and Republicans only the `r pc(50 - ds("NC-13"))` beyond what they needed. Add up the `r sv("NC","n")` districts and Democrats wasted `r pc(wv("NC","wd"))` votes to the Republicans' `r pc(wv("NC","wr"))`. Republicans wasted `r pc(wv("NC","wd") - wv("NC","wr"))` fewer, which spread over `r sv("NC","n")` districts of a hundred votes each comes to `r pc(egw("NC"))`: the same figure the formula returns, with the minus sign carrying the convention that a negative gap favors Republicans.
 
 ```{r sp-static, eval=!knitr::is_html_output(), fig.height=6.4}
 ```
@@ -75,7 +77,7 @@ Seven states carry most of the argument that follows. Here they are with all thr
 ```{r statstab}
 ```
 
-**The three statistics mostly agree, and where they part company they are informative.** Across the states scored here, the efficiency gap and the declination rank the plans nearly alike, at a rank correlation of `r rho("eg","dec")`. The mean minus median ranks them quite differently, at `r rho("eg","mm")`. Three measurements of one idea, disagreeing that much, is a warning against quoting any of them alone.
+**The three statistics mostly agree, and where they part company they are informative.** Across the states scored here, the efficiency gap and the declination rank the plans nearly alike, at a rank correlation of `r rho("eg","dec")`, a score of how alike two orderings are on which 1 means identical. The mean minus median ranks them quite differently, at `r rho("eg","mm")`. Three measurements of one idea, disagreeing that much, is a warning against quoting any of them alone.
 
 Read the table for the cases. **Tennessee** has the most extreme declination in the country at `r pc(sv("TN","dec"), 2)`, worse than North Carolina's `r pc(sv("NC","dec"), 2)`, while its efficiency gap is a middling `r pc(sv("TN","eg"))`. Its 2022 map divided Nashville among three districts, which is a textbook crack that the efficiency gap barely registers. **Georgia** runs the other way: its mean-median gap of `r pc(sv("GA","mm"))` points is the largest of any state scored here, beside a declination nobody would look at twice.
 
@@ -90,7 +92,7 @@ Read the table for the cases. **Tennessee** has the most extreme declination in 
 
 **Figure 2. The efficiency gap, drawn to scale.** Each state's area is its House delegation rather than its acreage, because seats are the quantity being argued about. The two worst Republican-favoring plans sit inside a belt of states colored the same way, and Massachusetts and its neighbors answer them in blue without a gerrymander among them.
 
-That last point is the objection the whole field turns on. **Massachusetts scores `r pc(sv("MA","eg"))`, nearly as extreme as North Carolina in the opposite direction, and it is not gerrymandered.** The state is `r pc(sv("MA","vote"))`% Democratic and elects Democrats in all `r sv("MA","n")` of its seats, because there is no way to carve a Republican district out of Massachusetts without deliberately trying to. Chen and Rodden (2013) formalized this: Democratic voters concentrate in cities at very high densities and waste enormous numbers of votes before anybody picks up a pen.
+That last point is the objection the whole field turns on. **Massachusetts scores `r pc(sv("MA","eg"))`, nearly as extreme as North Carolina in the opposite direction, and it is not gerrymandered.** The state is `r pc(sv("MA","vote"))`% Democratic and elects Democrats in all `r sv("MA","n")` of its seats, because there is no way to carve a Republican district out of Massachusetts without deliberately trying to. Chen and Rodden (2013) formalized this: Democratic voters concentrate in cities at very high densities and waste enormous numbers of votes before anybody picks up a pen.^[Jowei Chen and Jonathan Rodden, "Unintentional Gerrymandering: Political Geography and Electoral Bias in Legislatures," *Quarterly Journal of Political Science* 8, no. 3 (2013): 239–269, <https://web.stanford.edu/~jrodden/wp/florida.pdf>.]
 
 ```{r ts-static, eval=!knitr::is_html_output(), fig.height=4.8}
 ```
@@ -100,13 +102,13 @@ That last point is the objection the whole field turns on. **Massachusetts score
 
 **Figure 3. Two of the statistics against each other.** One point per state, placed by its declination and its efficiency gap. One state is missing, `r NODEC`, and its absence is the finding. With no district below fifty there is no Democratic loss to set against a Democratic win, so the declination cannot be computed there. The statistic that flags North Carolina cannot flag Massachusetts, because in Massachusetts there is nothing of that kind to flag.
 
-The correction cuts the other way too. **Louisiana** scores `r pc(sv("LA","eg"))` on the efficiency gap, which points at a Democratic advantage, and `r pc(sv("LA","mm"))` on the mean minus median, which points the opposite way. Its 2024 map contains a second majority-Black district drawn under court order, and that produces a lopsided distribution for a reason with nothing to do with partisan advantage. Two statistics, disagreeing, for a reason that can be named. That is the honest state of this field.
+The correction cuts the other way too. **Louisiana** scores `r pc(sv("LA","eg"))` on the efficiency gap, which points at a Democratic advantage, and `r pc(sv("LA","mm"))` on the mean minus median, which points the opposite way. Its 2024 map contains a second majority-Black district drawn under court order,^[Drawn in January 2024 after the federal courts found the prior map likely to violate Section 2 of the Voting Rights Act, following *Allen v. Milligan*, 599 U.S. 1 (2023), <https://www.law.cornell.edu/supremecourt/text/21-1086>. The Supreme Court later held the district an unconstitutional racial gerrymander in *Louisiana v. Callais* (2026), <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>, after these votes were cast.] and that produces a lopsided distribution for a reason with nothing to do with partisan advantage. Two statistics, disagreeing, for a reason that can be named. That is the honest state of this field.
 
 ## What this brief cannot tell you
 
 **Every number here measures bias, and none of them measures intent.** Intent is what courts litigate, and it is proved from drafts, memoranda and email rather than from statistics. Sliding from "the efficiency gap is `r pc(sv("NC","eg"))`" to "they cheated" skips the only step that would matter in a courtroom. The numbers can tell you which maps are worth a subpoena. They cannot tell you what the subpoena will find.
 
-**No single map's numbers can separate drawn bias from geographic bias.** The method that can is simulation: generate thousands of legal maps and ask where the enacted plan falls among them. That argument has persuaded state courts, and it needs precinct geography this table does not carry.
+**No single map's numbers can separate drawn bias from geographic bias.** The method that can is simulation: generate thousands of legal maps and ask where the enacted plan falls among them. That argument has persuaded state courts,^[Pennsylvania's supreme court struck the state's 2011 congressional map on evidence of that kind in *League of Women Voters of Pennsylvania v. Commonwealth*, 178 A.3d 737 (Pa. 2018); the case file is summarised by the Brennan Center: <https://www.brennancenter.org/our-work/court-cases/league-women-voters-pennsylvania-v-commonwealth-pennsylvania>.] and it needs precinct geography this table does not carry.
 
 Three narrower limits. The efficiency gap computed here is an approximation, because the proper version needs turnout by district and this file has shares rather than counts. Everything rests on one election, and a plan that looks fair against 2024 may not against 2020. And there are no dates in the file, so several plans drawn or redrawn by courts are not marked as such.
 
@@ -133,8 +135,9 @@ None of these is answered above, and every one can be answered from the table th
 
 **Data**
 
-- Presidential results by congressional district, 2024, from Jason Timm's
-  `PresElectionResults` (<https://github.com/jaytimm/PresElectionResults>);
+- Presidential results by congressional district, 2024, compiled by the
+  researcher Jay Timm and published as `PresElectionResults`
+  (<https://github.com/jaytimm/PresElectionResults>);
   `r nrow(cd)` of 435 districts, with the missing one documented rather than
   filled in. The compilation rests on precinct returns apportioned into
   district lines, and records nothing about how the split precincts were
@@ -152,30 +155,45 @@ open in a spreadsheet, and they are yours to take further.
 - Bernstein, M. and Duchin, M. (2017). "A Formula Goes to Court: Partisan
   Gerrymandering and the Efficiency Gap." *Notices of the American
   Mathematical Society* 64(9): 1020–1024.
+  <https://www.ams.org/journals/notices/201709/rnoti-p1020.pdf>
 - Chen, J. and Rodden, J. (2013). "Unintentional Gerrymandering: Political
   Geography and Electoral Bias in Legislatures." *Quarterly Journal of
-  Political Science* 8(3): 239–269.
+  Political Science* 8(3): 239–269. doi:10.1561/100.00012033; the authors'
+  copy is at <https://web.stanford.edu/~jrodden/wp/florida.pdf>
+- McDonald, M. D. and Best, R. E. (2015). "Unfair Partisan Gerrymanders in
+  Politics and Law: A Diagnostic Applied to Six Cases." *Election Law
+  Journal* 14(4): 312–330. The mean-median test. doi:10.1089/elj.2015.0358
 - McGhee, E. (2014). "Measuring Partisan Bias in Single-Member District
   Electoral Systems." *Legislative Studies Quarterly* 39(1): 55–85.
+  doi:10.1111/lsq.12033
 - Stephanopoulos, N. O. and McGhee, E. M. (2015). "Partisan Gerrymandering and
   the Efficiency Gap." *University of Chicago Law Review* 82(2): 831–900.
+  <https://chicagounbound.uchicago.edu/uclrev/vol82/iss2/4/>
 - Warrington, G. S. (2018). "Quantifying Gerrymandering Using the Vote
   Distribution." *Election Law Journal* 17(1): 39–57. The declination, as
-  computed here.
+  computed here. Preprint: <https://arxiv.org/abs/1705.09393>
 
 **Cases**
 
 - *Thornburg v. Gingles*, 478 U.S. 30 (1986).
+  <https://www.law.cornell.edu/supremecourt/text/478/30>
+- *Allen v. Milligan*, 599 U.S. 1 (2023), behind the court-ordered districts
+  in Alabama and Louisiana.
+  <https://www.law.cornell.edu/supremecourt/text/21-1086>
 - *League of Women Voters of Pennsylvania v. Commonwealth*, 178 A.3d 737
   (Pa. 2018) — the state constitutional route that replaced Pennsylvania's
-  2011 plan with the one measured here.
-- *Gill v. Whitford*, 585 U.S. 48 (2018), and *Rucho v. Common Cause*,
-  588 U.S. 684 (2019), which closed the federal courts to partisan
-  gerrymandering claims and left state constitutions as the venue.
+  2011 plan with the one measured here. Case file at the Brennan Center:
+  <https://www.brennancenter.org/our-work/court-cases/league-women-voters-pennsylvania-v-commonwealth-pennsylvania>
+- *Gill v. Whitford*, 585 U.S. 48 (2018),
+  <https://www.law.cornell.edu/supremecourt/text/16-1161>, and *Rucho v.
+  Common Cause*, 588 U.S. 684 (2019),
+  <https://www.law.cornell.edu/supremecourt/text/18-422>, which closed the
+  federal courts to partisan gerrymandering claims and left state
+  constitutions as the venue.
 - *Louisiana v. Callais*, 608 U.S. \_\_\_ (2026), decided 29 April 2026,
   narrowing what Section 2 of the Voting Rights Act requires. Several of the
   packed districts visible in this file exist partly because of the older
-  reading.
+  reading. <https://www.supremecourt.gov/opinions/25pdf/24-109_21o3.pdf>
 
 ```{r ai-prompt, echo=FALSE, results="asis"}
 ```

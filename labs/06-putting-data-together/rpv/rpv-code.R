@@ -29,6 +29,20 @@ bd_lo <- 100 * max(lo); bd_hi <- 100 * min(hi)
 bd_who_lo <- p$precinct[which.max(lo)]
 p$bd_lo <- 100 * lo; p$bd_hi <- 100 * hi
 
+# the precinct that sets the floor above, walked through in the prose: the
+# Democratic ballots its white voters alone cannot account for, over its
+# Black voters
+wc     <- p[which.max(lo), ]
+wc_min <- wc$dem - wc$white
+wc_lo  <- 100 * wc_min / wc$black
+
+# the bounds with no assumption at all. bd_lo/bd_hi above assume one
+# county-wide rate that must fit inside every precinct's limits at once; these
+# instead add up each precinct's floor and ceiling on the COUNT of Black
+# Democratic ballots, over all Black voters (Duncan and Davis 1953)
+agg_lo <- 100 * sum(pmax(0, p$dem - p$white)) / sum(p$black)
+agg_hi <- 100 * sum(pmin(p$black, p$dem)) / sum(p$black)
+
 truth_black <- 100 * sum(p$black_dem) / sum(p$black)
 truth_white <- 100 * sum(p$white_dem) / sum(p$white)
 
