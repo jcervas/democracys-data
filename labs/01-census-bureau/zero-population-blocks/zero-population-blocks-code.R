@@ -14,7 +14,7 @@ options(scipen = 999)
 D <- "data"
 dd_derived(c("block_pop_hist.csv", "block_size.csv", "dc_blocks.csv",
              "dc_facts.csv", "dc_frame.csv", "facts.csv", "map_frame.csv",
-             "map_counties.csv", "map_overview.csv", "map_states.csv",
+             "ksut_dots.csv", "map_counties.csv", "map_overview.csv", "map_states.csv",
              "map_zero.csv", "state_bbox.csv", "state_blocks.csv",
              "zero_land.csv"))
 
@@ -27,6 +27,8 @@ MZ <- read.csv(file.path(D, "derived/map_zero.csv"),
 bx <- read.csv(file.path(D, "derived/state_bbox.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 MOV <- read.csv(file.path(D, "derived/map_overview.csv"), stringsAsFactors = FALSE)
+DOT <- read.csv(file.path(D, "derived/ksut_dots.csv"),
+                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 MCT <- read.csv(file.path(D, "derived/map_counties.csv"),
                 colClasses = c(st = "character"), stringsAsFactors = FALSE)
 MS <- read.csv(file.path(D, "derived/map_states.csv"),
@@ -343,91 +345,114 @@ drawpolys(MOV, RED)
 drawpolys(MS,  NA, border = GREY, lwd = 0.3)
 
 ## ---- ksut-prep
-# Kansas and Utah at ONE scale. They are within a percent of each other in
-# area, so a shared scale is not a courtesy, it is the argument: the two
-# panels are the same amount of ground.
+# Kansas and Utah, four panels on ONE scale: where the people are on top,
+# where nobody lives underneath. The pairing is the argument -- a scatter can
+# say that density and emptiness come apart, and this shows what that looks
+# like on the ground.
 #
-# Each panel is cut to its OWN state, not to the taller of the two. Utah is
-# notched and fills 71% of its bounding box; Kansas is nearly rectangular and
-# fills 92%. Sizing both boxes to Utah left Kansas as a short band adrift in a
-# tall frame, which made the eye read a 33% difference in bounding box as a
-# difference in size when the drawn areas are within 3%.
-KU  <- c("20", "49")                            # Kansas, Utah
+# Every length here is in FRAME units, the same units the geometry is in, so
+# type sizes are in the thousands: an SVG viewBox scales its own font sizes,
+# and a 15-unit label in a 10,000-unit frame renders at about one pixel.
+KU  <- c("20", "49")
 KUN <- vapply(KU, function(f) sb$state[sb$STATEFP == f], character(1))
-KUA <- vapply(KU, function(f) sb$land_sqmi[sb$STATEFP == f], 0)
+KUS <- function(f, col) sb[[col]][sb$STATEFP == f]
 .bb <- lapply(KU, function(f) { a <- MS[MS$st == f, ]
   c(min(a$x), min(a$y), max(a$x), max(a$y)) })
-PAD <- 90
-.w  <- vapply(.bb, function(b) b[3] - b[1], 0) + PAD
-PH  <- max(vapply(.bb, function(b) b[4] - b[2], 0)) + PAD
-PWT <- sum(.w)
-.ox <- c(0, cumsum(.w)[-length(.w)])
+PAD  <- 140
+.w   <- vapply(.bb, function(b) b[3] - b[1], 0) + PAD
+RH   <- max(vapply(.bb, function(b) b[4] - b[2], 0)) + PAD
+GAPY <- 620                                    # room for the second row label
+PWT  <- sum(.w); PHT <- 2 * RH + GAPY
+.ox  <- c(0, cumsum(.w)[-length(.w)])
+.sh  <- function(d, i, row) { b <- .bb[[i]]
+  d$x <- d$x + .ox[i] - b[1] + PAD / 2
+  d$y <- d$y - b[2] + (RH - (b[4] - b[2])) / 2 + (row - 1) * (RH + GAPY)
+  d }
 KUP <- lapply(seq_along(KU), function(i) {
-  f <- KU[i]; b <- .bb[[i]]
-  dx <- .ox[i] - b[1] + PAD / 2
-  dy <- -b[2] + (PH - (b[4] - b[2])) / 2        # centred on a common line
-  sh <- function(d) { d$x <- d$x + dx; d$y <- d$y + dy; d }
-  list(z = polypaths(sh(MZ[MZ$st == f, ])), s = polypaths(sh(MS[MS$st == f, ])),
-       cx = .ox[i] + .w[i] / 2)
+  f <- KU[i]
+  list(dot = .sh(DOT[DOT$st == f, ], i, 1),
+       zt  = polypaths(.sh(MZ[MZ$st == f, ], i, 2)),
+       s1  = polypaths(.sh(MS[MS$st == f, ], i, 1)),
+       s2  = polypaths(.sh(MS[MS$st == f, ], i, 2)),
+       cx  = .ox[i] + .w[i] / 2)
 })
+KUL1 <- vapply(KU, function(f) sprintf("%s · %s sq mi", sb$state[sb$STATEFP == f],
+  n(KUS(f, "land_sqmi"))), character(1))
+KUL2 <- vapply(KU, function(f) sprintf("%s people · %s per sq mi",
+  n(KUS(f, "pop")), pc(KUS(f, "dens"), 0)), character(1))
+KUL3 <- vapply(KU, function(f) sprintf("%s%% of its land has no residents",
+  pc(KUS(f, "pct_land"))), character(1))
+KUL4 <- vapply(KU, function(f) sprintf("%s blocks · %s acres each",
+  n(KUS(f, "blocks")), n(KUS(f, "acres_per_block"))), character(1))
 
 ## ---- ksut-d3
-TOP <- 26; BOT <- 40
 cat(paste0('
 <div id="zksut" style="margin:1em 0"></div>
 <script>
 (function(){
-const P=[{z:', jstr(KUP[[1]]$z), ',s:', jstr(KUP[[1]]$s), '},
-         {z:', jstr(KUP[[2]]$z), ',s:', jstr(KUP[[2]]$s), '}];
-const NM=', jstr(unname(KUN)), ',PCT=', jnum(vapply(KU, function(f)
-  round(sb$pct_land[sb$STATEFP == f], 1), 0)), ';
-const CX=', jnum(vapply(KUP, function(p) round(p$cx), 0)),
-',AR=', jstr(format(round(KUA), big.mark = ",")),
-',PWT=', PWT, ',PH=', PH, ',TOP=', TOP, ',BOT=', BOT, ';
+const P=[', paste(vapply(seq_along(KU), function(i) paste0(
+  '{dx:', jnum(KUP[[i]]$dot$x), ',dy:', jnum(KUP[[i]]$dot$y),
+  ',z:', jstr(KUP[[i]]$zt), ',s1:', jstr(KUP[[i]]$s1), ',s2:', jstr(KUP[[i]]$s2),
+  ',cx:', round(KUP[[i]]$cx), '}'), character(1)), collapse = ","), '];
+const L1=', jstr(unname(KUL1)), ',L2=', jstr(unname(KUL2)),
+',L3=', jstr(unname(KUL3)), ',L4=', jstr(unname(KUL4)), ';
+const PWT=', PWT, ',RH=', RH, ',GAPY=', GAPY, ',PHT=', PHT, ';
+const TOP=950,BOT=560;
 const svg=d3.select("#zksut").append("svg")
-  .attr("viewBox","0 "+(-TOP)+" "+PWT+" "+(PH+TOP+BOT))
-  .attr("style","max-width:100%;height:auto;display:block;font:12px inherit");
+  .attr("viewBox","0 "+(-TOP)+" "+PWT+" "+(PHT+TOP+BOT))
+  .attr("style","max-width:100%;height:auto;display:block");
+const T=(x,y,txt,sz,w,col,anch)=>svg.append("text").attr("x",x).attr("y",y)
+  .attr("text-anchor",anch||"middle").attr("font-weight",w||400)
+  .attr("fill",col||"#12181D").attr("font-size",sz).text(txt);
 P.forEach((p,i)=>{
-  svg.append("g").selectAll("path").data(p.s).join("path").attr("d",d=>d)
+  svg.append("g").selectAll("path").data(p.s1).join("path").attr("d",d=>d)
+    .attr("fill","#F4F6F7").attr("fill-rule","evenodd")
+    .attr("stroke","', GREY, '").attr("stroke-width",7);
+  svg.append("g").selectAll("circle").data(p.dx).join("circle")
+    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",8)
+    .attr("fill","#12181D").attr("fill-opacity",0.6);
+  svg.append("g").selectAll("path").data(p.s2).join("path").attr("d",d=>d)
     .attr("fill","#ffffff").attr("fill-rule","evenodd");
   svg.append("g").selectAll("path").data(p.z).join("path").attr("d",d=>d)
     .attr("fill","', RED, '").attr("fill-rule","evenodd");
-  svg.append("g").selectAll("path").data(p.s).join("path").attr("d",d=>d)
-    .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",6);
-  const cx=CX[i];
-  svg.append("text").attr("x",cx).attr("y",-6).attr("text-anchor","middle")
-    .attr("font-weight","700").attr("fill","#12181D")
-    .attr("style","font-size:15px").text(NM[i]+" \u00b7 "+AR[i]+" sq mi");
-  svg.append("text").attr("x",cx).attr("y",PH+26).attr("text-anchor","middle")
-    .attr("style","font-size:13px").attr("fill","', RED, '")
-    .attr("font-weight","600").text(PCT[i].toFixed(1)+"% of its land has no residents");
+  svg.append("g").selectAll("path").data(p.s2).join("path").attr("d",d=>d)
+    .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",7);
+  T(p.cx,-600,L1[i],235,700);
+  T(p.cx,-400,L2[i],180,400,"#4E5A63");
+  T(p.cx,PHT+250,L3[i],195,700,"', RED, '");
+  T(p.cx,PHT+450,L4[i],175,400,"#4E5A63");
 });
+T(0,-60,"WHERE THE PEOPLE ARE \\u2014 one dot for 500 residents",180,700,"#4E5A63","start");
+T(0,RH+GAPY-110,"WHERE NOBODY LIVES \\u2014 blocks with no residents",180,700,"#4E5A63","start");
 })();
 </script>
 '))
 
 ## ---- ksut-static
-# ONE plot, not two panels. With mfrow and asp = 1, R fits each panel to its
-# own limits, so two states of different proportions can come out at two
-# different scales -- which would quietly destroy the one claim this figure
-# makes. Drawing both into a single coordinate system cannot do that.
-par(mar = c(2.0, 0.4, 2.0, 0.4))
-plot(NA, xlim = c(0, PWT), ylim = c(PH, 0), asp = 1, axes = FALSE,
+# ONE plot, not a grid of panels: with mfrow and asp = 1 R fits each panel to
+# its own limits, and two states of different proportions would then come out
+# at two different scales, destroying the only claim this figure makes.
+par(mar = c(3.0, 0.3, 3.0, 0.3))
+plot(NA, xlim = c(0, PWT), ylim = c(PHT, 0), asp = 1, axes = FALSE,
      xlab = "", ylab = "")
+U <- PHT / 100                                  # one percent of the figure
 for (i in seq_along(KU)) {
-  f <- KU[i]; b <- .bb[[i]]
-  zz <- MZ[MZ$st == f, ]; ss <- MS[MS$st == f, ]
-  dx <- .ox[i] - b[1] + PAD / 2; dy <- -b[2] + (PH - (b[4] - b[2])) / 2
-  zz$x <- zz$x + dx; zz$y <- zz$y + dy; ss$x <- ss$x + dx; ss$y <- ss$y + dy
-  drawpolys(ss, "#ffffff")
-  drawpolys(zz, RED)
-  drawpolys(ss, NA, border = GREY, lwd = 0.7)
-  text(KUP[[i]]$cx, -PAD / 3, sprintf("%s \u00b7 %s sq mi", KUN[i],
-       format(round(KUA[i]), big.mark = ",")), font = 2, cex = 0.82, xpd = NA)
-  text(KUP[[i]]$cx, PH + PAD / 2,
-       sprintf("%.1f%% of its land has no residents", sb$pct_land[sb$STATEFP == f]),
-       col = RED, cex = 0.66, xpd = NA)
+  f <- KU[i]; p <- KUP[[i]]
+  s1 <- .sh(MS[MS$st == f, ], i, 1); s2 <- .sh(MS[MS$st == f, ], i, 2)
+  drawpolys(s1, "#F4F6F7", border = GREY, lwd = 0.5)
+  points(p$dot$x, p$dot$y, pch = 16, cex = 0.085, col = "#12181D99")
+  drawpolys(s2, "#ffffff")
+  drawpolys(.sh(MZ[MZ$st == f, ], i, 2), RED)
+  drawpolys(s2, NA, border = GREY, lwd = 0.5)
+  text(p$cx, -5.0 * U, KUL1[i], font = 2, cex = 0.60, xpd = NA)
+  text(p$cx, -3.4 * U, KUL2[i], cex = 0.50, col = "#4E5A63", xpd = NA)
+  text(p$cx, PHT + 2.1 * U, KUL3[i], font = 2, cex = 0.52, col = RED, xpd = NA)
+  text(p$cx, PHT + 3.7 * U, KUL4[i], cex = 0.46, col = "#4E5A63", xpd = NA)
 }
+text(0, -0.6 * U, "WHERE THE PEOPLE ARE — one dot for 500 residents",
+     adj = 0, cex = 0.48, col = "#4E5A63", font = 2, xpd = NA)
+text(0, RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents",
+     adj = 0, cex = 0.48, col = "#4E5A63", font = 2, xpd = NA)
 
 ## ---- hist-d3
 # Binned, so the whole range fits one axis that starts at zero. Bars are counts
