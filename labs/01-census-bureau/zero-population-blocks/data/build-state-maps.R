@@ -18,7 +18,7 @@ SRC    <- Sys.getenv("STATE_GEOJSON_DIR", "raw/state")
 STATES <- Sys.getenv("STATES_GEOJSON", "raw/states_500k.geojson")
 D      <- Sys.getenv("DERIVED", "derived")
 W      <- 40000L
-FILLPX <- 700                       # how wide a state is drawn when zoomed
+FILLPX <- 1400                      # a state fills ~700 px; simplify to half of one
 dir.create(D, recursive = TRUE, showWarnings = FALSE)
 
 ms <- function(...) {
@@ -65,6 +65,39 @@ flatten <- function(g, ids = NULL, st = NULL) {
   })
   do.call(rbind, rows[!vapply(rows, is.null, logical(1))])
 }
+
+# --- the overview layer -----------------------------------------------------
+# The country drawn whole needs about 4.6 km per pixel, so the national view
+# gets its own coarse layer. The fine per-state geometry below is never put in
+# the page's DOM until a state is actually clicked; carrying both costs bytes
+# and saves the browser laying out 800,000 vertices nobody is looking at.
+ov1 <- tempfile(fileext = ".json"); ov2 <- tempfile(fileext = ".json")
+ms("-i", shQuote(file.path(SRC, "..", "us_zero_pop_blocks.geojson")),
+   "-dissolve -proj albersusa -o", shQuote(ov1), "format=geojson precision=1")
+ms("-i", shQuote(ov1), "-simplify interval=2400 -o", shQuote(ov2),
+   "format=geojson precision=1")
+ovf <- flatten(poly(ov2))
+ovf$poly <- paste0("o_", ovf$poly)
+write.csv(ovf, file.path(D, "map_overview.csv"), row.names = FALSE)
+cat(sprintf("  overview: %s vertices\n", format(nrow(ovf), big.mark = ",")))
+
+# --- county lines, for bearings inside a state ------------------------------
+cb <- file.path(dirname(SRC), "cb_2020_us_county_500k.zip")
+if (!file.exists(cb))
+  download.file(paste0("https://www2.census.gov/geo/tiger/GENZ2020/shp/",
+                       "cb_2020_us_county_500k.zip"), cb, quiet = TRUE, mode = "wb")
+cw <- tempfile(); dir.create(cw); unzip(cb, exdir = cw)
+c1 <- tempfile(fileext = ".json"); c2 <- tempfile(fileext = ".json")
+ms("-i", shQuote(list.files(cw, pattern = "[.]shp$", full.names = TRUE)[1]),
+   "-proj albersusa -o", shQuote(c1), "format=geojson precision=1")
+ms("-i", shQuote(c1), "-simplify interval=400 -o", shQuote(c2),
+   "format=geojson precision=1")
+cg  <- poly(c2, "STATEFP")
+cty <- flatten(cg, ids = cg$STATEFP)
+cty$poly <- paste0("c_", cty$poly)
+write.csv(cty, file.path(D, "map_counties.csv"), row.names = FALSE)
+cat(sprintf("  counties: %s vertices, %s states\n",
+            format(nrow(cty), big.mark = ","), length(unique(cty$st))))
 
 files <- sort(list.files(SRC, pattern = "^zero_pop_[0-9]{2}\\.geojson$",
                          full.names = TRUE))

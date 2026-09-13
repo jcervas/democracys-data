@@ -14,8 +14,9 @@ options(scipen = 999)
 D <- "data"
 dd_derived(c("block_pop_hist.csv", "block_size.csv", "dc_blocks.csv",
              "dc_facts.csv", "dc_frame.csv", "facts.csv", "map_frame.csv",
-             "map_states.csv", "map_zero.csv", "state_bbox.csv",
-             "state_blocks.csv", "zero_land.csv"))
+             "map_counties.csv", "map_overview.csv", "map_states.csv",
+             "map_zero.csv", "state_bbox.csv", "state_blocks.csv",
+             "zero_land.csv"))
 
 sb <- read.csv(file.path(D, "derived/state_blocks.csv"),
                colClasses = c(STATEFP = "character"), stringsAsFactors = FALSE)
@@ -25,6 +26,9 @@ MZ <- read.csv(file.path(D, "derived/map_zero.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 bx <- read.csv(file.path(D, "derived/state_bbox.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
+MOV <- read.csv(file.path(D, "derived/map_overview.csv"), stringsAsFactors = FALSE)
+MCT <- read.csv(file.path(D, "derived/map_counties.csv"),
+                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 MS <- read.csv(file.path(D, "derived/map_states.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 FR <- read.csv(file.path(D, "derived/map_frame.csv"),  stringsAsFactors = FALSE)
@@ -38,6 +42,8 @@ zlnd <- read.csv(file.path(D, "derived/zero_land.csv"),
 sb <- merge(sb, zlnd, by = "STATEFP")
 stopifnot(nrow(sb) == 52)
 sb$pct_land <- 100 * sb$zero_land_sqmi / sb$land_sqmi
+sb$per_block <- sb$pop / sb$blocks              # average residents in a block
+sb$acres_per_block <- sb$land_sqmi * 640 / sb$blocks
 
 fc <- do.call(rbind, lapply(
   c("facts.csv", "block_size.csv", "dc_facts.csv"),
@@ -181,6 +187,19 @@ TIPCSS <- '<style>
 #zmap:fullscreen svg{max-height:100vh;max-width:100vw;width:auto;height:auto}
 @media print{.zmap-btn{display:none}}
 </style>\n'
+# A share cannot be negative, and the fitted line goes below zero before it
+# reaches the dense end. Truncate it where it crosses, rather than letting it
+# run out of the panel and across the axis.
+fitline <- function(m) {
+  b <- coef(m); xs <- range(log10(sb$dens))
+  y <- b[1] + b[2] * xs
+  at <- function(v) (v - b[1]) / b[2]          # the x where the fit reaches v
+  for (i in 1:2) {
+    if (y[i] < 0)   { xs[i] <- at(0);   y[i] <- 0 }
+    if (y[i] > 100) { xs[i] <- at(100); y[i] <- 100 }
+  }
+  list(fx = 10^xs, fy = as.numeric(y))
+}
 jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
 jnum <- function(x) paste0("[", paste0(x, collapse = ","), "]")
 # base-R twin of the same idea: rings separated by NA, subtracted by evenodd
@@ -197,10 +216,15 @@ drawpolys <- function(d, col, border = NA, lwd = 0.3) {
 ## ---- map-d3
 SP  <- polypaths(MS)
 HIT <- statepaths(MS)
-BYS <- lapply(split(MZ, MZ$st), polypaths)      # empty land, per state
+OVP <- polypaths(MOV)                           # the country, drawn coarse
+BYS <- lapply(split(MZ,  MZ$st),  polypaths)    # per state, drawn fine
+CTY <- lapply(split(MCT, MCT$st), polypaths)    # county lines, per state
 hf  <- names(HIT)
 i1  <- match(hf, sb$STATEFP); i2 <- match(hf, zlnd$STATEFP)
 BX  <- bx[match(hf, bx$st), ]
+jarr <- function(keys, lst) paste0("[", paste(vapply(keys, function(k)
+  if (is.null(lst[[k]])) "[]" else jstr(unname(lst[[k]])), character(1)),
+  collapse = ","), "]")
 cat(paste0(TIPCSS, '
 <div id="zmap" style="position:relative;margin:1em 0">
 <div id="zmap-back" class="zmap-btn" style="left:0;display:none">&#8592; the whole country</div>
@@ -209,10 +233,11 @@ cat(paste0(TIPCSS, '
 <script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
-const S=', jstr(SP), ',H_=', jstr(unname(HIT)), ',F=', jstr(hf), ';
-const ZS=', paste0("[", paste(vapply(hf, function(k)
-    if (is.null(BYS[[k]])) "[]" else jstr(unname(BYS[[k]])), character(1)),
-    collapse = ","), "]"), ';
+const S=', jstr(SP), ',H_=', jstr(unname(HIT)), ',OV=', jstr(OVP), ';
+// The fine geometry rides along as STRINGS. Nothing here becomes an element
+// until a state is clicked: the country needs 134,000 vertices to draw, and
+// laying out the other 999,000 at load is work for a view nobody is on.
+const ZS=', jarr(hf, BYS), ',CT=', jarr(hf, CTY), ';
 const BB=', paste0("[", paste(sprintf("[%d,%d,%d,%d]", BX$x0, BX$y0, BX$x1, BX$y1),
     collapse = ","), "]"), ';
 const NM=', jstr(sb$state[i1]), ',PO=', jnum(sb$pop[i1]), ',BL=', jnum(sb$blocks[i1]),
@@ -224,14 +249,11 @@ const wrap=d3.select("#zmap"), back=d3.select("#zmap-back");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
   .attr("style","max-width:100%;height:auto;display:block;cursor:pointer");
 const g=svg.append("g");
-// land, then the empty blocks of each state in its own group, then borders
-// One path per STATE, not per polygon: the fill is switched by state index
-// below, and binding per polygon made that index mean the wrong thing.
 const land=g.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
   .attr("fill","#ffffff").attr("fill-rule","evenodd");
-const blocks=g.append("g").selectAll("g").data(ZS).join("g");
-blocks.each(function(d){ d3.select(this).selectAll("path").data(d).join("path")
-  .attr("d",q=>q).attr("fill","', RED, '").attr("fill-rule","evenodd"); });
+const coarse=g.append("g").selectAll("path").data(OV).join("path").attr("d",d=>d)
+  .attr("fill","', RED, '").attr("fill-rule","evenodd");
+const gcty=g.append("g"), gfine=g.append("g");
 const border=g.append("g").selectAll("path").data(S).join("path").attr("d",d=>d)
   .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",0.6)
   .attr("vector-effect","non-scaling-stroke");
@@ -241,17 +263,23 @@ const card=(t,rows,foot)=>`<h4>${t}</h4><table>`+
   rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`+
   (foot?`<div class="foot">${foot}</div>`:"");
 let sel=-1;
-const zoom=d3.zoom().scaleExtent([1,60]).on("zoom",ev=>g.attr("transform",ev.transform));
-svg.call(zoom).on("wheel.zoom",null);          // click to zoom, not scroll
+const zoom=d3.zoom().scaleExtent([1,80]).on("zoom",ev=>g.attr("transform",ev.transform));
+svg.call(zoom).on("wheel.zoom",null);
 function show(i){
   sel=i;
-  // Everything but the chosen state goes flat grey and loses its blocks, so
-  // the state being read is the only thing carrying data.
   land.attr("fill",(d,j)=>i<0||j===i?"#ffffff":"#E4E7E9");
-  blocks.style("display",(d,j)=>i<0||j===i?null:"none");
+  coarse.style("display",i<0?null:"none");
+  gfine.selectAll("path").remove(); gcty.selectAll("path").remove();
+  if(i>=0){
+    gcty.selectAll("path").data(CT[i]).join("path").attr("d",d=>d)
+      .attr("fill","none").attr("stroke","#C3CBD1").attr("stroke-width",0.5)
+      .attr("vector-effect","non-scaling-stroke");
+    gfine.selectAll("path").data(ZS[i]).join("path").attr("d",d=>d)
+      .attr("fill","', RED, '").attr("fill-rule","evenodd");
+  }
   back.style("display",i<0?"none":"block");
   const t=i<0?d3.zoomIdentity
-    :(()=>{const[x0,y0,x1,y1]=BB[i],k=Math.min(60,0.92/Math.max((x1-x0)/W,(y1-y0)/H));
+    :(()=>{const[x0,y0,x1,y1]=BB[i],k=Math.min(80,0.92/Math.max((x1-x0)/W,(y1-y0)/H));
            return d3.zoomIdentity.translate(W/2,H/2).scale(k)
              .translate(-(x0+x1)/2,-(y0+y1)/2);})();
   svg.transition().duration(760).call(zoom.transform,t);
@@ -272,7 +300,7 @@ svg.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
       ["blocks with nobody",PZ[i].toFixed(1)+"%"],
       ["unpopulated land",f(LA[i])+" sq mi"],
       ["share of state land",PL[i].toFixed(1)+"%"]],
-      sel>=0?"Land area only; blocks that are all water are not drawn."
+      sel>=0?"County lines shown for bearings. Land area only; blocks that are all water are not drawn."
             :"Click to zoom to "+NM[i]+"."));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
     let x=ev.clientX-b.left+16, y=ev.clientY-b.top+16;
@@ -297,12 +325,14 @@ d3.select(window).on("keydown.zmap",ev=>{ if(ev.key==="Escape") show(-1); });
 '))
 
 ## ---- map-static
+# Print gets the overview layer: it is the national view, and the per-state
+# geometry exists for a zoom that paper does not have.
 par(mar = c(0, 0, 0, 0))
 plot(NA, xlim = c(0, FR$w), ylim = c(FR$h, 0), asp = 1,
      axes = FALSE, xlab = "", ylab = "")
-drawpolys(MS, "#ffffff")
-drawpolys(MZ, RED)
-drawpolys(MS, NA, border = GREY, lwd = 0.3)
+drawpolys(MS,  "#ffffff")
+drawpolys(MOV, RED)
+drawpolys(MS,  NA, border = GREY, lwd = 0.3)
 
 ## ---- hist-d3
 # Binned, so the whole range fits one axis that starts at zero. Bars are counts
@@ -458,15 +488,15 @@ mtext("blocks with nobody living on them (%)", side = 1, line = 2.6, cex = 0.95)
 ## ---- dens-d3
 # Two panels on one x. Land leads because land is the thing worth knowing; the
 # block panel is underneath as the contrast, and the contrast is the finding.
-PAN <- list(list(y = sb$pct_land, lab = "% of land unoccupied", r = FV("land_r_log")),
-            list(y = sb$pct_zero, lab = "% of blocks empty",    r = FV("dens_r_log")))
+PAN <- list(list(y = 100 - sb$pct_land, lab = "% of land with residents on it",
+                 r = -FV("land_r_log")),
+            list(y = 100 - sb$pct_zero, lab = "% of blocks with residents",
+                 r = -FV("dens_r_log")))
 mk <- function(v) {
   m <- lm(v ~ log10(sb$dens)); rs <- resid(m)
   k <- unique(c(order(-v)[1:3], order(v)[1:2], which.max(sb$dens),
                 which.min(sb$dens), order(-abs(rs))[1:3]))
-  xs <- range(log10(sb$dens))
-  list(show = as.integer(seq_len(nrow(sb)) %in% k),
-       fx = 10^xs, fy = as.numeric(coef(m)[1] + coef(m)[2] * xs))
+  c(list(show = as.integer(seq_len(nrow(sb)) %in% k)), fitline(m))
 }
 A <- mk(PAN[[1]]$y); B <- mk(PAN[[2]]$y)
 cat(paste0('
@@ -474,10 +504,12 @@ cat(paste0('
 <script>
 (function(){
 const D=', jstr(sb$usps), ',NM=', jstr(sb$state), ',X=', jnum(round(sb$dens, 2)), ';
-const PAN=[{y:', jnum(sb$pct_land), ',lab:"% of land unoccupied",r:', FV("land_r_log"),
-',show:', jnum(A$show), ',fx:', jnum(round(A$fx, 3)), ',fy:', jnum(round(A$fy, 2)), '},
-           {y:', jnum(sb$pct_zero), ',lab:"% of blocks empty",r:', FV("dens_r_log"),
-',show:', jnum(B$show), ',fx:', jnum(round(B$fx, 3)), ',fy:', jnum(round(B$fy, 2)), '}];
+const PAN=[{y:', jnum(round(PAN[[1]]$y, 2)), ',lab:"% of land with residents on it",r:',
+  -FV("land_r_log"), ',show:', jnum(A$show), ',fx:', jnum(round(A$fx, 3)),
+  ',fy:', jnum(round(A$fy, 2)), '},
+           {y:', jnum(round(PAN[[2]]$y, 2)), ',lab:"% of blocks with residents",r:',
+  -FV("dens_r_log"), ',show:', jnum(B$show), ',fx:', jnum(round(B$fx, 3)),
+  ',fy:', jnum(round(B$fy, 2)), '}];
 const W=700,PH=214,GAP=40,M={t:16,r:18,b:30,l:52},H=2*PH+GAP+18;
 const wrap=d3.select("#zdens");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
@@ -519,8 +551,9 @@ PAN.forEach((p,pi)=>{
     all.forEach(g=>g.attr("fill-opacity",(q,j)=>j===i?1:0.25));
     tip.style("display","block").html(card(NM[i],[
       ["population density",f(Math.round(X[i]))+" / sq mi"],
-      ["land unoccupied",PAN[0].y[i].toFixed(1)+"%"],
-      ["blocks empty",PAN[1].y[i].toFixed(1)+"%"]]));
+      ["land with residents",PAN[0].y[i].toFixed(1)+"%"],
+      ["land with nobody",(100-PAN[0].y[i]).toFixed(1)+"%"],
+      ["blocks with nobody",(100-PAN[1].y[i]).toFixed(1)+"%"]]));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
     let px=ev.clientX-b.left+16;
     if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
@@ -539,15 +572,17 @@ svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-2).attr("text-anchor","mid
 
 ## ---- dens-static
 op <- par(mfrow = c(2, 1), mar = c(2.6, 4.6, 1.8, 1.2), oma = c(2.4, 0, 0, 0))
-for (p in list(list(v = sb$pct_land, lab = "% of land unoccupied", r = FV("land_r_log")),
-               list(v = sb$pct_zero, lab = "% of blocks empty",    r = FV("dens_r_log")))) {
+for (p in list(list(v = 100 - sb$pct_land, lab = "% of land with residents on it",
+                    r = -FV("land_r_log")),
+               list(v = 100 - sb$pct_zero, lab = "% of blocks with residents",
+                    r = -FV("dens_r_log")))) {
   m <- lm(p$v ~ log10(sb$dens)); rs <- resid(m)
   k <- unique(c(order(-p$v)[1:3], order(p$v)[1:2], which.max(sb$dens),
                 which.min(sb$dens), order(-abs(rs))[1:3]))
   plot(sb$dens, p$v, log = "x", pch = 19, col = RED, cex = 0.7,
        xlab = "", ylab = p$lab, las = 1, bty = "n", cex.axis = 0.8, cex.lab = 0.85)
-  xs <- range(log10(sb$dens))
-  lines(10^xs, coef(m)[1] + coef(m)[2] * xs, col = GREY, lwd = 1.8, lty = 2)
+  fl <- fitline(m)
+  lines(fl$fx, fl$fy, col = GREY, lwd = 1.8, lty = 2)
   text(sb$dens[k], p$v[k], sb$usps[k], pos = 4, cex = 0.55, col = "#4E5A63")
   mtext(sprintf("r = %.2f", p$r), side = 3, adj = 1, line = 0.2, cex = 0.75, col = "grey35")
 }
