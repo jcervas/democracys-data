@@ -192,6 +192,7 @@ TIPCSS <- '<style>
   border:1px solid #CBD3D8;border-radius:4px;background:#fff;color:#12181D;
   cursor:pointer;z-index:4;user-select:none}
 .zmap-btn:hover{background:#F1F4F6}
+.zmap-icon{padding:4px 8px;font-size:15px;line-height:1.1}
 #zmap:fullscreen{background:#fff;display:flex;align-items:center;
   justify-content:center;padding:0}
 #zmap:fullscreen svg{max-height:100vh;max-width:100vw;width:auto;height:auto}
@@ -238,7 +239,7 @@ jarr <- function(keys, lst) paste0("[", paste(vapply(keys, function(k)
 cat(paste0(TIPCSS, '
 <div id="zmap" style="position:relative;margin:1em 0">
 <div id="zmap-back" class="zmap-btn" style="left:0;display:none">&#8592; the whole country</div>
-<div id="zmap-full" class="zmap-btn" style="right:0">&#9974; full screen</div>
+<div id="zmap-full" class="zmap-btn zmap-icon" style="right:0" title="Full screen" aria-label="Full screen">&#9974;</div>
 </div>
 <script src="../../_lib/d3.v7.min.js"></script>
 <script>
@@ -327,8 +328,12 @@ full.on("click",ev=>{ ev.stopPropagation();
   if(document.fullscreenElement) document.exitFullscreen();
   else if(el.requestFullscreen) el.requestFullscreen();
 });
-d3.select(document).on("fullscreenchange.zmap",()=>
-  full.html(document.fullscreenElement?"&#10005; exit full screen":"&#9974; full screen"));
+d3.select(document).on("fullscreenchange.zmap",()=>{
+  const on=!!document.fullscreenElement;
+  full.html(on?"&#10005;":"&#9974;")
+      .attr("title",on?"Exit full screen":"Full screen")
+      .attr("aria-label",on?"Exit full screen":"Full screen");
+});
 d3.select(window).on("keydown.zmap",ev=>{ if(ev.key==="Escape") show(-1); });
 })();
 </script>
