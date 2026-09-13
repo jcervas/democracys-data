@@ -125,7 +125,7 @@ ht <- which(tile$up & tile$hostile_turf)
 rect(tile$col[ht] - 0.46, tile$row[ht] - 0.46,
      tile$col[ht] + 0.46, tile$row[ht] + 0.46, border = "#111111", lwd = 2.4)
 text(tile$col, tile$row - 0.14, tile$state, cex = 0.72, font = 2,
-     col = ifelse(tile$up, "white", "#AAAAAA"))
+     col = ifelse(tile$up, "white", "#76838C"))
 text(tile$col[tile$up], tile$row[tile$up] + 0.22,
      paste(tile$letter[tile$up], tile$lab[tile$up]), cex = 0.5, col = "white")
 kt <- c(paste0("Republican seat up (", sum(sen$party == "Republican"), ")"),
@@ -189,11 +189,11 @@ g.selectAll("rect").data(D).join("rect")
       (d.h?"<br><i>hostile turf</i>":""))
       .style("left",Math.min(ev.offsetX+14,W-250)+"px").style("top",(ev.offsetY-10)+"px"); })
   .on("mouseleave",()=>tip.style("opacity",0));
-g.selectAll("text.s").data(D).join("text").attr("class","s")
+g.selectAll("text.s").data(D).join("text").attr("class","s on-mark")
   .attr("x",d=>px(d)+cell/2).attr("y",d=>py(d)+cell/2+1)
   .attr("text-anchor","middle").attr("font-size","13px").attr("font-weight","700")
   .attr("pointer-events","none")
-  .attr("fill",d=>d.up?"#fff":"#AAA").text(d=>d.st);
+  .attr("fill",d=>d.up?"#fff":"#777").text(d=>d.st);
 g.selectAll("text.m").data(D.filter(d=>d.up)).join("text").attr("class","m")
   .attr("x",d=>px(d)+cell/2).attr("y",d=>py(d)+cell/2+15)
   .attr("text-anchor","middle").attr("font-size","10px").attr("fill","#fff")

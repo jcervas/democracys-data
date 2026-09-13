@@ -335,6 +335,14 @@ box(bty = "l")
 # The classes carry the same five hues the static twin prints.
 fb <- data.frame(g = bar9nm, v = as.numeric(bar9), n = bar9n,
                  stringsAsFactors = FALSE)
+  # The label names the dashed line, so it belongs beside it -- but the line
+  # runs behind the tallest bars, and a label on a bar fails in one theme or
+  # the other, because no ink clears 3:1 on that green and the green itself
+  # differs between the themes. Anchor it over the first pair of adjacent
+  # groups whose bars stop short of the line, where the space is page.
+  .below  <- bar9 < base_white
+  .pair   <- which(head(.below, -1) & tail(.below, -1))
+  lbl_at  <- bar9nm[if (length(.pair)) .pair[1] else which.min(bar9)]
 dd_fig("flr", "bar", fb,
   height = 380,
   x = list(field = "g"),
@@ -344,7 +352,7 @@ dd_fig("flr", "bar", fb,
   valueLabels = TRUE,
   annotations = list(
     dd_annot_hline(base_white, class = "zero"),
-    dd_annot_text(bar9nm[1], base_white + 4, sprintf(
+    dd_annot_text(lbl_at, base_white + 4, sprintf(
       "guess “white” every time: %s%%", pc(base_white)), size = 12)),
   tip = dd_tip(c(v = "identified correctly", n = "voters"),
                fmt = c(v = "pct1", n = "comma"), title = "g"))

@@ -283,7 +283,7 @@ const yB=M.t+34,yW=H-M.b-34;
 svg.append("rect").attr("x",x(100)).attr("y",M.t-10).attr("width",x(112)-x(100))
   .attr("height",H-M.b-M.t+10).attr("fill","#f0f0f0");
 svg.append("text").attr("x",x(100)+5).attr("y",H-M.b-8).attr("font-size","11px")
-  .attr("fill","#666").text("impossible");
+  .attr("class","on-mark").attr("fill","#666").text("impossible");
 svg.append("g").attr("transform",`translate(0,${H-M.b})`)
   .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%%"));
 svg.append("text").attr("x",(W-M.r+M.l)/2).attr("y",H-10).attr("text-anchor","middle")

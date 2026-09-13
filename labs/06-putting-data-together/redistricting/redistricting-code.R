@@ -281,6 +281,22 @@ tsd <- data.frame(state = sc$state, dec = sc$dec, eg = sc$eg,
                   lbl = sc$state,
                   cls = ifelse(sc$eg < 0, "gop", "dem"),
                   stringsAsFactors = FALSE)
+  # A label prints just to the right of its own point, which is fine until
+  # ANOTHER state's dot is sitting in that space: the label then lands on a
+  # saturated fill, where no ink reaches 3:1 in both themes. `side` is the
+  # scatter's own remedy. Flip a label left only when the right is occupied
+  # and the left is not, so a flip cannot create the collision it is curing.
+  # How far the nearest other dot is, on one side, among those close enough in
+  # y to be at the label's height. Inf when that side is clear.
+  gap <- function(i, dir) {
+    dy <- diff(range(tsd$eg)) * 0.045
+    d  <- (tsd$dec - tsd$dec[i]) * dir
+    k  <- d > 0 & abs(tsd$eg - tsd$eg[i]) < dy
+    if (any(k)) min(d[k]) else Inf
+  }
+  gr <- vapply(seq_len(nrow(tsd)), gap, numeric(1), dir =  1)
+  gl <- vapply(seq_len(nrow(tsd)), gap, numeric(1), dir = -1)
+  tsd$side <- ifelse(gr < gl, "left", "right")
 dd_fig("ts", "scatter", tsd, d3 = FALSE,
   size = list(w = 760, h = 460),
   r = 5.5, opacity = 0.85,

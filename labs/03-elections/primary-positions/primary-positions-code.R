@@ -193,7 +193,10 @@ dd_fig("dst", "bar", B2,
   annotations = list(
     list(type = "text", x = MED, y = BC$candidates[BC$silent_on == MED] + 14,
          text = "median", anchor = "middle", weight = 600),
-    list(type = "text", x = 0, y = BC$candidates[BC$silent_on == 0] + 14,
+    # Anchored at x = 0 but running right across the next few bars, so it is
+    # lifted clear of the tallest of them rather than laid over the blue: red
+    # on that blue reaches only 2.4:1, and no ink passes on a mid-toned mark.
+    list(type = "text", x = 0, y = max(BC$candidates[BC$silent_on <= 3]) + 14,
          text = paste(NONE, "said something about all 14"),
          anchor = "start", class = "gop-txt", weight = 600, size = 10.5),
     list(type = "text", x = 14, y = BC$candidates[BC$silent_on == 14] + 14,
