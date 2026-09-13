@@ -85,6 +85,14 @@ BIGST <- .o$state[seq_len(NBIG)]
 andlist <- function(x) if (length(x) < 2) x else
   paste0(paste(utils::head(x, -1), collapse = ", "), " and ", utils::tail(x, 1))
 ST <- function(code) sb[sb$usps == code, ]      # one state's row, by postal code
+
+# Kansas and Utah are the same size and hold nearly the same number of people,
+# so the difference between them is not density. How much more of Utah has
+# nobody on it, and the largest state that gap would swallow whole -- both
+# computed, so the sentence in the text cannot go stale.
+KSUT  <- ST("UT")$zero_land_sqmi - ST("KS")$zero_land_sqmi
+.swal <- sb[sb$land_sqmi < KSUT, ]
+GAPST <- .swal$state[which.max(.swal$land_sqmi)]
 MOST    <- sb[which.max(sb$pct_zero), ]
 LEAST   <- sb[which.min(sb$pct_zero), ]
 
