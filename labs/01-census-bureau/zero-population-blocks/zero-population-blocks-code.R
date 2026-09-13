@@ -67,6 +67,19 @@ SMALL   <- SMALL[order(-SMALL$land_sqmi), ]
 RED  <- "#C41230"     # Carnegie red, the empty blocks
 GREY <- "#8d99ae"
 
+# Population bins. Widening toward the tail is what lets the whole range sit
+# on one honest axis: binned, the empty blocks are 1.4 times the tallest other
+# bar rather than eighteen times it, so nothing has to be logged or broken.
+BIN_LO  <- c(0, 1, 5, 10, 20, 50, 100, 250, 500, 1000)
+BIN_HI  <- c(0, 4, 9, 19, 49, 99, 249, 499, 999, Inf)
+BIN_LAB <- c("0", "1-4", "5-9", "10-19", "20-49", "50-99",
+             "100-249", "250-499", "500-999", "1,000+")
+BIN_N   <- mapply(function(a, b)
+  sum(hp$blocks[hp$pop >= a & hp$pop <= min(b, max(hp$pop))]), BIN_LO, BIN_HI)
+BIN_CUM <- round(100 * cumsum(BIN_N) / sum(BIN_N), 1)
+BIN_PCT <- round(100 * BIN_N / sum(BIN_N), 1)
+stopifnot(sum(BIN_N) == TOT)          # the bins must partition every block
+
 # Render every data.frame in this document as a TABLE, not as code output.
 # A data.frame printed the ordinary way comes out as a "##"-prefixed block,
 # which reads as machinery rather than as a result.
@@ -116,6 +129,24 @@ statepaths <- function(d) {
   vapply(split(rings, owner), paste, character(1), collapse = "")
 }
 # a JSON array of quoted strings, and one of bare numbers
+# One card for all three figures: a white panel with a bold title, ruled
+# label/value rows and a muted footer. Emitted once, by the first figure.
+TIPCSS <- '<style>
+.zpb-tip{position:absolute;pointer-events:none;z-index:6;background:#fff;
+  color:#12181D;border-radius:6px;padding:11px 14px 9px;min-width:212px;
+  font:12px/1.35 inherit;white-space:nowrap;
+  box-shadow:0 6px 22px rgba(0,0,0,.20),0 1px 3px rgba(0,0,0,.12)}
+.zpb-tip h4{margin:0 0 7px;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.zpb-tip table{border-collapse:collapse;width:100%}
+.zpb-tip th{font-weight:400;color:#4E5A63;text-align:left;padding:3px 0;
+  font-size:11.5px}
+.zpb-tip td{text-align:right;padding:3px 0 3px 20px;font-weight:600;
+  font-variant-numeric:tabular-nums}
+.zpb-tip tr+tr th,.zpb-tip tr+tr td{border-top:1px solid #E7EAEC}
+.zpb-tip .foot{margin:8px -14px -9px;padding:7px 14px;border-top:1px solid #E7EAEC;
+  background:#F6F8F9;color:#76838C;font-size:11px;border-radius:0 0 6px 6px;
+  white-space:normal}
+</style>'
 jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
 jnum <- function(x) paste0("[", paste0(x, collapse = ","), "]")
 # base-R twin of the same idea: rings separated by NA, subtracted by evenodd
@@ -130,19 +161,21 @@ drawpolys <- function(d, col, border = NA, lwd = 0.3) {
 }
 
 ## ---- map-d3
-ZP <- polypaths(MZ)                     # the empty land, one path per polygon
-SP <- polypaths(MS)                     # state outlines, likewise
-HIT <- statepaths(MS)                   # one path per STATE, for hovering
+ZP  <- polypaths(MZ)
+SP  <- polypaths(MS)
+HIT <- statepaths(MS)
 hf  <- names(HIT)
 i1  <- match(hf, sb$STATEFP); i2 <- match(hf, zlnd$STATEFP)
-cat(paste0('
+PCTL <- round(100 * zlnd$zero_land_sqmi[i2] / sb$land_sqmi[i1], 1)
+cat(paste0(TIPCSS, '
 <div id="zmap" style="position:relative;margin:1em 0"></div>
 <script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
 const Z=', jstr(ZP), ',S=', jstr(SP), ',H_=', jstr(unname(HIT)), ';
 const NM=', jstr(sb$state[i1]), ',PO=', jnum(sb$pop[i1]), ',BL=', jnum(sb$blocks[i1]),
-',PZ=', jnum(sb$pct_zero[i1]), ',LA=', jnum(round(zlnd$zero_land_sqmi[i2])), ';
+',PZ=', jnum(sb$pct_zero[i1]), ',LA=', jnum(round(zlnd$zero_land_sqmi[i2])),
+',PL=', jnum(PCTL), ';
 const W=', FR$w, ',H=', FR$h, ';
 const wrap=d3.select("#zmap");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
@@ -157,29 +190,31 @@ svg.append("g").selectAll("path").data(S).join("path").attr("d",d=>d)
 // overwrite the very thing the map is drawn to show.
 const hi=svg.append("path").attr("fill","none").attr("stroke","#111")
   .attr("stroke-width",3).attr("pointer-events","none").style("display","none");
-const TIPCSS=`position:absolute;pointer-events:none;background:#fff;`
- +`border:1px solid #CBD3D8;border-radius:3px;padding:6px 9px;font:11.5px inherit;`
- +`color:#12181D;box-shadow:0 1px 4px rgba(0,0,0,.14);white-space:nowrap;z-index:5`;
-const row=(k,v)=>`<div style="display:flex;gap:16px;justify-content:space-between">`
- +`<span style="color:#4E5A63">${k}</span><b>${v}</b></div>`;
-const tip=wrap.append("div").attr("style",TIPCSS).style("display","none");
+const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
 const f=d3.format(",");
+const card=(t,rows,foot)=>`<h4>${t}</h4><table>`+
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+
+  `</table>`+(foot?`<div class="foot">${foot}</div>`:"");
+const place=(ev)=>{
+  const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+  let x=ev.clientX-b.left+16, y=ev.clientY-b.top+16;
+  if(x+t.width>b.width) x=ev.clientX-b.left-t.width-16;
+  if(y+t.height>b.height) y=Math.max(0,ev.clientY-b.top-t.height-16);
+  tip.style("left",x+"px").style("top",y+"px");
+};
 svg.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
   .attr("fill","transparent").attr("fill-rule","evenodd").style("cursor","pointer")
   .on("mousemove",function(ev,d){
     const i=H_.indexOf(d);
     hi.attr("d",d).style("display",null);
-    tip.style("display","block").html(
-      `<b style="display:block;margin-bottom:3px">${NM[i]}</b>`+
-      row("population",f(PO[i]))+row("census blocks",f(BL[i]))+
-      row("blocks with nobody",PZ[i].toFixed(1)+"%")+
-      row("unpopulated land",f(LA[i])+" sq mi"));
-    const b=wrap.node().getBoundingClientRect();
-    let x=ev.clientX-b.left+14, y=ev.clientY-b.top+14;
-    const t=tip.node().getBoundingClientRect();
-    if(x+t.width>b.width) x=ev.clientX-b.left-t.width-14;
-    if(y+t.height>b.height) y=b.height-t.height-4;
-    tip.style("left",x+"px").style("top",Math.max(0,y)+"px");
+    tip.style("display","block").html(card(NM[i],[
+      ["population",f(PO[i])],
+      ["census blocks",f(BL[i])],
+      ["blocks with nobody",PZ[i].toFixed(1)+"%"],
+      ["unpopulated land",f(LA[i])+" sq mi"],
+      ["share of state land",PL[i].toFixed(1)+"%"]],
+      "Land area only; blocks that are all water are not drawn."));
+    place(ev);
   })
   .on("mouseleave",()=>{tip.style("display","none");hi.style("display","none");});
 })();
@@ -195,93 +230,100 @@ drawpolys(MZ, RED)
 drawpolys(MS, NA, border = GREY, lwd = 0.3)
 
 ## ---- hist-d3
-# Zero is not a bar here. It is more than eighteen times the tallest of the
-# others, and the only ways to seat it beside them -- a logarithmic axis, or a
-# broken one -- both break the thing a bar is for, which is that its length is
-# its value. So the count that this brief is about is given as a number, and
-# the axis is left honest for the blocks that do have somebody on them.
-hh <- hp[hp$pop >= 1 & hp$pop <= 100, ]
+# Binned, so the whole range fits one axis that starts at zero. Bars are counts
+# and their lengths are those counts; the panel below is the running share,
+# which is what answers "how small is a block, usually".
 cat(paste0('
 <div id="zhist" style="position:relative;margin:1em 0"></div>
 <script>
 (function(){
-const P=', jnum(hh$pop), ',B=', jnum(hh$blocks), ',TOT=', TOT, ',MED=', MEDINH, ';
-const W=700,H=330,M={t:74,r:14,b:40,l:64};
+const L=', jstr(BIN_LAB), ',N=', jnum(BIN_N), ',P=', jnum(BIN_PCT),
+',C=', jnum(BIN_CUM), ',TOT=', TOT, ';
+const W=700,HT=250,HB=120,GAP=34,H=HT+GAP+HB,M={l:64,r:16,t:12,b:26};
 const wrap=d3.select("#zhist");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
   .attr("style","max-width:100%;height:auto;font:12px inherit");
 const f=d3.format(",");
-// the headline count, as a number rather than a mark it would dwarf
-svg.append("text").attr("x",0).attr("y",30).attr("font-size","27px")
-  .attr("font-weight","700").attr("fill","', RED, '").text(f(', ZERO, '));
-svg.append("text").attr("x",0).attr("y",50).attr("font-size","11.5px")
-  .attr("fill","#4E5A63")
-  .text("blocks with nobody — ', pc(PZ), '% of every block in the country");
-const x=d3.scaleBand().domain(P).range([M.l,W-M.r]).padding(0.18);
-const y=d3.scaleLinear().domain([0,d3.max(B)]).nice().range([H-M.b,M.t]);
+const x=d3.scaleBand().domain(L).range([M.l,W-M.r]).padding(0.2);
+const y=d3.scaleLinear().domain([0,d3.max(N)]).nice().range([HT-M.b,M.t]);
 svg.append("g").attr("stroke","#76838C").attr("opacity",0.28)
   .selectAll("line").data(y.ticks(4)).join("line")
   .attr("x1",M.l).attr("x2",W-M.r).attr("y1",y).attr("y2",y);
-const bars=svg.append("g").selectAll("rect").data(B).join("rect")
-  .attr("x",(d,i)=>x(P[i])).attr("width",x.bandwidth())
-  .attr("y",d=>y(d)).attr("height",d=>y(0)-y(d))
-  .attr("fill","', GREY, '");
-// median of the inhabited blocks, the one landmark worth drawing
-svg.append("line").attr("x1",x(MED)+x.bandwidth()/2).attr("x2",x(MED)+x.bandwidth()/2)
-  .attr("y1",M.t-6).attr("y2",H-M.b).attr("stroke","#76838C")
-  .attr("stroke-dasharray","3,3");
-svg.append("text").attr("x",x(MED)+x.bandwidth()/2+5).attr("y",M.t+2)
-  .attr("font-size","10px").attr("fill","#4E5A63")
-  .text("median inhabited block: "+MED+" people");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
-  .call(d3.axisBottom(x).tickValues(P.filter(p=>p%10===0)).tickSizeOuter(0));
+const bars=svg.append("g").selectAll("rect").data(L).join("rect")
+  .attr("x",d=>x(d)).attr("width",x.bandwidth())
+  .attr("y",(d,i)=>y(N[i])).attr("height",(d,i)=>y(0)-y(N[i]))
+  .attr("fill",(d,i)=>i===0?"', RED, '":"', GREY, '");
+svg.append("g").attr("transform","translate(0,"+(HT-M.b)+")")
+  .call(d3.axisBottom(x).tickSizeOuter(0));
 svg.append("g").attr("transform","translate("+M.l+",0)")
   .call(d3.axisLeft(y).ticks(4).tickFormat(f).tickSizeOuter(0));
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-4)
-  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
-  .text("people counted in the block, 2020");
-svg.append("text").attr("transform","rotate(-90)").attr("x",-(M.t+H-M.b)/2)
+svg.append("text").attr("transform","rotate(-90)").attr("x",-(M.t+HT-M.b)/2)
   .attr("y",14).attr("text-anchor","middle").attr("font-size","11px")
   .attr("fill","#4E5A63").text("census blocks");
-const TIPCSS=`position:absolute;pointer-events:none;background:#fff;`
- +`border:1px solid #CBD3D8;border-radius:3px;padding:6px 9px;font:11.5px inherit;`
- +`color:#12181D;box-shadow:0 1px 4px rgba(0,0,0,.14);white-space:nowrap;z-index:5`;
-const row=(k,v)=>`<div style="display:flex;gap:16px;justify-content:space-between">`
- +`<span style="color:#4E5A63">${k}</span><b>${v}</b></div>`;
-const tip=wrap.append("div").attr("style",TIPCSS).style("display","none");
-bars.style("cursor","pointer")
+// running share
+const y2=d3.scaleLinear().domain([0,100]).range([H-M.b,HT+GAP]);
+svg.append("g").attr("stroke","#76838C").attr("opacity",0.28)
+  .selectAll("line").data([0,50,100]).join("line")
+  .attr("x1",M.l).attr("x2",W-M.r).attr("y1",y2).attr("y2",y2);
+const pts=L.map((d,i)=>[x(d)+x.bandwidth()/2,y2(C[i])]);
+svg.append("path").attr("fill","none").attr("stroke","', RED, '")
+  .attr("stroke-width",2)
+  .attr("d",d3.line()(pts));
+svg.append("g").selectAll("circle").data(L).join("circle")
+  .attr("cx",(d,i)=>pts[i][0]).attr("cy",(d,i)=>pts[i][1]).attr("r",3)
+  .attr("fill","', RED, '");
+svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
+  .call(d3.axisBottom(x).tickSizeOuter(0));
+svg.append("g").attr("transform","translate("+M.l+",0)")
+  .call(d3.axisLeft(y2).tickValues([0,50,100]).tickFormat(d=>d+"%").tickSizeOuter(0));
+svg.append("text").attr("transform","rotate(-90)").attr("x",-(HT+GAP+H-M.b)/2)
+  .attr("y",14).attr("text-anchor","middle").attr("font-size","11px")
+  .attr("fill","#4E5A63").text("running share");
+svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-2)
+  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
+  .text("people counted in the block, 2020");
+const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
+const card=(t,rows)=>`<h4>${t}</h4><table>`+
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`;
+// one hit target per bin, spanning both panels
+svg.append("g").selectAll("rect.hit").data(L).join("rect")
+  .attr("x",d=>x(d)-x.step()*0.1).attr("y",M.t)
+  .attr("width",x.step()).attr("height",H-M.b-M.t)
+  .attr("fill","transparent").style("cursor","pointer")
   .on("mousemove",function(ev,d){
-    const i=B.indexOf(d);
-    bars.attr("fill",(q,j)=>j===i?"', RED, '":"', GREY, '");
-    tip.style("display","block").html(
-      `<b style="display:block;margin-bottom:3px">${P[i]}${P[i]===1?" person":" people"}</b>`+
-      row("census blocks",f(d))+row("share of all blocks",(100*d/TOT).toFixed(2)+"%"));
-    const b=wrap.node().getBoundingClientRect();
-    let px=ev.clientX-b.left+14;
-    const t=tip.node().getBoundingClientRect();
-    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-14;
-    tip.style("left",px+"px").style("top",Math.max(0,ev.clientY-b.top-t.height-12)+"px");
+    const i=L.indexOf(d);
+    bars.attr("opacity",(q,j)=>j===i?1:0.45);
+    tip.style("display","block").html(card(
+      d==="0"?"Blocks with nobody":d+" people",
+      [["census blocks",f(N[i])],["share of all blocks",P[i].toFixed(1)+"%"],
+       ["this bin and below",C[i].toFixed(1)+"%"]]));
+    const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+    let px=ev.clientX-b.left+16;
+    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
+    tip.style("left",px+"px")
+       .style("top",Math.max(0,ev.clientY-b.top-t.height-14)+"px");
   })
-  .on("mouseleave",()=>{tip.style("display","none");bars.attr("fill","', GREY, '");});
+  .on("mouseleave",()=>{tip.style("display","none");bars.attr("opacity",1);});
 })();
 </script>
 '))
 
 ## ---- hist-static
-hh <- hp[hp$pop >= 1 & hp$pop <= 100, ]
-par(mar = c(4.2, 5.6, 3.6, 0.8))
-plot(hh$pop, hh$blocks, type = "h", lend = 1, lwd = 3, col = GREY,
-     xlab = "people counted in the block, 2020", ylab = "",
-     las = 1, bty = "n", yaxt = "n", xlim = c(0, 100))
-at <- pretty(c(0, max(hh$blocks)), 4)
-axis(2, at = at, labels = n(at), las = 1)
-mtext("census blocks", side = 2, line = 4.4, cex = 0.95)
-abline(v = MEDINH, lty = 3, col = "grey40")
-text(MEDINH + 2, max(hh$blocks) * 0.92, paste0("median inhabited block: ", MEDINH, " people"),
-     adj = 0, cex = 0.72, col = "grey30")
-mtext(n(ZERO), side = 3, line = 1.9, adj = 0, cex = 1.5, font = 2, col = RED)
-mtext(paste0("blocks with nobody — ", pc(PZ), "% of every block in the country"),
-      side = 3, line = 0.6, adj = 0, cex = 0.78, col = "grey30")
+op <- par(mfrow = c(2, 1), mar = c(2.2, 5.6, 0.6, 0.8), oma = c(2.6, 0, 0, 0))
+bp <- barplot(BIN_N, names.arg = BIN_LAB, col = ifelse(seq_along(BIN_N) == 1, RED, GREY),
+              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25)
+at <- pretty(c(0, max(BIN_N)), 4)
+axis(2, at = at, labels = n(at), las = 1, cex.axis = 0.8)
+mtext("census blocks", side = 2, line = 4.4, cex = 0.8)
+par(mar = c(2.2, 5.6, 1.4, 0.8))
+plot(bp, BIN_CUM, type = "o", pch = 19, cex = 0.7, lwd = 2, col = RED,
+     ylim = c(0, 100), xlim = range(bp) + c(-0.5, 0.5), axes = FALSE,
+     xlab = "", ylab = "")
+axis(1, at = bp, labels = BIN_LAB, las = 1, cex.axis = 0.58, tick = FALSE)
+axis(2, at = c(0, 50, 100), labels = paste0(c(0, 50, 100), "%"), las = 1, cex.axis = 0.8)
+mtext("running share", side = 2, line = 4.4, cex = 0.8)
+mtext("people counted in the block, 2020", side = 1, outer = TRUE, line = 1, cex = 0.85)
+par(op)
 
 ## ---- state-d3
 ss <- sb[order(sb$pct_zero), ]
@@ -291,42 +333,39 @@ cat(paste0('
 (function(){
 const N=', jstr(ss$state), ',V=', jnum(ss$pct_zero), ',BL=', jnum(ss$blocks),
 ',ZB=', jnum(ss$zero_blocks), ';
-const rowH=9,M={t:8,r:40,b:24,l:98},W=700,H=M.t+N.length*rowH+M.b;
+const rowH=11,M={t:8,r:40,b:24,l:84},W=700,H=M.t+N.length*rowH+M.b;
 const wrap=d3.select("#zstate");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;font:9px inherit");
+  .attr("style","max-width:100%;height:auto;font:7px inherit");
 const f=d3.format(",");
 const x=d3.scaleLinear().domain([0,d3.max(V)]).range([M.l,W-M.r]);
-const y=d3.scaleBand().domain(N).range([M.t,H-M.b]).padding(0.22);
+const y=d3.scaleBand().domain(N).range([M.t,H-M.b]).padding(0.24);
 const bars=svg.append("g").selectAll("rect").data(N).join("rect")
   .attr("x",M.l).attr("y",d=>y(d)).attr("height",y.bandwidth())
   .attr("width",(d,i)=>x(V[i])-M.l).attr("fill","', RED, '");
 svg.append("g").selectAll("text").data(N).join("text")
   .attr("x",M.l-5).attr("y",d=>y(d)+y.bandwidth()/2).attr("dy","0.34em")
-  .attr("text-anchor","end").attr("fill","#4E5A63").text(d=>d);
+  .attr("text-anchor","end").attr("font-size","7px").attr("fill","#4E5A63").text(d=>d);
 svg.append("g").selectAll("text").data(N).join("text")
   .attr("x",(d,i)=>x(V[i])+4).attr("y",d=>y(d)+y.bandwidth()/2).attr("dy","0.34em")
-  .attr("fill","#76838C").text((d,i)=>V[i].toFixed(1)+"%");
-svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
+  .attr("font-size","7px").attr("fill","#76838C").text((d,i)=>V[i].toFixed(1)+"%");
+svg.append("g").attr("transform","translate(0,"+(H-M.b)+")").attr("font-size","9px")
   .call(d3.axisBottom(x).ticks(6).tickFormat(d=>d+"%").tickSizeOuter(0));
-const TIPCSS=`position:absolute;pointer-events:none;background:#fff;`
- +`border:1px solid #CBD3D8;border-radius:3px;padding:6px 9px;font:11.5px inherit;`
- +`color:#12181D;box-shadow:0 1px 4px rgba(0,0,0,.14);white-space:nowrap;z-index:5`;
-const row=(k,v)=>`<div style="display:flex;gap:16px;justify-content:space-between">`
- +`<span style="color:#4E5A63">${k}</span><b>${v}</b></div>`;
-const tip=wrap.append("div").attr("style",TIPCSS).style("display","none");
+const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
+const card=(t,rows)=>`<h4>${t}</h4><table>`+
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`;
 bars.style("cursor","pointer")
   .on("mousemove",function(ev,d){
     const i=N.indexOf(d);
     bars.attr("opacity",(q,j)=>j===i?1:0.45);
-    tip.style("display","block").html(`<b style="display:block;margin-bottom:3px">${d}</b>`+
-      row("census blocks",f(BL[i]))+row("blocks with nobody",f(ZB[i]))+
-      row("share",V[i].toFixed(2)+"%"));
-    const b=wrap.node().getBoundingClientRect();
-    const t=tip.node().getBoundingClientRect();
-    let px=ev.clientX-b.left+14;
-    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-14;
-    tip.style("left",px+"px").style("top",Math.max(0,ev.clientY-b.top-t.height/2)+"px");
+    tip.style("display","block").html(card(d,[
+      ["census blocks",f(BL[i])],["blocks with nobody",f(ZB[i])],
+      ["share",V[i].toFixed(2)+"%"]]));
+    const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+    let px=ev.clientX-b.left+16;
+    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
+    tip.style("left",px+"px")
+       .style("top",Math.max(0,ev.clientY-b.top-t.height/2)+"px");
   })
   .on("mouseleave",()=>{tip.style("display","none");bars.attr("opacity",1);});
 })();
