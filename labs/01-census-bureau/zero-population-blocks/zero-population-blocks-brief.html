@@ -1472,7 +1472,7 @@ font-variant-numeric: tabular-nums; color: var(--ink);
 <h3 class="subtitle">Building a national map of the census blocks that
 hold no people</h3>
 <h4 class="author">Democracy’s Data</h4>
-<h4 class="date">Last updated September 13, 2026 at 6:12p EDT</h4>
+<h4 class="date">Last updated September 13, 2026 at 6:27p EDT</h4>
 
 
 <div id="TOC">
@@ -1687,9 +1687,14 @@ point is not the map at the end; it is that you could rebuild it.</p>
 <p><strong>TIGER/Line.</strong> The Bureau’s <a href="https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html">TIGER/Line</a>
 files are its digital outlines of every census unit. The layer used here
 is <code>TABBLOCK20</code>, the 2020 tabulation blocks, one zipped
-shapefile per state. They are large – about 10 GB for the country – so
-the build downloads them rather than keeping them beside this
-chapter.</p>
+shapefile per state. There is no national file. To build the map you
+download each state separately, fifty-two files in all, about 10 GB for
+the country. The build works through them one at a time, unzipping a
+state, reading the handful of columns it needs, and deleting what it
+unzipped before starting the next, so it never has more than one state
+open at once. It keeps the downloaded archives, because re-running is
+then free. If space is short they can be deleted once the tables are
+built; nothing downstream reads them again.</p>
 <p><strong>The count rides along with the shape.</strong> Every block
 record in those files carries a <code>POP20</code> field: the total
 population the 2020 decennial census counted in that block. It is not an
@@ -1699,19 +1704,6 @@ published in the <a href="https://www.census.gov/programs-surveys/decennial-cens
 receives for redistricting. The Bureau prepends it to the geography, so
 a block’s boundary and its population arrive together, in one file,
 already joined.</p>
-<p>That is the whole data step. There is no second source to fetch, no
-key to register, and no join to get wrong – and a join on a
-fifteen-character block identifier is the commonest way this work goes
-wrong, because an identifier read as a number becomes
-<code>1.3121e+14</code> and loses its leading zero. Nothing here has to
-read one.</p>
-<p>Three properties make this the right count. It is complete rather
-than sampled, so there are no margins of error below and no allowance
-for how far off an estimate could be, because nothing is estimated. Its
-unit, the census block, is the smallest the Bureau publishes, so
-everything larger can be built out of it. And it is the operative number
-rather than an academic one: it is what district maps are drawn
-from.</p>
 <p>The same counts are also served, one variable at a time, by the <a href="../census-api/census-api-brief.html">Census Data API</a>, which
 has a chapter of its own. For a map of every block in the country it is
 much the slower road: blocks cannot be asked for a whole state at once,
