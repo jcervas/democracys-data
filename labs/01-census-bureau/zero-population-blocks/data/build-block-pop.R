@@ -37,6 +37,13 @@ NAMES <- c("Alabama","Alaska","Arizona","Arkansas","California","Colorado",
   "Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee",
   "Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin",
   "Wyoming","Puerto Rico")
+# Postal codes, in the same order, so a scatter can label a point in the room
+# a point has.
+USPS <- c("AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL",
+  "IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV",
+  "NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX",
+  "UT","VT","VA","WA","WV","WI","WY","PR")
+stopifnot(length(FIPS) == length(NAMES), length(FIPS) == length(USPS))
 
 CAP   <- 1000L                     # top bucket is "CAP and over"
 tally <- integer(CAP + 1L)
@@ -67,7 +74,8 @@ for (i in seq_along(FIPS)) {
     bigA <- list(a = ar[ia], g = d$GEOID20[ia], p = pop[ia])
   ip <- which.max(pop); if (pop[ip] > bigP$p)
     bigP <- list(p = pop[ip], g = d$GEOID20[ip], a = ar[ip])
-  rows[[i]] <- data.frame(STATEFP = f, state = NAMES[i], blocks = length(pop),
+  rows[[i]] <- data.frame(STATEFP = f, state = NAMES[i], usps = USPS[i],
+                          blocks = length(pop),
                           zero_blocks = sum(pop == 0), pop = sum(pop),
                           land_sqmi = round(sum(ar) / M2MI, 1),
                           stringsAsFactors = FALSE)

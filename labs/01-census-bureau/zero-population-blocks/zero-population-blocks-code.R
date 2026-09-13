@@ -17,6 +17,7 @@ dd_derived(c("block_pop_hist.csv", "block_size.csv", "facts.csv", "map_frame.csv
 
 sb <- read.csv(file.path(D, "derived/state_blocks.csv"),
                colClasses = c(STATEFP = "character"), stringsAsFactors = FALSE)
+sb$dens <- sb$pop / sb$land_sqmi          # people per square mile of land
 hp <- read.csv(file.path(D, "derived/block_pop_hist.csv"), stringsAsFactors = FALSE)
 MZ <- read.csv(file.path(D, "derived/map_zero.csv"),   stringsAsFactors = FALSE)
 MS <- read.csv(file.path(D, "derived/map_states.csv"),
@@ -379,6 +380,90 @@ barplot(ss$pct_zero, horiz = TRUE, col = RED, border = NA, las = 1,
         names.arg = ss$state, cex.names = 0.42, cex.axis = 0.75,
         xlab = "", space = 0.28)
 mtext("blocks with nobody living on them (%)", side = 1, line = 2.6, cex = 0.95)
+
+## ---- dens-d3
+# Labelling all 52 would be a thicket, so the ones that carry the argument are
+# labelled and the rest are left to the hover: the extremes on each axis, and
+# the states furthest from the line, which is where the interesting failures of
+# the relationship are.
+dm  <- lm(pct_zero ~ log10(dens), data = sb)
+sb$resid <- resid(dm)
+keep <- unique(c(order(-sb$pct_zero)[1:3], order(sb$pct_zero)[1:3],
+                 which.max(sb$dens), which.min(sb$dens),
+                 order(-abs(sb$resid))[1:4]))
+sb$show <- seq_len(nrow(sb)) %in% keep
+xs <- range(log10(sb$dens))
+fit <- data.frame(x = xs, y = predict(dm, data.frame(dens = 10^xs)))
+cat(paste0('
+<div id="zdens" style="position:relative;margin:1em 0"></div>
+<script>
+(function(){
+const D=', jstr(sb$usps), ',NM=', jstr(sb$state), ',X=', jnum(round(sb$dens, 2)),
+',Y=', jnum(sb$pct_zero), ',SH=', jnum(as.integer(sb$show)),
+',FX=', jnum(round(10^fit$x, 3)), ',FY=', jnum(round(fit$y, 2)), ';
+const W=700,H=380,M={t:14,r:18,b:46,l:52};
+const wrap=d3.select("#zdens");
+const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
+  .attr("style","max-width:100%;height:auto;font:11px inherit");
+const f=d3.format(",");
+// Log x: the relationship lives in the orders of magnitude, not the levels.
+const x=d3.scaleLog().domain([1,d3.max(X)*1.3]).range([M.l,W-M.r]).nice();
+const y=d3.scaleLinear().domain([0,d3.max(Y)*1.08]).nice().range([H-M.b,M.t]);
+svg.append("g").attr("stroke","#76838C").attr("opacity",0.24)
+  .selectAll("line").data(y.ticks(5)).join("line")
+  .attr("x1",M.l).attr("x2",W-M.r).attr("y1",y).attr("y2",y);
+svg.append("line").attr("x1",x(FX[0])).attr("y1",y(FY[0]))
+  .attr("x2",x(FX[1])).attr("y2",y(FY[1]))
+  .attr("stroke","#76838C").attr("stroke-width",1.6).attr("stroke-dasharray","5,4");
+const dots=svg.append("g").selectAll("circle").data(D).join("circle")
+  .attr("cx",(d,i)=>x(X[i])).attr("cy",(d,i)=>y(Y[i])).attr("r",4.5)
+  .attr("fill","', RED, '").attr("fill-opacity",0.85).style("cursor","pointer");
+svg.append("g").selectAll("text").data(D.filter((d,i)=>SH[i])).join("text")
+  .attr("x",d=>x(X[D.indexOf(d)])+7).attr("y",d=>y(Y[D.indexOf(d)])+3.5)
+  .attr("font-size","9.5px").attr("fill","#4E5A63").text(d=>d);
+svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
+  .call(d3.axisBottom(x).ticks(5,"~s").tickSizeOuter(0));
+svg.append("g").attr("transform","translate("+M.l+",0)")
+  .call(d3.axisLeft(y).ticks(5).tickFormat(d=>d+"%").tickSizeOuter(0));
+svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-6)
+  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
+  .text("people per square mile of land (log scale)");
+svg.append("text").attr("transform","rotate(-90)").attr("x",-(M.t+H-M.b)/2)
+  .attr("y",13).attr("text-anchor","middle").attr("font-size","11px")
+  .attr("fill","#4E5A63").text("blocks with nobody (%)");
+const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
+const card=(t,rows)=>`<h4>${t}</h4><table>`+
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`;
+dots.on("mousemove",function(ev,d){
+    const i=D.indexOf(d);
+    dots.attr("fill-opacity",(q,j)=>j===i?1:0.3);
+    tip.style("display","block").html(card(NM[i],[
+      ["population density",f(Math.round(X[i]))+" / sq mi"],
+      ["blocks with nobody",Y[i].toFixed(1)+"%"]]));
+    const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+    let px=ev.clientX-b.left+16;
+    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
+    tip.style("left",px+"px")
+       .style("top",Math.max(0,ev.clientY-b.top-t.height-14)+"px");
+  })
+  .on("mouseleave",()=>{tip.style("display","none");dots.attr("fill-opacity",0.85);});
+})();
+</script>
+'))
+
+## ---- dens-static
+dm <- lm(pct_zero ~ log10(dens), data = sb)
+sb$resid <- resid(dm)
+keep <- unique(c(order(-sb$pct_zero)[1:3], order(sb$pct_zero)[1:3],
+                 which.max(sb$dens), which.min(sb$dens),
+                 order(-abs(sb$resid))[1:4]))
+par(mar = c(4.2, 4.6, 0.6, 1.2))
+plot(sb$dens, sb$pct_zero, log = "x", pch = 19, col = RED, cex = 0.8,
+     xlab = "people per square mile of land (log scale)",
+     ylab = "blocks with nobody (%)", las = 1, bty = "n", cex.axis = 0.85)
+xs <- range(log10(sb$dens))
+lines(10^xs, predict(dm, data.frame(dens = 10^xs)), col = GREY, lwd = 1.8, lty = 2)
+text(sb$dens[keep], sb$pct_zero[keep], sb$usps[keep], pos = 4, cex = 0.6, col = "#4E5A63")
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

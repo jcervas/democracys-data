@@ -137,5 +137,25 @@ facts <- rbind(
   fx("pct_under_10",     round(100 * sum(hp$blocks[hp$pop <= 10]) / sum(hp$blocks), 1),
                                                "share of blocks holding 10 people or fewer (%)")
 )
+# --- emptiness against density ----------------------------------------------
+# How much of a state's block emptiness its population density accounts for.
+# Reported on log density because that is the scale the relationship lives on;
+# the untransformed correlation is quoted too, because the gap between the two
+# is the point.
+sb$dens <- sb$pop / sb$land_sqmi
+r_log <- cor(log10(sb$dens), sb$pct_zero)
+r_raw <- cor(sb$dens, sb$pct_zero)
+dc    <- sb[sb$state == "District of Columbia", ]
+nodc  <- sb[sb$state != "District of Columbia", ]
+facts <- rbind(facts,
+  fx("dens_r_log",  round(r_log, 3), "corr, log10 density vs % blocks empty"),
+  fx("dens_r2_log", round(r_log^2, 2), "the same, as R squared"),
+  fx("dens_r_raw",  round(r_raw, 3), "corr on untransformed density"),
+  fx("dens_r_nodc", round(cor(log10(nodc$dens), nodc$pct_zero), 3),
+                    "corr on log10 density, excluding DC"),
+  fx("dc_density",  round(dc$dens),  "DC population per square mile of land"),
+  fx("dc_pct_zero", dc$pct_zero,     "DC blocks with nobody (%)"),
+  fx("dens_max",    round(max(sb$dens)), "highest state density (per sq mi)"),
+  fx("dens_min",    round(min(sb$dens), 1), "lowest state density (per sq mi)"))
 write.csv(facts, file.path(D, "facts.csv"), row.names = FALSE)
 cat("wrote facts.csv\n")
