@@ -401,7 +401,7 @@ KUL4 <- vapply(KU, function(f) sprintf("%s blocks · %s acres each",
 
 ## ---- ksut-d3
 cat(paste0('
-<div id="zksut" style="margin:1em 0"></div>
+<div id="zksut" style="margin:1em auto;max-width:560px"></div>
 <script>
 (function(){
 const P=[', paste(vapply(seq_along(KU), function(i) paste0(
@@ -423,8 +423,8 @@ P.forEach((p,i)=>{
     .attr("fill","#F4F6F7").attr("fill-rule","evenodd")
     .attr("stroke","', GREY, '").attr("stroke-width",7);
   svg.append("g").selectAll("circle").data(p.dx).join("circle")
-    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",9)
-    .attr("fill","#12181D").attr("fill-opacity",0.34);
+    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",5)
+    .attr("fill","#12181D").attr("fill-opacity",0.22);
   svg.append("g").selectAll("path").data(p.s2).join("path").attr("d",d=>d)
     .attr("fill","#ffffff").attr("fill-rule","evenodd");
   svg.append("g").selectAll("path").data(p.z).join("path").attr("d",d=>d)
@@ -436,7 +436,7 @@ P.forEach((p,i)=>{
   T(p.cx,PHT+250,L3[i],195,700,"', RED, '");
   T(p.cx,PHT+450,L4[i],175,400,"#4E5A63");
 });
-T(0,-60,"WHERE THE PEOPLE ARE \\u2014 one dot for 500 residents",180,700,"#4E5A63","start");
+T(0,-60,"WHERE THE PEOPLE ARE \\u2014 one dot for 25 residents",180,700,"#4E5A63","start");
 T(0,RH+GAPY-110,"WHERE NOBODY LIVES \\u2014 blocks with no residents",180,700,"#4E5A63","start");
 })();
 </script>
@@ -446,7 +446,7 @@ T(0,RH+GAPY-110,"WHERE NOBODY LIVES \\u2014 blocks with no residents",180,700,"#
 # ONE plot, not a grid of panels: with mfrow and asp = 1 R fits each panel to
 # its own limits, and two states of different proportions would then come out
 # at two different scales, destroying the only claim this figure makes.
-par(mar = c(3.0, 0.3, 3.0, 0.3))
+par(mar = c(3.6, 0.3, 4.0, 0.3))
 plot(NA, xlim = c(0, PWT), ylim = c(PHT, 0), asp = 1, axes = FALSE,
      xlab = "", ylab = "")
 U <- PHT / 100                                  # one percent of the figure
@@ -454,26 +454,19 @@ for (i in seq_along(KU)) {
   f <- KU[i]; p <- KUP[[i]]
   s1 <- .sh(MS[MS$st == f, ], i, 1); s2 <- .sh(MS[MS$st == f, ], i, 2)
   drawpolys(s1, "#F4F6F7", border = GREY, lwd = 0.5)
-  points(p$dot$x, p$dot$y, pch = 16, cex = 0.095, col = "#12181D57")
+  points(p$dot$x, p$dot$y, pch = 16, cex = 0.035, col = "#12181D38")
   drawpolys(s2, "#ffffff")
   drawpolys(.sh(MZ[MZ$st == f, ], i, 2), RED)
   drawpolys(s2, NA, border = GREY, lwd = 0.5)
-  text(p$cx, -5.0 * U, KUL1[i], font = 2, cex = 0.60, xpd = NA)
-  text(p$cx, -3.4 * U, KUL2[i], cex = 0.50, col = "#4E5A63", xpd = NA)
-  text(p$cx, PHT + 2.1 * U, KUL3[i], font = 2, cex = 0.52, col = RED, xpd = NA)
-  text(p$cx, PHT + 3.7 * U, KUL4[i], cex = 0.46, col = "#4E5A63", xpd = NA)
+  text(p$cx, -7.4 * U, KUL1[i], font = 2, cex = 0.46, xpd = NA)
+  text(p$cx, -4.8 * U, KUL2[i], cex = 0.38, col = "#4E5A63", xpd = NA)
+  text(p$cx, PHT + 2.6 * U, KUL3[i], font = 2, cex = 0.40, col = RED, xpd = NA)
+  text(p$cx, PHT + 5.2 * U, KUL4[i], cex = 0.35, col = "#4E5A63", xpd = NA)
 }
-# The plate is sized in figure units, not from strheight: a single line's
-# height in user coordinates is small enough here that padding derived from it
-# collapsed the plate to a hairline and hid the white text inside it.
-band <- function(y, txt, cex = 0.5) {
-  w <- strwidth(txt, cex = cex, font = 2)
-  rect(0, y - 1.7 * U, w + 1.5 * U, y + 1.7 * U, col = RED, border = NA, xpd = NA)
-  text(0.75 * U, y, txt, adj = c(0, 0.5), cex = cex, col = "#ffffff",
-       font = 2, xpd = NA)
-}
-band(-0.6 * U, "WHERE THE PEOPLE ARE — one dot for 500 residents")
-band(RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents")
+text(0, -1.5 * U, "WHERE THE PEOPLE ARE — one dot for 25 residents",
+     adj = 0, cex = 0.44, col = "#4E5A63", font = 2, xpd = NA)
+text(0, RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents",
+     adj = 0, cex = 0.44, col = "#4E5A63", font = 2, xpd = NA)
 
 ## ---- hist-d3
 # Binned, so the whole range fits one axis that starts at zero. Bars are counts

@@ -9,8 +9,8 @@
 #
 # Two details decide whether the picture is honest.
 #
-# Dots are allocated PROBABILISTICALLY. At one dot per 500 people, a rural
-# block of 20 rounds to zero, and rounding every such block to zero would
+# Dots are allocated PROBABILISTICALLY. Kansas's median inhabited block holds
+# eleven people, so at any sensible dot value most blocks round to zero, and rounding every such block to zero would
 # empty out exactly the thinly-settled countryside the figure exists to show.
 # Each block instead gets floor(pop/PER) dots plus one more with probability
 # equal to the remainder, which preserves the state total in expectation and
@@ -26,7 +26,8 @@ suppressPackageStartupMessages({ library(foreign); library(sf) })
 
 TIG <- Sys.getenv("TIGER_DIR", "raw/tiger")
 D   <- Sys.getenv("DERIVED", "derived")
-PER <- 500L                                   # people per dot
+PER <- 25L                                    # people per dot
+MINPOP <- 2L                                  # a lone resident hosts no dot
 set.seed(20200401)                            # census day; any fixed seed does
 KU  <- c("20", "49")
 
@@ -41,7 +42,12 @@ out <- do.call(rbind, lapply(KU, function(f) {
         files = grep("[.]dbf$", unzip(zip, list = TRUE)$Name, value = TRUE))
   d <- read.dbf(list.files(work, pattern = "[.]dbf$", full.names = TRUE)[1],
                 as.is = TRUE)
-  pop <- as.numeric(d$POP20); d <- d[pop > 0, ]; pop <- pop[pop > 0]
+  # A dot stands for PER people drawn from the neighbourhood, so it should not
+  # be planted on a block holding one person. Those blocks are 4.2% of the
+  # inhabited ones and 0.105% of the population, so barring them from the
+  # lottery costs a rounding error and stops the map asserting a settlement
+  # where there is a single household.
+  pop <- as.numeric(d$POP20); keep <- pop >= MINPOP; d <- d[keep, ]; pop <- pop[keep]
   lat <- as.numeric(d$INTPTLAT20); lon <- as.numeric(d$INTPTLON20)
   rad <- sqrt(as.numeric(d$ALAND20) / pi)      # metres
 
