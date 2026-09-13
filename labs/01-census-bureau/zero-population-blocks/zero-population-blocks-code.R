@@ -155,6 +155,17 @@ onepath <- function(X, Y) {
   sep <- c("", ifelse(substr(seg[-1], 1, 1) == "-", "", " "))
   paste0("M", X[1], ",", Y[1], "l", paste0(sep, seg, collapse = ""), "Z")
 }
+# County borders are open lines, not rings: closing them with Z would draw a
+# segment straight back to the start of each border.
+linepaths <- function(d) {
+  k <- interaction(d$poly, d$ring, drop = TRUE)
+  segs <- vapply(split(d, k), function(z) {
+    p <- onepath(z$x, z$y)
+    substr(p, 1, nchar(p) - 1)                 # drop the trailing Z
+  }, character(1))
+  owner <- vapply(split(d, k), function(z) as.character(z$poly[1]), character(1))
+  vapply(split(segs, owner), paste, character(1), collapse = "")
+}
 polypaths <- function(d) {
   k <- interaction(d$poly, d$ring, drop = TRUE)
   rings <- vapply(split(d, k), function(z) onepath(z$x, z$y), character(1))
@@ -172,18 +183,18 @@ statepaths <- function(d) {
 # label/value rows and a muted footer. Emitted once, by the first figure.
 TIPCSS <- '<style>
 .zpb-tip{position:absolute;pointer-events:none;z-index:6;background:#fff;
-  color:#12181D;border-radius:7px;padding:0;min-width:236px;
+  color:#12181D;border-radius:7px;padding:0;white-space:nowrap;
   font:12px/1.4 inherit;box-shadow:0 8px 28px rgba(0,0,0,.22),0 1px 3px rgba(0,0,0,.12)}
-.zpb-tip h4{margin:0;padding:11px 15px 9px;font-size:15.5px;font-weight:700;
+  .zpb-tip h4{margin:0;padding:10px 14px 8px;font-size:15.5px;font-weight:700;
   letter-spacing:-.012em;line-height:1.2}
 /* The rules are on the ROW, drawn edge to edge, rather than on the cells --
    a border on a padded cell stops where the padding starts and the line
    arrives short of the card. */
-.zpb-tip table{border-collapse:collapse;width:100%;table-layout:auto}
+.zpb-tip table{border-collapse:collapse;table-layout:auto}
 .zpb-tip tr{border-top:1px solid #E7EAEC}
-.zpb-tip th{font-weight:400;color:#4E5A63;text-align:left;
-  padding:6px 8px 6px 15px;font-size:11.5px;white-space:nowrap}
-.zpb-tip td{text-align:right;padding:6px 15px 6px 8px;font-weight:600;
+  .zpb-tip th{font-weight:400;color:#4E5A63;text-align:left;
+  padding:5px 20px 5px 14px;font-size:11.5px;white-space:nowrap}
+  .zpb-tip td{text-align:right;padding:5px 14px 5px 0;font-weight:600;
   font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums}
 .zpb-tip .foot{padding:7px 15px 8px;border-top:1px solid #E7EAEC;
   background:#F6F8F9;color:#76838C;font-size:11px;line-height:1.35;
@@ -229,7 +240,7 @@ SP  <- polypaths(MS)
 HIT <- statepaths(MS)
 OVP <- polypaths(MOV)                           # the country, drawn coarse
 BYS <- lapply(split(MZ,  MZ$st),  polypaths)    # per state, drawn fine
-CTY <- lapply(split(MCT, MCT$st), polypaths)    # county lines, per state
+CTY <- lapply(split(MCT, MCT$st), linepaths)    # county lines, per state
 hf  <- names(HIT)
 i1  <- match(hf, sb$STATEFP); i2 <- match(hf, zlnd$STATEFP)
 BX  <- bx[match(hf, bx$st), ]
@@ -304,13 +315,11 @@ svg.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
     const i=H_.indexOf(d);
     if(sel>=0&&i!==sel) return;
     tip.style("display","block").html(card(NM[i],[
-      ["population",f(PO[i])],
-      ["land area",f(AR[i])+" sq mi"],
-      ["density",f(DN[i])+" / sq mi"],
-      ["census blocks",f(BL[i])],
-      ["blocks with nobody",PZ[i].toFixed(1)+"%"],
-      ["unpopulated land",f(LA[i])+" sq mi"],
-      ["share of state land",PL[i].toFixed(1)+"%"]],
+      ["Population",f(PO[i])],
+      ["Land area",f(AR[i])+" sq mi"],
+      ["Land with no residents",f(LA[i])+" sq mi ("+PL[i].toFixed(1)+"%)"],
+      ["Census blocks",f(BL[i])],
+      ["Density",f(DN[i])+" per sq mi"]],
       sel>=0?"County lines shown for bearings. Land area only; blocks that are all water are not drawn."
             :"Click to zoom to "+NM[i]+"."));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
@@ -525,8 +534,8 @@ svg.append("g").selectAll("rect.hit").data(L).join("rect")
     bars.attr("opacity",(q,j)=>j===i?1:0.45);
     tip.style("display","block").html(card(
       d==="0"?"Blocks with nobody":d+" people",
-      [["census blocks",f(N[i])],["share of all blocks",P[i].toFixed(1)+"%"],
-       ["this bin and below",C[i].toFixed(1)+"%"]]));
+      [["Census blocks",f(N[i])],["Share of all blocks",P[i].toFixed(1)+"%"],
+       ["This bin and below",C[i].toFixed(1)+"%"]]));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
     let px=ev.clientX-b.left+16;
     if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
@@ -589,8 +598,9 @@ bars.style("cursor","pointer")
     const i=N.indexOf(d);
     bars.attr("opacity",(q,j)=>j===i?1:0.45);
     tip.style("display","block").html(card(d,[
-      ["census blocks",f(BL[i])],["blocks with nobody",f(ZB[i])],
-      ["share",V[i].toFixed(2)+"%"]]));
+      ["Share of its blocks",V[i].toFixed(2)+"%"],
+      ["Blocks with no residents",f(ZB[i])],
+      ["Census blocks",f(BL[i])]]));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
     let px=ev.clientX-b.left+16;
     if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
@@ -675,10 +685,10 @@ PAN.forEach((p,pi)=>{
     const i=D.indexOf(d);
     all.forEach(g=>g.attr("fill-opacity",(q,j)=>j===i?1:0.25));
     tip.style("display","block").html(card(NM[i],[
-      ["population density",f(Math.round(X[i]))+" / sq mi"],
-      ["land with residents",PAN[0].y[i].toFixed(1)+"%"],
-      ["land with nobody",(100-PAN[0].y[i]).toFixed(1)+"%"],
-      ["blocks with nobody",(100-PAN[1].y[i]).toFixed(1)+"%"]]));
+      ["Land with residents",PAN[0].y[i].toFixed(1)+"%"],
+      ["Blocks with residents",PAN[1].y[i].toFixed(1)+"%"],
+      ["Land with no residents",(100-PAN[0].y[i]).toFixed(1)+"%"],
+      ["Population density",f(Math.round(X[i]))+" per sq mi"]]));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
     let px=ev.clientX-b.left+16;
     if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;

@@ -81,22 +81,65 @@ ovf$poly <- paste0("o_", ovf$poly)
 write.csv(ovf, file.path(D, "map_overview.csv"), row.names = FALSE)
 cat(sprintf("  overview: %s vertices\n", format(nrow(ovf), big.mark = ",")))
 
+# The states to build, taken from what the dissolve step actually produced.
+files <- sort(list.files(SRC, pattern = "^zero_pop_[0-9]{2}\\.geojson$",
+                         full.names = TRUE))
+FIPS  <- sub(".*zero_pop_([0-9]{2})\\.geojson$", "\\1", files)
+
 # --- county lines, for bearings inside a state ------------------------------
+# Drawn as strokes, never filled, so they do not need to be polygons -- and as
+# polygons they are mostly duplicate: 77% of their points lie on a boundary
+# that two counties share, and every one of those boundaries gets drawn twice.
+# -innerlines returns each shared boundary once, which halves the layer.
+#
+# Run per state rather than nationally, so that the borders a state shares
+# with its neighbours are left out too. Those are already drawn, once, by the
+# state outline that sits over the top of everything.
 cb <- file.path(dirname(SRC), "cb_2020_us_county_500k.zip")
 if (!file.exists(cb))
   download.file(paste0("https://www2.census.gov/geo/tiger/GENZ2020/shp/",
                        "cb_2020_us_county_500k.zip"), cb, quiet = TRUE, mode = "wb")
 cw <- tempfile(); dir.create(cw); unzip(cb, exdir = cw)
-c1 <- tempfile(fileext = ".json"); c2 <- tempfile(fileext = ".json")
-ms("-i", shQuote(list.files(cw, pattern = "[.]shp$", full.names = TRUE)[1]),
-   "-proj albersusa -o", shQuote(c1), "format=geojson precision=1")
-ms("-i", shQuote(c1), "-simplify interval=400 -o", shQuote(c2),
+cshp <- list.files(cw, pattern = "[.]shp$", full.names = TRUE)[1]
+c1 <- tempfile(fileext = ".json")
+ms("-i", shQuote(cshp), "-proj albersusa -simplify interval=400 -o", shQuote(c1),
    "format=geojson precision=1")
-cg  <- poly(c2, "STATEFP")
-cty <- flatten(cg, ids = cg$STATEFP)
-cty$poly <- paste0("c_", cty$poly)
+
+cty <- do.call(rbind, lapply(FIPS, function(f) {
+  ci <- tempfile(fileext = ".json")
+  ok <- tryCatch({
+    ms("-i", shQuote(c1), "-filter", shQuote(sprintf("STATEFP === '%s'", f)),
+       "-innerlines -o", shQuote(ci), "format=geojson precision=1"); TRUE
+  }, error = function(e) FALSE)
+  if (!ok || !file.exists(ci)) return(NULL)
+  g <- st_geometry(st_read(ci, quiet = TRUE))
+  g <- g[!st_is_empty(g)]                      # empties first, as everywhere
+  g <- st_collection_extract(g, "LINESTRING")  # it arrives as a collection
+  if (!length(g)) return(NULL)
+  # -innerlines already returns LineStrings, one per shared border, so there
+  # is nothing to cast. They are open lines, not rings: st_coordinates gives
+  # a single grouping column rather than the ring/polygon pair flatten() is
+  # written for, so they are laid out here instead.
+  cc <- st_coordinates(g)
+  # Key on EVERY level column, not just L1. A LineString layer gives one (L1
+  # = the feature); a MultiLineString layer gives two, and keying on L1 alone
+  # then groups by position-within-feature and welds every border together --
+  # which is how Texas's 250 county borders arrived as two.
+  key <- apply(cc[, -(1:2), drop = FALSE], 1, paste, collapse = "_")
+  d  <- do.call(rbind, lapply(unique(key), function(kk) {
+    i <- which(key == kk)
+    x <- as.integer(round((cc[i, "X"] - bb["xmin"]) * sc))
+    y <- as.integer(round((bb["ymax"] - cc[i, "Y"]) * sc))
+    k <- c(TRUE, x[-1] != x[-length(x)] | y[-1] != y[-length(y)])
+    x <- x[k]; y <- y[k]
+    if (length(x) < 2) return(NULL)
+    data.frame(poly = paste0("c_", f, "_", kk), ring = 1L, x = x, y = y, st = f)
+  }))
+  if (is.null(d) || !nrow(d)) return(NULL)
+  d
+}))
 write.csv(cty, file.path(D, "map_counties.csv"), row.names = FALSE)
-cat(sprintf("  counties: %s vertices, %s states\n",
+cat(sprintf("  counties: %s vertices, %s states (inner lines only)\n",
             format(nrow(cty), big.mark = ","), length(unique(cty$st))))
 
 files <- sort(list.files(SRC, pattern = "^zero_pop_[0-9]{2}\\.geojson$",
