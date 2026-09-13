@@ -346,18 +346,29 @@ drawpolys(MS,  NA, border = GREY, lwd = 0.3)
 # Kansas and Utah at ONE scale. They are within a percent of each other in
 # area, so a shared scale is not a courtesy, it is the argument: the two
 # panels are the same amount of ground.
+#
+# Each panel is cut to its OWN state, not to the taller of the two. Utah is
+# notched and fills 71% of its bounding box; Kansas is nearly rectangular and
+# fills 92%. Sizing both boxes to Utah left Kansas as a short band adrift in a
+# tall frame, which made the eye read a 33% difference in bounding box as a
+# difference in size when the drawn areas are within 3%.
 KU  <- c("20", "49")                            # Kansas, Utah
 KUN <- vapply(KU, function(f) sb$state[sb$STATEFP == f], character(1))
+KUA <- vapply(KU, function(f) sb$land_sqmi[sb$STATEFP == f], 0)
 .bb <- lapply(KU, function(f) { a <- MS[MS$st == f, ]
   c(min(a$x), min(a$y), max(a$x), max(a$y)) })
-PW <- max(vapply(.bb, function(b) b[3] - b[1], 0)) + 120
-PH <- max(vapply(.bb, function(b) b[4] - b[2], 0)) + 120
+PAD <- 90
+.w  <- vapply(.bb, function(b) b[3] - b[1], 0) + PAD
+PH  <- max(vapply(.bb, function(b) b[4] - b[2], 0)) + PAD
+PWT <- sum(.w)
+.ox <- c(0, cumsum(.w)[-length(.w)])
 KUP <- lapply(seq_along(KU), function(i) {
   f <- KU[i]; b <- .bb[[i]]
-  dx <- (i - 1) * PW - b[1] + (PW - (b[3] - b[1])) / 2
-  dy <- -b[2] + (PH - (b[4] - b[2])) / 2
+  dx <- .ox[i] - b[1] + PAD / 2
+  dy <- -b[2] + (PH - (b[4] - b[2])) / 2        # centred on a common line
   sh <- function(d) { d$x <- d$x + dx; d$y <- d$y + dy; d }
-  list(z = polypaths(sh(MZ[MZ$st == f, ])), s = polypaths(sh(MS[MS$st == f, ])))
+  list(z = polypaths(sh(MZ[MZ$st == f, ])), s = polypaths(sh(MS[MS$st == f, ])),
+       cx = .ox[i] + .w[i] / 2)
 })
 
 ## ---- ksut-d3
@@ -370,9 +381,11 @@ const P=[{z:', jstr(KUP[[1]]$z), ',s:', jstr(KUP[[1]]$s), '},
          {z:', jstr(KUP[[2]]$z), ',s:', jstr(KUP[[2]]$s), '}];
 const NM=', jstr(unname(KUN)), ',PCT=', jnum(vapply(KU, function(f)
   round(sb$pct_land[sb$STATEFP == f], 1), 0)), ';
-const PW=', PW, ',PH=', PH, ',TOP=', TOP, ',BOT=', BOT, ';
+const CX=', jnum(vapply(KUP, function(p) round(p$cx), 0)),
+',AR=', jstr(format(round(KUA), big.mark = ",")),
+',PWT=', PWT, ',PH=', PH, ',TOP=', TOP, ',BOT=', BOT, ';
 const svg=d3.select("#zksut").append("svg")
-  .attr("viewBox","0 "+(-TOP)+" "+(2*PW)+" "+(PH+TOP+BOT))
+  .attr("viewBox","0 "+(-TOP)+" "+PWT+" "+(PH+TOP+BOT))
   .attr("style","max-width:100%;height:auto;display:block;font:12px inherit");
 P.forEach((p,i)=>{
   svg.append("g").selectAll("path").data(p.s).join("path").attr("d",d=>d)
@@ -381,10 +394,10 @@ P.forEach((p,i)=>{
     .attr("fill","', RED, '").attr("fill-rule","evenodd");
   svg.append("g").selectAll("path").data(p.s).join("path").attr("d",d=>d)
     .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",6);
-  const cx=(i+0.5)*PW;
+  const cx=CX[i];
   svg.append("text").attr("x",cx).attr("y",-6).attr("text-anchor","middle")
-    .attr("font-size","210px").attr("font-weight","700").attr("fill","#12181D")
-    .attr("style","font-size:15px").text(NM[i]);
+    .attr("font-weight","700").attr("fill","#12181D")
+    .attr("style","font-size:15px").text(NM[i]+" \u00b7 "+AR[i]+" sq mi");
   svg.append("text").attr("x",cx).attr("y",PH+26).attr("text-anchor","middle")
     .attr("style","font-size:13px").attr("fill","', RED, '")
     .attr("font-weight","600").text(PCT[i].toFixed(1)+"% of its land has no residents");
@@ -394,23 +407,27 @@ P.forEach((p,i)=>{
 '))
 
 ## ---- ksut-static
-op <- par(mfrow = c(1, 2), mar = c(2.2, 0.4, 2.0, 0.4))
+# ONE plot, not two panels. With mfrow and asp = 1, R fits each panel to its
+# own limits, so two states of different proportions can come out at two
+# different scales -- which would quietly destroy the one claim this figure
+# makes. Drawing both into a single coordinate system cannot do that.
+par(mar = c(2.0, 0.4, 2.0, 0.4))
+plot(NA, xlim = c(0, PWT), ylim = c(PH, 0), asp = 1, axes = FALSE,
+     xlab = "", ylab = "")
 for (i in seq_along(KU)) {
   f <- KU[i]; b <- .bb[[i]]
   zz <- MZ[MZ$st == f, ]; ss <- MS[MS$st == f, ]
-  plot(NA, xlim = c(0, PW), ylim = c(PH, 0), asp = 1, axes = FALSE,
-       xlab = "", ylab = "")
-  dx <- -b[1] + (PW - (b[3] - b[1])) / 2; dy <- -b[2] + (PH - (b[4] - b[2])) / 2
+  dx <- .ox[i] - b[1] + PAD / 2; dy <- -b[2] + (PH - (b[4] - b[2])) / 2
   zz$x <- zz$x + dx; zz$y <- zz$y + dy; ss$x <- ss$x + dx; ss$y <- ss$y + dy
   drawpolys(ss, "#ffffff")
   drawpolys(zz, RED)
   drawpolys(ss, NA, border = GREY, lwd = 0.7)
-  mtext(KUN[i], side = 3, line = 0.3, cex = 0.95, font = 2)
-  mtext(sprintf("%.1f%% of its land has no residents",
-                sb$pct_land[sb$STATEFP == f]), side = 1, line = 0.6,
-        cex = 0.72, col = RED)
+  text(KUP[[i]]$cx, -PAD / 3, sprintf("%s \u00b7 %s sq mi", KUN[i],
+       format(round(KUA[i]), big.mark = ",")), font = 2, cex = 0.82, xpd = NA)
+  text(KUP[[i]]$cx, PH + PAD / 2,
+       sprintf("%.1f%% of its land has no residents", sb$pct_land[sb$STATEFP == f]),
+       col = RED, cex = 0.66, xpd = NA)
 }
-par(op)
 
 ## ---- hist-d3
 # Binned, so the whole range fits one axis that starts at zero. Bars are counts
