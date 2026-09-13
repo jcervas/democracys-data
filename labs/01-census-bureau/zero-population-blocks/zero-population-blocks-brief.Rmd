@@ -58,7 +58,7 @@ Simplification is the step that deserves suspicion, so here are its terms. The n
 
 Two things in steps 3 and 4 are easy to get wrong and were got wrong here first. Dissolving produces polygons with **holes** — a populated town inside an empty county is an interior ring — and a ring drawn on its own is painted as fill rather than subtracted, which turns Nevada into a solid rectangle. Both renderings below therefore draw one path per polygon with all of its rings together, under an even-odd fill rule. And rounding coordinates has to happen *after* projecting, not before: rounding longitude and latitude to whole numbers rounds them to whole degrees, and the country dissolves.
 
-The built tables are small and readable: [`state_blocks.csv`](data/derived/state_blocks.csv), one row per state; [`block_pop_hist.csv`](data/derived/block_pop_hist.csv), a count of blocks at each population from 0 to `r n(CAP)`; [`zero_land.csv`](data/derived/zero_land.csv), land area of the empty blocks by state; [`block_size.csv`](data/derived/block_size.csv), how big a block is and the two extremes; [`facts.csv`](data/derived/facts.csv), the national totals quoted in this text; and the figure geometry in [`map_zero.csv`](data/derived/map_zero.csv), [`map_states.csv`](data/derived/map_states.csv) and [`map_frame.csv`](data/derived/map_frame.csv), stored as integer figure coordinates so the web version and the print version draw the same shapes from the same numbers.
+The built tables are small and readable: [`state_blocks.csv`](data/derived/state_blocks.csv), one row per state; [`block_pop_hist.csv`](data/derived/block_pop_hist.csv), a count of blocks at each population from 0 to `r n(CAP)`; [`zero_land.csv`](data/derived/zero_land.csv), land area of the empty blocks by state; [`block_size.csv`](data/derived/block_size.csv), how big a block is and the two extremes; [`dc_blocks.csv`](data/derived/dc_blocks.csv) with [`dc_frame.csv`](data/derived/dc_frame.csv) and [`dc_facts.csv`](data/derived/dc_facts.csv), one city at full block resolution; [`facts.csv`](data/derived/facts.csv), the national totals quoted in this text; and the figure geometry in [`map_zero.csv`](data/derived/map_zero.csv), [`map_states.csv`](data/derived/map_states.csv) and [`map_frame.csv`](data/derived/map_frame.csv), stored as integer figure coordinates so the web version and the print version draw the same shapes from the same numbers.
 
 ```{r data-table}
 ```
@@ -108,16 +108,34 @@ The range runs from `r MOST$state` at `r pc(MOST$pct_zero)`% to `r LEAST$state` 
 ```{r dens-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r dens-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```{r dens-static, eval=!knitr::is_html_output(), fig.height=6.4}
 ```
 
-**Figure 4. Each state's emptiness against its population density.** One dot per state, density on a log scale because state densities span four orders of magnitude, from `r pc(FV("dens_min"))` people per square mile in Alaska to `r n(FV("dens_max"))` in the District of Columbia. The dashed line is the least-squares fit. Only the extremes and the states furthest from the line are labelled; hover any dot in the web edition for the rest.
+**Figure 4. Emptiness against population density, measured two ways.** One dot per state on a shared log axis, because state densities span four orders of magnitude, from `r pc(FV("dens_min"))` people per square mile in Alaska to `r n(FV("dens_max"))` in the District of Columbia. The top panel is the share of each state's *land* that sits in empty blocks; the bottom is the share of its *blocks* that are empty. Dashed lines are least-squares fits. Only the extremes and the states furthest from each line are labelled; hover any dot in the web edition for the rest.
 
-The honest answer is: largely, but not entirely, and the gap is where the interest is. The correlation between log density and the share of a state's blocks that are empty is `r pc(FV("dens_r_log"), 2)`, so density accounts for about `r pc(100 * FV("dens_r2_log"), 0)`% of the variation between states. That is a strong relationship and it is the one you would guess.
+The two panels disagree, and the disagreement is the point. Density predicts the share of a state's **blocks** that are empty rather well: `r pc(FV("dens_r_log"), 2)`, or about `r pc(100 * FV("dens_r2_log"), 0)`% of the variation between states. It predicts the share of a state's **land** that is empty much less well: `r pc(FV("land_r_log"), 2)`, about `r pc(100 * FV("land_r2_log"), 0)`%.
 
-Two things complicate it. The first is the log scale, which is doing real work: on untransformed density the same correlation is only `r pc(FV("dens_r_raw"), 2)`. Emptiness tracks the *order of magnitude* of a state's density, not its level, so the distance from Wyoming to Ohio matters far more than the distance from Ohio to New Jersey.
+That ordering is backwards from what you would want, and the reason is the thing this brief keeps returning to. A block count is partly a record of how the Bureau cut a state, and the Bureau cuts dense places into small pieces. So the block measure is contaminated by the very thing it is being compared against, and correlates well for a reason that has nothing to do with land. The land measure is the substantive one, and it is loose: `r FS("land_hi_st")` is `r pc(FV("land_hi_pct"))`% unoccupied land and `r FS("land_lo_st")` is `r pc(FV("land_lo_pct"))`%, a difference that is about federal ownership and settlement pattern rather than about people per square mile. The two measures agree with each other only to `r pc(FV("measures_r"), 2)`.
 
-The second is the District of Columbia, the point stranded at the right. It is the densest place in the country at `r n(FV("dc_density"))` people per square mile, and `r pc(FV("dc_pct_zero"))`% of its blocks are still empty — the Mall, the rail yards, Rock Creek Park, the river. Drop it and the correlation tightens to `r pc(FV("dens_r_nodc"), 2)`. It is one observation, and it is the whole argument in one dot: **a place can be as dense as anywhere in America and still be full of empty blocks**, because emptiness is a property of how the land was cut, not only of how many people live on it.
+On the raw scale neither relationship survives: `r pc(FV("dens_r_raw"), 2)` and `r pc(FV("land_r_raw"), 2)`. Whatever emptiness tracks, it tracks the *order of magnitude* of a state's density, so the distance from Wyoming to Ohio matters far more than the distance from Ohio to New Jersey.
+
+And then there is the point stranded at the right of both panels.
+
+## One city, block by block
+
+```{r dc-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r dc-static, eval=!knitr::is_html_output(), fig.height=6.2}
+```
+
+**Figure 5. Every census block in the District of Columbia.** Red is a block with no residents, pale grey is a block with residents, and blue-grey is a block that is entirely water. Water is drawn as its own class rather than folded into the red, because a block with nobody on it *because it is the Potomac* is a different fact about a city than a block with nobody on it because it is a park, and merging the two would let the rivers argue the case.
+
+The District is the densest place in the country, `r n(FV("dc_density"))` people per square mile of land. `r n(FV("dc_zero"))` of its `r n(FV("dc_blocks"))` blocks — `r pc(FV("dc_pct_zero"))`% — recorded nobody, and `r n(FV("dc_zero_land"))` of those are dry land. They cover `r pc(FV("dc_empty_sqmi"))` of the District's `r pc(FV("dc_land_sqmi"))` square miles, `r pc(FV("dc_empty_land_pct"))`% of it.
+
+The shapes are recognizable if you know the city, and that is the argument. The long wedge running north from the middle is Rock Creek Park. The band across the centre, west of the Capitol, is the Mall. The eastern edge is the Anacostia and the parkland along it; the large form in the south is a military installation. None of this is unpopulated in the sense of being remote. It is unpopulated because it is a park, a monument, a rail yard, a base, a river — land in a dense city that no one is counted as living on.
+
+That is why the District sits where it does in Figure 4: it is not a failure of the relationship between density and emptiness so much as a demonstration of what emptiness is actually measuring. **A place can be as dense as anywhere in America and still be a quarter empty**, because emptiness is a fact about how land is used and how it was cut, not only about how many people live nearby.
 
 ## What this brief cannot tell you
 
@@ -171,7 +189,7 @@ And zero is a published number, not a raw one. The 2020 counts passed through di
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`block_pop_hist.csv`](data/derived/block_pop_hist.csv), [`block_size.csv`](data/derived/block_size.csv), [`facts.csv`](data/derived/facts.csv), [`map_frame.csv`](data/derived/map_frame.csv), [`map_states.csv`](data/derived/map_states.csv), [`map_zero.csv`](data/derived/map_zero.csv), [`state_blocks.csv`](data/derived/state_blocks.csv), [`zero_land.csv`](data/derived/zero_land.csv)
+[`block_pop_hist.csv`](data/derived/block_pop_hist.csv), [`block_size.csv`](data/derived/block_size.csv), [`dc_blocks.csv`](data/derived/dc_blocks.csv), [`dc_facts.csv`](data/derived/dc_facts.csv), [`dc_frame.csv`](data/derived/dc_frame.csv), [`facts.csv`](data/derived/facts.csv), [`map_frame.csv`](data/derived/map_frame.csv), [`map_states.csv`](data/derived/map_states.csv), [`map_zero.csv`](data/derived/map_zero.csv), [`state_blocks.csv`](data/derived/state_blocks.csv), [`zero_land.csv`](data/derived/zero_land.csv)
 
 **Method**
 

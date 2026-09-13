@@ -115,7 +115,11 @@ cat(sprintf("frame %dx%d | empty land: %s polygons, %s rings, %s vertices | stat
 # The headline numbers are sums over the per-state tables. Writing them down
 # here, once, means the prose and the figures read the same value instead of
 # each recomputing it.
-sb <- read.csv(file.path(D, "state_blocks.csv"), stringsAsFactors = FALSE)
+# STATEFP is TEXT. Read as a number, "09" becomes 9, and the merge below then
+# silently drops every state whose code has a leading zero -- which is the
+# mistake this chapter is about.
+sb <- read.csv(file.path(D, "state_blocks.csv"),
+               colClasses = c(STATEFP = "character"), stringsAsFactors = FALSE)
 hp <- read.csv(file.path(D, "block_pop_hist.csv"), stringsAsFactors = FALSE)
 cu <- cumsum(hp$blocks); ih <- hp[hp$pop > 0, ]
 fx <- function(k, v, note) data.frame(name = k, value = v, note = note,
@@ -157,5 +161,26 @@ facts <- rbind(facts,
   fx("dc_pct_zero", dc$pct_zero,     "DC blocks with nobody (%)"),
   fx("dens_max",    round(max(sb$dens)), "highest state density (per sq mi)"),
   fx("dens_min",    round(min(sb$dens), 1), "lowest state density (per sq mi)"))
+
+# The same question asked of LAND rather than of blocks. It is the measure
+# that matters and it is the one density explains least: a block count is
+# partly a record of how the Bureau cut a state, and cutting tracks density.
+sbl <- merge(sb, zl, by = "STATEFP")
+stopifnot(nrow(sbl) == nrow(sb))        # a partial join here is a silent lie
+sbl$pct_land <- 100 * sbl$zero_land_sqmi / sbl$land_sqmi
+lr  <- cor(log10(sbl$dens), sbl$pct_land)
+hi  <- sbl[which.max(sbl$pct_land), ]; lo <- sbl[which.min(sbl$pct_land), ]
+facts <- rbind(facts,
+  fx("land_r_log",  round(lr, 3),      "corr, log10 density vs % of land unoccupied"),
+  fx("land_r2_log", round(lr^2, 2),    "the same, as R squared"),
+  fx("land_r_raw",  round(cor(sbl$dens, sbl$pct_land), 3), "on untransformed density"),
+  fx("land_hi_pct", round(hi$pct_land, 1), "most unoccupied land, share (%)"),
+  fx("land_hi_st",  hi$state,          "the state that is"),
+  fx("land_lo_pct", round(lo$pct_land, 1), "least unoccupied land, share (%)"),
+  fx("land_lo_st",  lo$state,          "the state that is"),
+  fx("dc_pct_land", round(sbl$pct_land[sbl$state == "District of Columbia"], 1),
+                    "DC land that is unoccupied (%)"),
+  fx("measures_r",  round(cor(sbl$pct_zero, sbl$pct_land), 3),
+                    "the two measures against each other"))
 write.csv(facts, file.path(D, "facts.csv"), row.names = FALSE)
 cat("wrote facts.csv\n")
