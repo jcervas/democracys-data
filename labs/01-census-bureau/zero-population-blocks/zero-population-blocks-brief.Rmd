@@ -49,7 +49,7 @@ This brief is a walkthrough. It shows where the data came from, what was done to
 
 One download, and it holds both halves of the problem.
 
-**TIGER/Line.** The Bureau's [TIGER/Line](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) files are its digital outlines of every census unit. The layer used here is `TABBLOCK20`, the 2020 tabulation blocks, one zipped shapefile per state. There is no national file. To build the map you download each state separately, fifty-two files in all, about 10 GB for the country. The build works through them one at a time, unzipping a state, reading the handful of columns it needs, and deleting what it unzipped before starting the next, so it never has more than one state open at once. It keeps the downloaded archives, because re-running is then free. If space is short they can be deleted once the tables are built; nothing downstream reads them again.
+**TIGER/Line.** The Bureau's [TIGER/Line](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html) files are its digital outlines of every census unit. The layer used here is `TABBLOCK20`, the 2020 tabulation blocks, one zipped shapefile per state. There is no national file. To build the map you download each state separately, fifty-two files in all, about 10 GB for the country. Work through them one at a time: unzip a state, read the handful of columns you need, then delete what you unzipped before starting the next, so only one state is ever open. Keep the archives themselves and a second run costs nothing, since a file already on disk is not fetched twice. If space is short, they can go once the tables exist; nothing later reads them again.
 
 **The count rides along with the shape.** Every block record in those files carries a `POP20` field: the total population the 2020 decennial census counted in that block. It is not an estimate and not a sample. It is the decennial count, the same number published in the [P.L. 94-171 Redistricting Data Summary File](https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html) that every state legislature receives for redistricting. The Bureau prepends it to the geography, so a block's boundary and its population arrive together, in one file, already joined.
 
@@ -57,7 +57,7 @@ The same counts are also served, one variable at a time, by the [Census Data API
 
 ## How the map was made
 
-The pipeline is four steps, and each one throws something away on purpose.
+Four steps, and each one throws something away on purpose.
 
 1. **Read** each state's block file and keep the blocks whose `POP20` is zero. One state at a time, so that a single state is in memory rather than the whole country.
 2. **Drop the water.** A block that is all water reports zero people truthfully, but drawing those fills the Great Lakes and every coastal bay with solid color. Blocks with no land area are set aside here, and counted separately.
