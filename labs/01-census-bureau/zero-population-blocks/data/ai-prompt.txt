@@ -1,44 +1,59 @@
-I want to rebuild a public dataset from its original sources, without any
+I want to rebuild a public dataset from its original source, without any
 starting files. Please do the following and show your work.
 
-THE FIRST SOURCE. The U.S. Census Bureau's Data API, 2020 Decennial Census
-P.L. 94-171 Redistricting Summary File:
-https://api.census.gov/data/2020/dec/pl
-Free, but it needs a key from https://api.census.gov/data/key_signup.html.
-The variable for total population is P1_001N. The API will not return every
-block in a state at once: a block query has to name a state AND a county, so
-covering the country takes about 3,100 requests. Block GEOIDs are
-15-character strings -- read them as text, never as numbers, or a 15-digit
-identifier becomes 1.3121e+14 and leading zeros vanish.
-
-THE SECOND SOURCE. TIGER/Line 2020 tabulation block shapes, one zipped
-shapefile per state:
+THE SOURCE, and there is only one. TIGER/Line 2020 tabulation blocks, one
+zipped shapefile per state:
 https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/tl_2020_<FIPS>_tabblock20.zip
-About 10 GB for the whole country. The attribute table carries GEOID20,
-ALAND20 (land area, square meters) and AWATER20.
+Open, no key, no account. About 10 GB for the whole country across 52 files
+(the 50 states, DC and Puerto Rico).
+
+Every block record carries its own population. POP20 is the total population
+the 2020 decennial census counted in that block -- a complete count, not an
+estimate and not a sample, the same number published in the P.L. 94-171
+redistricting file. It comes prepended to the geography, so the boundary and
+the count arrive in one file and nothing has to be joined. Do not fetch the
+Census API for this: it serves the same counts one variable at a time and
+will not return a whole state's blocks at once, so it turns a 52-file
+download into some 3,100 requests.
+
+The attribute table also carries GEOID20 (the 15-character block identifier),
+ALAND20 (land area, square meters) and AWATER20. For the tables below you
+need only the attribute table, the .dbf inside each zip; the geometry is
+needed only for the map.
 
 WHAT TO BUILD.
-1. A table of every census block in the 50 states, DC and Puerto Rico with
-   its 2020 population. Report the national total, and how many blocks
-   recorded zero.
+1. A table of every census block in those 52 files with its 2020 population.
+   Report the national total and how many blocks recorded zero.
 2. A count of blocks at each exact population from 0 to 1,000, with everything
-   above 1,000 in one bucket. Report the median block population, and the
-   median among blocks with at least one resident.
-3. A per-state table: blocks, blocks with nobody, and the percentage.
-4. A national map of the zero-population blocks. Join the zero GEOIDs to the
-   TIGER shapes state by state, keep the matches, and dissolve touching
-   blocks together. Report what fraction of the zero blocks have land area
-   (the rest are water) and how many square miles the land ones cover.
+   above 1,000 in one bucket. Report the median block population, the median
+   among blocks with at least one resident, and the share holding ten or
+   fewer.
+3. A per-state table: blocks, blocks with nobody, total land area, and the
+   percentage of each.
+4. A national map of the zero-population blocks. Keep the blocks where POP20
+   is zero, and COUNT THEM BEFORE YOU CHANGE THE GEOMETRY: how many there
+   are, how many of them have land area (the rest are water), and how many
+   square miles of land they cover. Only then dissolve the touching ones
+   together for drawing.
 
 THINGS THAT WILL BITE YOU.
-- Check the join. Every GEOID from the API should match a TIGER shape. If it
-  does not, you read an identifier as a number somewhere.
+- GEOID20 is text, not a number. Read as a number, a 15-digit identifier
+  becomes 1.3121e+14 and leading zeros vanish. The same is true of the
+  2-character state code: "09" read as 9 will not match "09".
 - Water blocks have zero population and are real. Decide whether they belong
   on your map and say which you chose; drawing them fills the Great Lakes.
+- Dissolving destroys the block as a unit. After it, counting shapes counts
+  REGIONS, not blocks: a thousand touching empty blocks become one polygon.
+  Take every number about blocks off the undissolved table, or carry it
+  through the dissolve as a summed field -- give each block a 1 and sum it,
+  and sum ALAND20 the same way. If your block count drops when you dissolve,
+  you are reporting the wrong thing.
 - Dissolving makes polygons with holes. Draw each polygon's rings together
   under an even-odd fill rule, or the holes get painted as fill.
 - Round coordinates only AFTER projecting. Rounding longitude and latitude
   rounds to whole degrees.
+- Simplify each state to the size it will be DRAWN at, not to one national
+  tolerance, if you want a map that survives being zoomed into.
 
 CHECK YOUR WORK. The copies this book used were downloaded in September
 2026. If your rebuild matches them, you should find:
@@ -50,7 +65,7 @@ CHECK YOUR WORK. The copies this book used were downloaded in September
 - emptiest Alaska at 58.82%, least empty Puerto Rico at 12.90%
 - 2,130,094 of the empty blocks have land area, covering 1,465,387
   square miles -- about 41% of U.S. land, against 29% of blocks
-- every one of the 2,368,443 API identifiers matches a TIGER shape; if
-  yours does not, you read a GEOID as a number
-Both sources are finished 2020 census products; they will not change
-until the 2030 cycle publishes successors.
+- the largest block by area is 9,226 square miles in the North Slope
+  Borough, Alaska, and its population is zero
+TIGER/Line 2020 is a finished product; it will not change until the 2030
+cycle publishes its successor.

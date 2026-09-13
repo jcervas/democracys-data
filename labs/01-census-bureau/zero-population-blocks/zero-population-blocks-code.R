@@ -14,13 +14,17 @@ options(scipen = 999)
 D <- "data"
 dd_derived(c("block_pop_hist.csv", "block_size.csv", "dc_blocks.csv",
              "dc_facts.csv", "dc_frame.csv", "facts.csv", "map_frame.csv",
-             "map_states.csv", "map_zero.csv", "state_blocks.csv", "zero_land.csv"))
+             "map_states.csv", "map_zero.csv", "state_bbox.csv",
+             "state_blocks.csv", "zero_land.csv"))
 
 sb <- read.csv(file.path(D, "derived/state_blocks.csv"),
                colClasses = c(STATEFP = "character"), stringsAsFactors = FALSE)
 sb$dens <- sb$pop / sb$land_sqmi          # people per square mile of land
 hp <- read.csv(file.path(D, "derived/block_pop_hist.csv"), stringsAsFactors = FALSE)
-MZ <- read.csv(file.path(D, "derived/map_zero.csv"),   stringsAsFactors = FALSE)
+MZ <- read.csv(file.path(D, "derived/map_zero.csv"),
+               colClasses = c(st = "character"), stringsAsFactors = FALSE)
+bx <- read.csv(file.path(D, "derived/state_bbox.csv"),
+               colClasses = c(st = "character"), stringsAsFactors = FALSE)
 MS <- read.csv(file.path(D, "derived/map_states.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 FR <- read.csv(file.path(D, "derived/map_frame.csv"),  stringsAsFactors = FALSE)
@@ -66,6 +70,15 @@ MED     <- FV("median_block_pop")
 MEDINH  <- FV("median_inhab_pop")
 UNDER10 <- FV("pct_under_10")
 CAP     <- max(hp$pop)                       # top bucket is "CAP and over"
+
+# The largest states whose combined land still fits inside the empty land, so
+# the comparison in the opening is computed and cannot go stale.
+.o    <- sb[order(-sb$land_sqmi), ]
+NBIG  <- sum(cumsum(.o$land_sqmi) <= ZLAND)
+BIGST <- .o$state[seq_len(NBIG)]
+andlist <- function(x) if (length(x) < 2) x else
+  paste0(paste(utils::head(x, -1), collapse = ", "), " and ", utils::tail(x, 1))
+ST <- function(code) sb[sb$usps == code, ]      # one state's row, by postal code
 MOST    <- sb[which.max(sb$pct_zero), ]
 LEAST   <- sb[which.min(sb$pct_zero), ]
 
@@ -143,20 +156,31 @@ statepaths <- function(d) {
 # label/value rows and a muted footer. Emitted once, by the first figure.
 TIPCSS <- '<style>
 .zpb-tip{position:absolute;pointer-events:none;z-index:6;background:#fff;
-  color:#12181D;border-radius:6px;padding:11px 14px 9px;min-width:212px;
-  font:12px/1.35 inherit;white-space:nowrap;
-  box-shadow:0 6px 22px rgba(0,0,0,.20),0 1px 3px rgba(0,0,0,.12)}
-.zpb-tip h4{margin:0 0 7px;font-size:15px;font-weight:700;letter-spacing:-.01em}
-.zpb-tip table{border-collapse:collapse;width:100%}
-.zpb-tip th{font-weight:400;color:#4E5A63;text-align:left;padding:3px 0;
-  font-size:11.5px}
-.zpb-tip td{text-align:right;padding:3px 0 3px 20px;font-weight:600;
-  font-variant-numeric:tabular-nums}
-.zpb-tip tr+tr th,.zpb-tip tr+tr td{border-top:1px solid #E7EAEC}
-.zpb-tip .foot{margin:8px -14px -9px;padding:7px 14px;border-top:1px solid #E7EAEC;
-  background:#F6F8F9;color:#76838C;font-size:11px;border-radius:0 0 6px 6px;
-  white-space:normal}
-</style>'
+  color:#12181D;border-radius:7px;padding:0;min-width:236px;
+  font:12px/1.4 inherit;box-shadow:0 8px 28px rgba(0,0,0,.22),0 1px 3px rgba(0,0,0,.12)}
+.zpb-tip h4{margin:0;padding:11px 15px 9px;font-size:15.5px;font-weight:700;
+  letter-spacing:-.012em;line-height:1.2}
+/* The rules are on the ROW, drawn edge to edge, rather than on the cells --
+   a border on a padded cell stops where the padding starts and the line
+   arrives short of the card. */
+.zpb-tip table{border-collapse:collapse;width:100%;table-layout:auto}
+.zpb-tip tr{border-top:1px solid #E7EAEC}
+.zpb-tip th{font-weight:400;color:#4E5A63;text-align:left;
+  padding:6px 8px 6px 15px;font-size:11.5px;white-space:nowrap}
+.zpb-tip td{text-align:right;padding:6px 15px 6px 8px;font-weight:600;
+  font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums lining-nums}
+.zpb-tip .foot{padding:7px 15px 8px;border-top:1px solid #E7EAEC;
+  background:#F6F8F9;color:#76838C;font-size:11px;line-height:1.35;
+  border-radius:0 0 7px 7px}
+.zmap-btn{position:absolute;top:0;font:12px inherit;padding:5px 11px;
+  border:1px solid #CBD3D8;border-radius:4px;background:#fff;color:#12181D;
+  cursor:pointer;z-index:4;user-select:none}
+.zmap-btn:hover{background:#F1F4F6}
+#zmap:fullscreen{background:#fff;display:flex;align-items:center;
+  justify-content:center;padding:0}
+#zmap:fullscreen svg{max-height:100vh;max-width:100vw;width:auto;height:auto}
+@media print{.zmap-btn{display:none}}
+</style>\n'
 jstr <- function(x) paste0("[", paste0('"', x, '"', collapse = ","), "]")
 jnum <- function(x) paste0("[", paste0(x, collapse = ","), "]")
 # base-R twin of the same idea: rings separated by NA, subtracted by evenodd
@@ -171,62 +195,103 @@ drawpolys <- function(d, col, border = NA, lwd = 0.3) {
 }
 
 ## ---- map-d3
-ZP  <- polypaths(MZ)
 SP  <- polypaths(MS)
 HIT <- statepaths(MS)
+BYS <- lapply(split(MZ, MZ$st), polypaths)      # empty land, per state
 hf  <- names(HIT)
 i1  <- match(hf, sb$STATEFP); i2 <- match(hf, zlnd$STATEFP)
-PCTL <- round(100 * zlnd$zero_land_sqmi[i2] / sb$land_sqmi[i1], 1)
+BX  <- bx[match(hf, bx$st), ]
 cat(paste0(TIPCSS, '
-<div id="zmap" style="position:relative;margin:1em 0"></div>
+<div id="zmap" style="position:relative;margin:1em 0">
+<div id="zmap-back" class="zmap-btn" style="left:0;display:none">&#8592; the whole country</div>
+<div id="zmap-full" class="zmap-btn" style="right:0">&#9974; full screen</div>
+</div>
 <script src="../../_lib/d3.v7.min.js"></script>
 <script>
 (function(){
-const Z=', jstr(ZP), ',S=', jstr(SP), ',H_=', jstr(unname(HIT)), ';
+const S=', jstr(SP), ',H_=', jstr(unname(HIT)), ',F=', jstr(hf), ';
+const ZS=', paste0("[", paste(vapply(hf, function(k)
+    if (is.null(BYS[[k]])) "[]" else jstr(unname(BYS[[k]])), character(1)),
+    collapse = ","), "]"), ';
+const BB=', paste0("[", paste(sprintf("[%d,%d,%d,%d]", BX$x0, BX$y0, BX$x1, BX$y1),
+    collapse = ","), "]"), ';
 const NM=', jstr(sb$state[i1]), ',PO=', jnum(sb$pop[i1]), ',BL=', jnum(sb$blocks[i1]),
 ',PZ=', jnum(sb$pct_zero[i1]), ',LA=', jnum(round(zlnd$zero_land_sqmi[i2])),
-',PL=', jnum(PCTL), ';
+',PL=', jnum(round(100 * zlnd$zero_land_sqmi[i2] / sb$land_sqmi[i1], 1)),
+',AR=', jnum(round(sb$land_sqmi[i1])), ',DN=', jnum(round(sb$dens[i1], 1)), ';
 const W=', FR$w, ',H=', FR$h, ';
-const wrap=d3.select("#zmap");
+const wrap=d3.select("#zmap"), back=d3.select("#zmap-back");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
-  .attr("style","max-width:100%;height:auto;display:block");
-svg.append("g").selectAll("path").data(S).join("path").attr("d",d=>d)
+  .attr("style","max-width:100%;height:auto;display:block;cursor:pointer");
+const g=svg.append("g");
+// land, then the empty blocks of each state in its own group, then borders
+// One path per STATE, not per polygon: the fill is switched by state index
+// below, and binding per polygon made that index mean the wrong thing.
+const land=g.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
   .attr("fill","#ffffff").attr("fill-rule","evenodd");
-svg.append("g").selectAll("path").data(Z).join("path").attr("d",d=>d)
-  .attr("fill","', RED, '").attr("fill-rule","evenodd");
-svg.append("g").selectAll("path").data(S).join("path").attr("d",d=>d)
-  .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",1.1);
-// The hovered state is outlined rather than repainted: recolouring it would
-// overwrite the very thing the map is drawn to show.
-const hi=svg.append("path").attr("fill","none").attr("stroke","#111")
-  .attr("stroke-width",3).attr("pointer-events","none").style("display","none");
+const blocks=g.append("g").selectAll("g").data(ZS).join("g");
+blocks.each(function(d){ d3.select(this).selectAll("path").data(d).join("path")
+  .attr("d",q=>q).attr("fill","', RED, '").attr("fill-rule","evenodd"); });
+const border=g.append("g").selectAll("path").data(S).join("path").attr("d",d=>d)
+  .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",0.6)
+  .attr("vector-effect","non-scaling-stroke");
 const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
 const f=d3.format(",");
 const card=(t,rows,foot)=>`<h4>${t}</h4><table>`+
-  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+
-  `</table>`+(foot?`<div class="foot">${foot}</div>`:"");
-const place=(ev)=>{
-  const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
-  let x=ev.clientX-b.left+16, y=ev.clientY-b.top+16;
-  if(x+t.width>b.width) x=ev.clientX-b.left-t.width-16;
-  if(y+t.height>b.height) y=Math.max(0,ev.clientY-b.top-t.height-16);
-  tip.style("left",x+"px").style("top",y+"px");
-};
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`+
+  (foot?`<div class="foot">${foot}</div>`:"");
+let sel=-1;
+const zoom=d3.zoom().scaleExtent([1,60]).on("zoom",ev=>g.attr("transform",ev.transform));
+svg.call(zoom).on("wheel.zoom",null);          // click to zoom, not scroll
+function show(i){
+  sel=i;
+  // Everything but the chosen state goes flat grey and loses its blocks, so
+  // the state being read is the only thing carrying data.
+  land.attr("fill",(d,j)=>i<0||j===i?"#ffffff":"#E4E7E9");
+  blocks.style("display",(d,j)=>i<0||j===i?null:"none");
+  back.style("display",i<0?"none":"block");
+  const t=i<0?d3.zoomIdentity
+    :(()=>{const[x0,y0,x1,y1]=BB[i],k=Math.min(60,0.92/Math.max((x1-x0)/W,(y1-y0)/H));
+           return d3.zoomIdentity.translate(W/2,H/2).scale(k)
+             .translate(-(x0+x1)/2,-(y0+y1)/2);})();
+  svg.transition().duration(760).call(zoom.transform,t);
+}
 svg.append("g").selectAll("path").data(H_).join("path").attr("d",d=>d)
-  .attr("fill","transparent").attr("fill-rule","evenodd").style("cursor","pointer")
+  .attr("fill","transparent").attr("fill-rule","evenodd")
+  .each(function(){ g.node().appendChild(this); })
+  .on("click",function(ev,d){ ev.stopPropagation(); const i=H_.indexOf(d);
+     tip.style("display","none"); show(i===sel?-1:i); })
   .on("mousemove",function(ev,d){
     const i=H_.indexOf(d);
-    hi.attr("d",d).style("display",null);
+    if(sel>=0&&i!==sel) return;
     tip.style("display","block").html(card(NM[i],[
       ["population",f(PO[i])],
+      ["land area",f(AR[i])+" sq mi"],
+      ["density",f(DN[i])+" / sq mi"],
       ["census blocks",f(BL[i])],
       ["blocks with nobody",PZ[i].toFixed(1)+"%"],
       ["unpopulated land",f(LA[i])+" sq mi"],
       ["share of state land",PL[i].toFixed(1)+"%"]],
-      "Land area only; blocks that are all water are not drawn."));
-    place(ev);
+      sel>=0?"Land area only; blocks that are all water are not drawn."
+            :"Click to zoom to "+NM[i]+"."));
+    const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+    let x=ev.clientX-b.left+16, y=ev.clientY-b.top+16;
+    if(x+t.width>b.width) x=ev.clientX-b.left-t.width-16;
+    if(y+t.height>b.height) y=Math.max(0,ev.clientY-b.top-t.height-16);
+    tip.style("left",x+"px").style("top",y+"px");
   })
-  .on("mouseleave",()=>{tip.style("display","none");hi.style("display","none");});
+  .on("mouseleave",()=>tip.style("display","none"));
+svg.on("click",()=>show(-1));
+back.on("click",()=>show(-1));
+const full=d3.select("#zmap-full");
+full.on("click",ev=>{ ev.stopPropagation();
+  const el=wrap.node();
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(el.requestFullscreen) el.requestFullscreen();
+});
+d3.select(document).on("fullscreenchange.zmap",()=>
+  full.html(document.fullscreenElement?"&#10005; exit full screen":"&#9974; full screen"));
+d3.select(window).on("keydown.zmap",ev=>{ if(ev.key==="Escape") show(-1); });
 })();
 </script>
 '))

@@ -134,7 +134,7 @@ facts <- rbind(
   fx("blocks_zero_water", sum(sb$zero_blocks) - sum(zl$zero_blocks_land),
                                                "empty blocks that are water only"),
   fx("zero_land_sqmi",   round(sum(zl$zero_land_sqmi)), "land area of empty blocks (sq mi)"),
-  fx("us_land_sqmi",     3533038,              "U.S. land area, sq mi (Census 2020)"),
+  fx("us_land_sqmi",     round(sum(sb$land_sqmi)), "U.S. land area, sq mi, summed from the same blocks"),
   fx("median_block_pop", hp$pop[which(cu >= sum(hp$blocks) / 2)[1]], "median block population"),
   fx("median_inhab_pop", ih$pop[which(cumsum(ih$blocks) >= sum(ih$blocks) / 2)[1]],
                                                "median population, inhabited blocks"),
