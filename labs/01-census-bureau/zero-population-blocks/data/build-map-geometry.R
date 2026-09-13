@@ -35,13 +35,16 @@ ms("-i", shQuote(STATES), "-proj albersusa -o", shQuote(ts),
 
 # albersusa drops paths it cannot place (Puerto Rico, the island areas),
 # leaving empty polygons behind; st_coordinates cannot bind those.
-poly <- function(f) {
-  g <- st_geometry(st_read(f, quiet = TRUE))
-  g <- g[!st_is_empty(g)]                    # BEFORE casting, not after:
+# `keep` names an attribute to carry through to the flattened table -- the
+# state layer keeps its GEOID so the web figure can identify what is hovered.
+poly <- function(f, keep = NULL) {
+  g <- st_read(f, quiet = TRUE)
+  if (is.null(keep)) g <- st_geometry(g) else g <- g[, keep, drop = FALSE]
+  g <- g[!st_is_empty(st_geometry(g)), ]     # BEFORE casting, not after:
   g <- st_collection_extract(g, "POLYGON")   # st_cast over empty geometries
   st_cast(g, "POLYGON")                      # silently drops most of the layer
 }
-z <- poly(tz); s <- poly(ts)
+z <- poly(tz); s <- poly(ts, "GEOID")
 
 bb <- st_bbox(s)                                  # the frame, from the states
 sc <- W / (bb["xmax"] - bb["xmin"])
@@ -57,7 +60,9 @@ H  <- as.integer(round((bb["ymax"] - bb["ymin"]) * sc))
 # ring drawn on its own gets painted as fill and the hole disappears. Both
 # renderings therefore draw one path per polygon, all of its rings together,
 # under an even-odd fill rule.
-flatten <- function(g) {
+flatten <- function(g, idcol = NULL) {
+  ids <- if (!is.null(idcol)) g[[idcol]] else NULL
+  if (inherits(g, "sf")) g <- st_geometry(g)
   cc <- st_coordinates(g)
   key <- paste(cc[, "L2"], cc[, "L1"])            # polygon, then ring
   ord <- unique(key)
@@ -68,12 +73,14 @@ flatten <- function(g) {
     d <- c(TRUE, x[-1] != x[-length(x)] | y[-1] != y[-length(y)])
     x <- x[d]; y <- y[d]
     if (length(x) < 3) return(NULL)
-    data.frame(poly = cc[i[1], "L2"], ring = cc[i[1], "L1"], x = x, y = y)
+    d <- data.frame(poly = cc[i[1], "L2"], ring = cc[i[1], "L1"], x = x, y = y)
+    if (!is.null(ids)) d$st <- ids[cc[i[1], "L2"]]
+    d
   })
   do.call(rbind, out[!vapply(out, is.null, logical(1))])
 }
 
-zf <- flatten(z); sf_ <- flatten(s)
+zf <- flatten(z); sf_ <- flatten(s, "GEOID")
 write.csv(zf, file.path(D, "map_zero.csv"),   row.names = FALSE)
 write.csv(sf_, file.path(D, "map_states.csv"), row.names = FALSE)
 write.csv(data.frame(w = W, h = H), file.path(D, "map_frame.csv"), row.names = FALSE)

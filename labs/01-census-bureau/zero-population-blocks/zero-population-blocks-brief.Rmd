@@ -19,38 +19,46 @@ dd_read_chunks("zero-population-blocks-code.R")
 ```{r geometry-helpers, include=FALSE}
 ```
 
-The census block is the smallest unit the Census Bureau publishes, and there are `r n(TOT)` of them. `r n(ZERO)` hold nobody at all: `r pc(PZ)`% of the blocks in the country recorded a population of zero in 2020. That is not a defect in the count. It is what happens when you cut a country into pieces small enough that most pieces are a lake, an interchange, a runway, a cemetery, or a stretch of national forest.
+A census block is the smallest piece the Census Bureau cuts the country into, and the reason it exists is arithmetic. Every other geography the Bureau publishes — a tract, a city, a school district, a congressional district — has to be expressible as some pile of blocks, because counts add upward but cannot be divided downward. Make the smallest piece too big and whole classes of question stop having answers. The block is the Bureau's answer to how small the smallest piece has to be.
 
-This brief is a walkthrough. It shows where each file came from, what was done to it, and what the resulting map does and does not say. The point is not the map at the end; it is that you could rebuild it.
+The Bureau draws them, not the states, and it draws them along things a person could stand next to: streets, streams, railroad tracks, shorelines, and the legal boundaries of counties, cities and reservations.^[The rule and the definition are in the Bureau's glossary entry for [census block](https://www.census.gov/programs-surveys/geography/about/glossary.html); the visible-feature principle is why a river or an interstate so often has blocks of its own on either side of it.] States do get a say. Through the [Redistricting Data Program](https://www.census.gov/programs-surveys/decennial-census/about/rdo/program-management.html) they can suggest where block boundaries should fall, so that blocks nest inside the precincts they actually run elections in. But the pen is federal, and a block is drawn for the convenience of counting rather than to mark anything a resident would recognize.
+
+There are `r n(TOT)` of them and they are small. The median block with any land on it covers `r n(FV("median_block_sqft"))` square feet — about `r FS("median_block_acres")` acres — and holds `r n(MED)` people.
+
+The extremes run a long way from that median, in both directions and not together. The largest block in the country by area covers `r n(FV("biggest_area_sqmi"))` square miles in `r FS("biggest_area_where")`, more land than `r n(nrow(SMALL))` states and state equivalents including `r SMALL$state[1]`, whose `r n(SMALL$land_sqmi[1])` square miles it exceeds. Its population is `r FS("biggest_area_pop")`: the biggest block in the country is an empty one. The largest by population is `r n(FV("biggest_pop"))` people in `r FS("biggest_pop_where")`, on `r FS("biggest_pop_acres")` acres.
+
+That pairing is this brief's subject. `r n(ZERO)` blocks — `r pc(PZ)`% of every block in the country — recorded nobody at all in 2020. That is not a defect in the count. It is what happens when you cut a country into pieces small enough that most pieces are a lake, an interchange, a runway, a cemetery, or a stretch of national forest.
+
+This brief is a walkthrough. It shows where the data came from, what was done to it, and what the resulting map does and does not say. The point is not the map at the end; it is that you could rebuild it.
 
 ## Where the data came from
 
-Two files, from two different parts of the Bureau, joined on one key.
+One file, and it holds both halves of the problem.
 
-**The population.** Every block's 2020 count comes from the [Census Data API](https://www.census.gov/data/developers/data-sets/decennial-census.html), from the 2020 Decennial Census [P.L. 94-171 Redistricting Data Summary File](https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html), at `https://api.census.gov/data/2020/dec/pl`. The variable is `P1_001N`, total population. A request needs [a free key](https://api.census.gov/data/key_signup.html), and the API will not return blocks for a whole state at once, so `build-block-pop.R` walks the country one county at a time, roughly 3,100 requests.
+**The shapes.** Block boundaries come from [TIGER/Line](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html), the Bureau's digital outlines of every census unit, in its 2020 release. The block files are very large and are downloaded separately by the build rather than kept beside this chapter.
 
-Three properties of this file are why it is the right one. It is a complete count, not a sample, so there are no margins of error. Its atom is the block, so nothing smaller is being hidden. And it is the file state legislatures actually receive for redistricting, which makes it the operative number rather than an academic one.
+**The count rides along with the shape.** Every block record in those files carries a `POP20` field: the number of people the 2020 decennial census counted in that block. It is not an estimate and not a sample. It is the decennial count itself, the same number the Bureau publishes in the [P.L. 94-171 Redistricting Data Summary File](https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html) and delivers to every state legislature for redistricting. The Bureau prepends it to the geography, so a block's boundary and its population arrive in the same file.
 
-**The shapes.** Block boundaries come from [TIGER/Line 2020](https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/), the Bureau's digital outlines, one zipped shapefile per state, about 10 GB for the country. State outlines for the map's frame come from the Bureau's generalized [cartographic boundary files](https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html), which are drawn for mapping rather than for measurement and are clipped to the shoreline.
+That is why this brief is short. There is no second source to fetch, no key to register, and no join to get wrong. The same counts are also served one variable at a time by the [Census Data API](../census-api/census-api-brief.html), which is a chapter of its own; for a map of every block in the country, the file that already carries the number is the shorter road.
 
-A detail worth stealing: the TIGER block file already carries a `POP20` field, so the map could have been built from the shapefiles alone and the API skipped entirely. Pulling the API anyway buys a check. The two files are joined on `GEOID20`, the block's fifteen-character identifier, and every one of the `r n(ZERO)` identifiers from the API matched a shape in TIGER, in all `r n(nrow(sb))` states. A join that lands at 100% is evidence the key was read correctly; a join that lands at 97% usually means an identifier was read as a number somewhere, because a fifteen-digit block id becomes `1.3121e+14` and a leading zero disappears silently.
+Three properties make this the right count. It is complete rather than sampled, so there are no margins of error below and no allowance for how far off an estimate could be, because nothing is estimated. Its unit, the census block, is the smallest the Bureau publishes, so everything larger can be built out of it. And it is the operative number rather than an academic one: it is what district maps are drawn from.
 
-That is the single most common way this work goes wrong. Every identifier here is held as text.
+Both roads were walked here before choosing one. Read from `POP20` and read from the API, the two agree exactly — the same `r n(TOT)` blocks, the same `r n(ZERO)` empty ones, the same `r n(POP)` people, and the same count at every one of the `r n(CAP + 1)` rungs of the distribution below.
 
 ## How the map was made
 
 The pipeline is four steps, and each one throws something away on purpose.
 
-1. **Ask the API** for `P1_001N` for every block, county by county, and keep the identifiers where the count is zero.
-2. **Join** that list to the TIGER shapes for each state, keeping only the matching blocks. Per state, so that a single state's blocks are in memory at a time rather than the whole country.
+1. **Read** each state's block file and keep the blocks whose `POP20` is zero. One state at a time, so that a single state is in memory rather than the whole country.
+2. **Drop the water.** A block that is all water reports zero people truthfully, but drawing those fills the Great Lakes and every coastal bay with solid color. Blocks with no land area are set aside here, and counted separately.
 3. **Dissolve** the surviving blocks into one shape. Touching empty blocks become one region, which is honest here: the boundary between two adjacent empty blocks is not a feature of the world, it is an artifact of where the Bureau put its lines.
 4. **Simplify** with [mapshaper](https://github.com/mbloch/mapshaper), project to Albers USA, and round the coordinates to whole units of the figure's own grid.
 
 Simplification is the step that deserves suspicion, so here are its terms. The national layer at full resolution is about 200 MB, far too large to put in a web page. What ships is 2% of the original vertices: `r n(nrow(MZ))` points in `r n(length(unique(MZ$poly)))` polygons, about 1 MB. At the width this figure is drawn, one unit of the grid is roughly 2.3 kilometers, so detail finer than that could not be seen even if it were kept. What is lost is the exact shape of any individual block. What survives is where the empty land is, which is the only claim the figure makes.
 
-Two things in step 3 and 4 are easy to get wrong and were got wrong here first. Dissolving produces polygons with **holes** — a populated town inside an empty county is an interior ring — and a ring drawn on its own is painted as fill rather than subtracted, which turns Nevada into a solid rectangle. Both renderings below therefore draw one path per polygon with all of its rings together, under an even-odd fill rule. And rounding coordinates has to happen *after* projecting, not before: rounding longitude and latitude to whole numbers rounds them to whole degrees, and the country dissolves.
+Two things in steps 3 and 4 are easy to get wrong and were got wrong here first. Dissolving produces polygons with **holes** — a populated town inside an empty county is an interior ring — and a ring drawn on its own is painted as fill rather than subtracted, which turns Nevada into a solid rectangle. Both renderings below therefore draw one path per polygon with all of its rings together, under an even-odd fill rule. And rounding coordinates has to happen *after* projecting, not before: rounding longitude and latitude to whole numbers rounds them to whole degrees, and the country dissolves.
 
-The built tables are small and readable: [`state_blocks.csv`](data/derived/state_blocks.csv), one row per state; [`block_pop_hist.csv`](data/derived/block_pop_hist.csv), a count of blocks at each population from 0 to `r n(CAP)`; [`zero_land.csv`](data/derived/zero_land.csv), land area of the empty blocks by state; [`facts.csv`](data/derived/facts.csv), the national totals quoted in this text; and the figure geometry in [`map_zero.csv`](data/derived/map_zero.csv), [`map_states.csv`](data/derived/map_states.csv) and [`map_frame.csv`](data/derived/map_frame.csv), stored as integer figure coordinates so the web version and the print version draw the same shapes from the same numbers.
+The built tables are small and readable: [`state_blocks.csv`](data/derived/state_blocks.csv), one row per state; [`block_pop_hist.csv`](data/derived/block_pop_hist.csv), a count of blocks at each population from 0 to `r n(CAP)`; [`zero_land.csv`](data/derived/zero_land.csv), land area of the empty blocks by state; [`block_size.csv`](data/derived/block_size.csv), how big a block is and the two extremes; [`facts.csv`](data/derived/facts.csv), the national totals quoted in this text; and the figure geometry in [`map_zero.csv`](data/derived/map_zero.csv), [`map_states.csv`](data/derived/map_states.csv) and [`map_frame.csv`](data/derived/map_frame.csv), stored as integer figure coordinates so the web version and the print version draw the same shapes from the same numbers.
 
 ```{r data-table}
 ```
@@ -63,7 +71,7 @@ The built tables are small and readable: [`state_blocks.csv`](data/derived/state
 ```{r map-static, eval=!knitr::is_html_output(), fig.height=4.5}
 ```
 
-**Figure 1. Every census block in the United States that recorded no residents in 2020.** Red is empty, white is inhabited land, and the map draws the `r n(ZLBLK)` empty blocks that have land area. A single flat color fits the question, because the claim is about where, not how much.
+**Figure 1. Every census block in the United States that recorded no residents in 2020.** Red is empty, white is inhabited land, and the map draws the `r n(ZLBLK)` empty blocks that have land area. A single flat color fits the question, because the claim is about where, not how much. In the web edition, hovering a state gives its population, its block count, the share of those blocks that are empty, and how much of its land is unpopulated.
 
 Read west to east and the map turns into a history of land ownership. The solid masses through Nevada, Idaho and eastern Oregon are federal land: national forest, Bureau of Land Management range, military reserve. The sharp vertical seam around the hundredth meridian is where homestead-scale agriculture stopped being viable. In the East the pattern inverts into a fine red lacework that traces rivers, interstates and the edges of reservoirs, because east of the Mississippi the empty blocks are mostly small and linear rather than large and areal.
 
@@ -74,10 +82,10 @@ The number under the map is the one that surprises people. Those `r pc(PZ)`% of 
 ```{r hist-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r hist-static, eval=!knitr::is_html_output(), fig.height=3.4}
+```{r hist-static, eval=!knitr::is_html_output(), fig.height=3.8}
 ```
 
-**Figure 2. How many people live in a census block.** One bar per exact population from 0 to 100; the red bar at the left is the `r n(ZERO)` blocks with nobody. The vertical axis is logarithmic, because the zero bar is more than twenty times the next tallest and a linear axis would show a single spike above a flat floor.
+**Figure 2. How many people live in a census block.** One bar per exact population from one to a hundred, on a plain axis starting at zero. The empty blocks are the number printed above the chart rather than a bar in it: at `r n(ZERO)` they are more than eighteen times the tallest bar here, and the two usual ways to seat them beside it — a logarithmic axis, or a broken one — both destroy the only thing a bar is good for, which is that its length is its value. Hover any bar in the web edition for its exact count.
 
 The shape says the block is a small thing. The median block in the country holds `r n(MED)` people. Among blocks with anybody at all, the median is `r n(MEDINH)`. `r pc(UNDER10)`% of all blocks hold ten people or fewer. A census block is not a neighborhood; it is closer to a city block, which is what it was named for.
 
@@ -88,10 +96,10 @@ This matters for reading any block-level statistic. A percentage computed on a u
 ```{r state-d3, results='asis', eval=knitr::is_html_output()}
 ```
 
-```{r state-static, eval=!knitr::is_html_output(), fig.height=6.5}
+```{r state-static, eval=!knitr::is_html_output(), fig.height=5.7}
 ```
 
-**Figure 3. The share of each state's blocks that recorded nobody.** Sorted rather than alphabetical, because the ordering is the finding.
+**Figure 3. The share of each state's blocks that recorded nobody.** Sorted rather than alphabetical, because the ordering is the finding. Hovering a bar in the web edition gives the counts underneath the percentage.
 
 The range runs from `r MOST$state` at `r pc(MOST$pct_zero)`% to `r LEAST$state` at `r pc(LEAST$pct_zero)`%. It is tempting to read this as a map of emptiness, and it is partly that. But it is also a map of how the Bureau cut each state. Blocks are drawn along visible features, so a state with a dense grid of section-line roads gets many small blocks whether or not anyone lives on them, and a state with a lot of water gets a lot of water blocks. `r MOST$state` is genuinely empty; it also has an enormous coastline and river network, each stretch of which is its own block.
 
@@ -100,6 +108,8 @@ The range runs from `r MOST$state` at `r pc(MOST$pct_zero)`% to `r LEAST$state` 
 The `r pc(PZ)`% is a fact about blocks, not about people or land, and the three do not track each other. Nothing here says how much of the country is *uninhabitable*, only which units recorded no usual residents on 1 April 2020. A block containing a large prison, a dormitory closed for the pandemic, or a seasonal resort counted empty that day may be busy most of the year.
 
 The map is drawn from the land blocks. `r n(ZWBLK)` of the empty blocks are water and are not drawn, because including them fills the Great Lakes and every coastal bay with solid color and makes the map a map of hydrography. That is a presentation choice, and it is reversible; the land-area figures are unaffected either way, because the Bureau's `ALAND20` already excludes water.
+
+Empty is not the same as thinly settled, and this is not a population density map. Density is people divided by area, a continuous quantity every block has some value of. Emptiness is a threshold applied to a unit: zero, or not zero. The two come apart in both directions. Manhattan is among the densest places in the country and is full of empty blocks — parks, rail yards, the piers, the reservoir — while a ranching county can run for miles at a density near zero and have almost no empty blocks at all, because every block on the section grid has a house on it somewhere. A solid red county on this map means its blocks crossed a threshold, not that nobody lives nearby.
 
 Simplification means no individual block on this map is the right shape. Do not measure anything off it. The [built tables](data/derived/state_blocks.csv) carry the counts; the figure carries the pattern.
 
@@ -118,7 +128,7 @@ And zero is a published number, not a raw one. The 2020 counts passed through di
 - `state_blocks.csv` joined to `zero_land.csv` — rank states by `pct_zero`, then by `zero_land_sqmi`. Name a state that is high on one list and low on the other, and say what the Bureau did to produce that gap.
 - `block_pop_hist.csv` — the last row is a bucket, every block of `r n(CAP)` people or more. How many blocks are in it, and what kind of place holds that many people inside one block?
 - `block_pop_hist.csv` — compute the share of the national population living in blocks of ten people or fewer. Compare it with the `r pc(UNDER10)`% of *blocks* that size. Explain the difference to someone in one sentence.
-- **Stretch.** The TIGER block file carries `POP20` already. Download one state's [tabblock20](https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/) and check its `POP20` against the API's `P1_001N` for the same GEOIDs. Report how many disagree, and decide which you would trust in print.
+- **Stretch.** Download one state's [block file](https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/) and check its `POP20` against the same counts served by the API. Report how many disagree, and decide which you would trust in print.
 - **Stretch.** Rebuild Figure 1 for one state without the dissolve step, drawing each empty block separately. Say what the dissolved version hides and what it clarifies.
 
 ## Sources
@@ -145,7 +155,7 @@ And zero is a published number, not a raw one. The 2020 counts passed through di
 Every figure above is drawn from these tables. They are plain CSV, they
 open in a spreadsheet, and they are yours to take further.
 
-[`block_pop_hist.csv`](data/derived/block_pop_hist.csv), [`facts.csv`](data/derived/facts.csv), [`map_frame.csv`](data/derived/map_frame.csv), [`map_states.csv`](data/derived/map_states.csv), [`map_zero.csv`](data/derived/map_zero.csv), [`state_blocks.csv`](data/derived/state_blocks.csv), [`zero_land.csv`](data/derived/zero_land.csv)
+[`block_pop_hist.csv`](data/derived/block_pop_hist.csv), [`block_size.csv`](data/derived/block_size.csv), [`facts.csv`](data/derived/facts.csv), [`map_frame.csv`](data/derived/map_frame.csv), [`map_states.csv`](data/derived/map_states.csv), [`map_zero.csv`](data/derived/map_zero.csv), [`state_blocks.csv`](data/derived/state_blocks.csv), [`zero_land.csv`](data/derived/zero_land.csv)
 
 **Method**
 
