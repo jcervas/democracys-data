@@ -423,8 +423,8 @@ P.forEach((p,i)=>{
     .attr("fill","#F4F6F7").attr("fill-rule","evenodd")
     .attr("stroke","', GREY, '").attr("stroke-width",7);
   svg.append("g").selectAll("circle").data(p.dx).join("circle")
-    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",8)
-    .attr("fill","#12181D").attr("fill-opacity",0.6);
+    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",9)
+    .attr("fill","#12181D").attr("fill-opacity",0.34);
   svg.append("g").selectAll("path").data(p.s2).join("path").attr("d",d=>d)
     .attr("fill","#ffffff").attr("fill-rule","evenodd");
   svg.append("g").selectAll("path").data(p.z).join("path").attr("d",d=>d)
@@ -454,7 +454,7 @@ for (i in seq_along(KU)) {
   f <- KU[i]; p <- KUP[[i]]
   s1 <- .sh(MS[MS$st == f, ], i, 1); s2 <- .sh(MS[MS$st == f, ], i, 2)
   drawpolys(s1, "#F4F6F7", border = GREY, lwd = 0.5)
-  points(p$dot$x, p$dot$y, pch = 16, cex = 0.085, col = "#12181D99")
+  points(p$dot$x, p$dot$y, pch = 16, cex = 0.095, col = "#12181D57")
   drawpolys(s2, "#ffffff")
   drawpolys(.sh(MZ[MZ$st == f, ], i, 2), RED)
   drawpolys(s2, NA, border = GREY, lwd = 0.5)
@@ -463,10 +463,17 @@ for (i in seq_along(KU)) {
   text(p$cx, PHT + 2.1 * U, KUL3[i], font = 2, cex = 0.52, col = RED, xpd = NA)
   text(p$cx, PHT + 3.7 * U, KUL4[i], cex = 0.46, col = "#4E5A63", xpd = NA)
 }
-text(0, -0.6 * U, "WHERE THE PEOPLE ARE — one dot for 500 residents",
-     adj = 0, cex = 0.48, col = "#4E5A63", font = 2, xpd = NA)
-text(0, RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents",
-     adj = 0, cex = 0.48, col = "#4E5A63", font = 2, xpd = NA)
+# The plate is sized in figure units, not from strheight: a single line's
+# height in user coordinates is small enough here that padding derived from it
+# collapsed the plate to a hairline and hid the white text inside it.
+band <- function(y, txt, cex = 0.5) {
+  w <- strwidth(txt, cex = cex, font = 2)
+  rect(0, y - 1.7 * U, w + 1.5 * U, y + 1.7 * U, col = RED, border = NA, xpd = NA)
+  text(0.75 * U, y, txt, adj = c(0, 0.5), cex = cex, col = "#ffffff",
+       font = 2, xpd = NA)
+}
+band(-0.6 * U, "WHERE THE PEOPLE ARE — one dot for 500 residents")
+band(RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents")
 
 ## ---- hist-d3
 # Binned, so the whole range fits one axis that starts at zero. Bars are counts
