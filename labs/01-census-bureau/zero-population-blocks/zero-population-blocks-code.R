@@ -254,7 +254,8 @@ jarr <- function(keys, lst) paste0("[", paste(vapply(keys, function(k)
   collapse = ","), "]")
 cat(paste0(TIPCSS, '
 <div id="zmap" class="zpb-fig" style="position:relative;margin:1em 0">
-<div id="zmap-back" class="zmap-btn" style="left:0;display:none">&#8592; the whole country</div>
+<div id="zmap-back" class="zmap-btn zmap-icon" style="left:0;display:none"
+     title="Back to the whole country" aria-label="Back to the whole country">&#8592;</div>
 <div id="zmap-full" class="zmap-btn zmap-icon" style="right:0" title="Full screen" aria-label="Full screen">&#9974;</div>
 </div>
 <script src="../../_lib/d3.v7.min.js"></script>
