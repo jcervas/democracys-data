@@ -134,6 +134,16 @@ LND_CUM <- round(100 * cumsum(LND_N) / sum(LND_N), 1)
 LND_MED <- LND_LAB[which(LND_CUM >= 50)[1]]
 stopifnot(sum(LND_N) == TOT)
 
+# Set the two figures against each other. 2.9% of blocks are all water and
+# 29.0% hold nobody, so water cannot be why the blocks are empty -- it can
+# account for a tenth of them at the most.
+PCT_WATER   <- 100 * LND_N[1] / TOT
+PCT_DRYEMPT <- 100 * ZLBLK / ZERO
+PCT_WETEMPT <- 100 * ZWBLK / ZERO
+# And the two categories do not nest: some all-water blocks report residents.
+WETPOP_N <- LND_N[1] - ZWBLK
+stopifnot(WETPOP_N >= 0, ZWBLK + ZLBLK == ZERO)
+
 # Render every data.frame in this document as a TABLE, not as code output.
 # A data.frame printed the ordinary way comes out as a "##"-prefixed block,
 # which reads as machinery rather than as a result.
