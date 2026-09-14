@@ -719,7 +719,8 @@ svg.append("g").selectAll("rect.hit").data(L).join("rect")
     const i=L.indexOf(d);
     bars.attr("opacity",(q,j)=>j===i?1:0.45);
     tip.style("display","block").html(card(
-      d==="0"?"Blocks with nobody":d+" people",
+      d==="all water"?"Blocks that are all water"
+        :d==="under 1"?"Under 1 acre":d+" acres",
       [["Census blocks",f(N[i])],["Share of all blocks",P[i].toFixed(1)+"%"],
        ["This bin and below",C[i].toFixed(1)+"%"]]));
     const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
