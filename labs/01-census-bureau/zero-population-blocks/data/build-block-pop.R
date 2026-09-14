@@ -46,6 +46,17 @@ USPS <- c("AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL",
 stopifnot(length(FIPS) == length(NAMES), length(FIPS) == length(USPS))
 
 CAP   <- 1000L                     # top bucket is "CAP and over"
+
+# Land area, in acres, binned the same way the population is: a block is a
+# small thing and the interesting end is the bottom, so the bins are narrow
+# there and widen toward the tail. The first bin is blocks with no land at
+# all, which are the ones made entirely of water.
+# Breaks, not lo/hi pairs. Spelling out both ends left gaps between them --
+# 165 blocks have a land area above zero but below a ten-thousandth of an
+# acre, and they fell through into no bin at all.
+ACRE     <- 4046.8564224
+LAND_BRK <- c(0, 1, 5, 10, 25, 50, 100, 250, 1000, Inf)
+land_tally <- integer(length(LAND_BRK))        # bin 1 is zero land
 tally <- integer(CAP + 1L)
 rows  <- vector("list", length(FIPS))
 land  <- numeric(0)                # every block's land area, for the median
@@ -69,6 +80,9 @@ for (i in seq_along(FIPS)) {
   ar  <- as.numeric(d$ALAND20)
 
   tally <- tally + tabulate(pmin(pop, CAP) + 1L, nbins = CAP + 1L)
+  ac <- as.numeric(d$ALAND20) / ACRE
+  land_tally <- land_tally + c(sum(ac == 0),
+    tabulate(findInterval(ac[ac > 0], LAND_BRK), nbins = length(LAND_BRK) - 1L))
   land  <- c(land, ar)
   ia <- which.max(ar); if (ar[ia] > bigA$a)
     bigA <- list(a = ar[ia], g = d$GEOID20[ia], p = pop[ia])
@@ -88,6 +102,10 @@ sb$pct_zero <- round(100 * sb$zero_blocks / sb$blocks, 2)
 write.csv(sb[order(-sb$pct_zero), ], file.path(D, "state_blocks.csv"), row.names = FALSE)
 write.csv(data.frame(pop = 0:CAP, blocks = tally),
           file.path(D, "block_pop_hist.csv"), row.names = FALSE)
+stopifnot(sum(land_tally) == sum(tally))   # the bins must cover every block
+write.csv(data.frame(lo = c(0, head(LAND_BRK, -1)),
+                     hi = c(0, LAND_BRK[-1]), blocks = land_tally),
+          file.path(D, "block_land_hist.csv"), row.names = FALSE)
 
 # --- how big is a block, and what are the extremes ---------------------------
 # County names for the two extreme blocks come from the Bureau's generalized
@@ -117,4 +135,4 @@ write.csv(rbind(
   fx("biggest_pop_where",  where(bigP$g),             "where that block is"),
   fx("biggest_pop_acres",  round(bigP$a / M2AC),      "its land area, acres")
 ), file.path(D, "block_size.csv"), row.names = FALSE)
-cat("wrote state_blocks.csv, block_pop_hist.csv and block_size.csv\n")
+cat("wrote state_blocks.csv, block_pop_hist.csv, block_land_hist.csv and block_size.csv\n")

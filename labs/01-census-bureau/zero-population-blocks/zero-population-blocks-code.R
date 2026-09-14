@@ -14,7 +14,7 @@ options(scipen = 999)
 D <- "data"
 dd_derived(c("block_pop_hist.csv", "block_size.csv", "dc_blocks.csv",
              "dc_facts.csv", "dc_frame.csv", "facts.csv", "map_frame.csv",
-             "ksut_dots.csv", "map_counties.csv", "map_overview.csv", "map_states.csv",
+             "block_land_hist.csv", "ksut_dots.csv", "map_counties.csv", "map_overview.csv", "map_states.csv",
              "map_zero.csv", "state_bbox.csv", "state_blocks.csv",
              "zero_land.csv"))
 
@@ -22,6 +22,7 @@ sb <- read.csv(file.path(D, "derived/state_blocks.csv"),
                colClasses = c(STATEFP = "character"), stringsAsFactors = FALSE)
 sb$dens <- sb$pop / sb$land_sqmi          # people per square mile of land
 hp <- read.csv(file.path(D, "derived/block_pop_hist.csv"), stringsAsFactors = FALSE)
+hl <- read.csv(file.path(D, "derived/block_land_hist.csv"), stringsAsFactors = FALSE)
 MZ <- read.csv(file.path(D, "derived/map_zero.csv"),
                colClasses = c(st = "character"), stringsAsFactors = FALSE)
 bx <- read.csv(file.path(D, "derived/state_bbox.csv"),
@@ -118,6 +119,17 @@ BIN_N   <- mapply(function(a, b)
 BIN_CUM <- round(100 * cumsum(BIN_N) / sum(BIN_N), 1)
 BIN_PCT <- round(100 * BIN_N / sum(BIN_N), 1)
 stopifnot(sum(BIN_N) == TOT)          # the bins must partition every block
+
+# The same treatment for land area, in acres. The first bin is the blocks
+# with no land at all -- the ones made entirely of water -- so it sits where
+# the empty bar sits in the population figure and carries the same colour.
+LND_LAB <- c("none", "under 1", "1-4", "5-9", "10-24", "25-49",
+             "50-99", "100-249", "250-999", "1,000+")
+LND_N   <- hl$blocks
+LND_PCT <- round(100 * LND_N / sum(LND_N), 1)
+LND_CUM <- round(100 * cumsum(LND_N) / sum(LND_N), 1)
+LND_MED <- LND_LAB[which(LND_CUM >= 50)[1]]
+stopifnot(sum(LND_N) == TOT)
 
 # Render every data.frame in this document as a TABLE, not as code output.
 # A data.frame printed the ordinary way comes out as a "##"-prefixed block,
@@ -525,7 +537,7 @@ cat(paste0('
 (function(){
 const L=', jstr(BIN_LAB), ',N=', jnum(BIN_N), ',P=', jnum(BIN_PCT),
 ',C=', jnum(BIN_CUM), ',TOT=', TOT, ';
-const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:64,r:16,t:12,b:26};
+const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:12,b:26};
 const wrap=d3.select("#zhist");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+(H+FOOT))
   .attr("style","max-width:100%;height:auto;font:12px inherit");
@@ -609,6 +621,102 @@ axis(1, at = bp, labels = BIN_LAB, las = 1, cex.axis = 0.58, tick = FALSE)
 axis(2, at = c(0, 50, 100), labels = paste0(c(0, 50, 100), "%"), las = 1, cex.axis = 0.8)
 mtext("running share", side = 2, line = 4.4, cex = 0.8)
 mtext("people counted in the block, 2020", side = 1, outer = TRUE, line = 1, cex = 0.85)
+par(op)
+
+## ---- land-d3
+# Binned, so the whole range fits one axis that starts at zero. Bars are counts
+# and their lengths are those counts; the panel below is the running share,
+# which is what answers "how small is a block, usually".
+cat(paste0('
+<div id="zland" class="zpb-fig" style="position:relative;margin:1em 0"></div>
+<script>
+(function(){
+const L=', jstr(LND_LAB), ',N=', jnum(LND_N), ',P=', jnum(LND_PCT),
+',C=', jnum(LND_CUM), ',TOT=', TOT, ';
+const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:12,b:26};
+const wrap=d3.select("#zland");
+const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+(H+FOOT))
+  .attr("style","max-width:100%;height:auto;font:12px inherit");
+const f=d3.format(",");
+const x=d3.scaleBand().domain(L).range([M.l,W-M.r]).padding(0.2);
+const y=d3.scaleLinear().domain([0,d3.max(N)]).nice().range([HT-M.b,M.t]);
+svg.append("g").attr("stroke","#76838C").attr("opacity",0.28)
+  .selectAll("line").data(y.ticks(4)).join("line")
+  .attr("x1",M.l).attr("x2",W-M.r).attr("y1",y).attr("y2",y);
+const bars=svg.append("g").selectAll("rect").data(L).join("rect")
+  .attr("x",d=>x(d)).attr("width",x.bandwidth())
+  .attr("y",(d,i)=>y(N[i])).attr("height",(d,i)=>y(0)-y(N[i]))
+  .attr("fill",(d,i)=>i===0?"', RED, '":"', GREY, '");
+svg.append("g").attr("transform","translate(0,"+(HT-M.b)+")")
+  .call(d3.axisBottom(x).tickSizeOuter(0));
+svg.append("g").attr("transform","translate("+M.l+",0)")
+  .call(d3.axisLeft(y).ticks(4).tickFormat(f).tickSizeOuter(0));
+svg.append("text").attr("transform","rotate(-90)").attr("x",-(M.t+HT-M.b)/2)
+  .attr("y",14).attr("text-anchor","middle").attr("font-size","11px")
+  .attr("fill","#4E5A63").text("census blocks");
+// running share
+const y2=d3.scaleLinear().domain([0,100]).range([H-M.b,HT+GAP]);
+svg.append("g").attr("stroke","#76838C").attr("opacity",0.28)
+  .selectAll("line").data([0,50,100]).join("line")
+  .attr("x1",M.l).attr("x2",W-M.r).attr("y1",y2).attr("y2",y2);
+const pts=L.map((d,i)=>[x(d)+x.bandwidth()/2,y2(C[i])]);
+svg.append("path").attr("fill","none").attr("stroke","', RED, '")
+  .attr("stroke-width",2)
+  .attr("d",d3.line()(pts));
+svg.append("g").selectAll("circle").data(L).join("circle")
+  .attr("cx",(d,i)=>pts[i][0]).attr("cy",(d,i)=>pts[i][1]).attr("r",3)
+  .attr("fill","', RED, '");
+svg.append("g").attr("transform","translate(0,"+(H-M.b)+")")
+  .call(d3.axisBottom(x).tickSizeOuter(0));
+svg.append("g").attr("transform","translate("+M.l+",0)")
+  .call(d3.axisLeft(y2).tickValues([0,50,100]).tickFormat(d=>d+"%").tickSizeOuter(0));
+svg.append("text").attr("transform","rotate(-90)").attr("x",-(HT+GAP+H-M.b)/2)
+  .attr("y",14).attr("text-anchor","middle").attr("font-size","11px")
+  .attr("fill","#4E5A63").text("running share");
+svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H+FOOT-6)
+  .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
+  .text("land area of the block, in acres");
+const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
+const card=(t,rows)=>`<h4>${t}</h4><table>`+
+  rows.map(r=>`<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join("")+`</table>`;
+// one hit target per bin, spanning both panels
+svg.append("g").selectAll("rect.hit").data(L).join("rect")
+  .attr("x",d=>x(d)-x.step()*0.1).attr("y",M.t)
+  .attr("width",x.step()).attr("height",H-M.b-M.t)
+  .attr("fill","transparent").style("cursor","pointer")
+  .on("mousemove",function(ev,d){
+    const i=L.indexOf(d);
+    bars.attr("opacity",(q,j)=>j===i?1:0.45);
+    tip.style("display","block").html(card(
+      d==="0"?"Blocks with nobody":d+" people",
+      [["Census blocks",f(N[i])],["Share of all blocks",P[i].toFixed(1)+"%"],
+       ["This bin and below",C[i].toFixed(1)+"%"]]));
+    const b=wrap.node().getBoundingClientRect(), t=tip.node().getBoundingClientRect();
+    let px=ev.clientX-b.left+16;
+    if(px+t.width>b.width) px=ev.clientX-b.left-t.width-16;
+    tip.style("left",px+"px")
+       .style("top",Math.max(0,ev.clientY-b.top-t.height-14)+"px");
+  })
+  .on("mouseleave",()=>{tip.style("display","none");bars.attr("opacity",1);});
+})();
+</script>
+'))
+
+## ---- land-static
+op <- par(mfrow = c(2, 1), mar = c(2.2, 5.6, 0.6, 0.8), oma = c(2.6, 0, 0, 0))
+bp <- barplot(LND_N, names.arg = LND_LAB, col = ifelse(seq_along(LND_N) == 1, RED, GREY),
+              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25)
+at <- pretty(c(0, max(LND_N)), 4)
+axis(2, at = at, labels = n(at), las = 1, cex.axis = 0.8)
+mtext("census blocks", side = 2, line = 4.4, cex = 0.8)
+par(mar = c(2.2, 5.6, 1.4, 0.8))
+plot(bp, LND_CUM, type = "o", pch = 19, cex = 0.7, lwd = 2, col = RED,
+     ylim = c(0, 100), xlim = range(bp) + c(-0.5, 0.5), axes = FALSE,
+     xlab = "", ylab = "")
+axis(1, at = bp, labels = LND_LAB, las = 1, cex.axis = 0.58, tick = FALSE)
+axis(2, at = c(0, 50, 100), labels = paste0(c(0, 50, 100), "%"), las = 1, cex.axis = 0.8)
+mtext("running share", side = 2, line = 4.4, cex = 0.8)
+mtext("land area of the block, in acres", side = 1, outer = TRUE, line = 1, cex = 0.85)
 par(op)
 
 ## ---- state-d3
