@@ -123,7 +123,10 @@ stopifnot(sum(BIN_N) == TOT)          # the bins must partition every block
 # The same treatment for land area, in acres. The first bin is the blocks
 # with no land at all -- the ones made entirely of water -- so it sits where
 # the empty bar sits in the population figure and carries the same colour.
-LND_LAB <- c("none", "under 1", "1-4", "5-9", "10-24", "25-49",
+# "none" read as a block with no area at all, which cannot happen. The
+# column is ALAND20, land area, and a block with none of it is one made
+# entirely of water -- every one of them carries water area instead.
+LND_LAB <- c("all water", "under 1", "1-4", "5-9", "10-24", "25-49",
              "50-99", "100-249", "250-999", "1,000+")
 LND_N   <- hl$blocks
 LND_PCT <- round(100 * LND_N / sum(LND_N), 1)
