@@ -199,6 +199,11 @@ TIPCSS <- '<style>
 .zpb-tip .foot{padding:7px 15px 8px;border-top:1px solid #E7EAEC;
   background:#F6F8F9;color:#76838C;font-size:11px;line-height:1.35;
   border-radius:0 0 7px 7px}
+/* A figure has to fit on the screen it is read on. Without a height cap the
+   tall ones -- the District of Columbia especially -- run past the bottom of
+   the window and cannot be taken in at once. */
+.zpb-fig svg{max-width:100%;max-height:78vh;width:auto;height:auto;
+  display:block;margin:0 auto}
 .zmap-btn{position:absolute;top:0;font:12px inherit;padding:5px 11px;
   border:1px solid #CBD3D8;border-radius:4px;background:#fff;color:#12181D;
   cursor:pointer;z-index:4;user-select:none}
@@ -248,7 +253,7 @@ jarr <- function(keys, lst) paste0("[", paste(vapply(keys, function(k)
   if (is.null(lst[[k]])) "[]" else jstr(unname(lst[[k]])), character(1)),
   collapse = ","), "]")
 cat(paste0(TIPCSS, '
-<div id="zmap" style="position:relative;margin:1em 0">
+<div id="zmap" class="zpb-fig" style="position:relative;margin:1em 0">
 <div id="zmap-back" class="zmap-btn" style="left:0;display:none">&#8592; the whole country</div>
 <div id="zmap-full" class="zmap-btn zmap-icon" style="right:0" title="Full screen" aria-label="Full screen">&#9974;</div>
 </div>
@@ -399,15 +404,44 @@ KUL3 <- vapply(KU, function(f) sprintf("%s%% of its land has no residents",
 KUL4 <- vapply(KU, function(f) sprintf("%s blocks · %s acres each",
   n(KUS(f, "blocks")), n(KUS(f, "acres_per_block"))), character(1))
 
+## ---- ksut-raster
+# A quarter of a million dots is a picture, not a set of objects. Nothing
+# hovers or clicks on them, so the top row ships as one transparent PNG laid
+# over the state fills instead of 248,323 SVG circles -- which is what the
+# printed figure has always effectively done.
+#
+# The image covers exactly the row's rectangle in figure units, so it lands
+# under the outlines at the right size with no fitting to do. Circles are
+# drawn with symbols(inches = FALSE), whose radius is in USER units, so the
+# raster dot is the same 5 figure units as the vector one it replaces rather
+# than whatever a cex happened to work out to.
+PXW <- 2600L
+PXH <- as.integer(round(PXW * RH / PWT))
+.png <- tempfile(fileext = ".png")
+grDevices::png(.png, width = PXW, height = PXH, bg = "transparent",
+               type = if (capabilities("cairo")) "cairo" else "quartz")
+par(mar = rep(0, 4), xaxs = "i", yaxs = "i")
+plot(NA, xlim = c(0, PWT), ylim = c(RH, 0), axes = FALSE, xlab = "", ylab = "")
+for (i in seq_along(KU)) {
+  d <- KUP[[i]]$dot
+  symbols(d$x, d$y, circles = rep(5, nrow(d)), inches = FALSE, add = TRUE,
+          bg = "#C4123045", fg = NA)
+}
+invisible(grDevices::dev.off())
+DOTIMG <- paste0("data:image/png;base64,", xfun::base64_encode(.png))
+DOTRAS <- png::readPNG(.png)                   # the same pixels, for print
+cat(sprintf("<!-- dot raster %dx%d, %.0f KB -->\n", PXW, PXH,
+            file.size(.png) / 1024))
+
 ## ---- ksut-d3
 cat(paste0('
-<div id="zksut" style="margin:1em auto;max-width:560px"></div>
+<div id="zksut" class="zpb-fig" style="margin:1em auto;max-width:560px"></div>
 <script>
 (function(){
 const P=[', paste(vapply(seq_along(KU), function(i) paste0(
-  '{dx:', jnum(KUP[[i]]$dot$x), ',dy:', jnum(KUP[[i]]$dot$y),
-  ',z:', jstr(KUP[[i]]$zt), ',s1:', jstr(KUP[[i]]$s1), ',s2:', jstr(KUP[[i]]$s2),
+  '{z:', jstr(KUP[[i]]$zt), ',s1:', jstr(KUP[[i]]$s1), ',s2:', jstr(KUP[[i]]$s2),
   ',cx:', round(KUP[[i]]$cx), '}'), character(1)), collapse = ","), '];
+const DOTS="', DOTIMG, '";
 const L1=', jstr(unname(KUL1)), ',L2=', jstr(unname(KUL2)),
 ',L3=', jstr(unname(KUL3)), ',L4=', jstr(unname(KUL4)), ';
 const PWT=', PWT, ',RH=', RH, ',GAPY=', GAPY, ',PHT=', PHT, ';
@@ -418,13 +452,18 @@ const svg=d3.select("#zksut").append("svg")
 const T=(x,y,txt,sz,w,col,anch)=>svg.append("text").attr("x",x).attr("y",y)
   .attr("text-anchor",anch||"middle").attr("font-weight",w||400)
   .attr("fill",col||"#12181D").attr("font-size",sz).text(txt);
-P.forEach((p,i)=>{
+// row one: the state fills, then the dot image over them, then the outlines
+P.forEach(p=>{
   svg.append("g").selectAll("path").data(p.s1).join("path").attr("d",d=>d)
-    .attr("fill","#F4F6F7").attr("fill-rule","evenodd")
-    .attr("stroke","', GREY, '").attr("stroke-width",7);
-  svg.append("g").selectAll("circle").data(p.dx).join("circle")
-    .attr("cx",d=>d).attr("cy",(d,j)=>p.dy[j]).attr("r",5)
-    .attr("fill","#12181D").attr("fill-opacity",0.22);
+    .attr("fill","#F4F6F7").attr("fill-rule","evenodd");
+});
+svg.append("image").attr("x",0).attr("y",0).attr("width",PWT).attr("height",RH)
+  .attr("preserveAspectRatio","none").attr("href",DOTS);
+P.forEach(p=>{
+  svg.append("g").selectAll("path").data(p.s1).join("path").attr("d",d=>d)
+    .attr("fill","none").attr("stroke","', GREY, '").attr("stroke-width",7);
+});
+P.forEach((p,i)=>{
   svg.append("g").selectAll("path").data(p.s2).join("path").attr("d",d=>d)
     .attr("fill","#ffffff").attr("fill-rule","evenodd");
   svg.append("g").selectAll("path").data(p.z).join("path").attr("d",d=>d)
@@ -450,11 +489,18 @@ par(mar = c(3.6, 0.3, 4.0, 0.3))
 plot(NA, xlim = c(0, PWT), ylim = c(PHT, 0), asp = 1, axes = FALSE,
      xlab = "", ylab = "")
 U <- PHT / 100                                  # one percent of the figure
+# Row one in three passes, not one. The dot image spans the whole row, so
+# every state's fill has to be down before it goes on -- painting state by
+# state put Utah's fill over the top of it and emptied its panel.
+for (i in seq_along(KU))
+  drawpolys(.sh(MS[MS$st == KU[i], ], i, 1), "#F4F6F7")
+rasterImage(DOTRAS, 0, RH, PWT, 0, interpolate = TRUE)
+for (i in seq_along(KU))
+  drawpolys(.sh(MS[MS$st == KU[i], ], i, 1), NA, border = GREY, lwd = 0.5)
+
 for (i in seq_along(KU)) {
   f <- KU[i]; p <- KUP[[i]]
-  s1 <- .sh(MS[MS$st == f, ], i, 1); s2 <- .sh(MS[MS$st == f, ], i, 2)
-  drawpolys(s1, "#F4F6F7", border = GREY, lwd = 0.5)
-  points(p$dot$x, p$dot$y, pch = 16, cex = 0.035, col = "#12181D38")
+  s2 <- .sh(MS[MS$st == f, ], i, 2)
   drawpolys(s2, "#ffffff")
   drawpolys(.sh(MZ[MZ$st == f, ], i, 2), RED)
   drawpolys(s2, NA, border = GREY, lwd = 0.5)
@@ -473,14 +519,14 @@ text(0, RH + GAPY - 0.9 * U, "WHERE NOBODY LIVES — blocks with no residents",
 # and their lengths are those counts; the panel below is the running share,
 # which is what answers "how small is a block, usually".
 cat(paste0('
-<div id="zhist" style="position:relative;margin:1em 0"></div>
+<div id="zhist" class="zpb-fig" style="position:relative;margin:1em 0"></div>
 <script>
 (function(){
 const L=', jstr(BIN_LAB), ',N=', jnum(BIN_N), ',P=', jnum(BIN_PCT),
 ',C=', jnum(BIN_CUM), ',TOT=', TOT, ';
-const W=700,HT=250,HB=120,GAP=34,H=HT+GAP+HB,M={l:64,r:16,t:12,b:26};
+const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:64,r:16,t:12,b:26};
 const wrap=d3.select("#zhist");
-const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+H)
+const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+(H+FOOT))
   .attr("style","max-width:100%;height:auto;font:12px inherit");
 const f=d3.format(",");
 const x=d3.scaleBand().domain(L).range([M.l,W-M.r]).padding(0.2);
@@ -518,7 +564,7 @@ svg.append("g").attr("transform","translate("+M.l+",0)")
 svg.append("text").attr("transform","rotate(-90)").attr("x",-(HT+GAP+H-M.b)/2)
   .attr("y",14).attr("text-anchor","middle").attr("font-size","11px")
   .attr("fill","#4E5A63").text("running share");
-svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H-2)
+svg.append("text").attr("x",(M.l+W-M.r)/2).attr("y",H+FOOT-6)
   .attr("text-anchor","middle").attr("font-size","11px").attr("fill","#4E5A63")
   .text("people counted in the block, 2020");
 const tip=wrap.append("div").attr("class","zpb-tip").style("display","none");
@@ -567,7 +613,7 @@ par(op)
 ## ---- state-d3
 ss <- sb[order(sb$pct_zero), ]
 cat(paste0('
-<div id="zstate" style="position:relative;margin:1em 0"></div>
+<div id="zstate" class="zpb-fig" style="position:relative;margin:1em 0"></div>
 <script>
 (function(){
 const N=', jstr(ss$state), ',V=', jnum(ss$pct_zero), ',BL=', jnum(ss$blocks),
@@ -635,7 +681,7 @@ mk <- function(v) {
 }
 A <- mk(PAN[[1]]$y); B <- mk(PAN[[2]]$y)
 cat(paste0('
-<div id="zdens" style="position:relative;margin:1em 0"></div>
+<div id="zdens" class="zpb-fig" style="position:relative;margin:1em 0"></div>
 <script>
 (function(){
 const D=', jstr(sb$usps), ',NM=', jstr(sb$state), ',X=', jnum(round(sb$dens, 2)), ';
@@ -728,7 +774,7 @@ par(op)
 ## ---- dc-d3
 DCP <- lapply(split(DC, DC$cat), polypaths)
 cat(paste0('
-<div id="zdc" style="position:relative;margin:1em 0"></div>
+<div id="zdc" class="zpb-fig" style="position:relative;margin:1em 0"></div>
 <script>
 (function(){
 const P0=', jstr(DCP[["0"]]), ',P1=', jstr(DCP[["1"]]), ',P2=', jstr(DCP[["2"]]), ';
