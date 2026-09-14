@@ -540,7 +540,7 @@ cat(paste0('
 (function(){
 const L=', jstr(BIN_LAB), ',N=', jnum(BIN_N), ',P=', jnum(BIN_PCT),
 ',C=', jnum(BIN_CUM), ',TOT=', TOT, ';
-const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:12,b:26};
+const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:28,b:26};
 const wrap=d3.select("#zhist");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+(H+FOOT))
   .attr("style","max-width:100%;height:auto;font:12px inherit");
@@ -554,6 +554,13 @@ const bars=svg.append("g").selectAll("rect").data(L).join("rect")
   .attr("x",d=>x(d)).attr("width",x.bandwidth())
   .attr("y",(d,i)=>y(N[i])).attr("height",(d,i)=>y(0)-y(N[i]))
   .attr("fill",(d,i)=>i===0?"', RED, '":"', GREY, '");
+// the share each bin holds, over its own bar
+svg.append("g").selectAll("text").data(L).join("text")
+  .attr("x",d=>x(d)+x.bandwidth()/2).attr("y",(d,i)=>y(N[i])-6)
+  .attr("text-anchor","middle").attr("font-size","10px")
+  .attr("fill",(d,i)=>i===0?"', RED, '":"#4E5A63")
+  .attr("font-weight",(d,i)=>i===0?700:400)
+  .text((d,i)=>P[i].toFixed(1)+"%");
 svg.append("g").attr("transform","translate(0,"+(HT-M.b)+")")
   .call(d3.axisBottom(x).tickSizeOuter(0));
 svg.append("g").attr("transform","translate("+M.l+",0)")
@@ -612,7 +619,11 @@ svg.append("g").selectAll("rect.hit").data(L).join("rect")
 ## ---- hist-static
 op <- par(mfrow = c(2, 1), mar = c(2.2, 5.6, 0.6, 0.8), oma = c(2.6, 0, 0, 0))
 bp <- barplot(BIN_N, names.arg = BIN_LAB, col = ifelse(seq_along(BIN_N) == 1, RED, GREY),
-              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25)
+              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25,
+              ylim = c(0, max(BIN_N) * 1.12))
+text(bp, BIN_N, sprintf("%.1f%%", BIN_PCT), pos = 3, offset = 0.28, cex = 0.52,
+     col = ifelse(seq_along(BIN_N) == 1, RED, "#4E5A63"),
+     font = ifelse(seq_along(BIN_N) == 1, 2, 1))
 at <- pretty(c(0, max(BIN_N)), 4)
 axis(2, at = at, labels = n(at), las = 1, cex.axis = 0.8)
 mtext("census blocks", side = 2, line = 4.4, cex = 0.8)
@@ -636,7 +647,7 @@ cat(paste0('
 (function(){
 const L=', jstr(LND_LAB), ',N=', jnum(LND_N), ',P=', jnum(LND_PCT),
 ',C=', jnum(LND_CUM), ',TOT=', TOT, ';
-const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:12,b:26};
+const W=700,HT=250,HB=120,GAP=34,FOOT=22,H=HT+GAP+HB,M={l:84,r:16,t:28,b:26};
 const wrap=d3.select("#zland");
 const svg=wrap.append("svg").attr("viewBox","0 0 "+W+" "+(H+FOOT))
   .attr("style","max-width:100%;height:auto;font:12px inherit");
@@ -650,6 +661,13 @@ const bars=svg.append("g").selectAll("rect").data(L).join("rect")
   .attr("x",d=>x(d)).attr("width",x.bandwidth())
   .attr("y",(d,i)=>y(N[i])).attr("height",(d,i)=>y(0)-y(N[i]))
   .attr("fill",(d,i)=>i===0?"', RED, '":"', GREY, '");
+// the share each bin holds, over its own bar
+svg.append("g").selectAll("text").data(L).join("text")
+  .attr("x",d=>x(d)+x.bandwidth()/2).attr("y",(d,i)=>y(N[i])-6)
+  .attr("text-anchor","middle").attr("font-size","10px")
+  .attr("fill",(d,i)=>i===0?"', RED, '":"#4E5A63")
+  .attr("font-weight",(d,i)=>i===0?700:400)
+  .text((d,i)=>P[i].toFixed(1)+"%");
 svg.append("g").attr("transform","translate(0,"+(HT-M.b)+")")
   .call(d3.axisBottom(x).tickSizeOuter(0));
 svg.append("g").attr("transform","translate("+M.l+",0)")
@@ -708,7 +726,11 @@ svg.append("g").selectAll("rect.hit").data(L).join("rect")
 ## ---- land-static
 op <- par(mfrow = c(2, 1), mar = c(2.2, 5.6, 0.6, 0.8), oma = c(2.6, 0, 0, 0))
 bp <- barplot(LND_N, names.arg = LND_LAB, col = ifelse(seq_along(LND_N) == 1, RED, GREY),
-              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25)
+              border = NA, las = 1, yaxt = "n", cex.names = 0.58, space = 0.25,
+              ylim = c(0, max(LND_N) * 1.12))
+text(bp, LND_N, sprintf("%.1f%%", LND_PCT), pos = 3, offset = 0.28, cex = 0.52,
+     col = ifelse(seq_along(LND_N) == 1, RED, "#4E5A63"),
+     font = ifelse(seq_along(LND_N) == 1, 2, 1))
 at <- pretty(c(0, max(LND_N)), 4)
 axis(2, at = at, labels = n(at), las = 1, cex.axis = 0.8)
 mtext("census blocks", side = 2, line = 4.4, cex = 0.8)
