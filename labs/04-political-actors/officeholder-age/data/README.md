@@ -1,12 +1,12 @@
 # Officeholder age by calendar year
 
-A companion series to this lab's main Voteview-based files, not a replacement.
-The lab's `data/derived/age_by_congress.csv` is organized **by Congress** and
-built from `HSall_members.csv`, which records `born` as a **year** — so ages
-there carry about a year of slop. This folder is organized **by calendar year**
-and built from exact **birthdates**.
+A companion series to this chapter's main Voteview-based files, not a
+replacement. `derived/age_by_congress.csv` is organized **by Congress** and
+built from `raw/HSall_members.csv`, which records `born` as a **year** — so
+ages there carry about a year of slop. The files described here are organized
+**by calendar year** and built from exact **birthdates**.
 
-| | this folder | `../data/derived/` |
+| | these files | `age_by_congress.csv` |
 |---|---|---|
 | source | @unitedstates/congress-legislators | Voteview `HSall_members.csv` |
 | birth field | full date | year only |
@@ -15,16 +15,17 @@ and built from exact **birthdates**.
 
 ## Files
 
-- `build-ages.py` — fetches the three source files into `data/raw/` (gitignored
-  repo-wide) and writes `ages.json`. Run it from anywhere: `python3 build-ages.py`.
-  No dependencies beyond the standard library.
-- `ages.json` — the derived series, 140 KB.
-- `ages-page.html` — a self-contained page (data inlined, no network calls):
+- `build-ages.py` — fetches the three source files into `raw/` (gitignored
+  repo-wide) and writes `derived/ages.json`. Run it from anywhere:
+  `python3 build-ages.py`. No dependencies beyond the standard library.
+- `derived/ages.json` — the derived series, 140 KB.
+- `derived/ages-page.html` — a self-contained page (data inlined, no network
+  calls):
   median age per chamber across all 238 years, click any year for that year's
   full age distribution. Also published at
   https://claude.ai/artifact/LSE6xNH78PtcKfUMFBV618
 
-## Shape of ages.json
+## Shape of derived/ages.json
 
 `year → chamber → stats`, chambers keyed `rep`, `sen`, `prez`:
 

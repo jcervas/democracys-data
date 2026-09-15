@@ -27,10 +27,10 @@
 #   under 22 at swearing-in are impossible and dropped.
 #
 # OUTPUT
-#   ages.json   year -> chamber ("rep"/"sen"/"prez") -> {n, min, c, med, mean,
-#               yng, old, nb}, where c[i] is the number of members aged min+i;
-#               "prez" also carries "all", every president that year in the
-#               order they held office
+#   derived/ages.json   year -> chamber ("rep"/"sen"/"prez") -> {n, min, c,
+#                       med, mean, yng, old, nb}, where c[i] is the number of
+#                       members aged min+i; "prez" also carries "all", every
+#                       president that year in the order they held office
 # ---------------------------------------------------------------------------
 
 import json, os, statistics, urllib.request
@@ -42,7 +42,8 @@ def pd_(s):
 # raw/ holds the sources as they arrive; it is gitignored repo-wide, and this
 # script re-fetches anything missing.
 BASE = 'https://unitedstates.github.io/congress-legislators/'
-RAW = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'raw')
+HERE = os.path.dirname(os.path.abspath(__file__))     # this chapter's data/
+RAW = os.path.join(HERE, 'raw')
 os.makedirs(RAW, exist_ok=True)
 def raw(f):
     p = os.path.join(RAW, f)
@@ -118,7 +119,7 @@ for y in range(Y0, Y1+1):
             ent[c]['all'] = [[data[y][c][k][1], data[y][c][k][0]] for k in order]
     if ent: out[y] = ent
 
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ages.json')
+OUT = os.path.join(HERE, 'derived', 'ages.json')
 json.dump(out, open(OUT,'w'), separators=(',',':'))
 print('years', len(out), 'bytes', len(open(OUT).read()))
 print('people missing bdays appearing in data:', len(missing_people))
