@@ -156,16 +156,6 @@ knit_print.data.frame <- function(x, ...) {
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
 
-## ---- data-table
-data.frame(
-  Level = c("Nation", "Most empty", "Least empty"),
-  Where = c("50 states, DC, Puerto Rico", MOST$state, LEAST$state),
-  Blocks = n(c(TOT, MOST$blocks, LEAST$blocks)),
-  `Blocks with nobody` = n(c(ZERO, MOST$zero_blocks, LEAST$zero_blocks)),
-  Percent = paste0(pc(c(PZ, MOST$pct_zero, LEAST$pct_zero)), "%"),
-  check.names = FALSE
-)
-
 ## ---- geometry-helpers
 # One SVG subpath per ring, then all of a polygon's rings joined into a single
 # path drawn under an even-odd fill rule. That grouping is not cosmetic: the

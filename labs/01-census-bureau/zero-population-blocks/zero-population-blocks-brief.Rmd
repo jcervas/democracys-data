@@ -43,7 +43,7 @@ The extremes run a long way from that median, in both directions and not togethe
 
 That pairing is this brief's subject. `r n(ZERO)` blocks — `r pc(PZ)`% of every block in the country — recorded nobody at all in 2020. That is not a defect in the count. It is what happens when you cut a country into pieces small enough that most pieces are a lake, an interchange, a runway, a cemetery, or a stretch of national forest.
 
-This brief is a walkthrough. It shows where the data came from, what was done to it, and what the resulting map does and does not say. The point is not the map at the end; it is that you could rebuild it.
+This brief shows where those blocks are, where the underlying data came from, and what a map of them can and cannot tell you.
 
 ## Where the data came from
 
@@ -54,24 +54,6 @@ One download, and it holds both halves of the problem.
 **The count rides along with the shape.** Every block record in those files carries a `POP20` field: the total population the 2020 decennial census counted in that block. It is not an estimate and not a sample. It is the decennial count, the same number published in the [P.L. 94-171 Redistricting Data Summary File](https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html) that every state legislature receives for redistricting. The Bureau prepends it to the geography, so a block's boundary and its population arrive together, in one file, already joined.
 
 The same counts are also served, one variable at a time, by the [Census Data API](../census-api/census-api-brief.html), which has a chapter of its own. For a map of every block in the country it is much the slower road: blocks cannot be asked for a whole state at once, so covering the country takes some 3,100 requests against the 52 files downloaded here.
-
-## How the map was made
-
-Four steps, and each one throws something away on purpose.
-
-1. **Read** each state's block file and keep the blocks whose `POP20` is zero. One state at a time, so that a single state is in memory rather than the whole country.
-2. **Drop the water.** A block that is all water reports zero people truthfully, but drawing those fills the Great Lakes and every coastal bay with solid color. Blocks with no land area are set aside here, and counted separately.
-3. **Dissolve** the surviving blocks into one shape. Touching empty blocks become one region, which is honest here: the boundary between two adjacent empty blocks is not a feature of the world, it is an artifact of where the Bureau put its lines. Every count in this brief is taken before this step, or carried through it as a summed field, because after a dissolve a count of shapes is a count of regions and not of blocks.
-4. **Simplify** with [mapshaper](https://github.com/mbloch/mapshaper), project to Albers USA, and round the coordinates to whole units of the figure's own grid.
-
-Simplification is the step that deserves suspicion, so here are its terms. The national layer at full resolution is about 200 MB, far too large to put in a web page. What ships is 2% of the original vertices: `r n(nrow(MZ))` points in `r n(length(unique(MZ$poly)))` polygons, about 1 MB. At the width this figure is drawn, one unit of the grid is roughly 2.3 kilometers, so detail finer than that could not be seen even if it were kept. What is lost is the exact shape of any individual block. What survives is where the empty land is, which is the only claim the figure makes.
-
-Two things in steps 3 and 4 are easy to get wrong and were got wrong here first. Dissolving produces polygons with **holes** — a populated town inside an empty county is an interior ring — and a ring drawn on its own is painted as fill rather than subtracted, which turns Nevada into a solid rectangle. Both renderings below therefore draw one path per polygon with all of its rings together, under an even-odd fill rule. And rounding coordinates has to happen *after* projecting, not before: rounding longitude and latitude to whole numbers rounds them to whole degrees, and the country dissolves.
-
-The built tables are small and readable: [`state_blocks.csv`](data/derived/state_blocks.csv), one row per state; [`block_pop_hist.csv`](data/derived/block_pop_hist.csv), a count of blocks at each population from 0 to `r n(CAP)`; [`zero_land.csv`](data/derived/zero_land.csv), land area of the empty blocks by state; [`block_size.csv`](data/derived/block_size.csv), how big a block is and the two extremes; [`dc_blocks.csv`](data/derived/dc_blocks.csv) with [`dc_frame.csv`](data/derived/dc_frame.csv) and [`dc_facts.csv`](data/derived/dc_facts.csv), one city at full block resolution; [`facts.csv`](data/derived/facts.csv), the national totals quoted in this text; and the figure geometry in [`map_zero.csv`](data/derived/map_zero.csv), [`map_states.csv`](data/derived/map_states.csv) and [`map_frame.csv`](data/derived/map_frame.csv), stored as integer figure coordinates so the web version and the print version draw the same shapes from the same numbers.
-
-```{r data-table}
-```
 
 ## How big is a census block, anyway?
 
@@ -179,7 +161,7 @@ The map is drawn from the land blocks. `r n(ZWBLK)` of the empty blocks are wate
 
 Empty is not the same as thinly settled, and this is not a population density map, though Figure 5 shows how much of one it is. Density is people divided by area, a continuous quantity every block has some value of. Emptiness is a threshold applied to a unit: zero, or not zero. A solid red county on this map means its blocks crossed that threshold, not that nobody lives nearby.
 
-Simplification means no individual block on this map is the right shape. Do not measure anything off it. The [built tables](data/derived/state_blocks.csv) carry the counts; the figure carries the pattern.
+The outlines in Figure 1 are simplified, so no individual block on it is the right shape. Do not measure anything off it. The [built tables](data/derived/state_blocks.csv) carry the counts; the figure carries the pattern.
 
 And zero is a published number, not a raw one. The 2020 counts passed through disclosure avoidance before release, which can move a small count by a little. At the block level that noise is proportionally largest, though a block that is a reservoir was not going to be populated either way.
 
@@ -188,7 +170,7 @@ And zero is a published number, not a raw one. The 2020 counts passed through di
 - The census block is small: the median holds `r n(MED)` people, and `r pc(UNDER10)`% hold ten or fewer. Percentages computed on units that size are fragile.
 - `r pc(PZ)`% of blocks are empty but they cover about `r pc(PCTLAND)`% of the land. Counting units and measuring area are different operations, and "most of the country is empty" and "most blocks are empty" are different claims.
 - A join that matches 100% is a test you passed, not a formality. Identifiers are text.
-- Every step that made this map — filtering, dissolving, simplifying — discarded something. A figure is trustworthy when you can say what it discarded and why, not when nothing was discarded.
+- Every map discards something: here, the water blocks, the boundaries between touching empty blocks, and the exact shape of every coastline. A figure is trustworthy when you can say what it discarded and why, not when nothing was discarded.
 
 ## Extensions
 
@@ -197,7 +179,7 @@ And zero is a published number, not a raw one. The 2020 counts passed through di
 - `block_pop_hist.csv` — the last row is a bucket, every block of `r n(CAP)` people or more. How many blocks are in it, and what kind of place holds that many people inside one block?
 - `block_pop_hist.csv` — compute the share of the national population living in blocks of ten people or fewer. Compare it with the `r pc(UNDER10)`% of *blocks* that size. Explain the difference to someone in one sentence.
 - **Stretch.** Download one state's [block file](https://www2.census.gov/geo/tiger/TIGER2020/TABBLOCK20/) and check its `POP20` against the same counts served by the API. Report how many disagree, and decide which you would trust in print.
-- **Stretch.** Rebuild Figure 1 for one state without the dissolve step, drawing each empty block separately. Say what the dissolved version hides and what it clarifies.
+- **Stretch.** Rebuild Figure 1 for one state, drawing each empty block separately rather than merging touching empty blocks into one shape. Say what the merged version hides and what it clarifies.
 
 ## Sources
 
@@ -228,9 +210,8 @@ open in a spreadsheet, and they are yours to take further.
 
 **Method**
 
-- Bloch, M. *mapshaper* — the simplification, dissolve and projection steps in
-  Figure 1 are all mapshaper commands; its Visvalingam implementation is what
-  "2% of the vertices" means here.
+- Bloch, M. *mapshaper* — the simplification, dissolve and projection steps
+  behind Figure 1 are all mapshaper commands.
   <https://github.com/mbloch/mapshaper>
 - Bostock, M. *D3* — the three figures in the HTML edition are plain SVG built
   with D3 scales and axes.

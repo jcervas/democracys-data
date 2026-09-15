@@ -1472,7 +1472,7 @@ font-variant-numeric: tabular-nums; color: var(--ink);
 <h3 class="subtitle">Building a national map of the census blocks that
 hold no people</h3>
 <h4 class="author">Democracy’s Data</h4>
-<h4 class="date">Last updated September 14, 2026 at 10:05a EDT</h4>
+<h4 class="date">Last updated September 15, 2026 at 4:52p EDT</h4>
 
 
 <div id="TOC">
@@ -1481,8 +1481,6 @@ hold no people</h3>
 nobody lives</a></li>
 <li><a href="#what-a-census-block-is" id="toc-what-a-census-block-is">What a census block is</a></li>
 <li><a href="#where-the-data-came-from" id="toc-where-the-data-came-from">Where the data came from</a></li>
-<li><a href="#how-the-map-was-made" id="toc-how-the-map-was-made">How
-the map was made</a></li>
 <li><a href="#how-big-is-a-census-block-anyway" id="toc-how-big-is-a-census-block-anyway">How big is a census block,
 anyway?</a></li>
 <li><a href="#which-states-are-emptiest" id="toc-which-states-are-emptiest">Which states are emptiest</a></li>
@@ -1678,9 +1676,8 @@ every block in the country — recorded nobody at all in 2020. That is not
 a defect in the count. It is what happens when you cut a country into
 pieces small enough that most pieces are a lake, an interchange, a
 runway, a cemetery, or a stretch of national forest.</p>
-<p>This brief is a walkthrough. It shows where the data came from, what
-was done to it, and what the resulting map does and does not say. The
-point is not the map at the end; it is that you could rebuild it.</p>
+<p>This brief shows where those blocks are, where the underlying data
+came from, and what a map of them can and cannot tell you.</p>
 </div>
 <div id="where-the-data-came-from" class="section level2">
 <h2>Where the data came from</h2>
@@ -1710,97 +1707,6 @@ has a chapter of its own. For a map of every block in the country it is
 much the slower road: blocks cannot be asked for a whole state at once,
 so covering the country takes some 3,100 requests against the 52 files
 downloaded here.</p>
-</div>
-<div id="how-the-map-was-made" class="section level2">
-<h2>How the map was made</h2>
-<p>Four steps, and each one throws something away on purpose.</p>
-<ol style="list-style-type: decimal">
-<li><strong>Read</strong> each state’s block file and keep the blocks
-whose <code>POP20</code> is zero. One state at a time, so that a single
-state is in memory rather than the whole country.</li>
-<li><strong>Drop the water.</strong> A block that is all water reports
-zero people truthfully, but drawing those fills the Great Lakes and
-every coastal bay with solid color. Blocks with no land area are set
-aside here, and counted separately.</li>
-<li><strong>Dissolve</strong> the surviving blocks into one shape.
-Touching empty blocks become one region, which is honest here: the
-boundary between two adjacent empty blocks is not a feature of the
-world, it is an artifact of where the Bureau put its lines. Every count
-in this brief is taken before this step, or carried through it as a
-summed field, because after a dissolve a count of shapes is a count of
-regions and not of blocks.</li>
-<li><strong>Simplify</strong> with <a href="https://github.com/mbloch/mapshaper">mapshaper</a>, project to
-Albers USA, and round the coordinates to whole units of the figure’s own
-grid.</li>
-</ol>
-<p>Simplification is the step that deserves suspicion, so here are its
-terms. The national layer at full resolution is about 200 MB, far too
-large to put in a web page. What ships is 2% of the original vertices:
-999,532 points in 62,916 polygons, about 1 MB. At the width this figure
-is drawn, one unit of the grid is roughly 2.3 kilometers, so detail
-finer than that could not be seen even if it were kept. What is lost is
-the exact shape of any individual block. What survives is where the
-empty land is, which is the only claim the figure makes.</p>
-<p>Two things in steps 3 and 4 are easy to get wrong and were got wrong
-here first. Dissolving produces polygons with <strong>holes</strong> — a
-populated town inside an empty county is an interior ring — and a ring
-drawn on its own is painted as fill rather than subtracted, which turns
-Nevada into a solid rectangle. Both renderings below therefore draw one
-path per polygon with all of its rings together, under an even-odd fill
-rule. And rounding coordinates has to happen <em>after</em> projecting,
-not before: rounding longitude and latitude to whole numbers rounds them
-to whole degrees, and the country dissolves.</p>
-<p>The built tables are small and readable: <a href="data/derived/state_blocks.csv"><code>state_blocks.csv</code></a>,
-one row per state; <a href="data/derived/block_pop_hist.csv"><code>block_pop_hist.csv</code></a>,
-a count of blocks at each population from 0 to 1,000; <a href="data/derived/zero_land.csv"><code>zero_land.csv</code></a>, land
-area of the empty blocks by state; <a href="data/derived/block_size.csv"><code>block_size.csv</code></a>, how
-big a block is and the two extremes; <a href="data/derived/dc_blocks.csv"><code>dc_blocks.csv</code></a> with <a href="data/derived/dc_frame.csv"><code>dc_frame.csv</code></a> and <a href="data/derived/dc_facts.csv"><code>dc_facts.csv</code></a>, one city
-at full block resolution; <a href="data/derived/facts.csv"><code>facts.csv</code></a>, the national
-totals quoted in this text; and the figure geometry in <a href="data/derived/map_zero.csv"><code>map_zero.csv</code></a>, <a href="data/derived/map_states.csv"><code>map_states.csv</code></a> and
-<a href="data/derived/map_frame.csv"><code>map_frame.csv</code></a>,
-stored as integer figure coordinates so the web version and the print
-version draw the same shapes from the same numbers.</p>
-<table style="width:100%;">
-<colgroup>
-<col width="15%" />
-<col width="35%" />
-<col width="13%" />
-<col width="25%" />
-<col width="10%" />
-</colgroup>
-<thead>
-<tr class="header">
-<th align="left">Level</th>
-<th align="left">Where</th>
-<th align="right">Blocks</th>
-<th align="right">Blocks with nobody</th>
-<th align="right">Percent</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">Nation</td>
-<td align="left">50 states, DC, Puerto Rico</td>
-<td align="right">8,174,955</td>
-<td align="right">2,368,443</td>
-<td align="right">29.0%</td>
-</tr>
-<tr class="even">
-<td align="left">Most empty</td>
-<td align="left">Alaska</td>
-<td align="right">28,568</td>
-<td align="right">16,803</td>
-<td align="right">58.8%</td>
-</tr>
-<tr class="odd">
-<td align="left">Least empty</td>
-<td align="left">Puerto Rico</td>
-<td align="right">41,987</td>
-<td align="right">5,417</td>
-<td align="right">12.9%</td>
-</tr>
-</tbody>
-</table>
 </div>
 <div id="how-big-is-a-census-block-anyway" class="section level2">
 <h2>How big is a census block, anyway?</h2>
@@ -2341,8 +2247,8 @@ people divided by area, a continuous quantity every block has some value
 of. Emptiness is a threshold applied to a unit: zero, or not zero. A
 solid red county on this map means its blocks crossed that threshold,
 not that nobody lives nearby.</p>
-<p>Simplification means no individual block on this map is the right
-shape. Do not measure anything off it. The <a href="data/derived/state_blocks.csv">built tables</a> carry the counts;
+<p>The outlines in Figure 1 are simplified, so no individual block on it
+is the right shape. Do not measure anything off it. The <a href="data/derived/state_blocks.csv">built tables</a> carry the counts;
 the figure carries the pattern.</p>
 <p>And zero is a published number, not a raw one. The 2020 counts passed
 through disclosure avoidance before release, which can move a small
@@ -2362,9 +2268,10 @@ the country is empty” and “most blocks are empty” are different
 claims.</li>
 <li>A join that matches 100% is a test you passed, not a formality.
 Identifiers are text.</li>
-<li>Every step that made this map — filtering, dissolving, simplifying —
-discarded something. A figure is trustworthy when you can say what it
-discarded and why, not when nothing was discarded.</li>
+<li>Every map discards something: here, the water blocks, the boundaries
+between touching empty blocks, and the exact shape of every coastline. A
+figure is trustworthy when you can say what it discarded and why, not
+when nothing was discarded.</li>
 </ul>
 </div>
 <div id="extensions" class="section level2">
@@ -2389,9 +2296,10 @@ one sentence.</li>
 file</a> and check its <code>POP20</code> against the same counts served
 by the API. Report how many disagree, and decide which you would trust
 in print.</li>
-<li><strong>Stretch.</strong> Rebuild Figure 1 for one state without the
-dissolve step, drawing each empty block separately. Say what the
-dissolved version hides and what it clarifies.</li>
+<li><strong>Stretch.</strong> Rebuild Figure 1 for one state, drawing
+each empty block separately rather than merging touching empty blocks
+into one shape. Say what the merged version hides and what it
+clarifies.</li>
 </ul>
 </div>
 <div id="sources" class="section level2">
@@ -2424,8 +2332,7 @@ they open in a spreadsheet, and they are yours to take further.</p>
 <p><strong>Method</strong></p>
 <ul>
 <li>Bloch, M. <em>mapshaper</em> — the simplification, dissolve and
-projection steps in Figure 1 are all mapshaper commands; its Visvalingam
-implementation is what “2% of the vertices” means here. <a href="https://github.com/mbloch/mapshaper" class="uri">https://github.com/mbloch/mapshaper</a></li>
+projection steps behind Figure 1 are all mapshaper commands. <a href="https://github.com/mbloch/mapshaper" class="uri">https://github.com/mbloch/mapshaper</a></li>
 <li>Bostock, M. <em>D3</em> — the three figures in the HTML edition are
 plain SVG built with D3 scales and axes. <a href="https://d3js.org/" class="uri">https://d3js.org/</a></li>
 </ul>
