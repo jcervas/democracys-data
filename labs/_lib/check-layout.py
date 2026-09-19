@@ -246,6 +246,12 @@ for lab, d in chapters():
             continue
         if f in TOP_OK or os.path.splitext(f)[1] in SCRIPT_EXT:
             continue
+        # The input side of the interactive-page convention: a doc that ships
+        # data/derived/<name>-page.html builds it from <name>-page.tmpl.html
+        # here, one template with the series inlined at build time. It is a
+        # build input like the scripts beside it, not data.
+        if f.endswith("-page.tmpl.html"):
+            continue
         problems.append(("loose file", f"{lab}/data/{f}",
                          "belongs in raw/ or derived/"))
 

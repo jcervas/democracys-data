@@ -162,52 +162,6 @@ color: #d14;
     init();
   }
 })();
-
-/* ------------------------------------------------------------------
-   Collapsible table of contents.
-
-   Pandoc emits the TOC as a plain list. Wide enough for the sidebar
-   layout, there is room to show it in full; on a phone it is two screens
-   of links standing between the masthead and the first word of the
-   syllabus. This wraps it in a <details> so it opens on a tap, and
-   leaves it open where the sidebar lives.
-
-   Nothing changes about how the TOC is written. If this script does not
-   run, the panel renders exactly as pandoc emitted it.
-   ------------------------------------------------------------------ */
-(function () {
-  var SIDEBAR = '(min-width: 1320px)';   /* keep in step with syllabus.css */
-
-  function init() {
-    var toc = document.getElementById('TOC');
-    if (!toc || toc.getElementsByTagName('details').length) return;
-
-    var details = document.createElement('details');
-    var summary = document.createElement('summary');
-    summary.textContent = 'Contents';
-    details.appendChild(summary);
-    while (toc.firstChild) details.appendChild(toc.removeChild(toc.firstChild));
-    toc.appendChild(details);
-    toc.className += ' toc-collapsible';
-
-    var wide = window.matchMedia(SIDEBAR);
-    details.open = wide.matches;
-
-    /* Follow the layout on rotate or resize — but stop once the reader has
-       opened or closed the panel themselves; their choice outranks ours. */
-    var touched = false;
-    summary.addEventListener('click', function () { touched = true; });
-    function sync(e) { if (!touched) details.open = e.matches; }
-    if (wide.addEventListener) wide.addEventListener('change', sync);
-    else if (wide.addListener) wide.addListener(sync);   /* Safari < 14 */
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
 </script>
 
 <style>
@@ -407,7 +361,7 @@ if (window.hljs) {
 --body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 --radius: 0; --shadow: none;
---measure: 46rem; --margin-w: 14rem; --margin-gap: 1.75rem; --toc-w: 16rem; --bg: var(--paper);
+--measure: 46rem; --margin-w: 14rem; --margin-gap: 1.75rem; --bg: var(--paper);
 --panel: var(--card);
 --panel-2: var(--rule-2);
 --ink-soft: var(--ink-2);
@@ -453,7 +407,6 @@ width: auto !important;
 margin: 0 !important;
 padding: 0 !important;
 }
-body > #TOC,
 body > h1, body > h2, body > h3, body > h4, body > h5, body > h6,
 body > p, body > ul, body > ol, body > table, body > blockquote,
 body > pre, body > hr, body > div, body > figure, body > section {
@@ -465,25 +418,6 @@ padding-right: 22px;
 }
 @media (min-width: 1000px) {
 body { padding-right: calc(var(--margin-gap) + var(--margin-w)); }
-}
-@media (min-width: 1320px) {
-body {
-padding-left: var(--toc-w);
-}
-#TOC {
-position: fixed;
-top: 0;
-left: 0;
-width: var(--toc-w);
-height: 100vh;
-overflow-y: auto;
-overscroll-behavior: contain;
-margin: 0;
-padding: 26px 18px 60px;
-background: var(--panel);
-border-right: 1px solid var(--line);
-max-width: none;
-}
 }
 h1.title {
 font-family: var(--display);
@@ -857,110 +791,6 @@ font-size: 15px;
 color: var(--muted);
 }
 .footnotes hr { display: none; }
-#TOC {
-font-size: 14.5px;
-line-height: 1.35;
-margin: 0 auto 2.4em;
-padding: 18px 20px;
-background: var(--panel);
-border: 1px solid var(--line);
-border-radius: var(--radius);
-}
-#TOC::before {
-content: "Contents";
-display: block;
-font-family: var(--mono);
-font-weight: 600;
-text-transform: uppercase;
-letter-spacing: .07em;
-font-size: 11px;
-color: var(--ink-3);
-margin-bottom: 10px;
-padding-bottom: 8px;
-border-bottom: 1px solid var(--line);
-}
-#TOC ul { list-style: none; padding-left: 0; margin: 0; }
-#TOC ul ul { padding-left: 12px; border-left: 1px solid var(--line); margin: 4px 0 6px; }
-#TOC li { margin-bottom: 6px; }
-#TOC a {
-color: var(--ink-soft);
-text-decoration: none;
-display: block;
-padding: 2px 0;
-}
-#TOC a:hover { color: var(--cmu-red); }
-#TOC > ul > li > a,
-#TOC > details > ul > li > a { font-weight: 700; }
-#TOC ::marker { content: none; }
-#TOC.toc-collapsible::before { content: none; }
-#TOC > details > summary {
-display: flex;
-align-items: center;
-justify-content: space-between;
-gap: 10px;
-cursor: pointer;
-list-style: none; font-family: var(--mono);
-font-weight: 600;
-text-transform: uppercase;
-letter-spacing: .07em;
-font-size: 11px;
-color: var(--ink-3);
-padding: 2px 0;
--webkit-tap-highlight-color: transparent;
-}
-#TOC > details > summary::-webkit-details-marker { display: none; }
-#TOC > details > summary::after {
-content: "";
-flex: none;
-width: 7px;
-height: 7px;
-border-right: 2px solid currentColor;
-border-bottom: 2px solid currentColor;
-transform: translateY(-2px) rotate(45deg);
-transition: transform .15s ease;
-}
-#TOC > details[open] > summary::after { transform: translateY(1px) rotate(-135deg); }
-#TOC > details[open] > summary {
-margin-bottom: 10px;
-padding-bottom: 8px;
-border-bottom: 1px solid var(--line);
-}
-@media (min-width: 1320px) {
-body:has(#TOC > details:not([open])) { padding-left: 2.75rem; }
-#TOC:has(> details:not([open])) {
-width: 2.75rem;
-padding-left: 0;
-padding-right: 0;
-overflow: hidden;
-}
-#TOC:has(> details:not([open])):hover { width: 3.4rem; }
-#TOC > details[open] > summary::after {
-transform: translateX(2px) rotate(135deg);
-}
-#TOC:has(> details:not([open])) > details > summary {
-justify-content: center;
-gap: 0;
-padding: 2px 0;
-}
-#TOC:has(> details:not([open])) > details > summary { font-size: 0; }
-#TOC:has(> details:not([open])) > details > summary::after {
-transform: translateX(-1px) rotate(-45deg); }
-body, #TOC { transition: padding-left .18s ease, width .18s ease; }
-}
-@media (prefers-reduced-motion: reduce) {
-body, #TOC { transition: none; }
-}
-@media (max-width: 700px) {
-#TOC {
-padding: 10px 16px;
-margin-bottom: 1.8em;
-font-size: 15px;
-}
-#TOC > details > summary { padding: 6px 0; }
-#TOC li { margin-bottom: 0; }
-#TOC a { padding: 8px 0; }
-#TOC ul ul { padding-left: 10px; margin: 0 0 2px; }
-}
 @media print {
 :root {
 --paper: #fff; --card: #fff;
@@ -973,7 +803,6 @@ font-size: 10.5pt;
 padding-left: 0;
 border-top: 0;
 }
-#TOC { display: none; }
 body > * { max-width: none; padding-left: 0; padding-right: 0; }
 .sidenote, .marginnote {
 display: block;
@@ -1208,6 +1037,30 @@ line-height: 1.45;
 
 .figure, figure { max-width: 100%; }
 figure img, .figure img, svg { max-width: 100%; }
+
+:is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child),
+script + p[style]:not(:has(strong)) + p:has(> strong:first-child) {
+margin: .55em 0 2.1em;
+font-size: .88em;
+line-height: 1.5;
+color: var(--ink-3);
+}
+:is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child) > strong:first-child,
+script + p[style]:not(:has(strong)) + p:has(> strong:first-child) > strong:first-child {
+display: block;
+margin-bottom: .15em;
+font-size: 1.136em;
+line-height: 1.45;
+color: var(--ink);
+}
+
+@media print {
+:is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child),
+script + p[style]:not(:has(strong)) + p:has(> strong:first-child) {
+break-inside: avoid; page-break-inside: avoid;
+break-before: avoid; page-break-before: avoid;
+}
+}
 
 thead th,
 tbody td { text-align: right; }
@@ -1448,28 +1301,9 @@ font-variant-numeric: tabular-nums; color: var(--ink);
 <h3 class="subtitle">Seven questions asked once a decade, and the people
 it does not find</h3>
 <h4 class="author">Democracy’s Data</h4>
-<h4 class="date">Last updated September 13, 2026 at 10:53a EDT</h4>
+<h4 class="date">Last updated September 15, 2026 at 4:42p EDT</h4>
 
 
-<div id="TOC">
-<ul>
-<li><a href="#where-the-data-comes-from-and-what-it-is-for" id="toc-where-the-data-comes-from-and-what-it-is-for">Where the data
-comes from, and what it is for</a></li>
-<li><a href="#seven-questions" id="toc-seven-questions">Seven
-questions</a></li>
-<li><a href="#what-seven-questions-become" id="toc-what-seven-questions-become">What seven questions
-become</a></li>
-<li><a href="#the-count-is-not-complete-and-it-never-has-been" id="toc-the-count-is-not-complete-and-it-never-has-been">The count is
-not complete, and it never has been</a></li>
-<li><a href="#what-this-data-cannot-tell-you" id="toc-what-this-data-cannot-tell-you">What this data cannot tell
-you</a></li>
-<li><a href="#what-you-should-have-learned" id="toc-what-you-should-have-learned">What you should have
-learned</a></li>
-<li><a href="#where-this-data-appears-in-this-book" id="toc-where-this-data-appears-in-this-book">Where this data appears in
-this book</a></li>
-<li><a href="#sources" id="toc-sources">Sources</a></li>
-</ul>
-</div>
 
 <p>The Constitution orders a count. Article I, Section 2, Clause 3
 requires an “actual Enumeration” of the whole population, once at the

@@ -1,0 +1,379 @@
+<title>How Old Is Washington</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#11161d; --ink-2:#56606e; --ink-3:#818b99;
+  --rule:#dde2e8; --rule-soft:#e9edf1;
+  --house:#2a78d6; --senate:#eb6834; --prez:#1baf7a;
+  --house-soft:#d3e3f8; --senate-soft:#fadfd2; --prez-soft:#cdeee1;
+  --focus:#2a78d6;
+  --sans:"Libre Franklin",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101317; --surface:#171b21; --ink:#f1f4f7; --ink-2:#a6b0bd; --ink-3:#77818f;
+    --rule:#2a3139; --rule-soft:#222831;
+    --house:#3987e5; --senate:#d95926; --prez:#199e70;
+    --house-soft:#1d3552; --senate-soft:#4a2718; --prez-soft:#133a2c;
+    --focus:#5598e7;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101317; --surface:#171b21; --ink:#f1f4f7; --ink-2:#a6b0bd; --ink-3:#77818f;
+  --rule:#2a3139; --rule-soft:#222831;
+  --house:#3987e5; --senate:#d95926; --prez:#199e70;
+  --house-soft:#1d3552; --senate-soft:#4a2718; --prez-soft:#133a2c;
+  --focus:#5598e7;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;
+  padding-inline:20px;padding-block:32px 48px;margin:0}
+.wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+h1{font-size:clamp(28px,4.4vw,42px);line-height:1.08;font-weight:700;letter-spacing:-.022em;margin:0;text-wrap:balance}
+.dek{margin:0;max-width:64ch;color:var(--ink-2);font-size:15px}
+
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:18px 18px 14px}
+.card-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 16px;margin-bottom:6px}
+.card-title{font-size:14px;font-weight:600;letter-spacing:-.005em;margin:0}
+.card-sub{font-size:12px;color:var(--ink-3);margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:12px;height:3px;border-radius:2px;display:inline-block}
+
+svg{display:block;width:100%;height:auto;overflow:visible}
+.tick{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3)}
+.grid{stroke:var(--rule-soft);stroke-width:1}
+.axis{stroke:var(--rule);stroke-width:1}
+.serieslabel{font-family:var(--sans);font-size:11.5px;font-weight:600}
+#trend{cursor:crosshair;touch-action:pan-y}
+#trend:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:4px}
+
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--rule);
+  border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 18px rgba(10,20,35,.14);
+  min-width:132px;opacity:0;transition:opacity .1s}
+.tip .y{font-family:var(--mono);font-weight:600;font-size:13px;margin-bottom:4px}
+.tip .r{display:flex;justify-content:space-between;gap:12px;color:var(--ink-2)}
+.tip .r b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+
+.yearbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.yearnum{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.stepper{display:flex;gap:4px}
+button.step{font-family:var(--mono);font-size:13px;background:var(--surface);color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:6px;width:30px;height:30px;cursor:pointer}
+button.step:hover{color:var(--ink);border-color:var(--ink-3)}
+button.step:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+input[type=range]{flex:1;min-width:180px;accent-color:var(--house)}
+.hint{font-size:12px;color:var(--ink-3)}
+
+.panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.panels .card{padding-bottom:10px}
+.pres{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:16px 28px}
+.pres-name{font-size:19px;font-weight:600;letter-spacing:-.01em}
+.pres-age{font-family:var(--mono);font-size:40px;font-weight:600;line-height:1;color:var(--prez)}
+.pres-note{font-size:13px;color:var(--ink-2);max-width:46ch}
+.pres-list{display:flex;flex-wrap:wrap;gap:4px 24px}
+.pres-item{display:flex;align-items:baseline;gap:9px}
+.pres-age-sm{font-family:var(--mono);font-size:23px;font-weight:600;color:var(--prez);line-height:1.2}
+.statline{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.statline b{font-family:var(--mono);font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+
+.hbar{transition:opacity .12s}
+.hbar:hover{opacity:.72}
+.medline{stroke-dasharray:3 3;stroke-width:1.5}
+
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--rule-soft)}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+td{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2)}
+td:first-child{font-family:var(--sans);font-weight:600;color:var(--ink)}
+details{font-size:13px;color:var(--ink-2)}
+summary{cursor:pointer;font-weight:600;color:var(--ink);font-size:13px}
+details p{max-width:72ch}
+footer{font-size:12px;color:var(--ink-3);max-width:72ch}
+a{color:var(--house)}
+@media (max-width:640px){
+  .panels{grid-template-columns:minmax(0,1fr)}
+  .yearnum{font-size:28px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">1789 &ndash; 2026 &middot; __PERSONYEARS__ person-years &middot; Voteview</div>
+  <h1>How old is Washington?</h1>
+  <p class="dek">The age of every president, senator, and representative in American history. Click any year in the trend line to see that year's full age distribution.</p>
+</header>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <p class="card-title">Median age of each chamber, by year</p>
+      <p class="card-sub">Click or drag to pick a year &middot; arrow keys step year by year</p>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--house)"></i>House</span>
+      <span><i class="swatch" style="background:var(--senate)"></i>Senate</span>
+      <span><i class="swatch" style="background:var(--prez)"></i>President</span>
+    </div>
+  </div>
+  <div id="trendwrap" style="position:relative"><svg id="trend"></svg><div class="tip" id="tip"></div></div>
+</section>
+
+<section class="yearbar">
+  <div class="yearnum" id="yearnum">2026</div>
+  <div class="stepper">
+    <button class="step" id="prev" aria-label="Previous year">&larr;</button>
+    <button class="step" id="next" aria-label="Next year">&rarr;</button>
+  </div>
+  <input type="range" id="yearslider" min="1789" max="2026" value="2026" step="1" aria-label="Year">
+  <div class="hint" id="congress"></div>
+</section>
+
+<div class="panels">
+  <section class="card"><div class="card-head"><p class="card-title" id="h-title">House</p></div>
+    <svg id="h-hist"></svg><div class="statline" id="h-stat"></div></section>
+  <section class="card"><div class="card-head"><p class="card-title" id="s-title">Senate</p></div>
+    <svg id="s-hist"></svg><div class="statline" id="s-stat"></div></section>
+  <section class="card pres" id="pres"></section>
+</div>
+
+<section class="card">
+  <div class="card-head"><p class="card-title" id="tbl-title">Summary</p></div>
+  <table id="tbl"><thead><tr><th>Body</th><th>Serving</th><th>Median</th><th>Mean</th><th>Youngest</th><th>Oldest</th></tr></thead><tbody></tbody></table>
+</section>
+
+<footer>
+  <details><summary>Sources and method</summary>
+  <p>Ages come from <a href="https://voteview.com/">Voteview</a>'s <code>HSall_members.csv</code>, one row per member per Congress since 1789, presidents included. Voteview records a birth <em>year</em>, not a date, so an age here is the age a member turns during that calendar year: right for anyone whose birthday has passed, a year high for everyone else, and about half a year high on average across a chamber. That is precise enough for medians and trends and too coarse for any claim about a particular person on a particular day.</p>
+  <p>Each Congress is spread across both calendar years it occupies, so a year shows that Congress's full roster &mdash; a seat that changed hands mid-term shows both holders in both years. A president who left in March belongs to the previous Congress: 1841 seated three presidents, but Van Buren sits with the 26th Congress and only Harrison and Tyler appear here under 1841.</p>
+  <p>Birth years are missing for __NOBORN__ of __NLEG__ legislators, who are left out of the medians and counted beside them. Four presidents &mdash; Washington, John Adams, Taylor and Hoover &mdash; have no birth year on any Voteview row, and a fifth, Cleveland, carries one on his first-term rows but not his second. Cleveland's own value is filled in from those rows; the other four use uncontested dates from the standard presidential record and are marked &dagger; wherever they appear. Every other file in this lab keeps Voteview's blanks untouched, so its validation output still reports the gap.</p>
+  <p>Washington and Adams are also why a birth <em>year</em> is slipperier than it looks: both were born under the Julian calendar, and Washington's 22 February 1732 New Style was 11 February 1731/2 Old Style &mdash; a different year, from the same birth.</p>
+  <p>Territorial delegates appear only from the 113th Congress, which is how Voteview carries them, so House counts sit at about 435 throughout.</p>
+  </details>
+</footer>
+</div>
+
+<script id="agedata" type="application/json">__DATA__</script>
+<script>
+(function(){
+  const DATA = JSON.parse(document.getElementById('agedata').textContent);
+  const YEARS = Object.keys(DATA).map(Number).sort((a,b)=>a-b);
+  const Y0 = YEARS[0], Y1 = YEARS[YEARS.length-1];
+  const CH = [['rep','House','--house','--house-soft'],['sen','Senate','--senate','--senate-soft'],['prez','President','--prez','--prez-soft']];
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+  const cvar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  let year = Y1;
+
+  /* ---------- trend ---------- */
+  const TW=1000, TH=340, M={t:14,r:74,b:26,l:34};
+  const yMin=38, yMax=84;
+  const tx = y => M.l + (y-Y0)/(Y1-Y0)*(TW-M.l-M.r);
+  const ty = a => M.t + (yMax-a)/(yMax-yMin)*(TH-M.t-M.b);
+  const trend = document.getElementById('trend');
+
+  function drawTrend(){
+    trend.setAttribute('viewBox',`0 0 ${TW} ${TH}`);
+    trend.innerHTML='';
+    for(let a=40;a<=80;a+=10){
+      trend.appendChild(el('line',{x1:M.l,x2:TW-M.r,y1:ty(a),y2:ty(a),class:'grid'}));
+      const t=el('text',{x:M.l-8,y:ty(a)+3.5,class:'tick','text-anchor':'end'});t.textContent=a;trend.appendChild(t);
+    }
+    for(let y=1850;y<=2000;y+=50){
+      const t=el('text',{x:tx(y),y:TH-8,class:'tick','text-anchor':'middle'});t.textContent=y;trend.appendChild(t);
+    }
+    [Y0,Y1].forEach(y=>{const t=el('text',{x:tx(y),y:TH-8,class:'tick','text-anchor':y===Y0?'start':'end'});t.textContent=y;trend.appendChild(t);});
+    trend.appendChild(el('line',{x1:M.l,x2:TW-M.r,y1:ty(yMin),y2:ty(yMin),class:'axis'}));
+
+    CH.forEach(([k,label,col])=>{
+      let d='',open=false,last=null;
+      YEARS.forEach(y=>{
+        const e=DATA[y][k];
+        if(!e||!e.n){open=false;return;}
+        d += (open?'L':'M')+tx(y).toFixed(1)+' '+ty(e.med).toFixed(1)+' ';
+        open=true;last={y,a:e.med};
+      });
+      trend.appendChild(el('path',{d,fill:'none',stroke:`var(${col})`,'stroke-width':k==='prez'?1.6:2,
+        'stroke-linejoin':'round','stroke-linecap':'round','stroke-opacity':k==='prez'?.85:1}));
+      if(last){
+        const t=el('text',{x:TW-M.r+8,y:ty(last.a)+4,class:'serieslabel',fill:`var(${col})`});
+        t.textContent=label; trend.appendChild(t);
+      }
+    });
+
+    // selection + hover layer
+    const sel=el('g',{id:'sel'}); trend.appendChild(sel);
+    const hit=el('rect',{x:M.l,y:0,width:TW-M.l-M.r,height:TH-M.b,fill:'transparent'}); trend.appendChild(hit);
+    hit.addEventListener('pointermove',onMove);
+    hit.addEventListener('pointerleave',()=>{tip.style.opacity=0;drawSel();});
+    hit.addEventListener('pointerdown',e=>{onMove(e);setYear(yearAt(e));});
+  }
+  function yearAt(e){
+    const r=trend.getBoundingClientRect();
+    const px=(e.clientX-r.left)/r.width*TW;
+    let y=Math.round(Y0+(px-M.l)/(TW-M.l-M.r)*(Y1-Y0));
+    return Math.min(Y1,Math.max(Y0,y));
+  }
+  const tip=document.getElementById('tip');
+  function onMove(e){
+    const y=yearAt(e); drawSel(y);
+    const rows=CH.filter(([k])=>DATA[y][k]&&DATA[y][k].n).map(([k,label,col])=>
+      `<div class="r"><span style="color:var(${col})">&#9679;</span>&nbsp;${label}<b>${DATA[y][k].med}</b></div>`).join('');
+    tip.innerHTML=`<div class="y">${y}</div>${rows}`;
+    const wrap=document.getElementById('trendwrap').getBoundingClientRect();
+    const px=(tx(y)/TW)*wrap.width;
+    tip.style.opacity=1;
+    tip.style.left=Math.min(wrap.width-150,Math.max(0,px+14))+'px';
+    tip.style.top='8px';
+  }
+  function drawSel(hoverYear){
+    const g=document.getElementById('sel'); if(!g) return; g.innerHTML='';
+    const marks=[[year,1],[hoverYear,0]];
+    marks.forEach(([y,solid])=>{
+      if(y==null) return;
+      g.appendChild(el('line',{x1:tx(y),x2:tx(y),y1:M.t-6,y2:ty(yMin),stroke:'var(--ink-3)',
+        'stroke-width':solid?1.4:1,'stroke-dasharray':solid?'':'2 3','stroke-opacity':solid?.75:.5}));
+      CH.forEach(([k,,col])=>{
+        const e=DATA[y][k]; if(!e||!e.n) return;
+        g.appendChild(el('circle',{cx:tx(y),cy:ty(e.med),r:solid?4.5:3.5,fill:`var(${col})`,
+          stroke:'var(--surface)','stroke-width':2}));
+      });
+      if(solid){
+        const t=el('text',{x:tx(y),y:M.t-10,class:'tick','text-anchor':'middle',fill:'var(--ink)'});
+        t.setAttribute('font-weight','600'); t.textContent=y; g.appendChild(t);
+      }
+    });
+  }
+
+  /* ---------- histograms ---------- */
+  const BW=2, A0=24, A1=102;                      // 2-year bins
+  function hist(svgId, statId, key, colVar, softVar){
+    const svg=document.getElementById(svgId), e=DATA[year][key];
+    const W=470,H=190,m={t:16,r:10,b:30,l:26};
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML='';
+    const stat=document.getElementById(statId);
+    if(!e||!e.n){ stat.textContent = e&&e.nb ? `No birth year recorded for ${e.nb===1?'this member':'these '+e.nb+' members'}.` : 'No data for this year.'; return; }
+    const nb=Math.ceil((A1-A0)/BW), bins=new Array(nb).fill(0);
+    e.c.forEach((c,i)=>{ if(!c) return; const a=e.min+i; const b=Math.floor((a-A0)/BW); if(b>=0&&b<nb) bins[b]+=c; });
+    const peak=Math.max(...bins,1);
+    const bx = a => m.l + (a-A0)/(A1-A0)*(W-m.l-m.r);
+    const by = c => H-m.b - c/peak*(H-m.t-m.b);
+    const bwpx = (W-m.l-m.r)/nb;
+    const step = peak<=6?2:peak<=15?5:peak<=40?10:peak<=90?20:50;
+    for(let c=step;c<=peak;c+=step){
+      svg.appendChild(el('line',{x1:m.l,x2:W-m.r,y1:by(c),y2:by(c),class:'grid'}));
+      const t=el('text',{x:m.l-6,y:by(c)+3.5,class:'tick','text-anchor':'end'});t.textContent=c;svg.appendChild(t);
+    }
+    bins.forEach((c,i)=>{
+      if(!c) return;
+      const x=m.l+i*bwpx, h=H-m.b-by(c), w=Math.max(2,bwpx-2);
+      const r=Math.min(3,w/2,h);
+      const y=by(c);
+      const d=`M${x} ${H-m.b} L${x} ${y+r} Q${x} ${y} ${x+r} ${y} L${x+w-r} ${y} Q${x+w} ${y} ${x+w} ${y+r} L${x+w} ${H-m.b} Z`;
+      const p=el('path',{d,fill:`var(${colVar})`,class:'hbar'});
+      const a0=A0+i*BW;
+      p.appendChild(el('title')).textContent=`${a0}\u2013${a0+BW-1}: ${c} member${c===1?'':'s'}`;
+      svg.appendChild(p);
+    });
+    svg.appendChild(el('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:'axis'}));
+    for(let a=30;a<=100;a+=10){
+      const t=el('text',{x:bx(a),y:H-m.b+15,class:'tick','text-anchor':'middle'});t.textContent=a;svg.appendChild(t);
+    }
+    const t2=el('text',{x:(W+m.l-m.r)/2,y:H-2,class:'tick','text-anchor':'middle'});t2.textContent='age';svg.appendChild(t2);
+    // median marker
+    svg.appendChild(el('line',{x1:bx(e.med),x2:bx(e.med),y1:m.t-8,y2:H-m.b,stroke:'var(--ink-2)',class:'medline'}));
+    const mt=el('text',{x:bx(e.med),y:m.t-11,class:'tick','text-anchor':'middle',fill:'var(--ink-2)'});
+    mt.textContent='median '+e.med; svg.appendChild(mt);
+    stat.innerHTML = `<span>serving <b>${e.n}</b></span><span>mean <b>${e.mean}</b></span>`+
+      `<span>youngest <b>${e.yng[1]}</b> ${e.yng[0]}</span><span>oldest <b>${e.old[1]}</b> ${e.old[0]}</span>`+
+      (e.nb?`<span style="color:var(--ink-3)">+${e.nb} with no birth year</span>`:'');
+  }
+
+  /* ---------- president + table ---------- */
+  function pctOlder(age){
+    let below=0,tot=0;
+    ['rep','sen'].forEach(k=>{const e=DATA[year][k]; if(!e)return; e.c.forEach((c,i)=>{tot+=c; if(e.min+i<age) below+=c;});});
+    return tot? Math.round(below/tot*100):null;
+  }
+  function drawPres(){
+    const box=document.getElementById('pres'), e=DATA[year].prez;
+    if(!e){box.innerHTML='<div class="pres-note">No president recorded this year.</div>';return;}
+    if(!e.n){
+      const who=(e.unk||[]).join(' and ')||'this president';
+      box.innerHTML =
+        `<div><div class="eyebrow" style="margin-bottom:6px">President</div>
+          <div class="pres-name">${who}</div></div>
+         <div class="pres-age" style="color:var(--ink-3)">&mdash;</div>
+         <div class="pres-note">Voteview records no birth year for ${(e.unk||[]).length>1?'these presidents':'this president'}, so no age can be shown.</div>`;
+      return;
+    }
+    const list=e.all||[[e.old[0],e.old[1]]];
+    const dag=p=>p[2]?'<span title="birth year not in Voteview">&dagger;</span>':'';
+    if(list.length===1){
+      const [nm,age,ovr]=list[0], p=pctOlder(age);
+      box.innerHTML =
+        `<div><div class="eyebrow" style="margin-bottom:6px">President</div>
+          <div class="pres-name">${nm}</div></div>
+         <div class="pres-age">${age}${dag(list[0])}</div>
+         <div class="pres-note">Turns ${age} during ${year}${p!==null?` &mdash; older than ${p}% of Congress that year`:''}.${ovr?` <span style="color:var(--ink-3)">&dagger; Voteview carries no birth year for him; ${year-age} is from the standard presidential record.</span>`:''}</div>`;
+    } else {
+      const items=list.map(p=>`<div class="pres-item"><span class="pres-name">${p[0]}</span><span class="pres-age-sm">${p[1]}${dag(p)}</span></div>`).join('');
+      const anyOvr=list.some(p=>p[2]);
+      box.innerHTML =
+        `<div><div class="eyebrow" style="margin-bottom:6px">Presidents in ${year} &middot; ${list.length}</div>
+          <div class="pres-list">${items}</div></div>
+         <div class="pres-note">In the order they took office, with the age each turns during ${year}.${anyOvr?` <span style="color:var(--ink-3)">&dagger; Birth year not in Voteview; from the standard presidential record.</span>`:''}</div>`;
+    }
+  }
+  function drawTable(){
+    const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
+    document.getElementById('tbl-title').textContent=`Every body, ${year}`;
+    CH.forEach(([k,label])=>{
+      const e=DATA[year][k]; if(!e||!e.n) return;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${label}</td><td>${e.n}</td><td>${e.med}</td><td>${e.mean}</td>`+
+        `<td>${e.yng[1]} <span style="color:var(--ink-3)">${e.yng[0]}</span></td>`+
+        `<td>${e.old[1]} <span style="color:var(--ink-3)">${e.old[0]}</span></td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  /* ---------- wiring ---------- */
+  function congressNo(y){ return Math.floor((y-1789)/2)+1; }
+  function ord(n){const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+  function setYear(y){
+    year=Math.min(Y1,Math.max(Y0,y));
+    document.getElementById('yearnum').textContent=year;
+    document.getElementById('yearslider').value=year;
+    document.getElementById('congress').textContent=`${ord(congressNo(year))} Congress \u00b7 ${DATA[year].rep?DATA[year].rep.n:0} representatives, ${DATA[year].sen?DATA[year].sen.n:0} senators with a birth year`;
+    document.getElementById('h-title').textContent=`House age distribution, ${year}`;
+    document.getElementById('s-title').textContent=`Senate age distribution, ${year}`;
+    hist('h-hist','h-stat','rep','--house','--house-soft');
+    hist('s-hist','s-stat','sen','--senate','--senate-soft');
+    drawPres(); drawTable(); drawSel();
+    if(window.claude&&window.claude.hot&&window.claude.hot.snapshot) window.claude.hot.snapshot({year});
+  }
+  document.getElementById('yearslider').addEventListener('input',e=>setYear(+e.target.value));
+  document.getElementById('prev').addEventListener('click',()=>setYear(year-1));
+  document.getElementById('next').addEventListener('click',()=>setYear(year+1));
+  trend.setAttribute('tabindex','0');
+  trend.setAttribute('role','application');
+  trend.setAttribute('aria-label','Median age by chamber, 1789 to 2026. Use arrow keys to change the selected year.');
+  trend.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft'){setYear(year-(e.shiftKey?10:1));e.preventDefault();}
+    if(e.key==='ArrowRight'){setYear(year+(e.shiftKey?10:1));e.preventDefault();}
+  });
+  function start(state){ drawTrend(); setYear((state&&state.year)||Y1); }
+  window.addEventListener('resize',()=>drawSel());
+  if(window.claude&&window.claude.hot&&window.claude.hot.ready) window.claude.hot.ready(start);
+  else start((window.claude&&window.claude.hot&&window.claude.hot.data)||{});
+})();
+</script>

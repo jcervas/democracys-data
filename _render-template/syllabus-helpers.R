@@ -500,6 +500,28 @@ title_block <- function(prefix = "") {
 #
 # is_html_output() answers TRUE for gfm, so gfm has to be ruled out first, on
 # the pandoc target itself.
+#' Is this the real HTML build?
+#'
+#' The one output where an in-page anchor works. is_html_output() answers TRUE
+#' for gfm as well, so gfm is ruled out on the pandoc target first; the PDF has
+#' no hyperref loaded, so an anchor there would print as dead text.
+is_web_html <- function() {
+  to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+  if (length(to) != 1 || grepl("^gfm", to)) return(FALSE)
+  isTRUE(knitr::is_html_output())
+}
+
+#' The line under the contact block: a jump to the calendar where that can
+#' actually be clicked, and the URL of the live syllabus everywhere else — on
+#' paper and in Canvas, where pointing at the current version is the useful
+#' thing to do.
+syllabus_jump <- function(url, full = TRUE, anchor = "#schedule") {
+  if (full && is_web_html())
+    sprintf("[**Jump to the class calendar**](%s)", anchor)
+  else
+    sprintf("The most up-to-date version of this [**syllabus can be found here**](%s).", url)
+}
+
 figure_device <- function(dpi = 300) {
   to <- knitr::opts_knit$get("rmarkdown.pandoc.to")
   gfm <- length(to) == 1 && grepl("^gfm", to)
@@ -512,4 +534,53 @@ figure_device <- function(dpi = 300) {
                           dev.args = list(bg = "transparent"))
   }
   invisible(knitr::opts_chunk$get("dev"))
+}
+
+# ---- the tables a chapter hands over ---------------------------------------
+#
+# A chapter writes CSVs into data/derived/ and the brief is supposed to give
+# every one of them to the reader. That kept not happening: files were built,
+# committed and published with nothing on the page pointing at them, so the
+# evidence for a claim sat in the repo unreachable from the chapter making it.
+#
+# These two do the halves of it that can be done mechanically.
+#
+# dd_dim() is the size of a derived table, for the hand-off table at the head
+# of "## The data": rows by columns, read off the file at render time, so a
+# table that gains a column says so instead of being described from memory.
+#
+#   | [`states.csv`](data/derived/states.csv) | ... | `r dd_dim("states.csv")` |
+#
+# dd_derived() is the guard. Give it the files the brief lists and it stops the
+# build if data/derived/ holds anything else. That is what keeps the prose and
+# the directory together: a new table cannot appear without someone writing the
+# line that hands it over.
+#
+#   dd_derived(c("states.csv", "race.csv"))
+#
+# THE LINKS THEMSELVES STAY LITERAL IN THE Rmd, and that is not a style
+# preference. _lib/check-sources.py proves a chapter gives its data away by
+# reading the Rmd SOURCE -- it never renders anything -- so a list built by
+# sprintf() in the code file is invisible to it, and _lib/check-layout.py reads
+# the format string as a dead link besides. Write the links out; measure only
+# the sizes.
+dd_dim <- function(file, dir = "data/derived") {
+  d <- utils::read.csv(file.path(dir, file), stringsAsFactors = FALSE)
+  paste0(format(nrow(d), big.mark = ","), " × ", ncol(d))
+}
+
+dd_derived <- function(listed, dir = "data/derived") {
+  on_disk <- list.files(dir, pattern = "[.]csv$")
+  missing <- setdiff(on_disk, listed)     # built, but handed over nowhere
+  stale   <- setdiff(listed, on_disk)     # listed, but no longer built
+  if (length(missing) || length(stale)) {
+    stop("data/derived/ and the brief disagree.",
+         if (length(missing))
+           paste0("\n  built but not listed: ", paste(missing, collapse = ", ")),
+         if (length(stale))
+           paste0("\n  listed but not built: ", paste(stale, collapse = ", ")),
+         "\n  Every table a chapter writes has to be handed over in the brief.",
+         call. = FALSE)
+  }
+  invisible(on_disk)
 }

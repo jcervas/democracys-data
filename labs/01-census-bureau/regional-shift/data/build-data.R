@@ -39,6 +39,9 @@
 #   derived/nation.csv     one row per year: population, House size, people per seat
 #   derived/seatchange.csv one row per state: seats 1960, seats 2020, cumulative change
 #   derived/southdefs.csv  one row per year x South definition: share of national pop
+#   derived/seatshift-1960-2020.json  the brief's first figure, as a file: the
+#                  seat-shift cartogram with every outline, cell and mark
+#                  already placed. Written by build-map.R, run at the end.
 # ---------------------------------------------------------------------------
 
 # raw/ holds the sources as they arrive; derived/ is what this script writes.
@@ -317,6 +320,19 @@ print(reshape(reg[reg$year %in% c(1960, 2020), c("region","year","share")],
               idvar = "region", timevar = "year", direction = "wide"))
 cat("\n--- people per representative ---\n")
 print(nat[, c("year","reps","pop_per_rep")])
+
+# ---- 10. the map ----------------------------------------------------------
+# build-map.R solves the seat-shift cartogram and writes derived/
+# seatshift-1960-2020.json, the file the brief's first figure draws. It needs
+# node for the solver and sf for the clipping, so it is run as a step of its
+# own and a missing tool leaves the rest of this build intact -- the JSON
+# already on disk is still the map until someone rebuilds it.
+if (nzchar(Sys.which("node")) && requireNamespace("sf", quietly = TRUE)) {
+  cat("\n--- the seat-shift map ---\n")
+  system2("Rscript", "build-map.R")
+} else {
+  message("skipping build-map.R: needs node and sf")
+}
 
 # ---------------------------------------------------------------------------
 # Build stamp. Records which script produced what is now in this directory --

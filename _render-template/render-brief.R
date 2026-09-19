@@ -119,7 +119,7 @@ brief_default_format <- function(fmt, src, toc_depth = 2L, md_extensions = NULL)
     rmarkdown::html_document(
       theme = NULL,
       css = file.path(tpl, "brief.css"),
-      toc = TRUE, toc_depth = toc_depth,
+      toc = FALSE, toc_depth = toc_depth,
       self_contained = TRUE, fig_caption = TRUE, mathjax = NULL,
       pandoc_args = "--mathml",
       md_extensions = md_extensions,

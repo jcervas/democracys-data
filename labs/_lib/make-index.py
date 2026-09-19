@@ -33,6 +33,7 @@ resolve rather than guessing, so an empty cell means "look at the doc", not
 "no source".
 """
 
+import glob
 import html
 import os
 import re
@@ -192,7 +193,7 @@ SECTIONS = [
      ["migration", "chord", "section-203"]),
     ("Population Estimates", ["census-pep"], []),
     ("Census Geography", ["census-geography"],
-     ["areal-units", "zip-codes"]),
+     ["areal-units", "zip-codes", "zero-population-blocks"]),
   ]),
 
   dict(name="II. Survey Data", intros=["part-2-surveys"], legacy=[], clusters=[
@@ -351,7 +352,8 @@ TAGS = [
 ]
 
 def tags_for(r):
-    hay = " ".join([r.get("source",""), r.get("body",""), r.get("title",""),
+    hay = " ".join(["interactive page" if r.get("href_app") else "",
+                    r.get("source",""), r.get("body",""), r.get("title",""),
                     r.get("topic",""), r.get("slug","")])
     out = []
     for name, pat in TAGS:
@@ -415,6 +417,13 @@ def build_rows():
         has_html = os.path.exists(os.path.join(folder, stem + ".html"))
         has_pdf  = os.path.exists(os.path.join(folder, stem + ".pdf"))
 
+        # A doc may also ship a standalone interactive page, by convention at
+        # data/derived/*-page.html: one self-contained file, data inlined, no
+        # network calls, written by the doc's own build script. Found on disk
+        # rather than hand-listed, like everything else in this table.
+        apps = sorted(glob.glob(os.path.join(folder, "data", "derived", "*-page.html")))
+        href_app = (os.path.relpath(apps[0], LABS).replace(os.sep, "/") if apps else "")
+
         src, script = source_of(folder)
         body = script_text(folder)
 
@@ -460,6 +469,7 @@ def build_rows():
             body=body,
             url=first_url(src),
             script=script,
+            href_app=href_app,
             has_data=os.path.isdir(os.path.join(folder, "data")),
             has_raw=os.path.isdir(os.path.join(folder, "data", "raw")),
             updated=updated,
@@ -513,8 +523,10 @@ def write_markdown(rows, n_src, n_raw, today):
             cluster_cell(r).replace("|", "\\|"),
             r["role"],
             r["slug"],
-            ("[{}]({})".format(r["title"].replace("|", "\\|"), r["href_html"])
-             if r["href_html"] else r["title"].replace("|", "\\|")),
+            (("[{}]({})".format(r["title"].replace("|", "\\|"), r["href_html"])
+              if r["href_html"] else r["title"].replace("|", "\\|"))
+             + (" &middot; [interactive]({})".format(r["href_app"])
+                if r["href_app"] else "")),
             (r["updated"] or "—") + (" ✓" if r["e3"] else ""),
             ", ".join(r["tags"]) or "—",
             r["topic"].replace("|", "\\|"),
@@ -547,6 +559,8 @@ def doc_tr(r):
              if r["href_html"] else esc(r["title"]))
     pdf = (f'<a class="pdf" href="{esc(r["href_pdf"])}" target="_blank" rel="noopener" '
            f'title="PDF">PDF</a>' if r["href_pdf"] else "")
+    app = (f'<a class="pdf app" href="{esc(r["href_app"])}" target="_blank" rel="noopener" '
+           f'title="standalone interactive page">INTERACTIVE</a>' if r["href_app"] else "")
     tags = "".join(f'<button class="tag" data-tag="{esc(t)}">{esc(t)}</button>'
                    for t in r["tags"]) or ""
     legacy = ('<span class="legacy" title="retired part opener, kept findable '
@@ -558,7 +572,7 @@ def doc_tr(r):
         f'data-section="{esc(r["section"])}">'
         f'<td class="role"><span class="badge b-{esc(r["role"])}">{esc(r["role"])}</span></td>'
         f'<td class="ch">'
-        f'<div class="ttl">{title}{pdf}</div>'
+        f'<div class="ttl">{title}{pdf}{app}</div>'
         f'<div class="slug"><code>{esc(r["slug"])}</code>'
         + ('<span class="raw" title="commits a data/raw capture of the source as it arrives">raw</span>'
            if r["has_raw"] else '') + legacy + '</div>'
@@ -632,8 +646,9 @@ tbody tr.doc:hover{{background:var(--sunk)}}
 code{{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--acc)}}
 a.pdf{{font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:9px;letter-spacing:.06em;
 color:var(--ink3);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;
-text-decoration:none;vertical-align:2px}}
+text-decoration:none;vertical-align:2px;white-space:nowrap}}
 a.pdf:hover{{color:var(--acc);border-color:var(--acc)}}
+a.pdf.app{{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--rule))}}
 td.src{{color:var(--ink2);font-size:11.5px;line-height:1.45;padding-top:12px;max-width:44ch}}
 td.upd{{color:var(--ink2);font-size:11.5px;white-space:nowrap;padding-top:12px;font-variant-numeric:tabular-nums}}
 .e3{{display:inline-block;margin-left:6px;padding:1px 5px;border-radius:8px;font-size:10px;font-weight:600;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}}

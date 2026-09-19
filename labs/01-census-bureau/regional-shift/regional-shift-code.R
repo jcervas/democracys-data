@@ -68,6 +68,34 @@ NETCHG <- sapply(sp, function(x) { r <- x$reps[order(x$year)]; r[length(r)] - r[
 GAPS   <- POSDEC - pmax(NETCHG, 0)
 GAPST  <- names(GAPS)[GAPS > 0]
 
+# ---- the map is a file, not a computation --------------------------------
+# data/build-map.R solved the cartogram once and wrote every coordinate,
+# color and mark into this JSON. The two map chunks below only draw what is
+# already in it, so the way to change the picture is to edit the file. It is
+# handed to readers in the data list like every other table here.
+smap <- jsonlite::fromJSON("data/derived/seatshift-1960-2020.json",
+                           simplifyVector = FALSE)
+stopifnot(smap$totals$gained == gross, smap$totals$lost == gross,
+          smap$totals$cells == sum(pmax(sc$reps_1960, sc$reps_2020)))
+
+# A state's geometry is stored in its own frame, with the transform that puts
+# it on the page kept separately: that is what lets one edit move a whole
+# state. Both helpers apply it, one for base R and one for SVG.
+map_rings <- function(g, sc) {
+  parts <- if (identical(g$type, "Polygon")) list(g$coordinates) else g$coordinates
+  unlist(lapply(parts, function(p) lapply(p, function(r) {
+    m <- do.call(rbind, lapply(r, function(q) as.numeric(unlist(q))))
+    cbind(m[, 1] * sc$scale + sc$tx, m[, 2] * sc$scale + sc$ty)
+  })), recursive = FALSE)
+}
+
+map_d <- function(g, sc) {
+  num <- function(v) sub("[.]0$", "", sprintf("%.1f", v))
+  paste(vapply(map_rings(g, sc), function(m)
+    paste0("M", paste(num(m[, 1]), num(m[, 2]), sep = ",", collapse = "L"), "Z"),
+    character(1)), collapse = "")
+}
+
 # ---- captions -------------------------------------------------------------
 # Every figure ships twice: D3 for the browser, base R for the PDF. Its caption
 # ships ONCE, as the numbered paragraph of Markdown that follows the chunk pair,
@@ -85,6 +113,143 @@ knit_print.data.frame <- function(x, ...) {
 }
 registerS3method("knit_print", "data.frame", knit_print.data.frame,
                  envir = asNamespace("knitr"))
+
+## ---- map-static
+# The printed twin, and the one mail clients get: same file, same palette --
+# the JSON carries its own colors so a renderer with no stylesheet still
+# draws the right map.
+#
+# The key is drawn, not called for. legend() places a box in one of nine
+# corners of the plot region, and the corner nearest this map put it above
+# the country and hard against the text margin, where it read as a stray
+# caption between the paragraph and the figure. The D3 twin centres its key
+# UNDER the map, so the band below the frame is reserved here and the same
+# three swatches are laid out in it by hand: one figure, one place to look.
+KEYBAND <- 74               # frame units of room under the map, for the key
+
+par(mar = c(0, 0, 0, 0))
+plot(NA, xlim = c(0, smap$meta$width),
+     ylim = c(smap$meta$height + KEYBAND, 0),
+     asp = 1, axes = FALSE, xlab = "", ylab = "")
+for (s in smap$states) {
+  for (cl in s$cellList)
+    for (r in map_rings(cl$cell, s$cartogram))
+      polygon(r[, 1], r[, 2], col = smap$palette[[cl$status]],
+              border = "#FFFFFF", lwd = 0.4)
+  for (r in map_rings(s$outline, s$cartogram))
+    polygon(r[, 1], r[, 2], col = NA, border = "#555555", lwd = 0.9)
+}
+for (s in smap$states)
+  text(s$layout$labelX, s$layout$labelY, s$st, cex = 0.44, col = "#333333")
+
+# the key: the D3 figure's swatch row, at the same proportions
+local({
+  it <- list(c("gained", "gained"), c("retained", "held"), c("lost", "lost"))
+  sw <- 46; gap <- 3; ht <- 17
+  kw <- length(it) * (sw + gap) - gap
+  kx <- smap$meta$width / 2 - kw / 2
+  ky <- smap$meta$height + 22
+  text(smap$meta$width / 2, ky - 16, "one cell is one House seat",
+       cex = 0.6, col = "#555555")
+  for (i in seq_along(it)) {
+    x0 <- kx + (i - 1) * (sw + gap)
+    rect(x0, ky, x0 + sw, ky + ht, col = smap$palette[[it[[i]][1]]],
+         border = NA)
+    text(x0 + sw / 2, ky + ht + 13, it[[i]][2], cex = 0.55, col = "#555555")
+  }
+})
+
+## ---- map-d3
+# The first figure in the document, so dd_fig() emits d3 and dd-charts.js
+# here; every figure below rides on the same two tags.
+#
+# The cells are the choropleth's paths and the state borders are drawn over
+# them by the hook, because a border is a stroke with no fill and the
+# choropleth has only classed fills. Colors are theme tokens, not the hexes
+# in the file: the page has a dark mode and the printed copy does not.
+#
+# A HELD SEAT NEEDS ITS OWN TOKEN, and the shared sheet has none, so this
+# chapter declares one against its own figure id and nothing else. `land` is
+# the ground under a choropleth and sits deliberately close to the page --
+# #f6f6f6 against a #eff1f2 body, which is the right relationship for a
+# country behind colored units and the wrong one for the units themselves.
+# Used here it made 360 of the 510 cells lighter than the paper they sit on,
+# so the map read as an outline drawing with a few blocks in it while the
+# printed twin, which paints the same cells the file's own #B9BEC4, read as a
+# filled country. The cell grid is drawn in the paper color for the same
+# reason the published map does it: a separation, not a border.
+cat('
+<style>
+#shiftmap { --map-held: #B9BEC4; }
+@media (prefers-color-scheme: dark) { #shiftmap { --map-held: #464C56; } }
+#shiftmap .held { fill: var(--map-held); }
+#shiftmap .geo  { stroke: var(--paper); }
+</style>
+')
+
+# Teal gained, orange lost -- not the published map's blue. Three classes
+# leave a free choice of hue, and a red-and-blue pair at three classes reads
+# as party. The four-region palette further down is the other case, where
+# four hues that stay apart have to span the circle and red and blue earn
+# their place; RCOL keeps them. series-6 and series-4 are the corpus's teal
+# and orange, so the pair follows the page into dark mode; their light
+# values are the two hexes the JSON carries, which is what the printed twin
+# paints with.
+MAPCLS <- c(retained = "held", gained = "series-6-fill", lost = "series-4-fill")
+
+cellpaths <- do.call(rbind, lapply(smap$states, function(s)
+  data.frame(id  = paste0(s$st, "-", vapply(s$cellList, function(cl) cl$k, 0)),
+             d   = vapply(s$cellList, function(cl) map_d(cl$cell, s$cartogram), ""),
+             cls = unname(MAPCLS[vapply(s$cellList, function(cl) cl$status, "")]),
+             stringsAsFactors = FALSE)))
+
+cellvals <- do.call(rbind, lapply(smap$states, function(s)
+  data.frame(id = paste0(s$st, "-", vapply(s$cellList, function(cl) cl$k, 0)),
+             nm = s$name, f = s$seatsFrom, t = s$seatsTo, ch = s$change,
+             stringsAsFactors = FALSE)))
+
+dd_fig("shiftmap", "choropleth",
+  data = data.frame(d = vapply(smap$states,
+                               function(s) map_d(s$outline, s$cartogram), ""),
+                    stringsAsFactors = FALSE),
+  geo = list(paths = cellpaths,
+             frame = c(smap$meta$width, smap$meta$height)),
+  values = cellvals,
+  # No halo: build-map.R placed every label either wholly inside its own
+  # state or wholly clear of all of them, so each one sits on a single flat
+  # ground and a paper-colored outline would only smudge it.
+  geoLabels = lapply(smap$states, function(s)
+    list(x = s$layout$labelX, y = s$layout$labelY, text = s$st,
+         cls = "lbl", size = 9)),
+  labelSize = 9,
+  key = list(title = "one cell is one House seat", swatch = 30,
+             items = list(list(cls = "series-6-fill", label = "gained"),
+                          list(cls = "held",          label = "held"),
+                          list(cls = "series-4-fill", label = "lost"))),
+  tip = dd_js(sprintf('function(d){
+    return "<b>" + d.nm + "</b><br>" + d.f + " seats in %d, " + d.t + " in %d" +
+      "<br>" + (d.ch === 0 ? "no change"
+                           : DD.fmt.signed0(d.ch) + " over the sixty years");
+  }', Y1, Y2)),
+  hook = dd_js('function(fig){
+    /* State borders, over the cells. currentColor, not a hex and not the
+       pale --map-edge the cells are separated with: it resolves to the
+       page\'s own ink in either theme, and at 55% it sits between the cell
+       grid and the type. */
+    fig.g.selectAll("path.stateline").data(fig.data).join("path")
+      .attr("d", function(d){ return d.d; })
+      .attr("class", "stateline")
+      .attr("fill", "none")
+      .attr("stroke", "currentColor")
+      .attr("stroke-opacity", 0.55)
+      .attr("stroke-width", 1.6)
+      .attr("stroke-linejoin", "round")
+      .attr("vector-effect", "non-scaling-stroke")
+      .attr("pointer-events", "none");
+  }'))
+cat('
+<p style="font-size:0.85em;color:#666;margin-top:0.2em">
+Hover a cell for the state and its two seat counts.</p>')
 
 ## ---- one-record
 o <- st[st$name == "Florida" & st$year %in% c(Y1, Y2),
@@ -132,10 +297,9 @@ text(m$change + ifelse(m$change > 0, 0.5, -0.5), bp,
 legend("bottomright", names(RCOL), fill = RCOL, border = NA, bty = "n", cex = 0.7)
 
 ## ---- bars-d3
-# Drawn with the shared library. This is the first figure in the document, so
-# dd_fig() emits d3 and dd-charts.js here; the hand-written figure below rides
-# on the same d3 tag. The four region hues are the series classes the whole
-# chapter maps onto RCOL.
+# Drawn with the shared library, on the script tags the map above already
+# emitted. The four region hues are the series classes the whole chapter maps
+# onto RCOL.
 m <- moved[order(-moved$change), ]
 dd_fig("bars", "bar", m[, c("name", "change", "region")],
   x = list(field = "change", domain = c(-17, 17), fmt = "signed0", ticks = 7),

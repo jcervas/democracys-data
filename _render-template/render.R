@@ -171,9 +171,9 @@ check_orphan_figures <- function(out_dir) {
 #              name; set it when building a variant so the files sit side by
 #              side ("readme" and "syllabus-abridged") instead of overwriting.
 # `output_options` — a list KEYED BY FORMAT NAME, e.g.
-#              list(html_document = list(toc = FALSE)). Needed because the two
-#              variants of one source want different YAML: the full syllabus
-#              carries a table of contents and the barebones one must not.
+#              list(html_document = list(toc = FALSE)). Use it wherever two
+#              variants of one source want different YAML. Both syllabus
+#              variants now set toc: false, so neither passes one for that.
 #              A format with no entry gets NULL, which is what render() expects.
 render_syllabus <- function(src, out_dir,
                             formats = c("html_document", "pdf_document", "md_document"),

@@ -218,6 +218,12 @@ copy of what is published at jcervas.github.io. The walkthrough file
 to 448 across mixed years — it is a demo state of the interactive page, not
 an apportionment.
 
+The three studio files are also read from outside this directory. The
+regional-shift chapter's `data/build-map-solve.js` runs the same solver on
+max(seats 1960, seats 2020) to build its own seat-shift cartogram, so `raw/`
+is a dependency of that chapter as well as of `build-apportionment.js`; it
+writes nothing back here.
+
 The later builds add nothing to `raw/`: the county shapefile is read from
 the residual-votes chapter, the CD zip is fetched to a temp dir, and the
 state sources are read from their chapters. `PROVENANCE.tsv` records all of

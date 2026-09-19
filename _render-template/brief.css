@@ -412,26 +412,17 @@ svg text.halo {
    the point. 56rem would have left them 6% short of that, because
    the padding comes out of the max-width rather than adding to it.
 
-   The full three-column layout needs 60rem + gutter + margin column
-   + TOC = about 1470px of viewport. Below that the column takes what
-   is available and the figures follow it down; nothing breaks, it
-   just narrows. Measured in headless Chrome, content width of a d3
-   container:
+   The layout needs 60rem + gutter + margin column = about 1230px of
+   viewport. Below that the column takes what is available and the
+   figures follow it down; nothing breaks, it just narrows.
 
-     1600px viewport   916px      (sidebar TOC)
-     1512px            916px      (sidebar TOC)
-     1440px            884px      (sidebar TOC)
-     1320px            764px      (sidebar TOC, tightest point)
-     1280px            916px      (TOC back in the flow — no sidebar
-                                   gutter to pay for, so the column
-                                   gets its full 60rem again)
-     1024px            724px
-
-   The dip at 1320px is inherited: that is where syllabus.css turns
-   the TOC into a fixed sidebar and takes 16rem out of the width. It
-   is not worth overriding — undoing a shared breakpoint means
-   restating every declaration inside it, and the layout is legible
-   throughout the dip.
+   The figures used to hit a dip at 1320px, where syllabus.css turned
+   the table of contents into a fixed 16rem sidebar and charged the
+   text column for the gutter. The contents panel was removed in
+   September 2026, so there is no sidebar and no dip: the column holds
+   its full 60rem at every width above the breakpoint. The measured
+   numbers that used to sit here described that sidebar and no longer
+   describe anything — remeasure before quoting figures for this.
    ------------------------------------------------------------ */
 
 :root {
@@ -488,6 +479,106 @@ svg text.halo {
 
 .figure, figure { max-width: 100%; }
 figure img, .figure img, svg { max-width: 100%; }
+
+/* ------------------------------------------------------------
+   FIGURE CAPTIONS
+
+   A caption is written in the Rmd as an ordinary paragraph that opens
+   with a bold label:
+
+     **Figure 2. Two states the same size, ...** Kansas and Utah, four
+     panels at one scale. The top row is ...
+
+   which pandoc emits as <p><strong>...</strong> note text</p>. There is
+   no class on it, in any of the 118 briefs, and there is no appetite for
+   re-rendering all of them to add one. So the caption has to be found by
+   where it sits, not by what it is called.
+
+   WHERE IT SITS. Every figure in the corpus lands in the flow as one of
+   four things, and the caption is the paragraph immediately after:
+
+     script + p           a raw HTML/SVG figure — a <div id> container
+                          followed by the <script> that draws it. This is
+                          the D3 case, and it is the common one.
+     .dd-fallback + p     the static PNG a chunk cat()s alongside the
+                          interactive figure, for print and for no-JS.
+     p:has(> img) + p     a plain knitr image block, <p><img></p>.
+     style + p            one chapter whose figure ends in a <style>.
+
+   And one figure in four carries a hover hint between the graphic and
+   the caption — a small inline-styled line saying "Hover a bar for the
+   exact figure" — so the caption is one hop further down. That hop is
+   written narrowly on purpose: the intervening paragraph must be the
+   hint (it carries an inline style, and prose paragraphs here never do)
+   and must contain no <strong> of its own, which stops the rule from
+   walking past a real caption onto the prose paragraph after it.
+
+   WHY THIS DOES NOT CATCH PROSE. A brief leans hard on the bold lede —
+   there are about 1,100 body paragraphs that open with <strong>, and
+   none of them may be dressed as a caption. They are safe because of
+   what they follow: prose follows a <p>, an <h2>, a <ul> or a <table>,
+   and none of those is an anchor here. Measured against all 118 rendered
+   briefs: 261 captions, of which this selector styles 258.
+
+   The three it declines are the three that follow a bare <table>, in
+   perception-gap and senate-2026. `table + p` is not usable as an
+   anchor — 142 ordinary paragraphs in the corpus follow a table, against
+   3 captions — so those three keep the old look. That is the intended
+   failure: a caption this rule misses renders exactly as it does today.
+   The same holds for :has() itself. It is one selector list, every arm
+   of it uses :has(), so a browser too old to parse it drops the whole
+   rule and the page is unchanged rather than broken.
+
+   Three paragraphs are caught that should not be, all of them prose
+   sitting directly under a graphic with no caption of its own (two in
+   panhandle-claim, one in census-race). CSS cannot tell those apart: a
+   selector can ask that <strong> be the first ELEMENT in the paragraph,
+   but not that no text precede it, and it cannot read the word
+   "Figure". Three in 118 chapters is the price of not re-rendering.
+
+   TYPE. The note drops to .88em and --ink-3, which syllabus.css already
+   names as the caption gray; the label is put back to 1em by the inverse
+   of that (.88 x 1.136 = 1.0) so it stays body size in the sizes that
+   matter — 17px on screen, 10.5pt in print, neither of them hardcoded
+   here. Both colors are tokens, so dark mode and the print block recolor
+   the caption with everything else.
+   ------------------------------------------------------------ */
+
+:is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child),
+script + p[style]:not(:has(strong)) + p:has(> strong:first-child) {
+  /* auto on the side margins, not 0. Almost every caption in the corpus
+     sits inside a section div, fills it, and cannot be centered by
+     anything; there the two spellings are the same declaration. A figure
+     placed ABOVE a brief's first heading is the exception: its caption is
+     then a child of <body>, where syllabus.css sets the measure on
+     `body > p` and centers it with auto margins. A 0 here overrode that
+     and dropped the caption to the left edge of the window while the
+     figure and the prose either side of it stayed on the measure. Found
+     in regional-shift, whose seat-shift map opens the brief. */
+  margin: .55em auto 2.1em;
+  font-size: .88em;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+:is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child) > strong:first-child,
+script + p[style]:not(:has(strong)) + p:has(> strong:first-child) > strong:first-child {
+  display: block;
+  margin-bottom: .15em;
+  font-size: 1.136em;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* on paper a caption belongs to the figure above it, not to the page
+   break between them */
+@media print {
+  :is(script, style, .dd-fallback, p:has(> img)) + p:has(> strong:first-child),
+  script + p[style]:not(:has(strong)) + p:has(> strong:first-child) {
+    break-inside: avoid; page-break-inside: avoid;
+    break-before: avoid; page-break-before: avoid;
+  }
+}
 
 /* ------------------------------------------------------------
    TABLE ALIGNMENT
@@ -898,21 +989,6 @@ thead th[align="center"], tbody td[align="center"] { text-align: center; }
   font-variant-numeric: tabular-nums; color: var(--ink);
 }
 
-/* the sort toggle above a figure: a row of small buttons that reorder the
-   rows in place. Screen furniture like the slider, and like the slider it is
-   an affordance the printed page does not have -- so the static twin must
-   stand on its own in whatever order it was drawn in. */
-.dd-fig .dd-sort { margin: 0 0 6px; font: 12px var(--body); }
-.dd-fig .dd-sort button {
-  font: inherit; color: var(--ink-2);
-  background: var(--card); border: 1px solid var(--rule);
-  padding: 3px 9px; margin-right: 4px; border-radius: 2px; cursor: pointer;
-}
-.dd-fig .dd-sort button:hover { color: var(--ink); border-color: var(--ink-3); }
-.dd-fig .dd-sort button.on {
-  color: var(--ink); border-color: var(--ink-3); font-weight: 600;
-}
-
 @media print {
-  .dd-fig .dd-tip, .dd-fig .dd-slider, .dd-fig .dd-sort { display: none; }
+  .dd-fig .dd-tip, .dd-fig .dd-slider { display: none; }
 }

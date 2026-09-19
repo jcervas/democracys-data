@@ -47,6 +47,12 @@
 #                          served in total, whether still serving
 #   derived/presidents.csv         one row per president: age on taking office
 #   derived/checks.csv             the validation results printed at the end
+#   derived/ages.json              the same ages by CALENDAR year rather than by
+#                          Congress, for derived/ages-page.html (section 9). The
+#                          only file where the four missing presidential birth
+#                          years are filled in; every other output keeps the NA
+#   derived/ages-page.html         that series inlined into ages-page.tmpl.html,
+#                          a standalone page with no network calls
 # ---------------------------------------------------------------------------
 
 # raw/ holds the sources as they arrive; derived/ is what this script writes.
@@ -329,6 +335,152 @@ chk <- data.frame(
     format(e0_gap, nsmall = 1)))
 dd_write_csv(chk, "derived/checks.csv")
 
+# --- 9. ages.json ----------------------------------------------------------
+#
+# The calendar-year series behind derived/ages-page.html. Everything above is
+# organized by Congress; the page is organized by YEAR, so Congress n is spread
+# across both years it occupies (1787+2n and 1788+2n) and a member's age in
+# year Y is Y - born. That gives 238 yearly points instead of 119 steps.
+#
+# The cost is that a year shows its Congress's whole roster. A seat that
+# changed hands mid-Congress shows both holders in both years, and a president
+# who left in March belongs to the previous Congress and so to the previous
+# pair of years: 1841 seated three presidents, but Van Buren sits in Congress
+# 26 and only Harrison and Tyler appear here under 1841.
+#
+# Ages are year differences, like everywhere else in this script: about half a
+# year high on average and +/- 1 for any individual on any given date. The page
+# says so in its footer.
+#
+# jsonlite is used for string escaping only. Bionames carry commas and embedded
+# quotes and hand-built JSON gets that wrong silently - the same trap as the
+# awk warning in section 1.
+
+if (!requireNamespace("jsonlite", quietly = TRUE))
+  stop("section 9 needs jsonlite: install.packages(\"jsonlite\")")
+
+# "GRASSLEY, Charles Ernest" -> "Grassley, Charles Ernest". The surname only,
+# so Voteview's own ordering survives. Mc, O' and D' keep their interior
+# capital; Mac does not, because MACK and MACON would become MacK and MacOn.
+nice_name <- function(bio) {
+  sur  <- sub(",.*$", "", bio)
+  rest <- ifelse(grepl(",", bio, fixed = TRUE), sub("^[^,]*,[ ]*", "", bio), "")
+  tc <- function(s) {
+    w <- strsplit(s, " ", fixed = TRUE)[[1]]
+    w <- paste0(toupper(substring(w, 1, 1)), tolower(substring(w, 2)))
+    w <- sub("^Mc(.)",      "Mc\\U\\1",  w, perl = TRUE)
+    w <- sub("^(O'|D')(.)", "\\1\\U\\2", w, perl = TRUE)
+    w <- gsub("-(.)",       "-\\U\\1",   w, perl = TRUE)
+    paste(w, collapse = " ")
+  }
+  sur <- vapply(sur, tc, character(1), USE.NAMES = FALSE)
+  ifelse(rest == "", sur, paste0(sur, ", ", rest))
+}
+
+# Two repairs, both confined to this section. derived/members.csv,
+# derived/presidents.csv and derived/checks.csv keep Voteview's NAs exactly as
+# they are, so the lab's own validation output still reports the gap and the
+# brief's account of it stays true. Only the page's series is patched.
+#
+# (a) Cleveland carries a birth year on his first-term rows and not on his
+#     second-term ones - the "birth year on some rows and not others" line in
+#     checks.csv. Filling that from the same person's other rows is not an
+#     override at all; it is Voteview's own value.
+born_fill <- tapply(raw$born, raw$icpsr, function(b) if (all(is.na(b))) NA_integer_ else b[!is.na(b)][1])
+raw$born_page <- ifelse(is.na(raw$born), born_fill[as.character(raw$icpsr)], raw$born)
+
+# (b) Four presidents have no birth year on any row, and all four left the
+#     page unable to age a president for 19 years, including Washington. These
+#     are uncontested dates from the standard presidential record (the White
+#     House biographies; any reference agrees), entered here as a visible
+#     table rather than silently.
+#
+#     Washington and Adams are the reason a birth YEAR is a slippery thing:
+#     both were born under the Julian calendar and their New Style dates are
+#     the ones in use since 1752. Washington 22 Feb 1732 NS was 11 Feb 1731/2
+#     OS - a different year, from the same birth.
+PREZ_BORN <- c("WASHINGTON, George"    = 1732L,   # 22 Feb 1732 NS
+               "ADAMS, John"           = 1735L,   # 30 Oct 1735 NS
+               "TAYLOR, Zachary"       = 1784L,   # 24 Nov 1784
+               "HOOVER, Herbert Clark" = 1874L)   # 10 Aug 1874
+patched <- is.na(raw$born_page) & raw$bioname %in% names(PREZ_BORN)
+raw$born_page[patched] <- PREZ_BORN[raw$bioname[patched]]
+raw$born_override <- patched
+stopifnot(sum(patched) > 0,
+          !any(is.na(raw$born_page[raw$chamber == "President"])))
+
+CHAM <- c(rep = "House", sen = "Senate", prez = "President")
+ages <- list()
+for (Y in 1789:(1788L + 2L * max(raw$congress))) {
+  cg  <- (Y - 1787L) %/% 2L
+  ent <- list()
+  for (k in names(CHAM)) {
+    z <- raw[raw$congress == cg & raw$chamber == CHAM[[k]], ]
+    z <- z[!duplicated(z$icpsr), ]           # party switchers get two rows
+    if (!nrow(z)) next
+    a  <- Y - z$born_page
+    ok <- !is.na(a)
+    e  <- list(n = sum(ok), nb = sum(!ok))
+    # Four presidents have no birth year anywhere in Voteview (Washington,
+    # John Adams, Taylor, Hoover). Name them rather than leave a silent hole.
+    if (k == "prez" && any(!ok)) e$unk <- I(unname(nice_name(z$bioname[!ok])))
+    if (any(ok)) {
+      aa  <- a[ok]
+      nm  <- nice_name(z$bioname[ok])
+      o   <- order(aa)
+      rng <- min(aa):max(aa)
+      e$min  <- min(aa)
+      e$c    <- I(as.integer(table(factor(aa, levels = rng))))
+      e$med  <- median(aa)
+      e$mean <- round(mean(aa), 1)
+      e$yng  <- list(nm[o[1]], aa[o[1]])
+      e$old  <- list(nm[o[length(o)]], aa[o[length(o)]])
+      # Voteview lists a Congress's presidents in the order they took office
+      # (Harrison then Tyler; Garfield then Arthur), so keep the file's order
+      # here rather than sorting by age.
+      # A president whose birth year came from PREZ_BORN gets a third element
+      # so the page can say so rather than passing the patch off as source data.
+      if (k == "prez") {
+        ov <- z$born_override[ok]
+        e$all <- lapply(seq_along(aa), function(i)
+          if (ov[i]) list(nm[i], aa[i], TRUE) else list(nm[i], aa[i]))
+      }
+    }
+    ent[[k]] <- e
+  }
+  if (length(ent)) ages[[as.character(Y)]] <- ent
+}
+
+ages_json <- jsonlite::toJSON(ages, auto_unbox = TRUE, digits = 4)
+writeLines(ages_json, "derived/ages.json")
+
+ages_years  <- length(ages)
+ages_people <- sum(vapply(ages, function(y) sum(vapply(y, function(e) e$n, numeric(1))), numeric(1)))
+
+# The page is a build output too: one template with the series inlined, so
+# `Rscript build-data.R` regenerates it and the stamp beside it is honest. The
+# three counts it quotes in its own footer are filled in from this run rather
+# than typed into the template, so they cannot drift away from the data.
+leg          <- raw[raw$chamber %in% c("House", "Senate"), ]
+n_leg        <- length(unique(leg$icpsr))
+n_leg_noborn <- n_leg - length(unique(leg$icpsr[!is.na(leg$born)]))
+
+page <- paste(readLines("ages-page.tmpl.html", warn = FALSE), collapse = "\n")
+for (sub_ in list(c("__PERSONYEARS__", format(ages_people, big.mark = ",")),
+                  c("__NLEG__",        format(n_leg,        big.mark = ",")),
+                  c("__NOBORN__",      format(n_leg_noborn, big.mark = ",")))) {
+  stopifnot(grepl(sub_[1], page, fixed = TRUE))
+  page <- gsub(sub_[1], sub_[2], page, fixed = TRUE)
+}
+# Split-and-paste rather than sub(): the JSON carries backslashes and quotes
+# (one bioname ends 'Jr."'), and a replacement string is not always literal.
+i <- regexpr("__DATA__", page, fixed = TRUE)
+stopifnot(i > 0)
+writeLines(paste0(substr(page, 1, i - 1), ages_json,
+                  substr(page, i + nchar("__DATA__"), nchar(page))),
+           "derived/ages-page.html")
+
+
 if (nrow(raw) != EXPECT_ROWS)
   cat(sprintf("\n  *** Voteview row count moved: expected %d, got %d ***\n",
               EXPECT_ROWS, nrow(raw)))
@@ -345,6 +497,8 @@ for (f in c("derived/members.csv", "derived/age_by_congress.csv", "derived/life_
             "derived/entry_tenure.csv", "derived/presidents.csv", "derived/checks.csv"))
   cat(sprintf("  %-22s %8s rows  %7.0f KB\n", f,
               format(nrow(read.csv(f)), big.mark = ","), file.size(f) / 1024))
+cat(sprintf("  %-22s %8s years %7.0f KB\n", "derived/ages.json",
+            format(ages_years, big.mark = ","), file.size("derived/ages.json") / 1024))
 prov_report()
 
 # ---------------------------------------------------------------------------
