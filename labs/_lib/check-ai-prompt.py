@@ -64,6 +64,7 @@ FROZEN = {
     "mid-decade":        "Dave's Redistricting exports are manual browser downloads; committed CSVs and plan files are the archive",
     "mid-decade-florida": "Dave's Redistricting exports are manual browser downloads; committed CSVs and plan files are the archive",
     "panhandle-claim":   "the 46 county precinct exports sit behind unlisted per-county election ids and the counties retire the pages",
+    "incumbency-advantage": "the MEDSL House-returns file sits behind a Dataverse guestbook; a scripted request gets HTTP 400",
 }
 
 # Fetching chapters that deliberately carry no box, with the chapter that
