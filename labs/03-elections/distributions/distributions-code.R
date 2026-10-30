@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")   # dd_swarm(): the beeswarm packing both figure 1s share
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -100,13 +101,17 @@ segments(bx$stats[1], 2.0, P25, 2.0, col = ACC)
 segments(P75, 2.0, bx$stats[5], 2.0, col = ACC)
 segments(c(bx$stats[1], bx$stats[5]), 1.88, c(bx$stats[1], bx$stats[5]), 2.12,
          col = ACC)
-text(15, 2.0, "boxplot", adj = 0, cex = 0.8, col = ACC, font = 2)
+text(15, 2.36, "boxplot", adj = c(0, 0), cex = 0.8, col = ACC, font = 2)   # above its row, clear of the whisker
 
-# the same numbers as a strip, jittered
-set.seed(84355)
-points(V, rep(1.05, NV) + runif(NV, -0.16, 0.16), pch = 19, cex = 0.42,
-       col = paste0(GRY, "AA"))
-text(15, 1.05, "every district", adj = 0, cex = 0.8, col = "#4E5A63", font = 2)
+# the same numbers as a beeswarm: stacked so no two overlap, packed in inches
+# so the circles stay round whatever the figure's shape
+pin <- par("pin")                                     # plot region, inches
+SW_R <- 0.026                                         # dot radius, inches
+sw_in <- dd_swarm((V - 15) / 77 * pin[1], SW_R, pad = 0.005)
+symbols(V, 1.05 + sw_in * (2.2 / pin[2]), circles = rep(SW_R * 77 / pin[1], NV),
+        inches = FALSE, add = TRUE, fg = NA, bg = paste0(GRY, "CC"))
+text(15, 1.05 + max(sw_in) * (2.2 / pin[2]) + 0.1, "every district", adj = c(0, 0), cex = 0.8,
+     col = "#4E5A63", font = 2)                        # above the tallest pile
 abline(v = MED, col = WARN, lty = 3)
 par(op)
 
@@ -119,8 +124,11 @@ par(op)
 # This chunk carries the ONE d3 <script src> for the document.
 # ---------------------------------------------------------------------------
 zz <- di[di$year == LAST & !is.na(di$dv), ]
+# beeswarm offsets in this figure's own pixels (x from 15 to 92 across 118..746,
+# dot radius 2.6): the same packing as the print figure, so no two dots overlap
+zz$o <- round(dd_swarm(118 + (zz$dv - 15) / 77 * (770 - 118 - 24), 2.6), 1)
 rows <- paste0('{k:"', zz$stcd, '",v:', formatC(zz$dv, format = "f", digits = 2),
-               '}', collapse = ",")
+               ',o:', zz$o, '}', collapse = ",")
 cat(paste0('
 <div id="dbox" style="position:relative;margin:1em 0"></div>
 <script src="../../_lib/d3.v7.min.js"></script>
@@ -164,9 +172,8 @@ const ys=170;
 const tip=box.append("div").attr("style","position:absolute;pointer-events:none;'
 , 'opacity:0;background:#fff;border:1px solid #CBD3D8;border-radius:3px;'
 , 'padding:5px 8px;font:11.5px inherit;box-shadow:0 1px 4px rgba(0,0,0,.14)");
-const jitter=d3.randomUniform.source(d3.randomLcg(0.42))(-17,17);
 svg.selectAll("circle.d").data(D).join("circle").attr("class","d")
-  .attr("cx",d=>x(d.v)).attr("cy",()=>ys+jitter()).attr("r",2.6)
+  .attr("cx",d=>x(d.v)).attr("cy",d=>ys+d.o).attr("r",2.6)
   .attr("fill",GRY).attr("fill-opacity",0.7)
   .on("mousemove",function(e,d){
     d3.select(this).attr("r",5).attr("fill",WARN).attr("fill-opacity",1).raise();

@@ -1,0 +1,226 @@
+---
+title: "Where House Candidates Stand, 1874–2024"
+type: brief
+subtitle: "A 2001 study of where House candidates stand, run again on campaign donors and roll calls through 2024"
+author: "Democracy's Data"
+date: "`r local({ m <- max(file.mtime(list.files(pattern = '[.]Rmd$|[.]R$'))); sprintf('Last updated %s at %s%s %s', gsub('  ', ' ', format(m, '%B %e, %Y')), sub('^0', '', format(m, '%I:%M')), tolower(substr(format(m, '%p'), 1, 1)), format(m, '%Z')) })`"
+toc_depth: 2
+knit: (function(input, ...) { source(file.path(dirname(input), "../../../../../_syllabus-template/render-brief.R")); render_brief(input) })
+---
+
+```{r knitr-setup, include=FALSE}
+source("../../../../../_syllabus-template/read-chunks.R")
+dd_read_chunks("candidate-positioning-code.R")
+```
+
+```{r setup, include=FALSE}
+```
+
+The textbook theory of elections says two candidates chasing the same voters should end up standing in the same place. Anthony Downs made the argument in 1957: whoever sits closer to the median voter, the one in the exact middle, wins, so both candidates move toward that voter until they meet. Applied to a single House district, the prediction is sharp. A Democrat and a Republican running in a district split down the middle should sound almost alike.
+
+In 2001, Stephen Ansolabehere, James Snyder and Charles Stewart checked.^[Stephen Ansolabehere, James M. Snyder, Jr., and Charles Stewart III, "Candidate Positioning in U.S. House Elections," *American Journal of Political Science* 45, no. 1 (2001): 136–159, <https://www.jstor.org/stable/2669364>.] They placed both candidates in hundreds of House races on one left-right line and asked three questions.
+
+Do the two candidates in a district converge? Do they move with the district, standing further right where its voters lean right? And has that changed over a century of elections? Their answer was that candidates almost never converge, and that the national party, not the district, decides most of where a candidate stands. This brief runs the same tests on data that reach 2024.
+
+## The test
+
+The hard part of the original study was measurement. Roll-call votes place members of Congress well, but only winners cast them, so the candidate who lost a race has no score. The authors had two ways around that. For 1996 they used a survey that Project Vote Smart sent every House candidate, winners and losers alike. For the century before, they found races where both candidates had a voting record at some point, most often an incumbent beaten by a challenger who then served.
+
+Neither source can be extended as it stood. Far fewer candidates have answered the survey since the 1990s, and the authors' roll-call scores were their own. So this brief swaps in one public source for each.
+
+**For every candidate, winners and losers: campaign donors.** Adam Bonica's Database on Ideology, Money in Politics, and Elections (DIME) places every candidate who raised money by *who gave it to them*. Donors who give to several candidates tie those candidates together. A challenger funded by the same people who fund liberal incumbents lands near those incumbents, without ever casting a vote. The resulting number is called a **CFscore**, short for campaign-finance score. Version 4.0 covers 1979 to 2024 and is free to download from Stanford (<https://data.stanford.edu/dime>).
+
+**For the long history: roll calls.** DW-NOMINATE, Voteview's scaling of every recorded vote back to the First Congress, which this book takes apart in [its own brief](../dw-nominate/dw-nominate-brief.html). It covers winners only, the same limit the original authors faced.
+
+Two more sources fill in the rest. The list of who actually ran, and how many votes each nominee got, comes from the MIT Election Data and Science Lab's House returns. How Republican each district is comes from the presidential vote in that district, the same yardstick the paper used. It is taken from Gary Jacobson's district file through 2014 and from The Downballot's calculations after that, as assembled for the [House competition brief](../../03-elections/house-competition/house-competition-brief.html).
+
+## The data
+
+Every scale here is put on the paper's own footing. In each election year, the average Democratic nominee is set to **0** and the average Republican nominee to **1**. A distance of 1.0 between two candidates then means they are as far apart as the two parties are nationally. That makes 1980 and 2024 comparable even though the donor pool, and the parties, moved in between.
+
+`nominees.csv` has one row per major-party House nominee from 1980 to 2024, `r n(F("n_nominees"))` of them, with their `position` on that scale and the Republican share of their district's presidential vote in `rep_pres`. `races.csv` pairs the two nominees in each race where both could be placed, `r n(F("n_races"))` races in all, with the `gap` between them.
+
+Not every nominee can be placed. `r n(F("n_usable"))` of them, `r p1(F("pct_usable"))`%, carry a usable score, and the share falls to `r p1(F("worst_cycle_pct"))`% in `r F("worst_cycle")`. The missing ones are not a random sample. `r p1(F("unscored_challenger_pct"))`% of them are challengers or have no recorded status, and the typical one won `r n(F("votes_unscored"))` votes against `r n(F("votes_scored"))` for the typical placed nominee. They are mostly candidates who raised too little to leave a trace in the Federal Election Commission's records. 
+
+`r n(F("n_thin"))` more nominees appear in DIME but rest on fewer than `r F("min_donors")` donors over their whole career, and those scores are left unused. A score built from two or three checks is mostly noise.
+
+> **Before you look, write down a number.** In 2024, both nominees could
+> be placed in `r n(F("races_2024"))` House races. **In how many of those
+> races do you think the Republican stood to the *left* of the Democrat?**
+> Zero would mean the parties never cross. A few dozen would mean that
+> districts pull candidates together often enough to overlap.
+
+## What it says about democracy
+
+### Two candidates, two pools
+
+```{r fig1-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig1-static, eval=!knitr::is_html_output(), fig.height=4.8}
+```
+
+**Figure 1. Every 2024 House nominee who could be placed, by how Republican the district is.** Each dot is one nominee: left to right is the Republican share of the district's 2024 presidential vote, and height is the nominee's position on the donor scale. The dotted lines mark the two party averages, 0 and 1. The solid lines are the best straight line through each party's nominees. This is the paper's Figure 1, redrawn for 2024.
+
+The picture is two horizontal bands, not one diagonal. If candidates fit their districts, the dots would climb from lower left to upper right as one cloud. A Democrat in a 60% Republican district would then sit where a Republican in a 40% district does. Instead each party's nominees sit near their own party's average wherever they run. Both lines are close to flat, and both tilt slightly the wrong way, a puzzle taken up with Figure 4. The original authors saw the same two pools in 1996 and wrote that candidates "moderate very little" for local conditions.
+
+```{r fig2-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig2-static, eval=!knitr::is_html_output(), fig.height=5.6}
+```
+
+**Figure 2. The two candidates in each 2024 race.** Each dot is one race: the Democrat's position across, the Republican's up. A race where both candidates stood in the same place would sit on the dashed diagonal. Any dot below it is a race where the Republican stood to the left of the Democrat. This is the paper's Figure 2.
+
+Now the number you wrote down. In 2024 the answer is **`r F("crossed_2024")`** of `r n(F("races_2024"))`. Every dot sits above the line, most of them far above it. Across all `r n(F("n_races"))` races since 1980, the Republican stood at or left of the Democrat `r F("n_crossed")` times. The two candidates came within a quarter of the party gap of each other in `r F("n_close")` races, `r p1(F("pct_close"))`% of the time.
+
+The crossings that do exist are worth a look in `races.csv`, because they are the old, mixed party system showing through. Several are liberal Republicans of the 1980s, like Frank Horton of Rochester and Bill Frenzel of suburban Minneapolis, facing more conservative Democrats. Others are conservative Southern Democrats, like Ralph Hall of East Texas. The most recent ones are mostly mismatches in districts one party holds by miles, where the losing nominee's donors say little about anything.
+
+### Does the replication match the original?
+
+The paper's 1996 numbers come from a survey of candidates, and these come from their donors. If the two sources describe the same candidates, the numbers that do not depend on the scale should agree. The paper's scale ran from 0 to 1 across all candidates. Its spreads and shifts are divided by its party gap of 0.47, which puts them in the same units as the second column.
+
+```{r p96-table}
+```
+
+The headline holds. The paper found exactly one race in which the Republican was not the more conservative candidate, Christopher Smith against Kevin Meara in New Jersey. The donor data also find exactly one, a different race: `r tools::toTitleCase(tolower(X96$dem_candidate))` against `r tools::toTitleCase(tolower(X96$rep_candidate))` for an open seat in Louisiana's fifth district. Both sources describe two separate pools of candidates.
+
+They disagree on the next row down. The donor scale packs each party's candidates closer together than the survey did. And on the last two rows the donor scale finds Democrats hardly moving with their districts at all, where the survey found them moving more than Republicans. That disagreement turns out to be about the donor scale, not about 1996, and it returns below.
+
+### Who moves toward the middle
+
+The paper's Table 1 found an order within each party. Holding the district fixed, incumbents stood closest to the other party, open-seat candidates next, and challengers furthest out. "Holding the district fixed" is done here in the plainest way: only districts where the Republican share of the presidential vote was within five points of 50% are kept. Each cell is how far the average candidate of that kind stood from their own party's average, toward the other party.
+
+```{r status-table}
+```
+
+The order holds in all `r F("status_order_cells")` combinations of party and era. In evenly split districts, the incumbent is the most moderate of the three kinds of candidate, and the challenger is the least. The original authors drew a lesson from this about term limits. When an incumbent leaves, the seat goes to an open-seat candidate, who stands *further* from the center than the incumbent did.
+
+The differences are small, though, and they are shrinking. The largest cell in the table is about a tenth of the distance between the parties. Both parties' nominees have also drawn closer to their own party's average over time. The spread of Democratic positions went from `r r2(F("spread_dem_1980"))` of the party gap in 1980 to `r r2(F("spread_dem_2024"))` in 2024, and the Republican spread from `r r2(F("spread_rep_1980"))` to `r r2(F("spread_rep_2024"))` (both in `by_cycle.csv`).
+
+One prediction from the paper does not survive. The authors found the gap between two candidates smallest in districts split evenly between the parties. Across 1980 to 1998, the donor data put the average gap at `r r2(F("gap_mid_8098"))` party gaps in the evenly split districts and `r r2(F("gap_edge_8098"))` in the lopsided ones, essentially the same. Since 2012 the two figures are `r r2(F("gap_mid_1224"))` and `r r2(F("gap_edge_1224"))`. A close district does not, on this evidence, produce two closer candidates (see `gap_by_district.csv`).
+
+### A century of seats changing hands
+
+Roll calls reach much further back, but only for winners. The paper's trick for the long history is to look at the moment a seat changes party. A Democrat is replaced by a Republican, or the reverse, and the district's member jumps across the aisle. **How far do they jump?** If candidates fit their districts, a swing seat should trade a moderate Democrat for a moderate Republican, and the jump should be shorter than the distance between the national parties. If each party just sends one of its own, the jump should be about the full distance, 1.0.
+
+Seats are compared by state and district number in consecutive Congresses. Elections in years ending in 2 are left out, because a redrawn map reuses the old numbers for different ground.
+
+```{r fig3-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig3-static, eval=!knitr::is_html_output(), fig.height=4.2}
+```
+
+**Figure 3. How far a district's member moved when the seat changed party, by decade, 1870s to 2020s.** One unit is the distance between the national parties' average members in that Congress. Below the line, the jump was shorter than the party gap. Above it, longer. This is the paper's Figure 5, extended.
+
+The paper's century reappears. From the 1870s through the 1920s, a seat changing hands moved its member a bit less than the full party gap. The jump then grows past 1.0, peaking at `r r2(F("repl_peak"))` in the `r F("repl_peak_decade")`s, and the two thinner lines show where: outside the South. It falls back after the 1960s, as it did in the paper.
+
+The reason is the one the original authors gave. In those decades Congress held what they called three parties: Republicans, Northern Democrats and Southern Democrats. The national Democratic average included the conservative Southern wing, so it sat well to the right of a typical Northern Democrat. A Northern seat that changed hands traded a Republican for a Democrat more liberal than that average, and the jump overshot the national gap. The South itself drops out of the figure for `r F("repl_south_thin")` decades, because almost no Southern seat changed party.
+
+The paper also found Southern jumps well above 1.0 in the 1970s and 1980s, as conservative Democrats gave way to Republicans. On these scores the Southern line reaches only `r r2(F("repl_south_7080_max"))` in those decades.
+
+The extension adds something the paper could not see. Since 2000 the jump has averaged `r r2(F("repl_since2000"))`, the shortest of any period in the series. Across `r n(F("n_replacements"))` seats that changed party since 1874, the new member landed on the far side of the old one, the roll-call version of a crossing, `r if (FN("repl_crossed") == 1) "exactly once" else paste(F("repl_crossed"), "times")`.
+
+### Do candidates follow their districts?
+
+The paper's last test asks the question directly. Within one party, are members from more Republican districts more conservative? Draw a line through each party's members, position against the district's Republican presidential vote, as in Figure 1. Then read off how far apart that line puts two members of the same party. One comes from a district where the Republican won 40% of the presidential vote, the other from a district where he won 60%. The answer is in party gaps. A reading of 0 means party alone decides, and the district counts for nothing.
+
+```{r fig4-d3, results='asis', eval=knitr::is_html_output()}
+```
+
+```{r fig4-static, eval=!knitr::is_html_output(), fig.height=4.4}
+```
+
+**Figure 4. How much further right a party's members stand in a 60% Republican district than in a 40% one, 1952–2024.** Solid lines come from roll calls and cover winners only. Dashed lines come from donors and cover every nominee who could be placed, from 1980. This is the paper's Figure 6, which also drew two lines for two methods. The series starts in 1952 because that is where district presidential returns begin in the files used here.
+
+The roll-call lines tell the paper's story and carry it forward. Responsiveness rose after the 1950s and peaked for Democrats in `r F("vv_dem_peak_year")`, at `r r2(F("vv_dem_peak"))`. Since then it has drifted down, to `r r2(F("vv_dem_2024"))` for Democrats and `r r2(F("vv_rep_2024"))` for Republicans in 2024. Twenty points of district partisanship now buys about a seventh of the distance between the parties. Party, not district, does most of the placing.
+
+The dashed lines are much lower. In all `r F("resp_overlap")` overlapping party-years the roll-call reading is higher, and the donor reading for Democrats has been below zero since the mid-2000s. Two measures of the same candidates disagree about the paper's central question, and the next section says why.
+
+## What this brief cannot tell you
+
+**The donor scale is good at telling the parties apart and poor within a party.** Among members who have both kinds of score, the CFscore agrees with roll calls at `r r2(F("r_cf_all"))` across the whole House. Within the parties alone it agrees at only `r r2(F("r_cf_dem"))` among Democrats and `r r2(F("r_cf_rep"))` among Republicans. So the donor scale is reliable for Figures 1 and 2, which are about the parties' separation.
+
+It is weak for Figure 4, which is about small differences among one party's candidates. DIME carries a second score, `dwdime` in `nominees.csv`, trained to predict roll calls from donors. It tracks them at `r r2(F("r_dwdime_dem"))` and `r r2(F("r_dwdime_rep"))` within party. It was fitted to those same roll calls, though, and it is missing for a third of challengers, which is why it is not the measure here.
+
+**Money is not a platform.** A candidate's donors are a fair guess at the candidate's views, but they are not the views. A challenger in a hopeless seat raises money from national activists who want a statement, not from the district. That alone could make challengers look more extreme on the donor scale than they would sound on the stump.
+
+**The original survey is not reproduced.** The paper's 1996 numbers come from candidates' own answers to more than two hundred policy questions. Nothing here asks a candidate anything. The table above compares two different instruments pointed at the same year, and agreement between them is evidence, not proof, that either is right.
+
+**The long history covers winners only.** Figure 3 compares the member a district had before a party switch with the one it had after. That is not the same as the two candidates in one race, because the loser of the switching election may never have served. The paper also paired candidates who faced each other years apart, and that pairing is not rebuilt here.
+
+**Redistricting is handled crudely.** Dropping every year ending in 2 removes the redraws that follow each census, but not the mid-decade ones, such as Texas in 2004 or the court-ordered maps of the 2010s. In those cases a "seat that changed party" may partly be a seat that changed shape.
+
+**The paper's third question is left alone.** Ansolabehere, Snyder and Stewart also asked whether moderation wins votes, with a regression that needs a measure of candidate quality and scandal for every race. Those are not in the files used here, and `races.csv` has the pieces for a first look but not for the answer.
+
+## What you should have learned
+
+- Across `r n(F("n_races"))` House races from 1980 to 2024, the Republican stood at or to the left of the Democrat `r F("n_crossed")` times, and `r F("crossed_2024")` times in 2024. Candidates in the same district almost never converge.
+- A replication on a different source can confirm a headline and still disagree on details. Donor scores match the 1996 survey's single crossing, but not its spread or its finding that Democrats moved with their districts.
+- Incumbents stand nearer the middle than open-seat candidates, who stand nearer than challengers, in every party and era. The differences are a tenth of the party gap or less.
+- When a seat changes party, its member's position jumps by about the distance between the national parties. The jump was largest in the 1940s, and since 2000 it has been the smallest on record.
+- Within a party, members from more Republican districts stand only slightly further right. On roll calls that effect peaked in the 1970s and has drifted down to about a seventh of the party gap.
+- Two measures of the same people can answer the same question differently, and choosing the measure is part of the finding.
+
+## Extensions
+
+None of these is answered above, and every one can be answered by sorting or filtering the tables the Sources section hands over.
+
+- `races.csv` has `gap` for every race. Sort it from smallest to largest and read the first twenty-five rows. Which states and which decades keep turning up, and what do those races have in common?
+- `nominees.csv` has `position` and `status`. Filter to one recent election and to challengers only. Sort by `position`. Are the most extreme challengers running in districts their party could win, or in hopeless ones (`rep_pres`)?
+- `replacements.csv` has `shift` for every seat that changed party since 1874. Sort by it and look at the largest jumps. Which decades and which regions dominate the top of the list?
+- `races.csv` also has `midpoint`, the point halfway between the two candidates, and `dem_share`, the Democrat's share of the two-party House vote. Compare `dem_share` with `100 - rep_pres` for one election, sorting by `midpoint`. Do Democrats run ahead of their presidential ticket when the midpoint sits further right?
+
+Two stretch ideas go past the spreadsheet. Pick one of the races where the two candidates were placed almost on top of each other and find out what the campaign was actually about. And when the 2026 nominees are known, look up their donors on the Federal Election Commission's site and guess where the scale will put them.
+
+## Sources
+
+**Data**
+
+- **Campaign-finance scores.** Adam Bonica, *Database on Ideology, Money in
+  Politics, and Elections: Public version 4.0* (Stanford University
+  Libraries, 2024). The candidate file covers 1979 to 2024 and is kept whole
+  beside this brief, with its codebook.
+  <https://data.stanford.edu/dime>
+- **Roll-call positions.** Jeffrey B. Lewis, Keith Poole, Howard Rosenthal,
+  Adam Boche, Aaron Rudkin and Luke Sonnet, *Voteview: Congressional Roll-Call
+  Votes Database*, the members file.
+  <https://voteview.com/static/data/out/members/HSall_members.csv>
+- **Who ran, and how many votes they got.** MIT Election Data and Science Lab,
+  "U.S. House 1976–2024," Harvard Dataverse. Some candidate names in the file
+  were encoded twice and arrive with garbled accents and quotation marks; they
+  were repaired before matching. <https://doi.org/10.7910/DVN/IG0UN2>
+- **Presidential vote by district.** Gary C. Jacobson's House elections file
+  through 2014, and The Downballot's calculations from 2016 to 2024, as
+  assembled and matched to the right maps in the
+  [House competition brief](../../03-elections/house-competition/house-competition-brief.html).
+  <https://www.the-downballot.com/p/the-downballots-calculations-of-presidential>
+
+**The study replicated**
+
+- Stephen Ansolabehere, James M. Snyder, Jr., and Charles Stewart III,
+  "Candidate Positioning in U.S. House Elections," *American Journal of
+  Political Science* 45, no. 1 (2001): 136–159. The 1996 numbers in the
+  comparison table are keyed from pages 141–144 and footnote 10.
+  <https://www.jstor.org/stable/2669364>
+- Adam Bonica, "Mapping the Ideological Marketplace," *American Journal of
+  Political Science* 58, no. 2 (2014): 367–386, which introduces CFscores.
+  <https://doi.org/10.1111/ajps.12062>
+
+**Checks**
+
+```{r checks-table}
+```
+
+**The data itself**
+
+Every figure above is drawn from these tables. They are plain CSV, they
+open in a spreadsheet, and they are yours to take further.
+
+[`nominees.csv`](data/derived/nominees.csv), [`races.csv`](data/derived/races.csv), [`by_cycle.csv`](data/derived/by_cycle.csv), [`by_status.csv`](data/derived/by_status.csv), [`gap_by_district.csv`](data/derived/gap_by_district.csv), [`replacements.csv`](data/derived/replacements.csv), [`replacement_by_decade.csv`](data/derived/replacement_by_decade.csv), [`responsiveness.csv`](data/derived/responsiveness.csv), [`paper_1996.csv`](data/derived/paper_1996.csv)
+
+Two more files here are not data about the subject at all -- they are how this chapter checked its own work: [`facts.csv`](data/derived/facts.csv), the individual numbers the text above quotes, and [`checks.csv`](data/derived/checks.csv), the arithmetic verified before anything was drawn.
+
+```{r ai-prompt, echo=FALSE, results="asis"}
+```

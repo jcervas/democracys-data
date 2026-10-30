@@ -142,20 +142,23 @@ o
 
 ## ---- strip-prep
 DCOL <- "#2166AC"; RCOL <- "#B2182B"          # party, and nothing else
-set.seed(84355)
 STRIP <- nom[nom$chamber == "House" & nom$congress == NOWH, ]
-STRIP$jit <- runif(nrow(STRIP), -1, 1)        # drawn once, used by both formats
+# A beeswarm: members with similar scores are stacked so no two dots overlap.
+# dd_swarm() packs them exactly as the D3 figure's swarm does, in the D3
+# frame's own pixels (760 wide, 60 left and 26 right margin, x from -1 to 1,
+# dot radius 3), so the PDF and the page draw the same picture.
+SW_R <- 3; SW_PX <- (760 - 60 - 26) / 2       # pixels per unit of dimension 1
+STRIP$sw <- dd_swarm(60 + (STRIP$dim1 + 1) * SW_PX, SW_R)
 
 ## ---- strip-d3
-# One band, one dot per member, vertical position random so that overlapping
-# members can be told apart. The dot type carries the jitter as a per-row `dy`
-# offset, which is how the browser and the PDF device land on the same picture.
+# One band, one dot per member, packed as a beeswarm (swarm = TRUE) so that
+# members with similar scores stack rather than hide one another. The band
+# grows to fit the tallest stack.
 z <- STRIP
 z$row <- as.character(YRNOW)
-z$dy  <- round(z$jit * 36, 1)
 dd_fig("housenow", "dot",
-       z[, c("dim1", "row", "dy", "party", "bioname", "state")],
-       height = 230,
+       z[, c("dim1", "row", "party", "bioname", "state")],
+       height = 230, swarm = TRUE,
        size = list(m = list(t = 22, r = 26, b = 52, l = 60)),
        x = list(field = "dim1", domain = c(-1, 1), ticks = 9, fmt = "f1",
                 label = "DW-NOMINATE dimension 1 (liberal to conservative)"),
@@ -168,18 +171,24 @@ dd_fig("housenow", "dot",
                     fmt = c(dim1 = "f2"), title = "party"))
 
 ## ---- strip-static
+# The same swarm as the D3 figure. Its offsets are in D3 pixels, so the y axis
+# is set to the same pixels-per-inch as the x axis; then a dot one pixel up is
+# as far as a dot one pixel across, and the circles cannot overlap here either.
 z <- STRIP
 par(mar = c(4, 1, 2.4, 1))
-plot(z$dim1, z$jit, pch = 19, cex = 0.6,
-     col = ifelse(z$party == "Democrat", paste0(DCOL, "73"), paste0(RCOL, "73")),
-     yaxt = "n", ylab = "", xlim = c(-1, 1), ylim = c(-1.35, 1.35),
-     xlab = "DW-NOMINATE dimension 1 (liberal to conservative)",
-     main = paste0("The House, ", YRNOW), cex.main = 0.95)
+plot.new()
+pin <- par("pin")                                    # plot region, inches
+yhalf <- pin[2] / 2 * (2 * SW_PX / pin[1])           # D3 pixels in half the height
+plot.window(xlim = c(-1, 1), ylim = c(-yhalf, yhalf), xaxs = "i")
+axis(1, at = seq(-1, 1, 0.25), cex.axis = 0.75)
+title(xlab = "DW-NOMINATE dimension 1 (liberal to conservative)",
+      main = paste0("The House, ", YRNOW), cex.main = 0.95)
 abline(v = 0, lty = 3, col = "grey60")
+symbols(z$dim1, -z$sw, circles = rep(SW_R / SW_PX, nrow(z)),
+        inches = FALSE, add = TRUE, fg = NA,
+        bg = ifelse(z$party == "Democrat", DCOL, RCOL))
 legend("top", c("Democrat", "Republican"), pch = 19, col = c(DCOL, RCOL),
        horiz = TRUE, bty = "n", cex = 0.7)
-mtext("vertical position is random, to separate the dots", side = 3, line = 0.1,
-      adj = 1, cex = 0.62, col = "#666666")
 
 ## ---- ai-prompt
 cat(ai_prompt(readLines("data/ai-prompt.txt")))

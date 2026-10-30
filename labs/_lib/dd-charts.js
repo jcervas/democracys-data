@@ -529,18 +529,89 @@
                     data: data, cfg: cfg, tip: tip }, cfg);
   };
 
+  // ---- the beeswarm packer -------------------------------------------------
+  // DD.swarm(xs, r, opt) -> one offset per input, in the same order: how far
+  // each point must sit off its baseline so that no two overlap. xs are pixel
+  // positions; r is a radius (a number, or an array of per-point radii);
+  // opt.pad is the gap between neighbours (default 0.6px). Points are placed
+  // in x order, each at the smallest offset, alternating sides, that clears
+  // every point already placed. Deterministic: no randomness, so a figure
+  // looks the same on every load, and dd_swarm() in dd-charts.R reproduces it
+  // for the static twin. A swarm replaces random jitter, which piles dots on
+  // top of one another exactly where the data is densest.
+  DD.swarm = function (xs, r, opt) {
+    opt = opt || {};
+    var pad = opt.pad === undefined ? 0.6 : opt.pad;
+    var rad = function (i) { return Array.isArray(r) ? r[i] : r; };
+    var maxR = Array.isArray(r) ? d3.max(r) : r;
+    // search in quarter-radius steps, in whatever unit the positions are in
+    // (pixels here; inches or data units from dd_swarm() in R)
+    var step = opt.step || maxR / 4;
+    var order = xs.map(function (_, i) { return i; })
+      .sort(function (a, b) { return (xs[a] - xs[b]) || (a - b); });
+    var off = new Array(xs.length), placed = [];
+    order.forEach(function (i) {
+      var near = [];
+      for (var j = placed.length - 1; j >= 0; j--) {
+        var p = placed[j];
+        if (xs[i] - xs[p] >= rad(i) + maxR + pad) break;
+        near.push(p);
+      }
+      for (var k = 0; ; k++) {
+        var y = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * step;
+        var ok = near.every(function (p) {
+          var dx = xs[i] - xs[p], dy = y - off[p], need = rad(i) + rad(p) + pad;
+          return dx * dx + dy * dy >= need * need;
+        });
+        if (ok) { off[i] = y; break; }
+      }
+      placed.push(i);
+    });
+    return off;
+  };
+
   // ---- dot ----------------------------------------------------------------
   // A categorical strip of points: one band per category on the y side, the
-  // value on x. Rows sharing a category simply overplot; pass r to size them.
+  // value on x. By default rows sharing a category simply overplot (a row may
+  // carry its own `dy`); pass r to size them. With swarm: true -- or swarm:
+  // { pad: 0.6 } -- each band is packed with DD.swarm so no two dots overlap,
+  // and each band is made as tall as its own pile (never less than
+  // rowHeight), so one crowded category does not stretch every other row.
+  // Use it whenever a band holds more than a handful of points.
   types.dot = function (box, cfg) {
     var data = cfg.data;
     var cats = uniq(data.map(function (d) { return d[cfg.y.field]; }));
-    var f = DD.frame(box, sizeOf(cfg, {
-      h: 40 + cats.length * (cfg.rowHeight || 48) + 44,
-      m: { t: 24, r: 26, b: 48, l: 96 }
-    }));
-    var y = d3.scalePoint().domain(cats)
-      .range([f.M.t + 20, f.H - f.M.b - 20]);
+    var r = cfg.r || 4.5, rowH = cfg.rowHeight || 48, dys = null, rowHs = null;
+    var size = sizeOf(cfg, { h: 0, m: { t: 24, r: 26, b: 48, l: 96 } });
+    var xRange = [size.m.l, size.w - size.m.r];
+    if (cfg.swarm) {
+      var sw = cfg.swarm === true ? {} : cfg.swarm;
+      var xs0 = linScale(cfg.x, data.map(function (d) { return d[cfg.x.field]; }), xRange);
+      dys = new Array(data.length);
+      rowHs = cats.map(function (c) {
+        var idx = [], reach = 0;
+        data.forEach(function (d, i) { if (d[cfg.y.field] === c) idx.push(i); });
+        var off = DD.swarm(idx.map(function (i) { return xs0(data[i][cfg.x.field]); }), r, sw);
+        idx.forEach(function (i, k) { dys[i] = off[k]; reach = Math.max(reach, Math.abs(off[k])); });
+        return Math.max(rowH, 2 * (reach + r) + 10);
+      });
+    }
+    var rowsH = rowHs ? d3.sum(rowHs) : cats.length * rowH;
+    var fo = sizeOf(cfg, { h: 40 + rowsH + 44, m: { t: 24, r: 26, b: 48, l: 96 } });
+    // a swarm needs its height: a fixed size.h that is too short would clip the
+    // outermost dots, so it grows to fit (it never shrinks a taller request)
+    if (dys) fo.h = Math.max(fo.h, 40 + rowsH + 44);
+    var f = DD.frame(box, fo);
+    var y;
+    if (rowHs) {
+      // stacked bands of their own heights, centred in whatever room is left
+      var top = f.M.t + (f.H - f.M.t - f.M.b - rowsH) / 2, centres = [];
+      rowHs.forEach(function (h) { centres.push(top + h / 2); top += h; });
+      y = d3.scaleOrdinal().domain(cats).range(centres);
+    } else {
+      y = d3.scalePoint().domain(cats)
+        .range([f.M.t + 20, f.H - f.M.b - 20]);
+    }
     var x = linScale(cfg.x, data.map(function (d) { return d[cfg.x.field]; }),
                      [f.M.l, f.W - f.M.r]);
     DD.axis.bottom(f, x, cfg.x);
@@ -551,8 +622,8 @@
     var pts = f.svg.append("g").selectAll("circle").data(data).join("circle")
       .attr("class", function (d, i) { return "pt " + rowClass(cfg, d, i) + "-fill"; })
       .attr("cx", function (d) { return x(d[cfg.x.field]); })
-      .attr("cy", function (d) { return y(d[cfg.y.field]) + (d.dy || 0); })
-      .attr("r", cfg.r || 4.5);
+      .attr("cy", function (d, i) { return y(d[cfg.y.field]) + (dys ? dys[i] : (d.dy || 0)); })
+      .attr("r", r);
     var tip = DD.tip(f.box);
     hoverMarks(pts, cfg, tip);
     annotate(f, x, y, cfg.annotations);

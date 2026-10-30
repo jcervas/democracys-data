@@ -8,6 +8,7 @@
 
 ## ---- setup
 source("../../../../../_syllabus-template/syllabus-helpers.R")
+source("../../_lib/dd-charts.R")   # dd_swarm(): packs the print figure's circles
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
                       fig.width = 7.2, fig.height = 4.6,
                       dpi = 96, fig.retina = 1)
@@ -96,21 +97,30 @@ draw();
 </script>'))
 
 ## ---- scale-static
+# A beeswarm, like the browser figure: circles sized by shares and stacked so
+# none overlap. The y axis is in inches, so a circle's radius means the same
+# distance up as across and the packing holds on the page.
 par(mar = c(3.6, 1, 1, 1))
 kk <- K[order(K$score), ]
-set.seed(84355)
-yy <- runif(nrow(kk), -1, 1)
-plot(kk$score, yy, type = "n", axes = FALSE, xlab = "", ylab = "",
-     xlim = c(-0.6, 0.85), ylim = c(-1.6, 1.6))
+plot.new()
+pin <- par("pin")                                       # plot region, inches
+plot.window(xlim = c(-0.6, 0.85), ylim = c(-pin[2] / 2, pin[2] / 2))
+xs <- diff(par("usr")[1:2]) / pin[1]                    # x units per inch
+r_in <- 0.17 * sqrt(kk$shares) / max(sqrt(kk$shares))  # largest circle 0.17in, area by shares
+yy <- dd_swarm((kk$score - par("usr")[1]) / xs, r_in, pad = 0.01)
 abline(v = 0, col = "grey70", lty = 3)
-symbols(kk$score, yy, circles = sqrt(kk$shares), inches = 0.17, add = TRUE,
+symbols(kk$score, yy, circles = r_in * xs, inches = FALSE, add = TRUE,
         bg = ifelse(kk$top_sharer_pct > 50, "grey75",
              ifelse(kk$score < 0, DEM, REP)),
         fg = ifelse(kk$top_sharer_pct > 50, "black", NA))
 axis(1, cex.axis = 0.85)
 lab <- kk[kk$domain %in% c("nytimes.com", "foxnews.com", F("left_most"), F("right_most")), ]
-text(lab$score, yy[match(lab$domain, kk$domain)] + 0.55, lab$domain,
-     cex = 0.68, col = "#222")
+li <- match(lab$domain, kk$domain)
+# labels in one row above the swarm, each with a leader down to its circle,
+# so no label sits on top of a neighbouring outlet
+ylab <- max(yy + r_in) + 0.22
+segments(lab$score, yy[li] + r_in[li] + 0.02, lab$score, ylab - 0.05, col = "grey55", lwd = 0.6)
+text(lab$score, ylab, lab$domain, cex = 0.68, col = "#222", adj = c(0.5, 0))
 mtext("shared by liberals", side = 1, line = 2.1, adj = 0, cex = 0.72, col = DEM)
 mtext("shared by conservatives", side = 1, line = 2.1, adj = 1, cex = 0.72, col = REP)
 

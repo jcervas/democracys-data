@@ -253,3 +253,49 @@ dd_ramp_key <- function(cap = 30, n = 5, fmt = "signed0",
     list(cls = it$cls, label = f(it$lab)))
   list(title = title, items = items, left = left, right = right)
 }
+
+# ---- beeswarm offsets ---------------------------------------------------------
+#' DD.swarm() in dd-charts.js, ported line for line, so a figure's static twin
+#' packs its dots exactly as the D3 version does. Give it the dots' positions
+#' along the value axis IN DRAWING UNITS (pixels, or any unit the radius is in)
+#' and it returns, in the same order, how far each dot sits off its baseline
+#' so that no two overlap. Deterministic: no randomness, so the same data
+#' always draws the same picture. Use it instead of jitter()/runif() offsets,
+#' which pile dots on top of one another exactly where the data is densest.
+#'
+#' @param x    positions along the value axis, in drawing units
+#' @param r    radius: one number, or one per dot
+#' @param pad  gap between neighbouring dots
+#' @param step how finely to search for a free slot: a quarter of the largest
+#'             radius by default, as in the JS
+#' @return numeric vector of offsets, same length and order as x
+#'
+#' For a base-R plot, convert first: px <- (x - lo) / (hi - lo) * width_px,
+#' then plot at y = baseline + dd_swarm(px, r_px) * (yrange / height_px).
+dd_swarm <- function(x, r, pad = 0.6, step = NULL) {
+  n <- length(x)
+  rad <- if (length(r) == 1) rep(r, n) else r
+  maxr <- max(rad)
+  if (is.null(step)) step <- maxr / 4      # a quarter radius, in the positions' own unit
+  off <- numeric(n)
+  placed <- integer(0)
+  for (i in order(x, seq_len(n))) {
+    near <- integer(0)
+    for (p in rev(placed)) {
+      if (x[i] - x[p] >= rad[i] + maxr + pad) break
+      near <- c(near, p)
+    }
+    k <- 0
+    repeat {
+      y <- (if (k %% 2 == 1) 1 else -1) * ceiling(k / 2) * step
+      need <- rad[i] + rad[near] + pad
+      if (!length(near) || all((x[i] - x[near])^2 + (y - off[near])^2 >= need^2)) {
+        off[i] <- y
+        break
+      }
+      k <- k + 1
+    }
+    placed <- c(placed, i)
+  }
+  off
+}

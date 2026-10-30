@@ -111,23 +111,13 @@ names(o) <- c("state", "districts", "Democratic vote %", "Democratic seats",
               "efficiency gap", "mean minus median", "declination")
 o
 
-## ---- sp-static
-s <- big[order(-big$eg), ]
-par(mar = c(4.2, 4.4, 1, 1))
-plot(NA, xlim = c(12, 92), ylim = c(0.5, nrow(s) + 0.5), yaxt = "n",
-     xlab = "Democratic share of the two-party presidential vote (%)", ylab = "")
-axis(2, at = seq_len(nrow(s)), labels = s$state, las = 1, cex.axis = 0.55)
-abline(v = 50, lty = 2)
-for (i in seq_len(nrow(s))) {
-  v <- cd$dem_share[cd$state == s$state[i]]
-  points(v, rep(i, length(v)), pch = 19, cex = 0.55,
-         col = ifelse(v > 50, "#2166AC", "#B2182B"))
-}
-
-## ---- sp-d3
-# The shared chart library. One band per state, one dot per district: the
-# packing-and-cracking signature is a shape in a strip of dots, so this is the
-# form that shows it. First figure in the document, so it loads d3 too.
+## ---- sp-prep
+# One band per state, one dot per district, packed as a beeswarm so districts
+# with similar shares stack instead of hiding one another. The packing is done
+# here once, in the D3 frame's own pixels (760 wide, margins 96 and 26, x from
+# 12 to 92 percent, dot radius 3.2), with dd_swarm() -- the same routine as
+# the D3 figure's swarm -- so the PDF and the page draw the same picture. Each
+# state's band is as tall as its own pile, never less than 21 pixels.
 s   <- big[order(-big$eg), ]
 spd <- do.call(rbind, lapply(s$state, function(a) {
   z <- cd[cd$state == a, ]
@@ -136,9 +126,38 @@ spd <- do.call(rbind, lapply(s$state, function(a) {
                                              "Republican district"),
              stringsAsFactors = FALSE)
 }))
-dd_fig("sp", "dot", spd,
+SP_R <- 3.2; SP_X0 <- 96; SP_PX <- (760 - 96 - 26) / 80     # pixels per point of share
+spd$sw <- 0
+for (a in s$state) {
+  k <- spd$state == a
+  spd$sw[k] <- dd_swarm(SP_X0 + (spd$share[k] - 12) * SP_PX, SP_R)
+}
+SP_ROWH <- sapply(s$state, function(a) max(21, 2 * (max(abs(spd$sw[spd$state == a])) + SP_R) + 10))
+SP_MID  <- cumsum(SP_ROWH) - SP_ROWH / 2                    # band centres, pixels from the top
+# The PDF keeps one pixel the same length on both axes, so the circles stay
+# round and cannot overlap: plot width 6.5in less the side margins below, and
+# the figure is as tall as the bands need at that scale, plus its margins.
+SP_PPI  <- 80 * SP_PX / (6.5 - (4.4 + 1) * 0.2)
+SP_FIGH <- sum(SP_ROWH) / SP_PPI + (4.2 + 1) * 0.2
+
+## ---- sp-static
+par(mar = c(4.2, 4.4, 1, 1))
+plot(NA, xlim = c(12, 92), ylim = c(sum(SP_ROWH), 0), yaxt = "n", xaxs = "i", yaxs = "i",
+     xlab = "Democratic share of the two-party presidential vote (%)", ylab = "")
+axis(2, at = SP_MID, labels = s$state, las = 1, cex.axis = 0.55, tick = FALSE)
+abline(v = 50, lty = 2)
+symbols(spd$share, SP_MID[match(spd$state, s$state)] + spd$sw,
+        circles = rep(SP_R / SP_PX, nrow(spd)), inches = FALSE, add = TRUE, fg = NA,
+        bg = ifelse(spd$share > 50, "#2166AC", "#B2182B"))
+
+## ---- sp-d3
+# The shared chart library, with swarm = TRUE: each state's band is packed so
+# no two districts overlap and sized to its own pile. The packing-and-cracking
+# signature is a shape in a strip of dots, so this is the form that shows it.
+# First figure in the document, so it loads d3 too.
+dd_fig("sp", "dot", spd[, c("state", "district", "share", "side")],
   size = list(w = 760),
-  rowHeight = 21, r = 3.6,
+  rowHeight = 21, r = SP_R, swarm = TRUE,
   y = list(field = "state"),
   x = list(field = "share", domain = c(12, 92), ticks = 9, fmt = "d",
            label = "Democratic share of the two-party presidential vote (%)"),
